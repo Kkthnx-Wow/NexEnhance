@@ -29,7 +29,7 @@ function addon:reskinHeader(header)
 end
 
 -- Reskin Headers
-function addon:OnLogin()
+function addon:PLAYER_LOGIN()
 	if not betterQuestTracker then
 		return
 	end

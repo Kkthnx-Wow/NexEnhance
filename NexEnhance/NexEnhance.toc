@@ -12,7 +12,16 @@ Libs\Dashi\embed.xml
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
 
-Modules\Unitframes\ClassColor.lua
-Modules\Blizzard\ObjectiveTracker.lua
+Init.lua
 
 Config\Settings.lua
+
+Modules\Blizzard\CharacterFrame.lua
+Modules\Blizzard\InspectFrame.lua
+Modules\Blizzard\ObjectiveTracker.lua
+
+Modules\Miscellaneous\SlotItemLevel.lua
+
+Modules\Chat\Rename.lua
+
+Modules\Unitframes\ClassColor.lua

@@ -1,0 +1,25 @@
+{
+    "Lua.diagnostics.globals": [
+        "SlashCmdList",
+        "nop",
+        "UIParentLoadAddOn",
+        "DisplayTableInspectorWindow",
+        "DEFAULT_CHAT_FRAME",
+        "Settings",
+        "GenerateClosure",
+        "MinimalSliderWithSteppersMixin",
+        "SettingsPanel",
+        "TargetFrameToT",
+        "PlayerFrame",
+        "FocusFrameToT",
+        "PetFrame",
+        "PartyFrame",
+        "TargetFrame",
+        "FocusFrame",
+        "StaticPopupDialogs",
+        "InterfaceOptions_AddCategory",
+        "ReloadUI",
+        "ColorPickerFrame",
+        "StaticPopup_Show"
+    ]
+}

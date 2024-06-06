@@ -1,6 +1,8 @@
 -- Database management for NexEnhance addon
 local NexEnhance, NE_Database = ...
 
+NE_Database.ScreenWidth, NE_Database.ScreenHeight = GetPhysicalScreenSize()
+
 -- Define font settings
 NE_Database.Font = { STANDARD_TEXT_FONT, 12, "OUTLINE" }
 

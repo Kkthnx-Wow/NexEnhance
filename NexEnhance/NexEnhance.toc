@@ -33,6 +33,8 @@ Modules\Chat\Core.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
 
+Modules\General\AutoScale.lua
+
 Modules\Miscellaneous\MissingStats.lua
 Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\SlotItemLevel.lua

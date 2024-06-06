@@ -2,6 +2,10 @@ local NexEnhance, NE_SavedVariables = ...
 
 local defaults = {
 	profile = {
+		general = {
+			AutoScale = false,
+			UIScale = 0.53,
+		},
 		actionbars = {
 			cooldowns = true,
 			MmssTH = 60,

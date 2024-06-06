@@ -314,6 +314,43 @@ local function CreateOptions()
 					},
 				},
 			},
+			general = {
+				order = 7,
+				name = NEW .. "General",
+				icon = "463852", -- :D
+				type = "group",
+				get = function(info)
+					return NE_Options.db.profile.general[info[#info]]
+				end,
+				set = function(info, value)
+					NE_Options.db.profile.general[info[#info]] = value
+					if info[#info] == "AutoScale" or info[#info] == "UIScale" then
+						NE_Options:SetupUIScale()
+					end
+				end,
+				args = {
+					AutoScale = {
+						order = 1,
+						name = "Dynamic UI Scaling",
+						desc = "Automatically adjusts the user interface scale to fit your screen resolution for optimal display.",
+						type = "toggle",
+						width = "double",
+					},
+					UIScale = {
+						order = 2,
+						name = "Custom Interface Scale",
+						desc = "Manually set the scale of the user interface, ranging from 0.43 to 1.0, to suit your personal preference and display requirements.",
+						type = "range",
+						min = 0.43,
+						max = 1.0,
+						step = 0.01,
+						width = "double",
+						disabled = function()
+							return NE_Options.db.profile.general.AutoScale
+						end,
+					},
+				},
+			},
 			-- Add additional sections similarly
 		},
 	})

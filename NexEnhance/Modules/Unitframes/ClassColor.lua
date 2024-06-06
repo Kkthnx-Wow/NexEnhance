@@ -4,6 +4,10 @@ local UnitIsFriend = UnitIsFriend
 local UnitIsEnemy = UnitIsEnemy
 local UnitIsPlayer = UnitIsPlayer
 local UnitClass = UnitClass
+local UnitExists = UnitExists
+local RAID_CLASS_COLORS = RAID_CLASS_COLORS
+local hooksecurefunc = hooksecurefunc
+local select = select
 
 local healthbarsHooked = nil
 
@@ -17,177 +21,113 @@ local function getUnitReaction(unit)
 	end
 end
 
+local colorTable = { r = 0, g = 0, b = 0 }
+
 local function getUnitColor(unit)
 	if UnitIsPlayer(unit) then
 		local color = RAID_CLASS_COLORS[select(2, UnitClass(unit))]
 		if color then
-			return { r = color.r, g = color.g, b = color.b }
-		end
-	elseif colorPetAfterOwner and UnitIsUnit(unit, "pet") then
-		-- Check if the unit is the player's pet and the setting is enabled
-		local _, playerClass = UnitClass("player")
-		local color = RAID_CLASS_COLORS[playerClass]
-		if color then
-			return { r = color.r, g = color.g, b = color.b }
+			colorTable.r, colorTable.g, colorTable.b = color.r, color.g, color.b
+			return colorTable
 		end
 	else
 		local reaction = getUnitReaction(unit)
 
 		if reaction == "HOSTILE" then
-			return { r = 1, g = 0, b = 0 }
+			colorTable.r, colorTable.g, colorTable.b = 1, 0, 0
 		elseif reaction == "NEUTRAL" then
-			return { r = 1, g = 1, b = 0 }
+			colorTable.r, colorTable.g, colorTable.b = 1, 1, 0
 		else -- if reaction is "FRIENDLY"
-			return { r = 0, g = 1, b = 0 }
+			colorTable.r, colorTable.g, colorTable.b = 0, 1, 0
 		end
+		return colorTable
 	end
 end
 
-local function updateFrameColorToggleVer(frame, unit)
-	if NE_Unitframes.db.profile.unitframes.classColorHealth then
-		local color = getUnitColor(unit)
-		if color then
-			frame:SetStatusBarDesaturated(true)
-			frame:SetStatusBarColor(color.r, color.g, color.b)
-		end
+local function setStatusBarColor(frame, color)
+	if color then
+		frame:SetStatusBarDesaturated(true)
+		frame:SetStatusBarColor(color.r, color.g, color.b)
 	end
 end
 
-local function resetFrameColor(frame, unit)
+local function resetFrameColor(frame)
 	frame:SetStatusBarDesaturated(false)
 	frame:SetStatusBarColor(0, 1, 0)
 end
 
-local function UpdateHealthColor(frame, unit)
-	local color = getUnitColor(unit)
-	if color then
-		frame:SetStatusBarDesaturated(true)
-		frame:SetStatusBarColor(color.r, color.g, color.b)
+function NE_Unitframes.UpdateToTColor()
+	local color = getUnitColor("targettarget")
+	setStatusBarColor(TargetFrameToT.HealthBar, color)
+end
+
+local function updateFrameColorByUnit(unit, frame)
+	if UnitExists(unit) then
+		local color = getUnitColor(unit)
+		setStatusBarColor(frame, color)
 	end
 end
 
-function NE_Unitframes:UpdateToTColor()
-	updateFrameColorToggleVer(TargetFrameToT.HealthBar, "targettarget")
-end
+function NE_Unitframes.UpdateFrames()
+	local frames = {
+		["player"] = PlayerFrame.healthbar,
+		["target"] = TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBar,
+		["focus"] = FocusFrame.TargetFrameContent.TargetFrameContentMain.HealthBar,
+		["targettarget"] = TargetFrameToT.HealthBar,
+		["focustarget"] = FocusFrameToT.HealthBar,
+		["party1"] = PartyFrame.MemberFrame1.HealthBar,
+		["party2"] = PartyFrame.MemberFrame2.HealthBar,
+		["party3"] = PartyFrame.MemberFrame3.HealthBar,
+		["party4"] = PartyFrame.MemberFrame4.HealthBar,
+	}
 
-function NE_Unitframes:UpdateFrames()
 	if NE_Unitframes.db.profile.unitframes.classColorHealth then
-		NE_Unitframes:HookHealthbarColors()
-		if UnitExists("player") then
-			updateFrameColorToggleVer(PlayerFrame.healthbar, "player")
-		end
-		if UnitExists("target") then
-			updateFrameColorToggleVer(TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBar, "target")
-		end
-		if UnitExists("focus") then
-			updateFrameColorToggleVer(FocusFrame.TargetFrameContent.TargetFrameContentMain.HealthBar, "focus")
-		end
-		if UnitExists("targettarget") then
-			updateFrameColorToggleVer(TargetFrameToT.HealthBar, "targettarget")
-		end
-		if UnitExists("focustarget") then
-			updateFrameColorToggleVer(FocusFrameToT.HealthBar, "focustarget")
-		end
-		if UnitExists("party1") then
-			updateFrameColorToggleVer(PartyFrame.MemberFrame1.HealthBar, "party1")
-		end
-		if UnitExists("party2") then
-			updateFrameColorToggleVer(PartyFrame.MemberFrame2.HealthBar, "party2")
-		end
-		if UnitExists("party3") then
-			updateFrameColorToggleVer(PartyFrame.MemberFrame3.HealthBar, "party3")
-		end
-		if UnitExists("party4") then
-			updateFrameColorToggleVer(PartyFrame.MemberFrame4.HealthBar, "party4")
+		NE_Unitframes.HookHealthbarColors()
+		for unit, frame in pairs(frames) do
+			updateFrameColorByUnit(unit, frame)
 		end
 	else
-		if UnitExists("player") then
-			resetFrameColor(PlayerFrame.healthbar, "player")
-		end
-		if UnitExists("target") then
-			resetFrameColor(TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBar, "target")
-		end
-		if UnitExists("focus") then
-			resetFrameColor(FocusFrame.TargetFrameContent.TargetFrameContentMain.HealthBar, "focus")
-		end
-		if UnitExists("targettarget") then
-			resetFrameColor(TargetFrameToT.HealthBar, "targettarget")
-		end
-		if UnitExists("focustarget") then
-			resetFrameColor(FocusFrameToT.HealthBar, "focustarget")
-		end
-		if UnitExists("party1") then
-			resetFrameColor(PartyFrame.MemberFrame1.HealthBar, "party1")
-		end
-		if UnitExists("party2") then
-			resetFrameColor(PartyFrame.MemberFrame2.HealthBar, "party2")
-		end
-		if UnitExists("party3") then
-			resetFrameColor(PartyFrame.MemberFrame3.HealthBar, "party3")
-		end
-		if UnitExists("party4") then
-			resetFrameColor(PartyFrame.MemberFrame4.HealthBar, "party4")
-		end
-	end
-
-	if colorPetAfterOwner then
-		if UnitExists("pet") then
-			updateFrameColorToggleVer(PetFrame.healthbar, "pet")
+		for unit, frame in pairs(frames) do
+			if UnitExists(unit) then
+				resetFrameColor(frame)
+			end
 		end
 	end
 end
 
-function NE_Unitframes:UpdateFrameColor(frame, unit)
-	local color = getUnitColor(unit)
-	if color then
-		frame:SetStatusBarDesaturated(true)
-		frame:SetStatusBarColor(color.r, color.g, color.b)
-	end
-end
-
-function NE_Unitframes:ClassColorReputation(frame, unit)
-	local color = getUnitColor(unit)
-	if color then
-		frame:SetDesaturated(true)
-		frame:SetVertexColor(color.r, color.g, color.b)
-	end
-end
-
-function NE_Unitframes:ResetClassColorReputation(frame, unit)
-	local color = getUnitColor(unit)
-	if color then
-		frame:SetDesaturated(false)
-		frame:SetVertexColor(UnitSelectionColor(unit))
-	end
-end
-
-function NE_Unitframes:HookHealthbarColors()
+function NE_Unitframes.HookHealthbarColors()
 	if not healthbarsHooked and NE_Unitframes.db.profile.unitframes.classColorHealth then
 		hooksecurefunc("UnitFrameHealthBar_Update", function(self, unit)
 			if unit then
-				UpdateHealthColor(self, unit)
-				UpdateHealthColor(TargetFrameToT.HealthBar, "targettarget")
-				UpdateHealthColor(FocusFrameToT.HealthBar, "focustarget")
+				local color = getUnitColor(unit)
+				setStatusBarColor(self, color)
+				NE_Unitframes.UpdateToTColor()
 			end
 		end)
 		healthbarsHooked = true
 	end
 end
 
-function NE_Unitframes:PLAYER_LOGIN()
-	if NE_Unitframes.db.profile.unitframes.classColorHealth then
-		local function UpdateCVar()
-			if not InCombatLockdown() then
-				if classColorFrames then
-					SetCVar("raidFramesDisplayClassColor", 1)
-				end
-			else
-				C_Timer.After(2, function()
-					UpdateCVar()
-				end)
-			end
-		end
-		UpdateCVar()
-		NE_Unitframes:UpdateFrames()
+function NE_Unitframes.PlayerReputationColor()
+	local frame = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
+	if frame.ReputationColor then
+		frame.ReputationColor:Hide()
 	end
+end
+
+function NE_Unitframes.TargetReputationColor()
+	local frame = TargetFrame.TargetFrameContent.TargetFrameContentMain
+	if frame.ReputationColor then
+		frame.ReputationColor:Hide()
+	end
+end
+
+function NE_Unitframes:PLAYER_LOGIN()
+	C_Timer.After(1, function()
+		if NE_Unitframes.db.profile.unitframes.classColorHealth then
+			NE_Unitframes.UpdateFrames()
+			NE_Unitframes.PlayerReputationColor()
+			NE_Unitframes.TargetReputationColor()
+		end
+	end)
 end

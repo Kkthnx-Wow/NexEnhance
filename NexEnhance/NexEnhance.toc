@@ -22,11 +22,15 @@ Core\Functions.lua
 
 Modules\Actionbars\Cooldowns.lua
 
+Modules\Automation\AutoSell.lua
+Modules\Automation\AutoRepair.lua
+
 Modules\Blizzard\CharacterFrame.lua
 Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
 
 Modules\Chat\Core.lua
+Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
 
 Modules\Miscellaneous\MissingStats.lua

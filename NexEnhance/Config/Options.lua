@@ -67,7 +67,7 @@ local function CreateOptions()
 				},
 			},
 			blizzard = {
-				order = 1,
+				order = 2,
 				name = "Blizzard",
 				icon = "135857", -- :D
 				type = "group",
@@ -102,7 +102,7 @@ local function CreateOptions()
 				},
 			},
 			unitframes = {
-				order = 2,
+				order = 3,
 				name = "Unit Frames",
 				icon = "648207", -- :D
 				type = "group",
@@ -114,11 +114,7 @@ local function CreateOptions()
 					if info[#info] == "classColorHealth" then
 						local function UpdateCVar()
 							if not InCombatLockdown() then
-								if NE_Options.db.profile.unitframes.classColorHealth then
-									SetCVar("raidFramesDisplayClassColor", 1)
-								else
-									SetCVar("raidFramesDisplayClassColor", 0)
-								end
+								SetCVar("raidFramesDisplayClassColor", 1)
 							else
 								C_Timer.After(1, function()
 									UpdateCVar()
@@ -126,7 +122,7 @@ local function CreateOptions()
 							end
 						end
 						UpdateCVar()
-						NE_Options:UpdateFrames()
+						NE_Options.UpdateFrames()
 					end
 				end,
 				args = {
@@ -140,7 +136,7 @@ local function CreateOptions()
 				},
 			},
 			tooltip = {
-				order = 3,
+				order = 4,
 				name = "Tooltip",
 				icon = "4622480", -- :D
 				type = "group",
@@ -225,7 +221,7 @@ local function CreateOptions()
 				},
 			},
 			worldmap = {
-				order = 3,
+				order = 5,
 				name = "WorldMap",
 				icon = "134269", -- :D
 				type = "group",
@@ -286,6 +282,35 @@ local function CreateOptions()
 						disabled = function()
 							return not NE_Options.db.profile.worldmap.FadeWhenMoving
 						end,
+					},
+				},
+			},
+			automation = {
+				order = 6,
+				name = "Automation",
+				icon = "1405803", -- :D
+				type = "group",
+				get = function(info)
+					return NE_Options.db.profile.automation[info[#info]]
+				end,
+				set = function(info, value)
+					NE_Options.db.profile.automation[info[#info]] = value
+				end,
+				args = {
+					AutoSell = {
+						order = 1,
+						name = "Auto-Sell Trash",
+						desc = "Automatically sells junk items when visiting a vendor.",
+						type = "toggle",
+						width = "double",
+					},
+
+					AutoRepair = {
+						order = 2,
+						name = "Auto Repair",
+						desc = "Automatically repairs your gear using the specified source: None, Guild Bank, or Player Funds.",
+						type = "select",
+						values = { [0] = NONE, [1] = GUILD, [2] = PLAYER },
 					},
 				},
 			},

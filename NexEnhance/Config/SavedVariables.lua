@@ -8,7 +8,10 @@ local defaults = {
 			TenthTH = 3,
 			OverrideWA = false,
 		},
-		automation = {},
+		automation = {
+			AutoRepair = 2,
+			AutoSell = true,
+		},
 		blizzard = {
 			characterFrame = true,
 			inspectFrame = true,

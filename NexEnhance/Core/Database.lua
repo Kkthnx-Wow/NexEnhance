@@ -4,11 +4,12 @@ local NexEnhance, NE_Database = ...
 -- Define font settings
 NE_Database.Font = { STANDARD_TEXT_FONT, 12, "OUTLINE" }
 
--- Get player's class
-NE_Database.Class = select(2, UnitClass("player"))
+NE_Database.Name = UnitName("player") -- Get player's name
+NE_Database.Class = select(2, UnitClass("player")) -- Get player's class
 
 -- Define info color
 NE_Database.InfoColor = "|CFF5bc0be"
+NE_Database.SystemColor = "|CFFFFCC66"
 
 -- Initialize tables for class colors and item quality colors
 NE_Database.ClassColors = {}

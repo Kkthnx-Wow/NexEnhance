@@ -382,3 +382,47 @@ do
 		return FontString
 	end
 end
+
+do
+	-- function NE_Functions:GetMoneyString(amount)
+	-- 	local coppername = "|cffeda55fc|r"
+	-- 	local goldname = "|cffffd700g|r"
+	-- 	local silvername = "|cffc7c7cfs|r"
+
+	-- 	local value = math.abs(amount)
+	-- 	local gold = math.floor(value / 10000)
+	-- 	local silver = math.floor(mod(value / 100, 100))
+	-- 	local copper = math.floor(mod(value, 100))
+
+	-- 	if gold > 0 then
+	-- 		return string.format("%s%s %02d%s %02d%s", BreakUpLargeNumbers(gold), goldname, silver, silvername, copper, coppername)
+	-- 	elseif silver > 0 then
+	-- 		return string.format("%d%s %02d%s", silver, silvername, copper, coppername)
+	-- 	else
+	-- 		return string.format("%d%s", copper, coppername)
+	-- 	end
+	-- end
+
+	function NE_Functions:GetMoneyString(money, full)
+		if money >= 1e6 and not full then
+			return BreakUpLargeNumbers(format("%d", money / 1e4)) .. GOLD_AMOUNT_SYMBOL
+		else
+			if money > 0 then
+				local moneyString = ""
+				local gold, silver, copper = floor(money / 1e4), floor(money / 100) % 100, money % 100
+				if gold > 0 then
+					moneyString = " " .. gold .. GOLD_AMOUNT_SYMBOL
+				end
+				if silver > 0 then
+					moneyString = moneyString .. " " .. silver .. SILVER_AMOUNT_SYMBOL
+				end
+				if copper > 0 then
+					moneyString = moneyString .. " " .. copper .. COPPER_AMOUNT_SYMBOL
+				end
+				return moneyString
+			else
+				return " 0" .. COPPER_AMOUNT_SYMBOL
+			end
+		end
+	end
+end

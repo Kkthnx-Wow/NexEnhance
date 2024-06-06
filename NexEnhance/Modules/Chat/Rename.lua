@@ -1,25 +1,17 @@
-local _, addon = ...
+local NexEnhance, NE_ChatRename = ...
 
 local string_find, string_gsub = string.find, string.gsub
 local INTERFACE_ACTION_BLOCKED = INTERFACE_ACTION_BLOCKED
 
 local whisperColor, oldChatNames
 
-addon:RegisterOptionCallback("whisperColor", function(value)
-	whisperColor = value
-end)
-
-addon:RegisterOptionCallback("oldChatNames", function(value)
-	oldChatNames = value
-end)
-
-function addon:SetupChannelNames(text, ...)
+function NE_ChatRename:SetupChannelNames(text, ...)
 	if string_find(text, INTERFACE_ACTION_BLOCKED) then
 		return
 	end
 
 	local r, g, b = ...
-	if whisperColor and string_find(text, addon.L["To"] .. " |H[BN]*player.+%]") then
+	if whisperColor and string_find(text, NE_ChatRename.L["To"] .. " |H[BN]*player.+%]") then
 		r, g, b = 0.6274, 0.3231, 0.6274
 	end
 
@@ -30,24 +22,24 @@ function addon:SetupChannelNames(text, ...)
 	end
 end
 
-function addon:renameChatFrames()
+function NE_ChatRename:RenameChatFrames()
 	for i = 1, _G.NUM_CHAT_WINDOWS do
 		if i ~= 2 then
 			local chatFrame = _G["ChatFrame" .. i]
 			chatFrame.oldAddMessage = chatFrame.AddMessage
-			chatFrame.AddMessage = addon.SetupChannelNames
+			chatFrame.AddMessage = NE_ChatRename.SetupChannelNames
 		end
 	end
 end
 
-function addon:renameChatStrings()
+function NE_ChatRename:RenameChatStrings()
 	_G.ERR_FRIEND_ONLINE_SS = string_gsub(_G.ERR_FRIEND_ONLINE_SS, "%]%|h", "]|h|cff00c957")
 	_G.ERR_FRIEND_OFFLINE_S = string_gsub(_G.ERR_FRIEND_OFFLINE_S, "%%s", "%%s|cffff7f50")
 
-	_G.CHAT_WHISPER_INFORM_GET = addon.L["To"] .. " %s "
-	_G.CHAT_WHISPER_GET = addon.L["From"] .. " %s "
-	_G.CHAT_BN_WHISPER_INFORM_GET = addon.L["To"] .. " %s "
-	_G.CHAT_BN_WHISPER_GET = addon.L["From"] .. " %s "
+	_G.CHAT_WHISPER_INFORM_GET = NE_ChatRename.L["To"] .. " %s "
+	_G.CHAT_WHISPER_GET = NE_ChatRename.L["From"] .. " %s "
+	_G.CHAT_BN_WHISPER_INFORM_GET = NE_ChatRename.L["To"] .. " %s "
+	_G.CHAT_BN_WHISPER_GET = NE_ChatRename.L["From"] .. " %s "
 
 	_G.CHAT_SAY_GET = "%s "
 	_G.CHAT_YELL_GET = "%s "
@@ -75,7 +67,7 @@ function addon:renameChatStrings()
 	_G.CHAT_FLAG_GM = "[GM] "
 end
 
-function addon:PLAYER_LOGIN()
-	addon:renameChatFrames()
-	addon:renameChatStrings()
+function NE_ChatRename:PLAYER_LOGIN()
+	NE_ChatRename:RenameChatFrames()
+	NE_ChatRename:RenameChatStrings()
 end

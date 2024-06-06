@@ -1,13 +1,7 @@
-local _, addon = ...
+local NexEnhance, NE_ObjectiveTracker = ...
 
-local betterQuestTracker
-
-addon:RegisterOptionCallback("betterQuestTracker", function(value)
-	betterQuestTracker = value
-end)
-
-function addon:reskinHeader(header)
-	if not header or not betterQuestTracker then
+function NE_ObjectiveTracker:ReskinHeader(header)
+	if not header then
 		return
 	end
 
@@ -29,8 +23,8 @@ function addon:reskinHeader(header)
 end
 
 -- Reskin Headers
-function addon:PLAYER_LOGIN()
-	if not betterQuestTracker then
+function NE_ObjectiveTracker:PLAYER_LOGIN()
+	if not NE_ObjectiveTracker.db.profile.blizzard.objectiveTracker then
 		return
 	end
 
@@ -47,6 +41,6 @@ function addon:PLAYER_LOGIN()
 	}
 
 	for _, header in pairs(headers) do
-		addon:reskinHeader(header)
+		NE_ObjectiveTracker:ReskinHeader(header)
 	end
 end

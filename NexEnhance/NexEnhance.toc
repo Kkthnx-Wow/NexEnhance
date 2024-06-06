@@ -11,17 +11,34 @@
 Libs\Dashi\embed.xml
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\AceGUI-3.0\AceGUI-3.0.xml
+Libs\AceConfig-3.0\AceConfig-3.0.xml
 
 Init.lua
 
-Config\Settings.lua
+Core\Database.lua
+Core\Functions.lua
+
+Modules\Actionbars\Cooldowns.lua
 
 Modules\Blizzard\CharacterFrame.lua
 Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
 
-Modules\Miscellaneous\SlotItemLevel.lua
-
+Modules\Chat\Core.lua
 Modules\Chat\Rename.lua
 
+Modules\Miscellaneous\MissingStats.lua
+Modules\Miscellaneous\MovableFrames.lua
+Modules\Miscellaneous\SlotItemLevel.lua
+
+Modules\Maps\WorldMap.lua
+
+Modules\Tooltip\Core.lua
+Modules\Tooltip\SpecLevel.lua
+
 Modules\Unitframes\ClassColor.lua
+
+Config\SavedVariables.lua
+Config\Options.lua

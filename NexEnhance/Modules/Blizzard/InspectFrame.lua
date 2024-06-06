@@ -1,14 +1,10 @@
-local _, addon = ...
+local _, Blizzard = ...
 
-local betterInspectFrame
-addon:RegisterOptionCallback("betterInspectFrame", function(value)
-	betterInspectFrame = value
-end)
-
-addon:HookAddOn("Blizzard_InspectUI", function()
-	if not betterInspectFrame then
+Blizzard:HookAddOn("Blizzard_InspectUI", function()
+	if not Blizzard.db.profile.blizzard.inspectFrame then
 		return
 	end
+
 	local PanelTemplates_GetSelectedTab = PanelTemplates_GetSelectedTab
 	local UnitClass = UnitClass
 	local hooksecurefunc = hooksecurefunc
@@ -21,7 +17,7 @@ addon:HookAddOn("Blizzard_InspectUI", function()
 		InspectPaperDollItemsFrame.InspectTalents:SetPoint("TOPRIGHT", InspectFrame, "BOTTOMRIGHT", 0, -1)
 	end
 
-	addon.RemoveTextures(InspectModelFrame, true)
+	Blizzard.RemoveTextures(InspectModelFrame, true)
 
 	local equipmentSlots = {
 		"InspectHeadSlot",
@@ -48,7 +44,7 @@ addon:HookAddOn("Blizzard_InspectUI", function()
 
 	for i = 1, numEquipmentSlots do
 		local slot = _G[equipmentSlots[i]]
-		addon.RemoveTextures(slot)
+		Blizzard.RemoveTextures(slot)
 	end
 
 	local InspectHeadSlot = InspectHeadSlot

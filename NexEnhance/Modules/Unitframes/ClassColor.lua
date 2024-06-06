@@ -1,34 +1,11 @@
-local addonName, addon = ...
+local NexEnhance, NE_Unitframes = ...
 
 local UnitIsFriend = UnitIsFriend
 local UnitIsEnemy = UnitIsEnemy
 local UnitIsPlayer = UnitIsPlayer
 local UnitClass = UnitClass
 
-local healthbarsHooked = false
-local classColorsOn
-local colorPetAfterOwner
-
-addon:RegisterOptionCallback("classColorsOn", function(value)
-	classColorsOn = value
-	local function UpdateCVar()
-		if not InCombatLockdown() then
-			if classColorFrames then
-				SetCVar("raidFramesDisplayClassColor", 1)
-			end
-		else
-			C_Timer.After(2, function()
-				UpdateCVar()
-			end)
-		end
-	end
-	UpdateCVar()
-	addon:UpdateFrames()
-end)
-
--- addon:RegisterOptionCallback("colorPetAfterOwner", function(value)
--- 	colorPetAfterOwner = value
--- end)
+local healthbarsHooked = nil
 
 local function getUnitReaction(unit)
 	if UnitIsFriend("player", unit) then
@@ -67,7 +44,7 @@ local function getUnitColor(unit)
 end
 
 local function updateFrameColorToggleVer(frame, unit)
-	if classColorsOn then
+	if NE_Unitframes.db.profile.unitframes.classColorHealth then
 		local color = getUnitColor(unit)
 		if color then
 			frame:SetStatusBarDesaturated(true)
@@ -89,13 +66,13 @@ local function UpdateHealthColor(frame, unit)
 	end
 end
 
-function addon:UpdateToTColor()
+function NE_Unitframes:UpdateToTColor()
 	updateFrameColorToggleVer(TargetFrameToT.HealthBar, "targettarget")
 end
 
-function addon:UpdateFrames()
-	if classColorsOn then
-		addon:HookHealthbarColors()
+function NE_Unitframes:UpdateFrames()
+	if NE_Unitframes.db.profile.unitframes.classColorHealth then
+		NE_Unitframes:HookHealthbarColors()
 		if UnitExists("player") then
 			updateFrameColorToggleVer(PlayerFrame.healthbar, "player")
 		end
@@ -160,7 +137,7 @@ function addon:UpdateFrames()
 	end
 end
 
-function addon:UpdateFrameColor(frame, unit)
+function NE_Unitframes:UpdateFrameColor(frame, unit)
 	local color = getUnitColor(unit)
 	if color then
 		frame:SetStatusBarDesaturated(true)
@@ -168,7 +145,7 @@ function addon:UpdateFrameColor(frame, unit)
 	end
 end
 
-function addon:ClassColorReputation(frame, unit)
+function NE_Unitframes:ClassColorReputation(frame, unit)
 	local color = getUnitColor(unit)
 	if color then
 		frame:SetDesaturated(true)
@@ -176,7 +153,7 @@ function addon:ClassColorReputation(frame, unit)
 	end
 end
 
-function addon:ResetClassColorReputation(frame, unit)
+function NE_Unitframes:ResetClassColorReputation(frame, unit)
 	local color = getUnitColor(unit)
 	if color then
 		frame:SetDesaturated(false)
@@ -184,8 +161,8 @@ function addon:ResetClassColorReputation(frame, unit)
 	end
 end
 
-function addon:HookHealthbarColors()
-	if not healthbarsHooked and classColorsOn then
+function NE_Unitframes:HookHealthbarColors()
+	if not healthbarsHooked and NE_Unitframes.db.profile.unitframes.classColorHealth then
 		hooksecurefunc("UnitFrameHealthBar_Update", function(self, unit)
 			if unit then
 				UpdateHealthColor(self, unit)
@@ -197,38 +174,8 @@ function addon:HookHealthbarColors()
 	end
 end
 
--- function addon:PlayerReputationColor()
--- 	local frame = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
--- 	if playerReputationColor then
--- 		if not frame.ReputationColor then
--- 			frame.ReputationColor = frame:CreateTexture(nil, "OVERLAY")
-
--- 			frame.ReputationColor:SetAtlas("UI-HUD-UnitFrame-Target-PortraitOn-Type")
--- 			frame.ReputationColor:SetSize(136, 20)
--- 			frame.ReputationColor:SetTexCoord(1, 0, 0, 1)
--- 			frame.ReputationColor:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -21, -25)
--- 		else
--- 			frame.ReputationColor:Show()
--- 		end
--- 		if playerReputationClassColor then
--- 			local color = getUnitColor("player")
--- 			if color then
--- 				frame.ReputationColor:SetDesaturated(true)
--- 				frame.ReputationColor:SetVertexColor(color.r, color.g, color.b)
--- 			end
--- 		else
--- 			frame.ReputationColor:SetDesaturated(false)
--- 			frame.ReputationColor:SetVertexColor(UnitSelectionColor("player"))
--- 		end
--- 	else
--- 		if frame.ReputationColor then
--- 			frame.ReputationColor:Hide()
--- 		end
--- 	end
--- end
-
-function addon:OnLogin()
-	if classColorsOn then
+function NE_Unitframes:PLAYER_LOGIN()
+	if NE_Unitframes.db.profile.unitframes.classColorHealth then
 		local function UpdateCVar()
 			if not InCombatLockdown() then
 				if classColorFrames then
@@ -241,6 +188,6 @@ function addon:OnLogin()
 			end
 		end
 		UpdateCVar()
-		addon:UpdateFrames()
+		NE_Unitframes:UpdateFrames()
 	end
 end

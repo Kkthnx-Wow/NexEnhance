@@ -146,7 +146,7 @@ function addon:ItemLevel_UpdateTraits(button, id, link)
 		return
 	end
 
-	local allTierInfo = TT:Azerite_UpdateTier(link) -- Fix later
+	local allTierInfo = addon:Azerite_UpdateTier(link) -- Fix later
 	if not allTierInfo then
 		return
 	end
@@ -160,7 +160,7 @@ function addon:ItemLevel_UpdateTraits(button, id, link)
 		for _, powerID in pairs(powerIDs) do
 			local selected = C_AzeriteEmpoweredItem_IsPowerSelected(empoweredItemLocation, powerID)
 			if selected then
-				local spellID = TT:Azerite_PowerToSpell(powerID) -- Fix later
+				local spellID = addon:Azerite_PowerToSpell(powerID) -- Fix later
 				local name, _, icon = GetSpellInfo(spellID)
 				local texture = button["textureIcon" .. i]
 				if name and texture then
@@ -484,13 +484,13 @@ function addon:ItemLevel_ScrappingUpdate()
 	self.iLvl:SetTextColor(color.r, color.g, color.b)
 end
 
-function addon.ItemLevel_ScrappingShow(event, addon)
-	if addon == "Blizzard_ScrappingMachineUI" then
+function addon.ItemLevel_ScrappingShow(event, addonName)
+	if addonName == "Blizzard_ScrappingMachineUI" then
 		for button in pairs(ScrappingMachineFrame.ItemSlots.scrapButtons.activeObjects) do
 			hooksecurefunc(button, "RefreshIcon", addon.ItemLevel_ScrappingUpdate)
 		end
 
-		K:UnregisterEvent(event, addon.ItemLevel_ScrappingShow)
+		addon:UnregisterEvent(event, addon.ItemLevel_ScrappingShow)
 	end
 end
 

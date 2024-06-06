@@ -46,33 +46,29 @@ function autoRepair(override)
 	end
 end
 
-local function checkBankFund(_, msgType)
-	if msgType == LE_GAME_ERR_GUILD_NOT_ENOUGH_MONEY then
+function NE_AutoRepair:UI_ERROR_MESSAGE(_, message)
+	if message == LE_GAME_ERR_GUILD_NOT_ENOUGH_MONEY then
 		isBankEmpty = true
 	end
 end
 
-local function merchantClose()
+function NE_AutoRepair:MERCHANT_CLOSED()
 	isShown = false
-	NE_AutoRepair.eventMixin:UnregisterEvent("UI_ERROR_MESSAGE", checkBankFund)
-	NE_AutoRepair.eventMixin:UnregisterEvent("MERCHANT_CLOSED", merchantClose)
 end
 
-local function merchantShow()
+function NE_AutoRepair:MERCHANT_SHOW()
 	if IsShiftKeyDown() or NE_AutoRepair.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
 		return
 	end
 	autoRepair()
-	NE_AutoRepair.eventMixin:RegisterEvent("UI_ERROR_MESSAGE", checkBankFund)
-	NE_AutoRepair.eventMixin:RegisterEvent("MERCHANT_CLOSED", merchantClose)
 end
-NE_AutoRepair.eventMixin:RegisterEvent("MERCHANT_SHOW", merchantShow)
 
 local repairGossipIDs = {
 	[37005] = true, -- 基维斯
 	[44982] = true, -- 里弗斯
 }
-NE_AutoRepair.eventMixin:RegisterEvent("GOSSIP_SHOW", function()
+
+function NE_AutoRepair:GOSSIP_SHOW()
 	if IsShiftKeyDown() then
 		return
 	end
@@ -88,4 +84,4 @@ NE_AutoRepair.eventMixin:RegisterEvent("GOSSIP_SHOW", function()
 			C_GossipInfo.SelectOption(option.gossipOptionID)
 		end
 	end
-end)
+end

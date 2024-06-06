@@ -13,9 +13,17 @@ NE_Database.Class = select(2, UnitClass("player")) -- Get player's class
 NE_Database.InfoColor = "|CFF5bc0be"
 NE_Database.SystemColor = "|CFFFFCC66"
 
--- Initialize tables for class colors and item quality colors
+-- Initialize tables for class colors/list and item quality colors
+NE_Database.ClassList = {}
 NE_Database.ClassColors = {}
 NE_Database.QualityColors = {}
+
+for k, v in pairs(LOCALIZED_CLASS_NAMES_MALE) do
+	NE_Database.ClassList[v] = k
+end
+for k, v in pairs(LOCALIZED_CLASS_NAMES_FEMALE) do
+	NE_Database.ClassList[v] = k
+end
 
 -- Populate ClassColors table with class colors
 local colors = CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS

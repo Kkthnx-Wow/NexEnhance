@@ -109,7 +109,7 @@ function NE_SpecLevel:InspectOnUpdate(elapsed)
 		ClearInspectPlayer()
 
 		if currentUNIT and UnitGUID(currentUNIT) == currentGUID then
-			NE_SpecLevel:RegisterEvent("INSPECT_READY", NE_SpecLevel.GetInspectInfo)
+			NE_SpecLevel:INSPECT_READY()
 			NotifyInspect(currentUNIT)
 		end
 	end
@@ -120,34 +120,38 @@ updater:SetScript("OnUpdate", NE_SpecLevel.InspectOnUpdate)
 updater:Hide()
 
 local lastTime = 0
-function NE_SpecLevel:GetInspectInfo(...)
-	if self == "UNIT_INVENTORY_CHANGED" then
-		local thisTime = GetTime()
-		if thisTime - lastTime > 0.1 then
-			lastTime = thisTime
+function NE_SpecLevel:UNIT_INVENTORY_CHANGED(unit)
+	local thisTime = GetTime()
+	if thisTime - lastTime > 0.1 then
+		lastTime = thisTime
 
-			local unit = ...
-			if UnitGUID(unit) == currentGUID then
-				NE_SpecLevel:InspectUnit(unit, true)
-			end
+		if UnitGUID(unit) == currentGUID then
+			NE_SpecLevel:InspectUnit(unit, true)
 		end
-	elseif self == "INSPECT_READY" then
-		local guid = ...
-		if guid == currentGUID then
-			local level = NE_SpecLevel:GetUnitItemLevel(currentUNIT)
-			cache[guid].level = level
-			cache[guid].getTime = GetTime()
+	end
 
-			if level then
-				NE_SpecLevel:SetupItemLevel(level)
-			else
-				NE_SpecLevel:InspectUnit(currentUNIT, true)
-			end
-		end
-		NE_SpecLevel:UnregisterEvent(self, NE_SpecLevel.GetInspectInfo)
+	if self:IsEventRegistered("UNIT_INVENTORY_CHANGED", self.UNIT_INVENTORY_CHANGED) then
+		self:UnregisterEvent("UNIT_INVENTORY_CHANGED")
 	end
 end
-NE_SpecLevel:RegisterEvent("UNIT_INVENTORY_CHANGED", NE_SpecLevel.GetInspectInfo)
+
+function NE_SpecLevel:INSPECT_READY(guid)
+	if guid == currentGUID then
+		local level = NE_SpecLevel:GetUnitItemLevel(currentUNIT)
+		cache[guid].level = level
+		cache[guid].getTime = GetTime()
+
+		if level then
+			NE_SpecLevel:SetupItemLevel(level)
+		else
+			NE_SpecLevel:InspectUnit(currentUNIT, true)
+		end
+	end
+
+	if self:IsEventRegistered("INSPECT_READY", self.INSPECT_READY) then
+		self:UnregisterEvent("INSPECT_READY")
+	end
+end
 
 function NE_SpecLevel:SetupItemLevel(level)
 	local _, unit = GameTooltip:GetUnit()

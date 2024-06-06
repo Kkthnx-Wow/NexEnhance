@@ -113,6 +113,29 @@ do
 		end
 		return r, g, b
 	end
+
+	-- Helper function to calculate the color gradient and percentage
+	local function calculateColorGradient(a, b, ...)
+		if a <= 0 or b == 0 then
+			return nil, ...
+		elseif a >= b then
+			return nil, select(-3, ...)
+		end
+
+		local numSegments = select("#", ...) / 3
+		local segment, relperc = math.modf((a / b) * (numSegments - 1))
+		return relperc, select((segment * 3) + 1, ...)
+	end
+
+	-- Function to compute the RGB color gradient based on the percentage
+	function NE_Functions:RGBColorGradient(a, b, ...)
+		local relperc, r1, g1, b1, r2, g2, b2 = calculateColorGradient(a, b, ...)
+		if relperc then
+			return r1 + (r2 - r1) * relperc, g1 + (g2 - g1) * relperc, b1 + (b2 - b1) * relperc
+		else
+			return r1, g1, b1
+		end
+	end
 end
 
 -- Function to disable and hide UI elements

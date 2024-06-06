@@ -270,7 +270,16 @@
         "STATUS",
         "ScrollFrameTemplate_OnMouseWheel",
         "TASKS_COLON",
-        "SELECTED_DOCK_FRAME"
+        "SELECTED_DOCK_FRAME",
+        "FriendsListFrame",
+        "WhoFrame",
+        "FRIENDS_LEVEL_TEMPLATE",
+        "FRIENDS_BUTTON_TYPE_WOW",
+        "FRIENDS_BUTTON_TYPE_BNET",
+        "BNET_CLIENT_WOW",
+        "FRIENDS_WOW_NAME_COLOR_CODE",
+        "UIDropDownMenu_GetSelectedID",
+        "WhoFrameDropDown"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

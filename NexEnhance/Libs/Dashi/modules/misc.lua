@@ -24,7 +24,7 @@ function addon:IsClassic()
 end
 
 -- easy frame "removal"
-local hidden = CreateFrame("Frame")
+local hidden = CreateFrame('Frame')
 hidden:Hide()
 
 --[[ namespace:Hide(_object_[, _child_,...])
@@ -32,13 +32,13 @@ Forcefully hide an `object`, or its `child`.
 It will recurse down to the last child if provided.
 --]]
 function addon:Hide(object, ...)
-	if type(object) == "string" then
+	if type(object) == 'string' then
 		object = _G[object]
 	end
 
 	if ... then
 		-- iterate through arguments, they're children referenced by key
-		for index = 1, select("#", ...) do
+		for index = 1, select('#', ...) do
 			object = object[select(index, ...)]
 		end
 	end
@@ -55,7 +55,7 @@ end
 
 -- random utilities
 do
-	local GUID_PATTERN = "%w+%-.-%-.-%-.-%-.-%-(.-)%-"
+	local GUID_PATTERN = '%w+%-.-%-.-%-.-%-.-%-(.-)%-'
 	--[[ namespace:ExtractIDFromGUID(_guid_)
 	Returns the integer `id` from the given [`guid`](https://warcraft.wiki.gg/wiki/GUID).
 	--]]
@@ -75,7 +75,7 @@ function addon:GetNPCID(unit)
 end
 
 do
-	local ITEM_LINK_FORMAT = "|Hitem:%d|h"
+	local ITEM_LINK_FORMAT = '|Hitem:%d|h'
 	--[[ namespace:GetItemLinkFromID(_itemID_)
 	Generates an [item link](https://warcraft.wiki.gg/wiki/ItemLink) from an `itemID`.  
 	This is a crude generation and won't have valid data for complex items.
@@ -90,14 +90,14 @@ Returns the ID of the current map the zone the player is located in.
 --]]
 function addon:GetPlayerMapID()
 	-- TODO: maybe use HBD data if it's available
-	return C_Map.GetBestMapForUnit("player") or -1
+	return C_Map.GetBestMapForUnit('player') or -1
 end
 
 --[[ namespace:GetPlayerPosition(_mapID_)
 Returns the `x` and `y` coordinates for the player in the given `mapID` (if they are valid).
 --]]
 function addon:GetPlayerPosition(mapID)
-	local pos = C_Map.GetPlayerMapPosition(mapID, "player")
+	local pos = C_Map.GetPlayerMapPosition(mapID, 'player')
 	if pos then
 		return pos:GetXY()
 	end
@@ -119,10 +119,10 @@ end
 do
 	local function auraSlotsWrapper(unit, spellID, token, ...)
 		local slot, data
-		for index = 1, select("#", ...) do
+		for index = 1, select('#', ...) do
 			slot = select(index, ...)
 			data = C_UnitAuras.GetAuraDataBySlot(unit, slot)
-			if spellID == data.spellId and data.sourceUnit and (UnitIsUnit("player", data.sourceUnit) or UnitIsOwnerOrControllerOfUnit("player", data.sourceUnit)) then
+			if spellID == data.spellId and data.sourceUnit and (UnitIsUnit('player', data.sourceUnit) or UnitIsOwnerOrControllerOfUnit('player', data.sourceUnit)) then
 				return nil, data
 			end
 		end

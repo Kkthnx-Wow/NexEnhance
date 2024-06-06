@@ -400,7 +400,7 @@ function NE_Tooltip:FixRecipeItemNameWidth()
 	end
 end
 
-function NE_Tooltip:ResetUnit(btn)
+function NE_Tooltip:MODIFIER_STATE_CHANGED(btn)
 	if btn == "LSHIFT" and UnitExists("mouseover") then
 		GameTooltip:RefreshData()
 	end
@@ -442,7 +442,6 @@ function NE_Tooltip:PLAYER_LOGIN()
 			end
 		end
 	end
-	self:RegisterEvent("MODIFIER_STATE_CHANGED", NE_Tooltip.ResetUnit)
 end
 
 -- Tooltip Skin Registration

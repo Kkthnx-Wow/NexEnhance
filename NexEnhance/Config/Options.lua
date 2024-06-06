@@ -362,6 +362,6 @@ SettingsPanel:HookScript("OnShow", function()
 	CreateOptions() -- Load on demand
 end)
 
-NE_Options:RegisterSlash("/nexe", "/ne", function()
-	Settings.OpenToCategory(NexEnhance)
-end)
+-- NE_Options:RegisterSlash("/nexe", "/ne", function()
+-- 	Settings.OpenToCategory(NexEnhance)
+-- end)

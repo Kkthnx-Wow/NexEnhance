@@ -6,31 +6,24 @@ local function GetBestScale()
 	return NE_AutoScale:Round(scale, 2)
 end
 
-function NE_AutoScale:SetupUIScale(init)
+function NE_AutoScale:SetupUIScale()
 	if NE_AutoScale.db.profile.general.AutoScale then
 		NE_AutoScale.db.profile.general.UIScale = GetBestScale()
 	end
 	local scale = NE_AutoScale.db.profile.general.UIScale
-	if init then
-		local pixel = 1
-		local ratio = 768 / NE_AutoScale.ScreenHeight
-	elseif not InCombatLockdown() then
+	if not InCombatLockdown() then
 		UIParent:SetScale(scale)
 	end
 end
 
 local isScaling = false
-local function UpdatePixelScale(_, event)
+function NE_AutoScale:UI_SCALE_CHANGED()
 	if isScaling then
 		return
 	end
 	isScaling = true
 
-	if event == "UI_SCALE_CHANGED" then
-		print(event)
-		NE_AutoScale.ScreenWidth, NE_AutoScale.ScreenHeight = GetPhysicalScreenSize()
-	end
-	NE_AutoScale:SetupUIScale(true)
+	NE_AutoScale.ScreenWidth, NE_AutoScale.ScreenHeight = GetPhysicalScreenSize()
 	NE_AutoScale:SetupUIScale()
 
 	isScaling = false
@@ -38,5 +31,4 @@ end
 
 function NE_AutoScale:PLAYER_LOGIN()
 	self:SetupUIScale()
-	self.eventMixin:RegisterEvent("UI_SCALE_CHANGED", UpdatePixelScale)
 end

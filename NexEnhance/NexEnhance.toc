@@ -17,6 +17,9 @@ Libs\AceConfig-3.0\AceConfig-3.0.xml
 
 Init.lua
 
+Config\SavedVariables.lua
+Config\Options.lua
+
 Core\Database.lua
 Core\Functions.lua
 
@@ -38,6 +41,7 @@ Modules\General\AutoScale.lua
 Modules\Miscellaneous\MissingStats.lua
 Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\SlotItemLevel.lua
+Modules\Miscellaneous\yClassColors.lua
 
 Modules\Maps\WorldMap.lua
 
@@ -45,6 +49,3 @@ Modules\Tooltip\Core.lua
 Modules\Tooltip\SpecLevel.lua
 
 Modules\Unitframes\ClassColor.lua
-
-Config\SavedVariables.lua
-Config\Options.lua

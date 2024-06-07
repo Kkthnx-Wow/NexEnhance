@@ -279,7 +279,11 @@
         "BNET_CLIENT_WOW",
         "FRIENDS_WOW_NAME_COLOR_CODE",
         "UIDropDownMenu_GetSelectedID",
-        "WhoFrameDropDown"
+        "WhoFrameDropDown",
+        "message",
+        "ChatFrame_RemoveMessageGroup",
+        "ObjectiveTracker_GetBlockOffset",
+        "OBJECTIVE_TRACKER_HEADER_OFFSET_X"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

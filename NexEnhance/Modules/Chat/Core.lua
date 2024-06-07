@@ -1,14 +1,12 @@
-local NexEnhance, Chat = ...
+local NexEnhance, NE_Chat = ...
 
 -- Lua Standard Functions
 local ipairs = ipairs
-local select = select
 local string_find = string.find
 local string_gmatch = string.gmatch
 local string_gsub = string.gsub
 local string_len = string.len
 local string_sub = string.sub
-local type = type
 
 -- WoW API Functions
 local Ambiguate = Ambiguate
@@ -37,7 +35,7 @@ local SOUNDKIT = SOUNDKIT
 
 local messageSoundID = SOUNDKIT.TELL_MESSAGE
 local maxLines = 2048
-Chat.MuteCache = {}
+NE_Chat.MuteCache = {}
 
 local whisperEvents = {
 	["CHAT_MSG_WHISPER"] = true,
@@ -105,7 +103,7 @@ local function editBoxOnTextChanged(self)
 			if name then
 				ChatFrame_SendTell(name, self.chatFrame)
 			else
-				--	UIErrorsFrame:AddMessage(Chat.L["Invalid Target"])
+				UIErrorsFrame:AddMessage(NE_Chat.L["Invalid Target"])
 			end
 		elseif text == "/gr " then
 			self:SetText(getGroupDistribution() .. string.sub(text, 5))
@@ -138,11 +136,30 @@ local function editBoxOnTextChanged(self)
 	end
 end
 
-function Chat:TabSetAlpha(alpha)
+function NE_Chat:TabSetAlpha(alpha)
 	if self.glow:IsShown() and alpha ~= 1 then
 		self:SetAlpha(1)
 	elseif alpha < 0 then
 		self:SetAlpha(0)
+	end
+end
+
+local chatEditboxes = {}
+local function UpdateEditBoxAnchor(eb)
+	local parent = eb.__owner
+	eb:ClearAllPoints()
+	--if C.db["Chat"]["BottomBox"] then
+	--eb:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 4, -10)
+	--eb:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -15, -34)
+	--else
+	eb:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 4, 26)
+	eb:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -15, 50)
+	--end
+end
+
+function NE_Chat:ToggleEditBoxAnchor()
+	for _, eb in pairs(chatEditboxes) do
+		UpdateEditBoxAnchor(eb)
 	end
 end
 
@@ -151,19 +168,16 @@ local function UpdateEditboxFont(editbox)
 	editbox.header:SetFontObject(GameFontNormal)
 end
 
-function Chat:SkinChat()
+function NE_Chat:SkinChat()
 	if not self or self.styled then
 		return
 	end
 
 	local name = self:GetName()
 	local font, fontSize, fontStyle = self:GetFont()
-
 	self:SetFont(font, fontSize, fontStyle)
 	self:SetClampRectInsets(0, 0, 0, 0)
 	self:SetClampedToScreen(false)
-	self:SetFading(true)
-	self:SetTimeVisible(100)
 
 	if self:GetMaxLines() < maxLines then
 		self:SetMaxLines(maxLines)
@@ -172,18 +186,23 @@ function Chat:SkinChat()
 	local eb = _G[name .. "EditBox"]
 	eb:SetAltArrowKeyMode(false)
 	eb:SetClampedToScreen(true)
-	eb:ClearAllPoints()
-	eb:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 0, 24)
-	eb:SetPoint("TOPRIGHT", self, "TOPRIGHT", 0, 50)
+	eb.__owner = self
+	UpdateEditBoxAnchor(eb)
+	-- eb:Hide()
 	UpdateEditboxFont(eb)
-	eb:Hide()
+	tinsert(chatEditboxes, eb)
 	eb:HookScript("OnTextChanged", editBoxOnTextChanged)
+
+	local lang = _G[name .. "EditBoxLanguage"]
+	lang:GetRegions():SetAlpha(0)
+	lang:SetPoint("TOPLEFT", eb, "TOPRIGHT", 5, 0)
+	lang:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT", 29, 0)
 
 	local tab = _G[name .. "Tab"]
 	tab:SetAlpha(1)
-	tab.Text:SetFont(font, Chat.Font[2] + 1, fontStyle)
-	Chat.RemoveTextures(tab, 7)
-	hooksecurefunc(tab, "SetAlpha", Chat.TabSetAlpha)
+	tab.Text:SetFont(font, NE_Chat.Font[2] + 1, fontStyle)
+	NE_Chat.RemoveTextures(tab, 7)
+	hooksecurefunc(tab, "SetAlpha", NE_Chat.TabSetAlpha)
 
 	-- Character count
 	local charCount = eb:CreateFontString(nil, "ARTWORK")
@@ -194,11 +213,11 @@ function Chat:SkinChat()
 	charCount:SetWidth(40)
 	eb.characterCount = charCount
 
-	Chat.DisableUIElement(self.buttonFrame)
+	NE_Chat.DisableUIElement(self.buttonFrame)
 
 	self.oldAlpha = self.oldAlpha or 0 -- fix blizz error
 
-	self:HookScript("OnMouseWheel", Chat.QuickMouseScroll)
+	self:HookScript("OnMouseWheel", NE_Chat.QuickMouseScroll)
 
 	self.styled = true
 end
@@ -250,8 +269,8 @@ local cycles = {
 	{
 		chatType = "CHANNEL",
 		IsActive = function(_, editbox)
-			if Chat.InWorldChannel and Chat.WorldChannelID then
-				editbox:SetAttribute("channelTarget", Chat.WorldChannelID)
+			if NE_Chat.InWorldChannel and NE_Chat.WorldChannelID then
+				editbox:SetAttribute("channelTarget", NE_Chat.WorldChannelID)
 				return true
 			end
 		end,
@@ -266,7 +285,7 @@ local cycles = {
 }
 
 -- Update editbox border color
-function Chat:UpdateEditBoxColor()
+function NE_Chat:UpdateEditBoxColor()
 	-- if not C["Chat"].Enable then
 	-- 	return
 	-- end
@@ -305,14 +324,14 @@ function Chat:UpdateEditBoxColor()
 		end
 	end
 end
-hooksecurefunc("ChatEdit_UpdateHeader", Chat.UpdateEditBoxColor)
+-- hooksecurefunc("ChatEdit_UpdateHeader", NE_Chat.UpdateEditBoxColor)
 
-function Chat:SwitchToChannel(chatType)
+function NE_Chat:SwitchToChannel(chatType)
 	self:SetAttribute("chatType", chatType)
 	ChatEdit_UpdateHeader(self)
 end
 
-function Chat:UpdateTabChannelSwitch()
+function NE_Chat:UpdateTabChannelSwitch()
 	-- if not C["Chat"].Enable then
 	-- 	return
 	-- end
@@ -328,7 +347,7 @@ function Chat:UpdateTabChannelSwitch()
 	local isShiftKeyDown = IsShiftKeyDown()
 	local currentType = self:GetAttribute("chatType")
 	if isShiftKeyDown and (currentType == "WHISPER" or currentType == "BN_WHISPER") then
-		Chat.SwitchToChannel(self, "SAY")
+		NE_Chat.SwitchToChannel(self, "SAY")
 		return
 	end
 
@@ -344,17 +363,17 @@ function Chat:UpdateTabChannelSwitch()
 			for j = from, to, step do
 				local nextCycle = cycles[j]
 				if nextCycle:IsActive() then
-					Chat.SwitchToChannel(self, nextCycle.chatType)
+					NE_Chat.SwitchToChannel(self, nextCycle.chatType)
 					return
 				end
 			end
 		end
 	end
 end
-hooksecurefunc("ChatEdit_CustomTabPressed", Chat.UpdateTabChannelSwitch)
+hooksecurefunc("ChatEdit_CustomTabPressed", NE_Chat.UpdateTabChannelSwitch)
 
 -- Quick Scroll
-function Chat:QuickMouseScroll(dir)
+function NE_Chat:QuickMouseScroll(dir)
 	-- if not C["Chat"].Enable then
 	-- 	return
 	-- end
@@ -381,7 +400,7 @@ function Chat:QuickMouseScroll(dir)
 end
 
 -- Sticky whisper
-function Chat:ChatWhisperSticky()
+function NE_Chat:ChatWhisperSticky()
 	--if C["Chat"].Sticky then
 	ChatTypeInfo["WHISPER"].sticky = 1
 	ChatTypeInfo["BN_WHISPER"].sticky = 1
@@ -392,7 +411,7 @@ function Chat:ChatWhisperSticky()
 end
 
 -- Tab colors
-function Chat:UpdateTabColors(selected)
+function NE_Chat:UpdateTabColors(selected)
 	if selected then
 		self.Text:SetTextColor(1, 0.8, 0)
 		self.whisperIndex = 0
@@ -409,25 +428,25 @@ function Chat:UpdateTabColors(selected)
 	end
 end
 
-function Chat:UpdateTabEventColors(event)
+function NE_Chat:UpdateTabEventColors(event)
 	local tab = _G[self:GetName() .. "Tab"]
 	local selected = GeneralDockManager.selected:GetID() == tab:GetID()
 
 	if event == "CHAT_MSG_WHISPER" then
 		tab.whisperIndex = 1
-		Chat.UpdateTabColors(tab, selected)
+		NE_Chat.UpdateTabColors(tab, selected)
 	elseif event == "CHAT_MSG_BN_WHISPER" then
 		tab.whisperIndex = 2
-		Chat.UpdateTabColors(tab, selected)
+		NE_Chat.UpdateTabColors(tab, selected)
 	end
 end
 
-function Chat:PlayWhisperSound(event, _, author)
+function NE_Chat:PlayWhisperSound(event, _, author)
 	if whisperEvents[event] then
 		local name = Ambiguate(author, "none")
 		local currentTime = GetTime()
 
-		if Chat.MuteCache[name] == currentTime then
+		if NE_Chat.MuteCache[name] == currentTime then
 			return
 		end
 
@@ -439,7 +458,7 @@ function Chat:PlayWhisperSound(event, _, author)
 	end
 end
 
-function Chat:PLAYER_LOGIN()
+function NE_Chat:PLAYER_LOGIN()
 	-- if not C["Chat"].Enable then
 	-- 	return
 	-- end
@@ -449,21 +468,27 @@ function Chat:PLAYER_LOGIN()
 	end
 
 	for i = 1, NUM_CHAT_WINDOWS do
-		Chat.SkinChat(_G["ChatFrame" .. i])
+		local chatframe = _G["ChatFrame" .. i]
+		NE_Chat.SkinChat(chatframe)
 	end
 
 	hooksecurefunc("FCF_OpenTemporaryWindow", function()
 		for _, chatFrameName in ipairs(CHAT_FRAMES) do
 			local frame = _G[chatFrameName]
 			if frame.isTemporary then
-				Chat.SkinChat(frame)
+				NE_Chat.SkinChat(frame)
 			end
 		end
 	end)
 
-	hooksecurefunc("FCFTab_UpdateColors", self.UpdateTabColors)
-	hooksecurefunc("FloatingChatFrame_OnEvent", self.UpdateTabEventColors)
-	hooksecurefunc("ChatFrame_MessageEventHandler", self.PlayWhisperSound)
+	hooksecurefunc("FCFTab_UpdateColors", NE_Chat.UpdateTabColors)
+	hooksecurefunc("FloatingChatFrame_OnEvent", NE_Chat.UpdateTabEventColors)
+	hooksecurefunc("ChatFrame_MessageEventHandler", NE_Chat.PlayWhisperSound)
+
+	-- Font size
+	for i = 1, 15 do
+		CHAT_FONT_HEIGHTS[i] = i + 9
+	end
 
 	-- Default
 	if CHAT_OPTIONS then -- only flash whisper
@@ -471,27 +496,6 @@ function Chat:PLAYER_LOGIN()
 	end
 	SetCVar("chatStyle", "classic")
 	SetCVar("chatMouseScroll", 1) -- Enable mousescroll
-	_G.CombatLogQuickButtonFrame_CustomTexture:SetTexture(nil)
 
-	-- Lock chatframe
-	--if C["Chat"].Lock then
-	-- Chat:UpdateChatSize()
-	-- self:RegisterEvent("UI_SCALE_CHANGED", Chat.UpdateChatSize)
-	-- hooksecurefunc(ChatFrame1, "SetPoint", updateChatAnchor)
-	-- FCF_SavePositionAndDimensions(ChatFrame1)
-	--end
-
-	-- ProfanityFilter
-	if not BNFeaturesEnabledAndConnected() then
-		return
-	end
-
-	-- if C["Chat"].Freedom then
-	-- 	if GetCVar("portal") == "CN" then
-	-- 		ConsoleExec("portal TW")
-	-- 	end
-	-- 	SetCVar("profanityFilter", 0)
-	-- else
-	-- 	SetCVar("profanityFilter", 1)
-	-- end
+	NE_Chat:ChatWhisperSticky()
 end

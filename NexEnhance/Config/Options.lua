@@ -351,6 +351,27 @@ local function CreateOptions()
 					},
 				},
 			},
+			loot = {
+				order = 8,
+				name = "Loot",
+				icon = "", -- :D
+				type = "group",
+				get = function(info)
+					return NE_Options.db.profile.loot[info[#info]]
+				end,
+				set = function(info, value)
+					NE_Options.db.profile.loot[info[#info]] = value
+				end,
+				args = {
+					FasterLoot = {
+						order = 1,
+						name = "Quick Looting",
+						desc = "Enhances looting speed, requires auto-loot to be enabled.",
+						type = "toggle",
+						width = "double",
+					},
+				},
+			},
 			-- Add additional sections similarly
 		},
 	})

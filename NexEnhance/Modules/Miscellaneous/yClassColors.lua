@@ -69,14 +69,7 @@ local function updateGuildView()
 	end
 end
 
--- NE_yClassColors:HookAddOn("Blizzard_GuildUI", function(event, addon)
--- 	hooksecurefunc("GuildRoster_SetView", setView)
--- 	hooksecurefunc("GuildRoster_Update", updateGuildView)
--- 	hooksecurefunc(GuildRosterContainer, "update", updateGuildView)
--- 	NE_yClassColors:UnregisterEvent(event, updateGuildUI)
--- end
-
-local function updateGuildUI(event, addon)
+function NE_yClassColors:ADDON_LOADED(addon)
 	if addon ~= "Blizzard_GuildUI" then
 		return
 	end
@@ -84,9 +77,11 @@ local function updateGuildUI(event, addon)
 	hooksecurefunc("GuildRoster_SetView", setView)
 	hooksecurefunc("GuildRoster_Update", updateGuildView)
 	hooksecurefunc(GuildRosterContainer, "update", updateGuildView)
-	NE_yClassColors:UnregisterEvent(event, updateGuildUI)
+
+	if self:IsEventRegistered("ADDON_LOADED", self.ADDON_LOADED) then
+		self:UnregisterEvent("ADDON_LOADED")
+	end
 end
-NE_yClassColors:RegisterEvent("ADDON_LOADED", updateGuildUI)
 
 -- Friends List Update
 local FRIENDS_LEVEL_TEMPLATE = FRIENDS_LEVEL_TEMPLATE:gsub("%%d", "%%s")

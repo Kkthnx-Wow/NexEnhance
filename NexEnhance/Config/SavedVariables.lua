@@ -48,6 +48,10 @@ local defaults = {
 			AlphaWhenMoving = 0.35,
 		},
 
+		loot = {
+			FasterLoot = false,
+		},
+
 		tempanchor = {},
 	},
 }

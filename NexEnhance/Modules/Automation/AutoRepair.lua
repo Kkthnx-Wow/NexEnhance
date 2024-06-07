@@ -34,10 +34,10 @@ function autoRepair(override)
 		else
 			if myMoney > repairAllCost then
 				RepairAllItems()
-				NE_AutoRepair:Print(format(NE_AutoRepair.InfoColor .. "%s|r%s", NE_AutoRepair.L["Yikes! You're almost broke!"], NE_AutoRepair:GetMoneyString(repairAllCost, true)))
+				NE_AutoRepair:Print(format(NE_AutoRepair.InfoColor .. "%s|r%s", NE_AutoRepair.L["Repair cost"], NE_AutoRepair:GetMoneyString(repairAllCost, true)))
 				return
 			else
-				NE_AutoRepair:Print(NE_AutoRepair.InfoColor .. NE_AutoRepair.L["Yikes! Something went wrong. We can't repair!"])
+				NE_AutoRepair:Print(NE_AutoRepair.InfoColor .. NE_AutoRepair.L["Yikes! You are running out of gold!"])
 				return
 			end
 		end
@@ -46,30 +46,35 @@ function autoRepair(override)
 	end
 end
 
-function NE_AutoRepair:UI_ERROR_MESSAGE(_, message)
+local function checkBankFund(_, message)
 	if message == LE_GAME_ERR_GUILD_NOT_ENOUGH_MONEY then
 		isBankEmpty = true
 	end
 end
 
-function NE_AutoRepair:MERCHANT_CLOSED()
+local function merchantClose()
 	isShown = false
+	NE_AutoRepair:UnregisterEvent("UI_ERROR_MESSAGE", checkBankFund)
+	NE_AutoRepair:UnregisterEvent("MERCHANT_CLOSED", merchantClose)
 end
 
-function NE_AutoRepair:MERCHANT_SHOW()
+local function merchantShow()
 	if IsShiftKeyDown() or NE_AutoRepair.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
 		return
 	end
 	autoRepair()
+	NE_AutoRepair:RegisterEvent("UI_ERROR_MESSAGE", checkBankFund)
+	NE_AutoRepair:RegisterEvent("MERCHANT_CLOSED", merchantClose)
 end
+NE_AutoRepair:RegisterEvent("MERCHANT_SHOW", merchantShow)
 
 local repairGossipIDs = {
-	[37005] = true, -- 基维斯
-	[44982] = true, -- 里弗斯
+	[37005] = true, -- Jeeves
+	[44982] = true, -- Rüstmeister der Gnomereganen
 }
 
 function NE_AutoRepair:GOSSIP_SHOW()
-	if IsShiftKeyDown() then
+	if IsShiftKeyDown() or NE_AutoRepair.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
 		return
 	end
 

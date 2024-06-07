@@ -220,8 +220,8 @@ function NE_Cooldowns:PLAYER_LOGIN()
 	-- Hide cooldown numbers
 	hooksecurefunc("CooldownFrame_SetDisplayAsPercentage", NE_Cooldowns.HideCooldownNumbers)
 
-	-- Register for action bar cooldown updates
-	self:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN", NE_Cooldowns.ActionbarUpateCooldown)
+	-- -- Register for action bar cooldown updates
+	NE_Cooldowns:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN", NE_Cooldowns.ActionbarUpateCooldown)
 
 	-- Register action button frames
 	if _G["ActionBarButtonEventsFrame"].frames then

@@ -109,7 +109,7 @@ function NE_SpecLevel:InspectOnUpdate(elapsed)
 		ClearInspectPlayer()
 
 		if currentUNIT and UnitGUID(currentUNIT) == currentGUID then
-			NE_SpecLevel:INSPECT_READY()
+			NE_SpecLevel:RegisterEvent("INSPECT_READY", NE_SpecLevel.GetInspectReady)
 			NotifyInspect(currentUNIT)
 		end
 	end
@@ -120,7 +120,7 @@ updater:SetScript("OnUpdate", NE_SpecLevel.InspectOnUpdate)
 updater:Hide()
 
 local lastTime = 0
-function NE_SpecLevel:UNIT_INVENTORY_CHANGED(unit)
+function NE_SpecLevel:GetUnitInventoryChanged(unit)
 	local thisTime = GetTime()
 	if thisTime - lastTime > 0.1 then
 		lastTime = thisTime
@@ -130,12 +130,11 @@ function NE_SpecLevel:UNIT_INVENTORY_CHANGED(unit)
 		end
 	end
 
-	if self:IsEventRegistered("UNIT_INVENTORY_CHANGED", self.UNIT_INVENTORY_CHANGED) then
-		self:UnregisterEvent("UNIT_INVENTORY_CHANGED")
-	end
+	NE_SpecLevel:UnregisterEvent("UNIT_INVENTORY_CHANGED", NE_SpecLevel.GetUnitInventoryChanged)
 end
+NE_SpecLevel:RegisterEvent("UNIT_INVENTORY_CHANGED", NE_SpecLevel.GetUnitInventoryChanged)
 
-function NE_SpecLevel:INSPECT_READY(guid)
+function NE_SpecLevel:GetInspectReady(guid)
 	if guid == currentGUID then
 		local level = NE_SpecLevel:GetUnitItemLevel(currentUNIT)
 		cache[guid].level = level
@@ -148,9 +147,7 @@ function NE_SpecLevel:INSPECT_READY(guid)
 		end
 	end
 
-	if self:IsEventRegistered("INSPECT_READY", self.INSPECT_READY) then
-		self:UnregisterEvent("INSPECT_READY")
-	end
+	NE_SpecLevel:UnregisterEvent("INSPECT_READY", NE_SpecLevel.GetInspectReady)
 end
 
 function NE_SpecLevel:SetupItemLevel(level)
@@ -294,8 +291,8 @@ function NE_SpecLevel:InspectUnit(unit, forced)
 	local level
 
 	if UnitIsUnit(unit, "player") then
-		level = self:GetUnitItemLevel("player")
-		self:SetupItemLevel(level)
+		level = NE_SpecLevel:GetUnitItemLevel("player")
+		NE_SpecLevel:SetupItemLevel(level)
 	else
 		if not unit or UnitGUID(unit) ~= currentGUID then
 			return
@@ -306,7 +303,7 @@ function NE_SpecLevel:InspectUnit(unit, forced)
 
 		local currentDB = cache[currentGUID]
 		level = currentDB.level
-		self:SetupItemLevel(level)
+		NE_SpecLevel:SetupItemLevel(level)
 
 		if not NE_SpecLevel.db.profile.tooltip.SpecLevelByShift and IsShiftKeyDown() then
 			forced = true
@@ -322,7 +319,7 @@ function NE_SpecLevel:InspectUnit(unit, forced)
 			return
 		end
 
-		self:SetupItemLevel()
+		NE_SpecLevel:SetupItemLevel()
 		updater:Show()
 	end
 end

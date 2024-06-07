@@ -28,8 +28,15 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					MmssTH = {
+					range = {
 						order = 2,
+						name = "Range Indicator",
+						desc = "Changes the color of action buttons when they are out of range or when the player is out of resources (e.g., energy, mana, focus).",
+						type = "toggle",
+						width = "double",
+					},
+					MmssTH = {
+						order = 3,
 						name = "MMSS Threshold",
 						desc = "If cooldown less than current threhold, show cooldown in format MM:SS.|n|nEg. 2 mins and half presents as 2:30..",
 						type = "range",
@@ -42,7 +49,7 @@ local function CreateOptions()
 						end,
 					},
 					TenthTH = {
-						order = 3,
+						order = 4,
 						name = "Tenth Threshold",
 						desc = "If cooldown less than current threhold, show cooldown in format decimal.|n|nEg. 3 secs will show as 3.0.",
 						type = "range",
@@ -55,7 +62,7 @@ local function CreateOptions()
 						end,
 					},
 					OverrideWA = {
-						order = 4,
+						order = 5,
 						name = "OverrideWA",
 						desc = "Hide Cooldown on WA.",
 						type = "toggle",

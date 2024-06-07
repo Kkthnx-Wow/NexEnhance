@@ -8,6 +8,7 @@ local defaults = {
 		},
 		actionbars = {
 			cooldowns = true,
+			range = true,
 			MmssTH = 60,
 			TenthTH = 3,
 			OverrideWA = false,

@@ -24,6 +24,7 @@ Core\Database.lua
 Core\Functions.lua
 
 Modules\Actionbars\Cooldowns.lua
+Modules\Actionbars\Range.lua
 
 Modules\Automation\AutoSell.lua
 Modules\Automation\AutoRepair.lua
@@ -48,6 +49,7 @@ Modules\Miscellaneous\yClassColors.lua
 Modules\Maps\WorldMap.lua
 
 Modules\Tooltip\Core.lua
+Modules\Tooltip\Icons.lua
 Modules\Tooltip\SpecLevel.lua
 
 Modules\Unitframes\ClassColor.lua

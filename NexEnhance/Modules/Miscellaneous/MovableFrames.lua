@@ -1,4 +1,4 @@
-local NexEnhance, MoveableFrames = ...
+local _, Module = ...
 
 -- Caching global functions and variables for performance
 local pairs, type, string_gmatch, print = pairs, type, string.gmatch, print
@@ -182,12 +182,12 @@ local function HookFrames(list)
 	end
 end
 
-function MoveableFrames:PLAYER_LOGIN()
+function Module:PLAYER_LOGIN()
 	HookFrames(frames)
 	IsFrameExists()
 end
 
-function MoveableFrames:ADDON_LOADED(_, name)
+function Module:ADDON_LOADED(_, name)
 	local frameList = lodFrames[name]
 	if frameList then
 		HookFrames(frameList)

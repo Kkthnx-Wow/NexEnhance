@@ -1,4 +1,4 @@
-local NexEnhance, NE_CopyChat = ...
+local _, Module = ...
 
 -- Sourced: NDui (siweia)
 
@@ -6,37 +6,17 @@ local string_gsub = string.gsub
 local table_concat = table.concat
 local tostring = tostring
 
-local AUCTION_CATEGORY_QUEST_ITEMS = AUCTION_CATEGORY_QUEST_ITEMS
-local BINDING_NAME_TOGGLECOMBATLOG = BINDING_NAME_TOGGLECOMBATLOG
-local CLOSE = CLOSE
-local COMBATLOGDISABLED = COMBATLOGDISABLED
-local COMBATLOGENABLED = COMBATLOGENABLED
 local CreateFrame = CreateFrame
 local FCF_SetChatWindowFontSize = FCF_SetChatWindowFontSize
 local GameTooltip = GameTooltip
-local HEIRLOOMS = HEIRLOOMS
-local InCombatLockdown = InCombatLockdown
-local C_AddOns_IsAddOnLoaded = C_AddOns.IsAddOnLoaded
-local OPTIONS_MENU = OPTIONS_MENU
 local PlaySound = PlaySound
-local QUESTS_LABEL = QUESTS_LABEL
-local RELOADUI = RELOADUI
-local ReloadUI = ReloadUI
-local STATUS = STATUS
 local ScrollFrameTemplate_OnMouseWheel = ScrollFrameTemplate_OnMouseWheel
-local SlashCmdList = SlashCmdList
-local StaticPopup_Show = StaticPopup_Show
-local TASKS_COLON = TASKS_COLON
-local UIErrorsFrame = UIErrorsFrame
 local UIParent = UIParent
 
 local lines = {}
 local editBox
-local frame
-local menu
 
 local leftButtonString = "|TInterface\\TutorialFrame\\UI-TUTORIAL-FRAME:16:12:0:0:512:512:1:76:218:318|t "
-local rightButtonString = "|TInterface\\TutorialFrame\\UI-TUTORIAL-FRAME:16:12:0:0:512:512:1:76:321:421|t "
 
 local function canChangeMessage(arg1, id)
 	if id and arg1 == "" then
@@ -50,7 +30,7 @@ end
 
 local function replaceMessage(msg, r, g, b)
 	-- Convert the color values to a hex string
-	local hexRGB = NE_CopyChat.RGBToHex(r, g, b)
+	local hexRGB = Module.RGBToHex(r, g, b)
 	-- Replace the texture path or id with only the path/id
 	msg = string.gsub(msg, "|T(.-):.-|t", "%1")
 	-- Replace the atlas path or id with only the path/id
@@ -59,7 +39,7 @@ local function replaceMessage(msg, r, g, b)
 	return string.format("%s%s|r", hexRGB, msg)
 end
 
-function NE_CopyChat:GetChatLines()
+function Module:GetChatLines()
 	local index = 1
 	for i = 1, self:GetNumMessages() do
 		local msg, r, g, b = self:GetMessageInfo(i)
@@ -74,7 +54,7 @@ function NE_CopyChat:GetChatLines()
 	return index - 1
 end
 
-function NE_CopyChat:ChatCopy_OnClick(btn)
+function Module:ChatCopy_OnClick(btn)
 	if btn == "LeftButton" then
 		if not frame:IsShown() then
 			local chatframe = SELECTED_DOCK_FRAME
@@ -83,7 +63,7 @@ function NE_CopyChat:ChatCopy_OnClick(btn)
 			PlaySound(21968)
 			frame:Show()
 
-			local lineCt = NE_CopyChat.GetChatLines(chatframe)
+			local lineCt = Module.GetChatLines(chatframe)
 			local text = table_concat(lines, "\n", 1, lineCt)
 			FCF_SetChatWindowFontSize(chatframe, chatframe, fontSize)
 			editBox:SetText(text)
@@ -93,18 +73,18 @@ function NE_CopyChat:ChatCopy_OnClick(btn)
 	end
 end
 
-function NE_CopyChat:ChatCopy_Create()
-	frame = NE_CopyChat:CreateFrame("Frame", "NE_CopyChat", UIParent, "TooltipBackdropTemplate")
+function Module:ChatCopy_Create()
+	frame = Module:CreateFrame("Frame", "Module", UIParent, "TooltipBackdropTemplate")
 	frame:SetPoint("CENTER")
 	frame:SetSize(700, 400)
 	frame:Hide()
 	frame:SetFrameStrata("DIALOG")
-	NE_CopyChat.CreateMoverFrame(frame)
+	Module.CreateMoverFrame(frame)
 
 	frame.close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 	frame.close:SetPoint("TOPRIGHT", frame)
 
-	local scrollArea = CreateFrame("ScrollFrame", "NE_CopyChatScrollFrame", frame, "UIPanelScrollFrameTemplate")
+	local scrollArea = CreateFrame("ScrollFrame", "ModuleScrollFrame", frame, "UIPanelScrollFrameTemplate")
 	scrollArea:SetPoint("TOPLEFT", 12, -40)
 	scrollArea:SetPoint("BOTTOMRIGHT", -30, 20)
 
@@ -153,7 +133,7 @@ function NE_CopyChat:ChatCopy_Create()
 		local anchor, _, xoff, yoff = "ANCHOR_RIGHT", self:GetParent(), 10, 5
 		GameTooltip:SetOwner(self, anchor, xoff, yoff)
 		GameTooltip:ClearLines()
-		GameTooltip:AddDoubleLine(leftButtonString .. NE_CopyChat.L["Left Click"], "Copy Chat", 1, 1, 1)
+		GameTooltip:AddDoubleLine(leftButtonString .. Module.L["Left Click"], "Copy Chat", 1, 1, 1)
 
 		GameTooltip:Show()
 	end)
@@ -167,6 +147,6 @@ function NE_CopyChat:ChatCopy_Create()
 	end)
 end
 
-function NE_CopyChat:PLAYER_LOGIN()
+function Module:PLAYER_LOGIN()
 	self:ChatCopy_Create()
 end

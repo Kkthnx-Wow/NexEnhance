@@ -1,4 +1,4 @@
-local NexEnhance, NE_Unitframes = ...
+local _, Module = ...
 
 local UnitIsFriend = UnitIsFriend
 local UnitIsEnemy = UnitIsEnemy
@@ -56,7 +56,7 @@ local function resetFrameColor(frame)
 	frame:SetStatusBarColor(0, 1, 0)
 end
 
-function NE_Unitframes.UpdateToTColor()
+function Module.UpdateToTColor()
 	local color = getUnitColor("targettarget")
 	setStatusBarColor(TargetFrameToT.HealthBar, color)
 end
@@ -68,7 +68,7 @@ local function updateFrameColorByUnit(unit, frame)
 	end
 end
 
-function NE_Unitframes.UpdateFrames()
+function Module.UpdateFrames()
 	local frames = {
 		["player"] = PlayerFrame.healthbar,
 		["target"] = TargetFrame.TargetFrameContent.TargetFrameContentMain.HealthBar,
@@ -81,8 +81,8 @@ function NE_Unitframes.UpdateFrames()
 		["party4"] = PartyFrame.MemberFrame4.HealthBar,
 	}
 
-	if NE_Unitframes.db.profile.unitframes.classColorHealth then
-		NE_Unitframes.HookHealthbarColors()
+	if Module.db.profile.unitframes.classColorHealth then
+		Module.HookHealthbarColors()
 		for unit, frame in pairs(frames) do
 			updateFrameColorByUnit(unit, frame)
 		end
@@ -95,39 +95,43 @@ function NE_Unitframes.UpdateFrames()
 	end
 end
 
-function NE_Unitframes.HookHealthbarColors()
-	if not healthbarsHooked and NE_Unitframes.db.profile.unitframes.classColorHealth then
+function Module.HookHealthbarColors()
+	if not healthbarsHooked and Module.db.profile.unitframes.classColorHealth then
 		hooksecurefunc("UnitFrameHealthBar_Update", function(self, unit)
 			if unit then
 				local color = getUnitColor(unit)
 				setStatusBarColor(self, color)
-				NE_Unitframes.UpdateToTColor()
+				Module.UpdateToTColor()
 			end
 		end)
 		healthbarsHooked = true
 	end
 end
 
-function NE_Unitframes.PlayerReputationColor()
+function Module.PlayerReputationColor()
 	local frame = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
 	if frame.ReputationColor then
 		frame.ReputationColor:Hide()
 	end
 end
 
-function NE_Unitframes.TargetReputationColor()
+function Module.TargetReputationColor()
 	local frame = TargetFrame.TargetFrameContent.TargetFrameContentMain
 	if frame.ReputationColor then
 		frame.ReputationColor:Hide()
 	end
 end
 
-function NE_Unitframes:PLAYER_LOGIN()
+function Module:PLAYER_LOGIN()
+	if IsAddOnLoaded("BetterBlizzFrames") then
+		return
+	end
+
 	C_Timer.After(1, function()
-		if NE_Unitframes.db.profile.unitframes.classColorHealth then
-			NE_Unitframes.UpdateFrames()
-			NE_Unitframes.PlayerReputationColor()
-			NE_Unitframes.TargetReputationColor()
+		if Module.db.profile.unitframes.classColorHealth then
+			Module.UpdateFrames()
+			Module.PlayerReputationColor()
+			Module.TargetReputationColor()
 		end
 	end)
 end

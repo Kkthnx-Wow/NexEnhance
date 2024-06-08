@@ -1,4 +1,4 @@
-local NexEnhance, NE_AutoSell = ...
+local _, Module = ...
 
 -- WoW API references for convenience
 local wipe = table.wipe
@@ -9,7 +9,7 @@ local C_Container_UseContainerItem = C_Container.UseContainerItem
 local C_Container_GetContainerNumSlots = C_Container.GetContainerNumSlots
 local C_Container_GetContainerItemInfo = C_Container.GetContainerItemInfo
 
--- Auto selljunk
+-- Auto sell junk functionality
 local stop, cache = true, {}
 local errorText = _G.ERR_VENDOR_DOESNT_BUY
 
@@ -24,7 +24,7 @@ local function startSelling()
 			end
 			local info = C_Container_GetContainerItemInfo(bag, slot)
 			if info then
-				if not cache["b" .. bag .. "s" .. slot] and info.hyperlink and not info.hasNoValue and (info.quality == 0) and (not C_TransmogCollection_GetItemInfo(info.hyperlink) or not NE_AutoSell.IsUnknownTransmog(bag, slot)) then
+				if not cache["b" .. bag .. "s" .. slot] and info.hyperlink and not info.hasNoValue and info.quality == 0 and (not C_TransmogCollection_GetItemInfo(info.hyperlink) or not Module.IsUnknownTransmog(bag, slot)) then
 					cache["b" .. bag .. "s" .. slot] = true
 					C_Container_UseContainerItem(bag, slot)
 					C_Timer_After(0.15, startSelling)
@@ -36,7 +36,7 @@ local function startSelling()
 end
 
 local function uiErrorMessage(_, message)
-	if not NE_AutoSell.db.profile.automation.AutoSell then
+	if not Module.db.profile.automation.AutoSell then
 		return
 	end
 
@@ -46,7 +46,7 @@ local function uiErrorMessage(_, message)
 end
 
 local function merchantShow()
-	if not NE_AutoSell.db.profile.automation.AutoSell then
+	if not Module.db.profile.automation.AutoSell then
 		return
 	end
 
@@ -57,15 +57,16 @@ local function merchantShow()
 	stop = false
 	wipe(cache)
 	startSelling()
-	NE_AutoSell:RegisterEvent("UI_ERROR_MESSAGE", uiErrorMessage)
+	Module:RegisterEvent("UI_ERROR_MESSAGE", uiErrorMessage)
 end
 
 local function merchantClosed()
-	if not NE_AutoSell.db.profile.automation.AutoSell then
+	if not Module.db.profile.automation.AutoSell then
 		return
 	end
 
 	stop = true
 end
-NE_AutoSell:RegisterEvent("MERCHANT_SHOW", merchantShow)
-NE_AutoSell:RegisterEvent("MERCHANT_CLOSED", merchantClosed)
+
+Module:RegisterEvent("MERCHANT_SHOW", merchantShow)
+Module:RegisterEvent("MERCHANT_CLOSED", merchantClosed)

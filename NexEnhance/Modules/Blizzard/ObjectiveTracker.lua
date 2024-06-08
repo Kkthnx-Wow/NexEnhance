@@ -1,36 +1,32 @@
-local NexEnhance, NE_ObjectiveTracker = ...
+local _, Module = ...
 
-function NE_ObjectiveTracker:ReskinHeader(header)
-	if not header then
-		return
-	end
+-- Extract color components for easier reference
+local red, green, blue = Module.r, Module.g, Module.b
 
-	if header.Background then
-		header.Background:SetAtlas(nil)
-	end
+-- Function to apply skin to a header
+function Module:ApplyHeaderSkin(header)
+	header.Text:SetTextColor(red, green, blue)
+	header.Background:SetTexture(nil)
 
-	if header.Text then
-		header.Text:SetTextColor(240 / 255, 197 / 255, 0 / 255, 0.8)
-	end
+	local backgroundTexture = header:CreateTexture(nil, "ARTWORK")
+	backgroundTexture:SetTexture("Interface\\LFGFrame\\UI-LFG-SEPARATOR")
+	backgroundTexture:SetTexCoord(0, 0.66, 0, 0.31)
+	backgroundTexture:SetVertexColor(red, green, blue, 0.8)
+	backgroundTexture:SetPoint("BOTTOMLEFT", 0, -4)
+	backgroundTexture:SetSize(250, 30)
 
-	local bg = header:CreateTexture(nil, "BACKGROUND")
-	bg:SetTexture("Interface\\LFGFrame\\UI-LFG-SEPARATOR")
-	bg:SetTexCoord(0, 0.66, 0, 0.31)
-	bg:SetVertexColor(240 / 255, 197 / 255, 0 / 255, 0.8)
-	bg:SetPoint("BOTTOMLEFT", 0, -4)
-	bg:SetSize(250, 30)
-	header.bg = bg -- accessable for other addons
+	header.bg = backgroundTexture -- Make accessible for other addons
 end
 
--- Reskin Headers
-function NE_ObjectiveTracker:PLAYER_LOGIN()
-	if not NE_ObjectiveTracker.db.profile.blizzard.objectiveTracker then
+-- Function triggered on PLAYER_LOGIN event
+function Module:PLAYER_LOGIN()
+	if not self.db.profile.blizzard.objectiveTracker then
 		return
 	end
 
 	local headers = {
 		_G.BONUS_OBJECTIVE_TRACKER_MODULE.Header,
-		-- _G.MONTHLY_ACTIVITIES_TRACKER_MODULE,
+		-- _G.MONTHLY_ACTIVITIES_TRACKER_MODULE.Header,
 		_G.ObjectiveTrackerBlocksFrame.AchievementHeader,
 		_G.ObjectiveTrackerBlocksFrame.CampaignQuestHeader,
 		_G.ObjectiveTrackerBlocksFrame.ProfessionHeader,
@@ -41,6 +37,6 @@ function NE_ObjectiveTracker:PLAYER_LOGIN()
 	}
 
 	for _, header in pairs(headers) do
-		NE_ObjectiveTracker:ReskinHeader(header)
+		self:ApplyHeaderSkin(header)
 	end
 end

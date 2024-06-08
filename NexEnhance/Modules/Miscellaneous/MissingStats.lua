@@ -1,4 +1,4 @@
-local NexEnhance, MissingStats = ...
+local _, Module = ...
 
 local format, max = string.format, math.max
 local BreakUpLargeNumbers, GetMeleeHaste, UnitAttackSpeed = BreakUpLargeNumbers, GetMeleeHaste, UnitAttackSpeed
@@ -7,7 +7,7 @@ local PaperDollFrame_SetLabelAndText = PaperDollFrame_SetLabelAndText
 local STAT_HASTE = STAT_HASTE
 local HIGHLIGHT_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE = HIGHLIGHT_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE
 
-function MissingStats:PLAYER_LOGIN()
+function Module:PLAYER_LOGIN()
 	-- if not C["Misc"].ImprovedStats then
 	-- 	return
 	-- end

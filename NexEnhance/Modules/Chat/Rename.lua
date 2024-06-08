@@ -1,17 +1,17 @@
-local NexEnhance, NE_ChatRename = ...
+local _, Module = ...
 
 local string_find, string_gsub = string.find, string.gsub
 local INTERFACE_ACTION_BLOCKED = INTERFACE_ACTION_BLOCKED
 
 local whisperColor, oldChatNames
 
-function NE_ChatRename:SetupChannelNames(text, ...)
+function Module:SetupChannelNames(text, ...)
 	if string_find(text, INTERFACE_ACTION_BLOCKED) then
 		return
 	end
 
 	local r, g, b = ...
-	if whisperColor and string_find(text, NE_ChatRename.L["To"] .. " |H[BN]*player.+%]") then
+	if whisperColor and string_find(text, Module.L["To"] .. " |H[BN]*player.+%]") then
 		r, g, b = 0.6274, 0.3231, 0.6274
 	end
 
@@ -22,24 +22,24 @@ function NE_ChatRename:SetupChannelNames(text, ...)
 	end
 end
 
-function NE_ChatRename:RenameChatFrames()
+function Module:RenameChatFrames()
 	for i = 1, _G.NUM_CHAT_WINDOWS do
 		if i ~= 2 then
 			local chatFrame = _G["ChatFrame" .. i]
 			chatFrame.oldAddMessage = chatFrame.AddMessage
-			chatFrame.AddMessage = NE_ChatRename.SetupChannelNames
+			chatFrame.AddMessage = Module.SetupChannelNames
 		end
 	end
 end
 
-function NE_ChatRename:RenameChatStrings()
+function Module:RenameChatStrings()
 	_G.ERR_FRIEND_ONLINE_SS = string_gsub(_G.ERR_FRIEND_ONLINE_SS, "%]%|h", "]|h|cff00c957")
 	_G.ERR_FRIEND_OFFLINE_S = string_gsub(_G.ERR_FRIEND_OFFLINE_S, "%%s", "%%s|cffff7f50")
 
-	_G.CHAT_WHISPER_INFORM_GET = NE_ChatRename.L["To"] .. " %s "
-	_G.CHAT_WHISPER_GET = NE_ChatRename.L["From"] .. " %s "
-	_G.CHAT_BN_WHISPER_INFORM_GET = NE_ChatRename.L["To"] .. " %s "
-	_G.CHAT_BN_WHISPER_GET = NE_ChatRename.L["From"] .. " %s "
+	_G.CHAT_WHISPER_INFORM_GET = Module.L["To"] .. " %s "
+	_G.CHAT_WHISPER_GET = Module.L["From"] .. " %s "
+	_G.CHAT_BN_WHISPER_INFORM_GET = Module.L["To"] .. " %s "
+	_G.CHAT_BN_WHISPER_GET = Module.L["From"] .. " %s "
 
 	_G.CHAT_SAY_GET = "%s "
 	_G.CHAT_YELL_GET = "%s "
@@ -67,7 +67,7 @@ function NE_ChatRename:RenameChatStrings()
 	_G.CHAT_FLAG_GM = "[GM] "
 end
 
-function NE_ChatRename:PLAYER_LOGIN()
-	NE_ChatRename:RenameChatFrames()
-	NE_ChatRename:RenameChatStrings()
+function Module:PLAYER_LOGIN()
+	Module:RenameChatFrames()
+	Module:RenameChatStrings()
 end

@@ -1,27 +1,31 @@
 local NexEnhance, NE_Range = ...
 
-function NE_Range:RangeUpdate(hasrange, inrange)
-	local Icon = self.icon
-	local ID = self.action
-
-	if not ID then
-		return
+function NE_Range:UpdateRangeIndicator(checksRange, inRange)
+	if not self.setHooksecurefunc and self.UpdateUsable then
+		hooksecurefunc(self, "UpdateUsable", function(self, _, isUsable)
+			if IsUsableAction(self.action) and ActionHasRange(self.action) and IsActionInRange(self.action) == false then
+				self.icon:SetVertexColor(1, 0, 0)
+			end
+		end)
+		self.setHooksecurefunc = true
 	end
 
-	local IsUsable, NotEnoughPower = IsUsableAction(ID)
-	local HasRange = hasrange
-	local InRange = inrange
-
-	if IsUsable then
-		if HasRange and InRange == false then
-			Icon:SetVertexColor(0.8, 0.1, 0.1)
-		else
-			Icon:SetVertexColor(1.0, 1.0, 1.0)
+	if self.HotKey:GetText() == RANGE_INDICATOR then
+		if checksRange then
+			if inRange then
+				if self.UpdateUsable then
+					self:UpdateUsable()
+				end
+			else
+				self.icon:SetVertexColor(1, 0, 0)
+			end
 		end
-	elseif NotEnoughPower then
-		Icon:SetVertexColor(0.1, 0.3, 1.0)
 	else
-		Icon:SetVertexColor(0.3, 0.3, 0.3)
+		if checksRange and not inRange then
+			self.icon:SetVertexColor(1, 0, 0)
+		elseif self.UpdateUsable then
+			self:UpdateUsable()
+		end
 	end
 end
 
@@ -30,5 +34,5 @@ function NE_Range:PLAYER_LOGIN()
 		return
 	end
 
-	hooksecurefunc("ActionButton_UpdateRangeIndicator", NE_Range.RangeUpdate)
+	hooksecurefunc("ActionButton_UpdateRangeIndicator", NE_Range.UpdateRangeIndicator)
 end

@@ -1,4 +1,4 @@
-local NexEnhance, NE_Tooltip = ...
+local _, Module = ...
 
 local strfind, format, strupper, strlen, pairs, unpack = string.find, string.format, string.upper, string.len, pairs, unpack
 local ICON_LIST = ICON_LIST
@@ -25,10 +25,10 @@ local classification = {
 	elite = "|cffAF5050+|r",
 	rare = format("|cffAF5050 %s|r", ITEM_QUALITY3_DESC),
 }
-local npcIDstring = "%s " .. NE_Tooltip.InfoColor .. "%s"
-local specPrefix = "|cffFFCC00" .. SPECIALIZATION .. ": " .. NE_Tooltip.InfoColor
+local npcIDstring = "%s " .. Module.InfoColor .. "%s"
+local specPrefix = "|cffFFCC00" .. SPECIALIZATION .. ": " .. Module.InfoColor
 
-function NE_Tooltip:GetUnit()
+function Module:GetUnit()
 	local data = self:GetTooltipData()
 	local guid = data and data.guid
 	local unit = guid and UnitTokenFromGUID(guid)
@@ -44,7 +44,7 @@ local function replaceSpecInfo(str)
 	return strfind(str, "%s") and specPrefix .. str or str
 end
 
-function NE_Tooltip:UpdateFactionLine(lineData)
+function Module:UpdateFactionLine(lineData)
 	if self:IsForbidden() then
 		return
 	end
@@ -52,7 +52,7 @@ function NE_Tooltip:UpdateFactionLine(lineData)
 		return
 	end
 
-	local unit = NE_Tooltip.GetUnit(self)
+	local unit = Module.GetUnit(self)
 	local unitClass = unit and UnitIsPlayer(unit) and UnitClass(unit)
 	local unitCreature = unit and UnitCreatureType(unit)
 	local linetext = lineData.leftText
@@ -60,7 +60,7 @@ function NE_Tooltip:UpdateFactionLine(lineData)
 	if linetext == PVP then
 		return true
 	elseif FACTION_COLORS[linetext] then
-		if NE_Tooltip.db.profile.tooltip.factionIcon then
+		if Module.db.profile.tooltip.factionIcon then
 			return true
 		else
 			lineData.leftText = format(FACTION_COLORS[linetext], linetext)
@@ -72,7 +72,7 @@ function NE_Tooltip:UpdateFactionLine(lineData)
 	end
 end
 
-function NE_Tooltip:GetLevelLine()
+function Module:GetLevelLine()
 	for i = 2, self:NumLines() do
 		local tiptext = _G[self:GetName() .. "TextLeft" .. i]
 		if not tiptext then
@@ -86,15 +86,15 @@ function NE_Tooltip:GetLevelLine()
 	end
 end
 
-function NE_Tooltip:GetTarget(unit)
+function Module:GetTarget(unit)
 	if UnitIsUnit(unit, "player") then
 		return format("|cffff0000%s|r", ">" .. strupper(YOU) .. "<")
 	else
-		return NE_Tooltip.RGBToHex(NE_Tooltip.UnitColor(unit)) .. UnitName(unit) .. "|r"
+		return Module.RGBToHex(Module.UnitColor(unit)) .. UnitName(unit) .. "|r"
 	end
 end
 
-function NE_Tooltip:InsertFactionFrame(faction)
+function Module:InsertFactionFrame(faction)
 	if not self.factionFrame then
 		local f = self:CreateTexture(nil, "OVERLAY")
 		f:SetPoint("TOPRIGHT", -10, -10)
@@ -107,7 +107,7 @@ function NE_Tooltip:InsertFactionFrame(faction)
 	self.factionFrame:Show()
 end
 
-function NE_Tooltip:OnTooltipCleared()
+function Module:OnTooltipCleared()
 	if self:IsForbidden() then
 		return
 	end
@@ -126,33 +126,33 @@ function NE_Tooltip:OnTooltipCleared()
 	end
 end
 
-function NE_Tooltip.GetDungeonScore(score)
+function Module.GetDungeonScore(score)
 	local color = C_ChallengeMode_GetDungeonScoreRarityColor(score) or HIGHLIGHT_FONT_COLOR
 	return color:WrapTextInColorCode(score)
 end
 
-function NE_Tooltip:ShowUnitMythicPlusScore(unit)
-	if not NE_Tooltip.db.profile.tooltip.mdScore then
+function Module:ShowUnitMythicPlusScore(unit)
+	if not Module.db.profile.tooltip.mdScore then
 		return
 	end
 
 	local summary = C_PlayerInfo_GetPlayerMythicPlusRatingSummary(unit)
 	local score = summary and summary.currentSeasonScore
 	if score and score > 0 then
-		GameTooltip:AddLine(format(DUNGEON_SCORE_LEADER, NE_Tooltip.GetDungeonScore(score)))
+		GameTooltip:AddLine(format(DUNGEON_SCORE_LEADER, Module.GetDungeonScore(score)))
 	end
 end
 
-function NE_Tooltip:OnTooltipSetUnit()
+function Module:OnTooltipSetUnit()
 	if self:IsForbidden() or self ~= GameTooltip then
 		return
 	end
-	if NE_Tooltip.db.profile.tooltip.combatHide and InCombatLockdown() then
+	if Module.db.profile.tooltip.combatHide and InCombatLockdown() then
 		self:Hide()
 		return
 	end
 
-	local unit, guid = NE_Tooltip.GetUnit(self)
+	local unit, guid = Module.GetUnit(self)
 	if not unit or not UnitExists(unit) then
 		return
 	end
@@ -163,12 +163,12 @@ function NE_Tooltip:OnTooltipSetUnit()
 		local name, realm = UnitName(unit)
 		local pvpName = UnitPVPName(unit)
 		local relationship = UnitRealmRelationship(unit)
-		if not NE_Tooltip.db.profile.tooltip.hideTitle and pvpName then
+		if not Module.db.profile.tooltip.hideTitle and pvpName then
 			name = pvpName
 		end
 
 		if realm and realm ~= "" then
-			if isShiftKeyDown or not NE_Tooltip.db.profile.tooltip.hideRealm then
+			if isShiftKeyDown or not Module.db.profile.tooltip.hideRealm then
 				name = name .. "-" .. realm
 			elseif relationship == LE_REALM_RELATION_COALESCED then
 				name = name .. FOREIGN_SERVER_LABEL
@@ -183,14 +183,14 @@ function NE_Tooltip:OnTooltipSetUnit()
 		end
 		GameTooltipTextLeft1:SetFormattedText("%s", name .. (status or ""))
 
-		if NE_Tooltip.db.profile.tooltip.factionIcon then
+		if Module.db.profile.tooltip.factionIcon then
 			local faction = UnitFactionGroup(unit)
 			if faction and faction ~= "Neutral" then
-				NE_Tooltip.InsertFactionFrame(self, faction)
+				Module.InsertFactionFrame(self, faction)
 			end
 		end
 
-		if NE_Tooltip.db.profile.tooltip.lfdRole then
+		if Module.db.profile.tooltip.lfdRole then
 			local unitColor
 			local unitRole = UnitGroupRolesAssigned(unit)
 			if IsInGroup() and (UnitInParty(unit) or UnitInRaid(unit)) and (unitRole ~= "NONE") then
@@ -220,7 +220,7 @@ function NE_Tooltip:OnTooltipSetUnit()
 			end
 
 			rankIndex = rankIndex + 1
-			if NE_Tooltip.db.profile.tooltip.hideRank then
+			if Module.db.profile.tooltip.hideRank then
 				rank = ""
 			end
 
@@ -228,7 +228,7 @@ function NE_Tooltip:OnTooltipSetUnit()
 				guildName = guildName .. "-" .. guildRealm
 			end
 
-			if NE_Tooltip.db.profile.tooltip.hideJunkGuild and not isShiftKeyDown then
+			if Module.db.profile.tooltip.hideJunkGuild and not isShiftKeyDown then
 				if strlen(guildName) > 31 then
 					guildName = "..."
 				end
@@ -238,8 +238,8 @@ function NE_Tooltip:OnTooltipSetUnit()
 		end
 	end
 
-	local r, g, b = NE_Tooltip.UnitColor(unit)
-	local hexColor = NE_Tooltip.RGBToHex(r, g, b)
+	local r, g, b = Module.UnitColor(unit)
+	local hexColor = Module.RGBToHex(r, g, b)
 	local text = GameTooltipTextLeft1:GetText()
 	if text then
 		local ricon = GetRaidTargetIndex(unit)
@@ -267,8 +267,8 @@ function NE_Tooltip:OnTooltipSetUnit()
 
 		local diff = GetCreatureDifficultyColor(level)
 		local classify = UnitClassification(unit)
-		local textLevel = format("%s%s%s|r", NE_Tooltip.RGBToHex(diff), boss or format("%d", level), classification[classify] or "")
-		local tiptextLevel = NE_Tooltip.GetLevelLine(self)
+		local textLevel = format("%s%s%s|r", Module.RGBToHex(diff), boss or format("%d", level), classification[classify] or "")
+		local tiptextLevel = Module.GetLevelLine(self)
 		if tiptextLevel then
 			local reaction = UnitReaction(unit, "player")
 			local standingText = not isPlayer and reaction and hexColor .. _G["FACTION_STANDING_LABEL" .. reaction] .. "|r " or ""
@@ -284,40 +284,40 @@ function NE_Tooltip:OnTooltipSetUnit()
 		if tarRicon and tarRicon > 8 then
 			tarRicon = nil
 		end
-		local tar = format("%s%s", (tarRicon and ICON_LIST[tarRicon] .. "10|t") or "", NE_Tooltip:GetTarget(unit .. "target"))
+		local tar = format("%s%s", (tarRicon and ICON_LIST[tarRicon] .. "10|t") or "", Module:GetTarget(unit .. "target"))
 		self:AddLine(TARGET .. ": " .. tar)
 	end
 
 	if not isPlayer and isShiftKeyDown then
-		local npcID = NE_Tooltip:ExtractIDFromGUID(guid)
+		local npcID = Module:ExtractIDFromGUID(guid)
 		if npcID then
 			self:AddLine(format(npcIDstring, "NpcID:", npcID))
 		end
 	end
 
 	if isPlayer then
-		NE_Tooltip.InspectUnitItemLevel(self, unit)
-		NE_Tooltip.ShowUnitMythicPlusScore(self, unit)
+		Module.InspectUnitItemLevel(self, unit)
+		Module.ShowUnitMythicPlusScore(self, unit)
 	end
-	-- NE_Tooltip.ScanTargets(self, unit)
-	-- NE_Tooltip.CreatePetInfo(self, unit)
+	-- Module.ScanTargets(self, unit)
+	-- Module.CreatePetInfo(self, unit)
 end
 
-function NE_Tooltip:RefreshStatusBar(value)
+function Module:RefreshStatusBar(value)
 	if not self.text then
-		self.text = NE_Tooltip.CreateFontString(self, 11, nil, "")
+		self.text = Module.CreateFontString(self, 11, nil, "")
 	end
 	local unit = self.guid and UnitTokenFromGUID(self.guid)
 	local unitHealthMax = unit and UnitHealthMax(unit)
 	if unitHealthMax and unitHealthMax ~= 0 then
-		self.text:SetText(NE_Tooltip.ShortValue(value * unitHealthMax) .. " - " .. NE_Tooltip.ShortValue(unitHealthMax))
-		self:SetStatusBarColor(NE_Tooltip.UnitColor(unit))
+		self.text:SetText(Module.ShortValue(value * unitHealthMax) .. " - " .. Module.ShortValue(unitHealthMax))
+		self:SetStatusBarColor(Module.UnitColor(unit))
 	else
 		self.text:SetFormattedText("%d%%", value * 100)
 	end
 end
 
-function NE_Tooltip:ReskinStatusBar()
+function Module:ReskinStatusBar()
 	self.StatusBar:ClearAllPoints()
 	self.StatusBar:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 4, 2)
 	self.StatusBar:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", -4, 2)
@@ -325,7 +325,7 @@ function NE_Tooltip:ReskinStatusBar()
 end
 
 -- A wrapper for Tooltip:SetBackdropBorderColor that continues to work in WoW 9.1.5+. -- Thanks pawn
-function NE_Tooltip:SetTooltipBorderColor(Tooltip, r, g, b, a)
+function Module:SetTooltipBorderColor(Tooltip, r, g, b, a)
 	if a == nil then
 		a = 1
 	end
@@ -344,12 +344,12 @@ function NE_Tooltip:SetTooltipBorderColor(Tooltip, r, g, b, a)
 		Tooltip.NineSlice.LeftEdge:SetVertexColor(r, g, b, a)
 		Tooltip.NineSlice.RightEdge:SetVertexColor(r, g, b, a)
 	else
-		NE_Tooltip:Print("doesn't know how to change tooltip border colors in this version of WoW.")
+		Module:Print("doesn't know how to change tooltip border colors in this version of WoW.")
 	end
 end
 
 -- Tooltip skin
-function NE_Tooltip:ReskinTooltip()
+function Module:ReskinTooltip()
 	if not self then
 		-- if K.isDeveloper then
 		-- 	print("Unknown tooltip spotted.")
@@ -365,28 +365,28 @@ function NE_Tooltip:ReskinTooltip()
 
 	if not self.tipStyled then
 		if self.StatusBar then
-			NE_Tooltip.ReskinStatusBar(self)
+			Module.ReskinStatusBar(self)
 		end
 
 		self.tipStyled = true
 	end
 
-	NE_Tooltip:SetTooltipBorderColor(self, 1, 1, 1, 1)
+	Module:SetTooltipBorderColor(self, 1, 1, 1, 1)
 
 	local data = self.GetTooltipData and self:GetTooltipData()
 	if data then
 		local link = data.guid and C_Item.GetItemLinkByGUID(data.guid) or data.hyperlink
 		if link then
 			local quality = select(3, GetItemInfo(link))
-			local color = NE_Tooltip.QualityColors[quality or 1]
-			if color and NE_Tooltip.db.profile.tooltip.qualityColor then
-				NE_Tooltip:SetTooltipBorderColor(self, color.r, color.g, color.b, 1)
+			local color = Module.QualityColors[quality or 1]
+			if color and Module.db.profile.tooltip.qualityColor then
+				Module:SetTooltipBorderColor(self, color.r, color.g, color.b, 1)
 			end
 		end
 	end
 end
 
-function NE_Tooltip:FixRecipeItemNameWidth()
+function Module:FixRecipeItemNameWidth()
 	if not self.GetName then
 		return
 	end
@@ -400,13 +400,13 @@ function NE_Tooltip:FixRecipeItemNameWidth()
 	end
 end
 
-function NE_Tooltip:MODIFIER_STATE_CHANGED(btn)
+function Module:MODIFIER_STATE_CHANGED(btn)
 	if btn == "LSHIFT" and UnitExists("mouseover") then
 		GameTooltip:RefreshData()
 	end
 end
 
-function NE_Tooltip:FixStoneSoupError()
+function Module:FixStoneSoupError()
 	local blockTooltips = {
 		[556] = true, -- Stone Soup
 	}
@@ -417,14 +417,14 @@ function NE_Tooltip:FixStoneSoupError()
 	end)
 end
 
-function NE_Tooltip:PLAYER_LOGIN()
+function Module:PLAYER_LOGIN()
 	GameTooltip:HookScript("OnTooltipCleared", self.OnTooltipCleared)
 	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, self.OnTooltipSetUnit)
 	hooksecurefunc(GameTooltip.StatusBar, "SetValue", self.RefreshStatusBar)
 	TooltipDataProcessor.AddLinePreCall(Enum.TooltipDataLineType.None, self.UpdateFactionLine)
 	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, self.FixRecipeItemNameWidth)
 
-	NE_Tooltip:FixStoneSoupError()
+	Module:FixStoneSoupError()
 
 	-- Elements
 	local loadTooltipModules = {
@@ -446,18 +446,18 @@ end
 
 -- Tooltip Skin Registration
 local tipTable = {}
-function NE_Tooltip:RegisterTooltips(addon, func)
+function Module:RegisterTooltips(addon, func)
 	tipTable[addon] = func
 end
 
-function NE_Tooltip:ADDON_LOADED(addon)
+function Module:ADDON_LOADED(addon)
 	if tipTable[addon] then
 		tipTable[addon]()
 		tipTable[addon] = nil
 	end
 end
 
-NE_Tooltip:RegisterTooltips("NexEnhance", function()
+Module:RegisterTooltips("NexEnhance", function()
 	local tooltips = {
 		ChatMenu,
 		EmoteMenu,
@@ -494,11 +494,11 @@ NE_Tooltip:RegisterTooltips("NexEnhance", function()
 		GameSmallHeaderTooltip,
 	}
 	for _, f in pairs(tooltips) do
-		f:HookScript("OnShow", NE_Tooltip.ReskinTooltip)
+		f:HookScript("OnShow", Module.ReskinTooltip)
 	end
 
 	if SettingsTooltip then
-		NE_Tooltip.ReskinTooltip(SettingsTooltip)
+		Module.ReskinTooltip(SettingsTooltip)
 		SettingsTooltip:SetScale(UIParent:GetScale())
 	end
 end)

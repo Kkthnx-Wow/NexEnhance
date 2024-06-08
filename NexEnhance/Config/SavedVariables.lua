@@ -1,32 +1,40 @@
-local NexEnhance, NE_SavedVariables = ...
+local AddonName, Config = ...
 
 local defaults = {
 	profile = {
-		general = {
-			AutoScale = false,
-			UIScale = 0.53,
-		},
 		actionbars = {
+			MmssTH = 60,
+			OverrideWA = false,
+			TenthTH = 3,
 			cooldowns = true,
 			range = true,
-			MmssTH = 60,
-			TenthTH = 3,
-			OverrideWA = false,
 		},
 		automation = {
+			AnnoyingBuffs = true,
 			AutoRepair = 2,
 			AutoSell = true,
 		},
 		blizzard = {
 			characterFrame = true,
+			chatbubble = true,
 			inspectFrame = true,
 		},
 		chat = {},
+		general = {
+			AutoScale = false,
+			UIScale = 0.53,
+		},
+		loot = {
+			FasterLoot = false,
+		},
 		maps = {},
 		miscellaneous = {
 			missingStats = true,
 		},
+		tempanchor = {},
 		tooltip = {
+			ShowID = true,
+			SpecLevelByShift = true,
 			combatHide = false,
 			factionIcon = true,
 			hideJunkGuild = true,
@@ -36,31 +44,24 @@ local defaults = {
 			lfdRole = true,
 			mdScore = true,
 			qualityColor = true,
-			SpecLevelByShift = true,
 		},
 		unitframes = {
 			classColorHealth = true,
 		},
 		worldmap = {
-			SmallWorldMap = true,
+			AlphaWhenMoving = 0.35,
 			Coordinates = true,
 			FadeWhenMoving = true,
+			SmallWorldMap = true,
 			SmallWorldMapScale = 0.9,
-			AlphaWhenMoving = 0.35,
 		},
-
-		loot = {
-			FasterLoot = false,
-		},
-
-		tempanchor = {},
 	},
 }
 
-function NE_SavedVariables:ADDON_LOADED(name)
-	if name == NexEnhance then
+function Config:ADDON_LOADED(name)
+	if name == AddonName then
 		-- initialize database with defaults
-		NE_SavedVariables.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults, true)
+		Config.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults, true)
 		return true
 	end
 end

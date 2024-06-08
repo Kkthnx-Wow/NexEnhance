@@ -1,4 +1,4 @@
-local NexEnhance, NE_yClassColors = ...
+local _, Module = ...
 
 local format, ipairs, tinsert, unpack = string.format, ipairs, table.insert, unpack
 local C_FriendList_GetWhoInfo = C_FriendList.GetWhoInfo
@@ -7,9 +7,9 @@ local C_BattleNet_GetFriendAccountInfo = C_BattleNet.GetFriendAccountInfo
 
 -- Helper Functions
 local function classColor(class, showRGB)
-	local color = NE_yClassColors.ClassColors[NE_yClassColors.ClassList[class] or class]
+	local color = Module.ClassColors[Module.ClassList[class] or class]
 	if not color then
-		color = NE_yClassColors.ClassColors["PRIEST"]
+		color = Module.ClassColors["PRIEST"]
 	end
 
 	if showRGB then
@@ -20,12 +20,12 @@ local function classColor(class, showRGB)
 end
 
 local function diffColor(level)
-	return NE_yClassColors.RGBToHex(GetQuestDifficultyColor(level))
+	return Module.RGBToHex(GetQuestDifficultyColor(level))
 end
 
 local function smoothColor(cur, max, color)
-	local r, g, b = NE_yClassColors:RGBColorGradient(cur, max, unpack(color))
-	return NE_yClassColors.RGBToHex(r, g, b)
+	local r, g, b = Module:RGBColorGradient(cur, max, unpack(color))
+	return Module.RGBToHex(r, g, b)
 end
 
 local function applyZoneColor(text, zone, playerArea)
@@ -69,7 +69,7 @@ local function updateGuildView()
 	end
 end
 
-function NE_yClassColors:ADDON_LOADED(addon)
+function Module:ADDON_LOADED(addon)
 	if addon ~= "Blizzard_GuildUI" then
 		return
 	end
@@ -129,10 +129,10 @@ local function UpdateFriendsList()
 				end
 			end
 		else
-			NE_yClassColors:Print("Error: Unable to get the number of children.")
+			Module:Print("Error: Unable to get the number of children.")
 		end
 	else
-		NE_yClassColors:Print("Error: Unable to get the real zone text.")
+		Module:Print("Error: Unable to get the real zone text.")
 	end
 end
 hooksecurefunc(FriendsListFrame.ScrollBox, "Update", UpdateFriendsList)
@@ -159,6 +159,6 @@ hooksecurefunc(WhoFrame.ScrollBox, "Update", function(self)
 			end
 		end
 	else
-		NE_yClassColors:Print("Error: Unable to get the number of children.")
+		Module:Print("Error: Unable to get the number of children.")
 	end
 end)

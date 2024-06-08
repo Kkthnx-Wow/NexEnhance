@@ -1,4 +1,4 @@
-local NexEnhance, NE_AutoRepair = ...
+local _, Module = ...
 
 local format = string.format
 local GetMoney, GetRepairAllCost, RepairAllItems, CanMerchantRepair = GetMoney, GetRepairAllCost, RepairAllItems, CanMerchantRepair
@@ -14,7 +14,7 @@ local function delayFunc()
 	if isBankEmpty then
 		autoRepair(true)
 	else
-		NE_AutoRepair:Print(format(NE_AutoRepair.InfoColor .. "%s|r%s", NE_AutoRepair.L["Repair costs covered by Guild Bank"], NE_AutoRepair:GetMoneyString(repairAllCost, true)))
+		Module:Print(format(Module.InfoColor .. "%s|r%s", Module.L["Repair costs covered by Guild Bank"], Module:GetMoneyString(repairAllCost, true)))
 	end
 end
 
@@ -29,15 +29,15 @@ function autoRepair(override)
 	repairAllCost, canRepair = GetRepairAllCost()
 
 	if canRepair and repairAllCost > 0 then
-		if (not override) and NE_AutoRepair.db.profile.automation.AutoRepair == 1 and IsInGuild() and CanGuildBankRepair() and GetGuildBankWithdrawMoney() >= repairAllCost then
+		if (not override) and Module.db.profile.automation.AutoRepair == 1 and IsInGuild() and CanGuildBankRepair() and GetGuildBankWithdrawMoney() >= repairAllCost then
 			RepairAllItems(true)
 		else
 			if myMoney > repairAllCost then
 				RepairAllItems()
-				NE_AutoRepair:Print(format(NE_AutoRepair.InfoColor .. "%s|r%s", NE_AutoRepair.L["Repair cost"], NE_AutoRepair:GetMoneyString(repairAllCost, true)))
+				Module:Print(format(Module.InfoColor .. "%s|r%s", Module.L["Repair cost"], Module:GetMoneyString(repairAllCost, true)))
 				return
 			else
-				NE_AutoRepair:Print(NE_AutoRepair.InfoColor .. NE_AutoRepair.L["Yikes! You are running out of gold!"])
+				Module:Print(Module.InfoColor .. Module.L["Yikes! You are running out of gold!"])
 				return
 			end
 		end
@@ -54,27 +54,27 @@ end
 
 local function merchantClose()
 	isShown = false
-	NE_AutoRepair:UnregisterEvent("UI_ERROR_MESSAGE", checkBankFund)
-	NE_AutoRepair:UnregisterEvent("MERCHANT_CLOSED", merchantClose)
+	Module:UnregisterEvent("UI_ERROR_MESSAGE", checkBankFund)
+	Module:UnregisterEvent("MERCHANT_CLOSED", merchantClose)
 end
 
 local function merchantShow()
-	if IsShiftKeyDown() or NE_AutoRepair.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
+	if IsShiftKeyDown() or Module.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
 		return
 	end
 	autoRepair()
-	NE_AutoRepair:RegisterEvent("UI_ERROR_MESSAGE", checkBankFund)
-	NE_AutoRepair:RegisterEvent("MERCHANT_CLOSED", merchantClose)
+	Module:RegisterEvent("UI_ERROR_MESSAGE", checkBankFund)
+	Module:RegisterEvent("MERCHANT_CLOSED", merchantClose)
 end
-NE_AutoRepair:RegisterEvent("MERCHANT_SHOW", merchantShow)
+Module:RegisterEvent("MERCHANT_SHOW", merchantShow)
 
 local repairGossipIDs = {
 	[37005] = true, -- Jeeves
 	[44982] = true, -- Rüstmeister der Gnomereganen
 }
 
-function NE_AutoRepair:GOSSIP_SHOW()
-	if IsShiftKeyDown() or NE_AutoRepair.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
+function Module:GOSSIP_SHOW()
+	if IsShiftKeyDown() or Module.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
 		return
 	end
 

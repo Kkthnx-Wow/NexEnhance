@@ -8,48 +8,60 @@
 ## SavedVariables: NexEnhanceDB
 ## X-Support: DF
 
-Libs\Dashi\embed.xml
+# Libs
 Libs\LibStub\LibStub.lua
-Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
-Libs\AceDB-3.0\AceDB-3.0.xml
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\AceDB-3.0\AceDB-3.0.lua
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
+Libs\LibChatAnims\LibChatAnims.lua
+Libs\Dashi\embed.xml
+Libs\LibUIDropDownMenu\LibUIDropDownMenu.lua
 
+# Initialization
 Init.lua
 
-Config\SavedVariables.lua
-Config\Options.lua
+# Locales
+# Locales\deDE.lua
+# Locales\esES.lua
+# Locales\esMX.lua
+# Locales\frFR.lua
+# Locales\itIT.lua
+# Locales\koKR.lua
+# Locales\ptBR.lua
+# Locales\ruRU.lua
+# Locales\zhCN.lua
+# Locales\zhTW.lua
 
+# Core
 Core\Database.lua
 Core\Functions.lua
 
+# Modules
 Modules\Actionbars\Cooldowns.lua
 Modules\Actionbars\Range.lua
-
 Modules\Automation\AutoSell.lua
 Modules\Automation\AutoRepair.lua
-
+Modules\Blizzard\ChatBubble.lua
 Modules\Blizzard\CharacterFrame.lua
 Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
-
 Modules\Chat\Core.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
-
 Modules\General\AutoScale.lua
-
 Modules\Loot\FasterLoot.lua
-
 Modules\Miscellaneous\MissingStats.lua
 Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\SlotItemLevel.lua
 Modules\Miscellaneous\yClassColors.lua
-
 Modules\Maps\WorldMap.lua
-
 Modules\Tooltip\Core.lua
 Modules\Tooltip\Icons.lua
 Modules\Tooltip\SpecLevel.lua
-
+Modules\Tooltip\ID.lua
 Modules\Unitframes\ClassColor.lua
+
+# Config
+Config\SavedVariables.lua
+Config\Options.lua

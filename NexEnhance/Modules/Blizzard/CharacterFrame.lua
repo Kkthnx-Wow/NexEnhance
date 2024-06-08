@@ -1,17 +1,17 @@
-local NexEnhance, NE_CharacterFrame = ...
+local _, Module = ...
 local select = select
 
 local function styleEquipmentSlot(slotName)
 	local slot = _G[slotName]
 
-	NE_CharacterFrame.RemoveTextures(slot)
+	Module.RemoveTextures(slot)
 
 	-- Set ignore texture
 	slot.ignoreTexture:SetTexture("Interface\\PaperDollInfoFrame\\UI-GearManager-LeaveItem-Transparent")
 end
 
-function NE_CharacterFrame:PLAYER_LOGIN()
-	if not NE_CharacterFrame.db.profile.blizzard.characterFrame then
+function Module:PLAYER_LOGIN()
+	if not Module.db.profile.blizzard.characterFrame then
 		return
 	end
 
@@ -19,7 +19,7 @@ function NE_CharacterFrame:PLAYER_LOGIN()
 	CharacterModelScene:DisableDrawLayer("BACKGROUND")
 	CharacterModelScene:DisableDrawLayer("BORDER")
 	CharacterModelScene:DisableDrawLayer("OVERLAY")
-	NE_CharacterFrame.RemoveTextures(CharacterModelScene, true)
+	Module.RemoveTextures(CharacterModelScene, true)
 
 	local equipmentSlots = {
 		"CharacterBackSlot",
@@ -69,7 +69,7 @@ function NE_CharacterFrame:PLAYER_LOGIN()
 	local function UpdateCharacterFrameLayout(isExpanded)
 		local frameWidth, frameHeight = 640, 431
 		local insetOffset = 432
-		local texturePath = "Interface\\DRESSUPFRAME\\DressingRoom" .. NE_CharacterFrame.Class
+		local texturePath = "Interface\\DRESSUPFRAME\\DressingRoom" .. Module.Class
 
 		if not isExpanded then
 			frameWidth = 338

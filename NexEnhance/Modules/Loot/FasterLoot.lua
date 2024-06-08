@@ -1,4 +1,4 @@
-local NexEnhance, NE_FasterLoot = ...
+local _, Module = ...
 
 -- Local references to global functions
 local GetCVarBool = GetCVarBool
@@ -25,10 +25,10 @@ local function HandleFasterLoot()
 end
 
 -- Function to enable or disable faster loot based on the configuration
-function NE_FasterLoot:OnLogin()
-	if NE_FasterLoot.db.profile.loot.FasterLoot then
-		NE_FasterLoot:RegisterEvent("LOOT_READY", HandleFasterLoot)
+function Module:PLAYER_LOGIN()
+	if Module.db.profile.loot.FasterLoot then
+		Module:RegisterEvent("LOOT_READY", HandleFasterLoot)
 	else
-		NE_FasterLoot:UnregisterEvent("LOOT_READY", HandleFasterLoot)
+		Module:UnregisterEvent("LOOT_READY", HandleFasterLoot)
 	end
 end

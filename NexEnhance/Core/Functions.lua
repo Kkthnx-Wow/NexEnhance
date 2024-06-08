@@ -1,13 +1,13 @@
 -- Functions management for NexEnhance addon
-local NexEnhance, NE_Functions = ...
-local cr, cg, cb = NE_Functions.r, NE_Functions.g, NE_Functions.b
+local _, Core = ...
+local cr, cg, cb = Core.r, Core.g, Core.b
 
 -- Frame to hide UI elements
-NE_Functions.UIFrameHider = CreateFrame("Frame")
-NE_Functions.UIFrameHider:Hide()
+Core.UIFrameHider = CreateFrame("Frame")
+Core.UIFrameHider:Hide()
 
 -- Movable Frame
-function NE_Functions:CreateMoverFrame(parent, saved)
+function Core:CreateMoverFrame(parent, saved)
 	local frame = parent or self
 	frame:SetMovable(true)
 	frame:SetUserPlaced(true)
@@ -24,22 +24,22 @@ function NE_Functions:CreateMoverFrame(parent, saved)
 			return
 		end
 		local orig, _, tar, x, y = frame:GetPoint()
-		x, y = NE_Functions:Round(x), NE_Functions:Round(y)
-		NE_Functions.db.profile["tempanchor"][frame:GetName()] = { orig, "UIParent", tar, x, y }
+		x, y = Core:Round(x), Core:Round(y)
+		Core.db.profile["tempanchor"][frame:GetName()] = { orig, "UIParent", tar, x, y }
 	end)
 end
 
-function NE_Functions:RestoreMoverFrame()
+function Core:RestoreMoverFrame()
 	local name = self:GetName()
-	if name and NE_Functions.db.profile["tempanchor"][name] then
+	if name and Core.db.profile["tempanchor"][name] then
 		self:ClearAllPoints()
-		self:SetPoint(unpack(NE_Functions.db.profile["tempanchor"][name]))
+		self:SetPoint(unpack(Core.db.profile["tempanchor"][name]))
 	end
 end
 
 do
 	-- Function to shorten numerical values
-	function NE_Functions.ShortValue(n)
+	function Core.ShortValue(n)
 		local prefixStyle = 1
 		local abs_n = abs(n)
 		local suffix, div = "", 1
@@ -62,7 +62,7 @@ do
 		end
 	end
 
-	function NE_Functions:Round(number, idp)
+	function Core:Round(number, idp)
 		idp = idp or 0
 		local mult = 10 ^ idp
 		return floor(number * mult + 0.5) / mult
@@ -72,7 +72,7 @@ end
 -- Color conversion functions
 do
 	-- Converts RGB values to a hexadecimal color string
-	function NE_Functions.RGBToHex(r, g, b)
+	function Core.RGBToHex(r, g, b)
 		if r then
 			if type(r) == "table" then
 				if r.r then
@@ -86,8 +86,8 @@ do
 	end
 
 	-- Returns the class color for a given class
-	function NE_Functions.ClassColor(class)
-		local color = NE_Functions.ClassColors[class]
+	function Core.ClassColor(class)
+		local color = Core.ClassColors[class]
 		if not color then
 			return 1, 1, 1
 		end
@@ -95,12 +95,12 @@ do
 	end
 
 	-- Returns the color for a given unit
-	function NE_Functions.UnitColor(unit)
+	function Core.UnitColor(unit)
 		local r, g, b = 1, 1, 1
 		if UnitIsPlayer(unit) then
 			local class = select(2, UnitClass(unit))
 			if class then
-				r, g, b = NE_Functions.ClassColor(class)
+				r, g, b = Core.ClassColor(class)
 			end
 		elseif UnitIsTapDenied(unit) then
 			r, g, b = 0.6, 0.6, 0.6
@@ -128,7 +128,7 @@ do
 	end
 
 	-- Function to compute the RGB color gradient based on the percentage
-	function NE_Functions:RGBColorGradient(a, b, ...)
+	function Core:RGBColorGradient(a, b, ...)
 		local relperc, r1, g1, b1, r2, g2, b2 = calculateColorGradient(a, b, ...)
 		if relperc then
 			return r1 + (r2 - r1) * relperc, g1 + (g2 - g1) * relperc, b1 + (b2 - b1) * relperc
@@ -139,10 +139,10 @@ do
 end
 
 -- Function to disable and hide UI elements
-function NE_Functions.DisableUIElement(element)
+function Core.DisableUIElement(element)
 	if element.UnregisterAllEvents then
 		element:UnregisterAllEvents()
-		element:SetParent(NE_Functions.UIFrameHider)
+		element:SetParent(Core.UIFrameHider)
 	else
 		element.Show = element.Hide
 	end
@@ -174,13 +174,13 @@ local BlizzardTextures = {
 }
 
 -- Function to remove textures from UI elements
-function NE_Functions.RemoveTextures(element, removeCompletely)
+function Core.RemoveTextures(element, removeCompletely)
 	local elementName = element.GetName and element:GetName()
 
 	for _, textureName in pairs(BlizzardTextures) do
 		local textureElement = element[textureName] or (elementName and _G[elementName .. textureName])
 		if textureElement then
-			NE_Functions.RemoveTextures(textureElement, removeCompletely)
+			Core.RemoveTextures(textureElement, removeCompletely)
 		end
 	end
 
@@ -215,7 +215,7 @@ do
 	}
 
 	local slotData = { gems = {}, gemsColor = {} }
-	function NE_Functions.GetItemLevel(link, arg1, arg2, fullScan)
+	function Core.GetItemLevel(link, arg1, arg2, fullScan)
 		if fullScan then
 			local data = C_TooltipInfo.GetInventoryItem(arg1, arg2)
 			if not data then
@@ -307,7 +307,7 @@ do
 						end
 						pendingNPCs[npcID] = nil
 					else
-						local name = NE_Functions.GetNPCName(npcID, callbacks[npcID])
+						local name = Core.GetNPCName(npcID, callbacks[npcID])
 						if name and name ~= loadingStr then
 							pendingNPCs[npcID] = nil
 						else
@@ -323,7 +323,7 @@ do
 		end
 	end)
 
-	function NE_Functions.GetNPCName(npcID, callback)
+	function Core.GetNPCName(npcID, callback)
 		local name = nameCache[npcID]
 		if not name then
 			name = loadingStr
@@ -349,7 +349,7 @@ do
 		return name
 	end
 
-	function NE_Functions.IsUnknownTransmog(bagID, slotID)
+	function Core.IsUnknownTransmog(bagID, slotID)
 		local data = C_TooltipInfo.GetBagItem(bagID, slotID)
 		local lineData = data and data.lines
 		if not lineData then
@@ -368,22 +368,22 @@ end
 
 do
 	-- Sets font size for a font string
-	function NE_Functions:SetFontSize(fontString, size)
-		fontString:SetFont(NE_Functions.Font[1], size, NE_Functions.Font[3])
+	function Core:SetFontSize(fontString, size)
+		fontString:SetFont(Core.Font[1], size, Core.Font[3])
 	end
 
 	-- Creates a font string with specified properties
-	function NE_Functions:CreateFontString(size, text, color, style, anchor, x, y)
+	function Core:CreateFontString(size, text, color, style, anchor, x, y)
 		local FontString = self:CreateFontString(nil, "OVERLAY")
-		NE_Functions:SetFontSize(FontString, size)
+		Core:SetFontSize(FontString, size)
 
 		style = style or ""
 
 		if style == "OUTLINE" then
-			FontString:SetFont(NE_Functions.Font[1], size, style)
+			FontString:SetFont(Core.Font[1], size, style)
 			FontString:SetShadowOffset(0, 0)
 		else
-			FontString:SetFont(NE_Functions.Font[1], size, "")
+			FontString:SetFont(Core.Font[1], size, "")
 			FontString:SetShadowOffset(1, -0.5)
 		end
 
@@ -407,7 +407,7 @@ do
 end
 
 do
-	-- function NE_Functions:GetMoneyString(amount)
+	-- function Core:GetMoneyString(amount)
 	-- 	local coppername = "|cffeda55fc|r"
 	-- 	local goldname = "|cffffd700g|r"
 	-- 	local silvername = "|cffc7c7cfs|r"
@@ -426,7 +426,7 @@ do
 	-- 	end
 	-- end
 
-	function NE_Functions:GetMoneyString(money, full)
+	function Core:GetMoneyString(money, full)
 		if money >= 1e6 and not full then
 			return BreakUpLargeNumbers(format("%d", money / 1e4)) .. GOLD_AMOUNT_SYMBOL
 		else

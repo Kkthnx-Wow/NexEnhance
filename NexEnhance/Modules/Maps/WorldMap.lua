@@ -1,4 +1,4 @@
-local NexEnhance, NE_WorldMap = ...
+local _, Module = ...
 
 local _G = _G
 
@@ -16,7 +16,7 @@ local hooksecurefunc = hooksecurefunc
 local currentMapID, playerCoords, cursorCoords
 local smallerMapScale = 0.8
 
-function NE_WorldMap:SetLargeWorldMap()
+function Module:SetLargeWorldMap()
 	local WorldMapFrame = _G.WorldMapFrame
 	WorldMapFrame:SetParent(UIParent)
 	WorldMapFrame:SetScale(1)
@@ -28,30 +28,30 @@ function NE_WorldMap:SetLargeWorldMap()
 	end
 end
 
-function NE_WorldMap:UpdateMaximizedSize()
+function Module:UpdateMaximizedSize()
 	local WorldMapFrame = _G.WorldMapFrame
 	local width, height = WorldMapFrame:GetSize()
 	local magicNumber = (1 - smallerMapScale) * 100
 	WorldMapFrame:SetSize((width * smallerMapScale) - (magicNumber + 2), (height * smallerMapScale) - 2)
 end
 
-function NE_WorldMap:SynchronizeDisplayState()
+function Module:SynchronizeDisplayState()
 	local WorldMapFrame = _G.WorldMapFrame
 	if WorldMapFrame:IsMaximized() then
 		WorldMapFrame:ClearAllPoints()
 		WorldMapFrame:SetPoint("CENTER", UIParent)
 	end
 
-	NE_WorldMap.RestoreMoverFrame(self)
+	Module.RestoreMoverFrame(self)
 end
 
-function NE_WorldMap:SetSmallWorldMap()
+function Module:SetSmallWorldMap()
 	local WorldMapFrame = _G.WorldMapFrame
 	WorldMapFrame:ClearAllPoints()
 	WorldMapFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -94)
 end
 
-function NE_WorldMap:GetCursorCoords()
+function Module:GetCursorCoords()
 	if not WorldMapFrame.ScrollContainer:IsMouseOver() then
 		return
 	end
@@ -66,10 +66,10 @@ end
 
 local function CoordsFormat(owner, none)
 	local text = none and ": --, --" or ": %.1f, %.1f"
-	return owner .. NE_WorldMap.MyColor .. text
+	return owner .. Module.MyColor .. text
 end
 
-function NE_WorldMap:UpdateCoords(elapsed)
+function Module:UpdateCoords(elapsed)
 	local WorldMapFrame = _G.WorldMapFrame
 	if not WorldMapFrame:IsShown() then
 		return
@@ -78,7 +78,7 @@ function NE_WorldMap:UpdateCoords(elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed
 
 	if self.elapsed > 0.2 then
-		local cursorX, cursorY = NE_WorldMap:GetCursorCoords()
+		local cursorX, cursorY = Module:GetCursorCoords()
 		if cursorX and cursorY then
 			cursorCoords:SetFormattedText(CoordsFormat("Mouse"), 100 * cursorX, 100 * cursorY)
 		else
@@ -88,7 +88,7 @@ function NE_WorldMap:UpdateCoords(elapsed)
 		if not currentMapID then
 			playerCoords:SetText(CoordsFormat(PLAYER, true))
 		else
-			local x, y = NE_WorldMap:GetPlayerPosition(currentMapID)
+			local x, y = Module:GetPlayerPosition(currentMapID)
 			if not x or (x == 0 and y == 0) then
 				playerCoords:SetText(CoordsFormat(PLAYER, true))
 			else
@@ -100,7 +100,7 @@ function NE_WorldMap:UpdateCoords(elapsed)
 	end
 end
 
-function NE_WorldMap:UpdateMapID()
+function Module:UpdateMapID()
 	if self:GetMapID() == C_Map_GetBestMapForUnit("player") then
 		currentMapID = self:GetMapID()
 	else
@@ -108,12 +108,12 @@ function NE_WorldMap:UpdateMapID()
 	end
 end
 
-function NE_WorldMap:MapShouldFade()
+function Module:MapShouldFade()
 	-- normally we would check GetCVarBool('mapFade') here instead of the setting
-	return NE_WorldMap.db.profile.worldmap.FadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
+	return Module.db.profile.worldmap.FadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
 end
 
-function NE_WorldMap:MapFadeOnUpdate(elapsed)
+function Module:MapFadeOnUpdate(elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed
 	if self.elapsed > 0.1 then
 		self.elapsed = 0
@@ -142,13 +142,13 @@ function NE_WorldMap:MapFadeOnUpdate(elapsed)
 end
 
 local fadeFrame
-function NE_WorldMap:StopMapFromFading()
+function Module:StopMapFromFading()
 	if fadeFrame then
 		fadeFrame:Hide()
 	end
 end
 
-function NE_WorldMap:EnableMapFading(frame)
+function Module:EnableMapFading(frame)
 	if not fadeFrame then
 		fadeFrame = CreateFrame("FRAME")
 		fadeFrame:SetScript("OnUpdate", self.MapFadeOnUpdate)
@@ -159,27 +159,27 @@ function NE_WorldMap:EnableMapFading(frame)
 	end
 
 	local settings = fadeFrame.FadeObject.FadeSettings
-	settings.fadePredicate = NE_WorldMap.MapShouldFade
+	settings.fadePredicate = Module.MapShouldFade
 	settings.durationSec = 0.2
-	settings.minAlpha = NE_WorldMap.db.profile.worldmap.AlphaWhenMoving
+	settings.minAlpha = Module.db.profile.worldmap.AlphaWhenMoving
 	settings.maxAlpha = 1
 
 	fadeFrame:Show()
 end
 
-function NE_WorldMap:UpdateMapFade(minAlpha, maxAlpha, durationSec, fadePredicate) -- self is frame
-	if self:IsShown() and (self == _G.WorldMapFrame and fadePredicate ~= NE_WorldMap.MapShouldFade) then
+function Module:UpdateMapFade(minAlpha, maxAlpha, durationSec, fadePredicate) -- self is frame
+	if self:IsShown() and (self == _G.WorldMapFrame and fadePredicate ~= Module.MapShouldFade) then
 		-- blizzard spams code in OnUpdate and doesnt finish their functions, so we shut their fader down :L
 		PlayerMovementFrameFader.RemoveFrame(self)
 
 		-- replacement function which is complete :3
-		if NE_WorldMap.db.profile.worldmap.FadeWhenMoving then
-			NE_WorldMap:EnableMapFading(self)
+		if Module.db.profile.worldmap.FadeWhenMoving then
+			Module:EnableMapFading(self)
 		end
 	end
 end
 
-function NE_WorldMap:WorldMap_OnShow()
+function Module:WorldMap_OnShow()
 	-- Update coordinates if necessary
 	if self.CoordsUpdater then
 		self.CoordsUpdater:SetScript("OnUpdate", self.UpdateCoords)
@@ -198,11 +198,11 @@ function NE_WorldMap:WorldMap_OnShow()
 	end
 
 	-- Set the appropriate map size
-	if NE_WorldMap.db.profile.worldmap.SmallWorldMap then
+	if Module.db.profile.worldmap.SmallWorldMap then
 		if maxed then
-			NE_WorldMap:SetLargeWorldMap()
+			Module:SetLargeWorldMap()
 		else
-			NE_WorldMap:SetSmallWorldMap()
+			Module:SetSmallWorldMap()
 		end
 	end
 
@@ -210,15 +210,15 @@ function NE_WorldMap:WorldMap_OnShow()
 	self.mapSizeAdjusted = true
 end
 
-function NE_WorldMap:WorldMap_OnHide()
+function Module:WorldMap_OnHide()
 	if self.CoordsUpdater then
 		self.CoordsUpdater:SetScript("OnUpdate", nil)
 	end
 end
 
-function NE_WorldMap:PLAYER_LOGIN()
+function Module:PLAYER_LOGIN()
 	local WorldMapFrame = _G.WorldMapFrame
-	if NE_WorldMap.db.profile.worldmap.Coordinates then
+	if Module.db.profile.worldmap.Coordinates then
 		-- Define the desired color (#F0C500 or RGB values 240/255, 197/255, 0)
 		local textColor = { r = 240 / 255, g = 197 / 255, b = 0 }
 
@@ -263,8 +263,8 @@ function NE_WorldMap:PLAYER_LOGIN()
 		self.CoordsUpdater:SetScript("OnUpdate", self.UpdateCoords)
 	end
 
-	if NE_WorldMap.db.profile.worldmap.SmallWorldMap then
-		smallerMapScale = NE_WorldMap.db.profile.worldmap.SmallWorldMapScale or 0.9
+	if Module.db.profile.worldmap.SmallWorldMap then
+		smallerMapScale = Module.db.profile.worldmap.SmallWorldMapScale or 0.9
 
 		self.CreateMoverFrame(WorldMapFrame, nil, true)
 

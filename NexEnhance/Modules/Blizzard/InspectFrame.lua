@@ -1,7 +1,7 @@
-local _, Blizzard = ...
+local _, Module = ...
 
-Blizzard:HookAddOn("Blizzard_InspectUI", function()
-	if not Blizzard.db.profile.blizzard.inspectFrame then
+Module:HookAddOn("Blizzard_InspectUI", function()
+	if not Module.db.profile.blizzard.inspectFrame then
 		return
 	end
 
@@ -17,7 +17,7 @@ Blizzard:HookAddOn("Blizzard_InspectUI", function()
 		InspectPaperDollItemsFrame.InspectTalents:SetPoint("TOPRIGHT", InspectFrame, "BOTTOMRIGHT", 0, -1)
 	end
 
-	Blizzard.RemoveTextures(InspectModelFrame, true)
+	Module.RemoveTextures(InspectModelFrame, true)
 
 	local equipmentSlots = {
 		"InspectHeadSlot",
@@ -44,7 +44,7 @@ Blizzard:HookAddOn("Blizzard_InspectUI", function()
 
 	for i = 1, numEquipmentSlots do
 		local slot = _G[equipmentSlots[i]]
-		Blizzard.RemoveTextures(slot)
+		Module.RemoveTextures(slot)
 	end
 
 	local InspectHeadSlot = InspectHeadSlot

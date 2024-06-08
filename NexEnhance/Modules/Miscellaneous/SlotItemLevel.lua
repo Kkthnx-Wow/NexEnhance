@@ -1,4 +1,4 @@
-local addonName, NE_SlotItemLevel = ...
+local _, Module = ...
 
 -- Basic Lua functions
 local pairs = pairs
@@ -42,7 +42,7 @@ local inspectSlots = {
 	"SecondaryHand",
 }
 
-function NE_SlotItemLevel:GetSlotAnchor(index)
+function Module:GetSlotAnchor(index)
 	if not index then
 		return
 	end
@@ -58,7 +58,7 @@ function NE_SlotItemLevel:GetSlotAnchor(index)
 	end
 end
 
-function NE_SlotItemLevel:CreateItemTexture(slot, relF, x, y)
+function Module:CreateItemTexture(slot, relF, x, y)
 	local icon = slot:CreateTexture()
 	icon:SetPoint(relF, x, y)
 	icon:SetSize(14, 14)
@@ -73,15 +73,15 @@ function NE_SlotItemLevel:CreateItemTexture(slot, relF, x, y)
 	return icon
 end
 
-function NE_SlotItemLevel:ItemString_Expand()
+function Module:ItemString_Expand()
 	self:SetWidth(0)
 end
 
-function NE_SlotItemLevel:ItemString_Collapse()
+function Module:ItemString_Collapse()
 	self:SetWidth(120)
 end
 
-function NE_SlotItemLevel:CreateItemString(frame, strType)
+function Module:CreateItemString(frame, strType)
 	if frame.fontCreated then
 		return
 	end
@@ -93,22 +93,22 @@ function NE_SlotItemLevel:CreateItemString(frame, strType)
 			slotFrame.iLvlText:ClearAllPoints()
 			slotFrame.iLvlText:SetPoint("BOTTOMLEFT", slotFrame, 1, 1)
 
-			local relF, x, y = NE_SlotItemLevel:GetSlotAnchor(index)
+			local relF, x, y = Module:GetSlotAnchor(index)
 			slotFrame.enchantText = self.CreateFontString(slotFrame, 11)
 			slotFrame.enchantText:ClearAllPoints()
 			slotFrame.enchantText:SetPoint(relF, slotFrame, x, y)
 			slotFrame.enchantText:SetJustifyH(strsub(relF, 7))
 			slotFrame.enchantText:SetWidth(120)
 			slotFrame.enchantText:EnableMouse(true)
-			slotFrame.enchantText:HookScript("OnEnter", NE_SlotItemLevel.ItemString_Expand)
-			slotFrame.enchantText:HookScript("OnLeave", NE_SlotItemLevel.ItemString_Collapse)
-			slotFrame.enchantText:HookScript("OnShow", NE_SlotItemLevel.ItemString_Collapse)
+			slotFrame.enchantText:HookScript("OnEnter", Module.ItemString_Expand)
+			slotFrame.enchantText:HookScript("OnLeave", Module.ItemString_Collapse)
+			slotFrame.enchantText:HookScript("OnShow", Module.ItemString_Collapse)
 
 			for i = 1, 10 do
 				local offset = (i - 1) * 20 + 5
 				local iconX = x > 0 and x + offset or x - offset
 				local iconY = index > 15 and 20 or 2
-				slotFrame["textureIcon" .. i] = NE_SlotItemLevel:CreateItemTexture(slotFrame, relF, iconX, iconY)
+				slotFrame["textureIcon" .. i] = Module:CreateItemTexture(slotFrame, relF, iconX, iconY)
 			end
 		end
 	end
@@ -136,7 +136,7 @@ local function GetSlotItemLocation(id)
 	return itemLocation
 end
 
-function NE_SlotItemLevel:ItemLevel_UpdateTraits(button, id, link)
+function Module:ItemLevel_UpdateTraits(button, id, link)
 	-- if not C["Misc"].AzeriteTraits then
 	-- 	return
 	-- end
@@ -146,7 +146,7 @@ function NE_SlotItemLevel:ItemLevel_UpdateTraits(button, id, link)
 		return
 	end
 
-	local allTierInfo = NE_SlotItemLevel:Azerite_UpdateTier(link) -- Fix later
+	local allTierInfo = Module:Azerite_UpdateTier(link) -- Fix later
 	if not allTierInfo then
 		return
 	end
@@ -160,7 +160,7 @@ function NE_SlotItemLevel:ItemLevel_UpdateTraits(button, id, link)
 		for _, powerID in pairs(powerIDs) do
 			local selected = C_AzeriteEmpoweredItem_IsPowerSelected(empoweredItemLocation, powerID)
 			if selected then
-				local spellID = NE_SlotItemLevel:Azerite_PowerToSpell(powerID) -- Fix later
+				local spellID = Module:Azerite_PowerToSpell(powerID) -- Fix later
 				local name, _, icon = GetSpellInfo(spellID)
 				local texture = button["textureIcon" .. i]
 				if name and texture then
@@ -185,7 +185,7 @@ local enchantableSlots = {
 	[6] = true, -- Feet
 }
 
-function NE_SlotItemLevel:CanEnchantSlot(unit, slot)
+function Module:CanEnchantSlot(unit, slot)
 	-- Check if the slot is in the list of enchantable slots
 	if enchantableSlots[slot] then
 		return true
@@ -204,7 +204,7 @@ function NE_SlotItemLevel:CanEnchantSlot(unit, slot)
 	return false
 end
 
-function NE_SlotItemLevel:ItemLevel_UpdateInfo(slotFrame, info, quality)
+function Module:ItemLevel_UpdateInfo(slotFrame, info, quality)
 	local infoType = type(info)
 	local level
 	if infoType == "table" then
@@ -214,7 +214,7 @@ function NE_SlotItemLevel:ItemLevel_UpdateInfo(slotFrame, info, quality)
 	end
 
 	if level and level > 1 and quality and quality > 1 then
-		local color = NE_SlotItemLevel.QualityColors[quality]
+		local color = Module.QualityColors[quality]
 		slotFrame.iLvlText:SetText(level)
 		slotFrame.iLvlText:SetTextColor(color.r, color.g, color.b)
 	end
@@ -224,7 +224,7 @@ function NE_SlotItemLevel:ItemLevel_UpdateInfo(slotFrame, info, quality)
 		if enchant then
 			slotFrame.enchantText:SetText(enchant)
 			slotFrame.enchantText:SetTextColor(0, 1, 0) -- Set text color to green for normal enchant
-		elseif NE_SlotItemLevel:CanEnchantSlot("player", slotFrame:GetID()) then
+		elseif Module:CanEnchantSlot("player", slotFrame:GetID()) then
 			slotFrame.enchantText:SetText(NO .. " " .. ENSCRIBE)
 			slotFrame.enchantText:SetTextColor(1, 0, 0) -- Set text color to red for missing enchant
 		end
@@ -266,23 +266,23 @@ function NE_SlotItemLevel:ItemLevel_UpdateInfo(slotFrame, info, quality)
 	end
 end
 
-function NE_SlotItemLevel:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
+function Module:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
 	C_Timer.After(0.1, function()
 		local quality = select(3, GetItemInfo(link))
-		local info = NE_SlotItemLevel.GetItemLevel(link, unit, index, true) -- GemEnchantInfo
+		local info = Module.GetItemLevel(link, unit, index, true) -- GemEnchantInfo
 		if info == "tooSoon" then
 			return
 		end
-		NE_SlotItemLevel:ItemLevel_UpdateInfo(slotFrame, info, quality)
+		Module:ItemLevel_UpdateInfo(slotFrame, info, quality)
 	end)
 end
 
-function NE_SlotItemLevel:ItemLevel_SetupLevel(frame, strType, unit)
+function Module:ItemLevel_SetupLevel(frame, strType, unit)
 	if not UnitExists(unit) then
 		return
 	end
 
-	NE_SlotItemLevel:CreateItemString(frame, strType)
+	Module:CreateItemString(frame, strType)
 
 	for index, slot in pairs(inspectSlots) do
 		if index ~= 4 then
@@ -298,23 +298,23 @@ function NE_SlotItemLevel:ItemLevel_SetupLevel(frame, strType, unit)
 			local link = GetInventoryItemLink(unit, index)
 			if link then
 				local quality = select(3, GetItemInfo(link))
-				local info = NE_SlotItemLevel.GetItemLevel(link, unit, index, true) -- GemEnchantInfo
+				local info = Module.GetItemLevel(link, unit, index, true) -- GemEnchantInfo
 				if info == "tooSoon" then
-					NE_SlotItemLevel:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
+					Module:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
 				else
-					NE_SlotItemLevel:ItemLevel_UpdateInfo(slotFrame, info, quality)
+					Module:ItemLevel_UpdateInfo(slotFrame, info, quality)
 				end
 
 				if strType == "Character" then
-					-- NE_SlotItemLevel:ItemLevel_UpdateTraits(slotFrame, index, link)
+					-- Module:ItemLevel_UpdateTraits(slotFrame, index, link)
 				end
 			end
 		end
 	end
 end
 
-function NE_SlotItemLevel:ItemLevel_UpdatePlayer()
-	NE_SlotItemLevel:ItemLevel_SetupLevel(CharacterFrame, "Character", "player")
+function Module:ItemLevel_UpdatePlayer()
+	Module:ItemLevel_SetupLevel(CharacterFrame, "Character", "player")
 end
 
 local function CalculateAverageItemLevel(unit, fontstring)
@@ -390,23 +390,23 @@ local function CalculateAverageItemLevel(unit, fontstring)
 end
 
 -- Update the inspect frame with item level and average item level
-function NE_SlotItemLevel:ItemLevel_UpdateInspect(...)
+function Module:ItemLevel_UpdateInspect(...)
 	local guid = ...
 	if InspectFrame and InspectFrame.unit and UnitGUID(InspectFrame.unit) == guid then
-		NE_SlotItemLevel:ItemLevel_SetupLevel(InspectFrame, "Inspect", InspectFrame.unit)
+		Module:ItemLevel_SetupLevel(InspectFrame, "Inspect", InspectFrame.unit)
 
 		-- Display the average item level text on the inspect frame
 		if not InspectFrame.AvgItemLevelText then
-			InspectFrame.AvgItemLevelText = NE_SlotItemLevel.CreateFontString(InspectModelFrame, 12, "", false, "OUTLINE", "BOTTOM", 0, 46)
+			InspectFrame.AvgItemLevelText = Module.CreateFontString(InspectModelFrame, 12, "", false, "OUTLINE", "BOTTOM", 0, 46)
 		end
 		CalculateAverageItemLevel(InspectFrame.unit or "target", InspectFrame.AvgItemLevelText)
 		InspectModelFrameControlFrame:HookScript("OnShow", InspectModelFrameControlFrame.Hide)
 	end
 end
 
-function NE_SlotItemLevel:ItemLevel_FlyoutUpdate(bag, slot, quality)
+function Module:ItemLevel_FlyoutUpdate(bag, slot, quality)
 	if not self.iLvl then
-		self.iLvl = NE_SlotItemLevel.CreateFontString(self, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
+		self.iLvl = Module.CreateFontString(self, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
 	end
 
 	if quality and quality <= 1 then
@@ -416,18 +416,18 @@ function NE_SlotItemLevel:ItemLevel_FlyoutUpdate(bag, slot, quality)
 	local link, level
 	if bag then
 		link = GetContainerItemLink(bag, slot)
-		level = NE_SlotItemLevel.GetItemLevel(link, bag, slot)
+		level = Module.GetItemLevel(link, bag, slot)
 	else
 		link = GetInventoryItemLink("player", slot)
-		level = NE_SlotItemLevel.GetItemLevel(link, "player", slot)
+		level = Module.GetItemLevel(link, "player", slot)
 	end
 
-	local color = NE_SlotItemLevel.QualityColors[quality or 0]
+	local color = Module.QualityColors[quality or 0]
 	self.iLvl:SetText(level)
 	self.iLvl:SetTextColor(color.r, color.g, color.b)
 end
 
-function NE_SlotItemLevel:ItemLevel_FlyoutSetup()
+function Module:ItemLevel_FlyoutSetup()
 	if self.iLvl then
 		self.iLvl:SetText("")
 	end
@@ -448,26 +448,26 @@ function NE_SlotItemLevel:ItemLevel_FlyoutSetup()
 		end
 		local quality = select(13, EquipmentManager_GetItemInfoByLocation(location))
 		if bags then
-			NE_SlotItemLevel.ItemLevel_FlyoutUpdate(self, bag, slot, quality)
+			Module.ItemLevel_FlyoutUpdate(self, bag, slot, quality)
 		else
-			NE_SlotItemLevel.ItemLevel_FlyoutUpdate(self, nil, slot, quality)
+			Module.ItemLevel_FlyoutUpdate(self, nil, slot, quality)
 		end
 	else
 		local itemLocation = self:GetItemLocation()
 		local quality = itemLocation and C_Item.GetItemQuality(itemLocation)
 		if itemLocation:IsBagAndSlot() then
 			local bag, slot = itemLocation:GetBagAndSlot()
-			NE_SlotItemLevel.ItemLevel_FlyoutUpdate(self, bag, slot, quality)
+			Module.ItemLevel_FlyoutUpdate(self, bag, slot, quality)
 		elseif itemLocation:IsEquipmentSlot() then
 			local slot = itemLocation:GetEquipmentSlot()
-			NE_SlotItemLevel.ItemLevel_FlyoutUpdate(self, nil, slot, quality)
+			Module.ItemLevel_FlyoutUpdate(self, nil, slot, quality)
 		end
 	end
 end
 
-function NE_SlotItemLevel:ItemLevel_ScrappingUpdate()
+function Module:ItemLevel_ScrappingUpdate()
 	if not self.iLvl then
-		self.iLvl = NE_SlotItemLevel.CreateFontString(self, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
+		self.iLvl = Module.CreateFontString(self, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
 	end
 	if not self.itemLink then
 		self.iLvl:SetText("")
@@ -478,13 +478,13 @@ function NE_SlotItemLevel:ItemLevel_ScrappingUpdate()
 	if self.itemLocation and not self.item:IsItemEmpty() and self.item:GetItemName() then
 		quality = self.item:GetItemQuality()
 	end
-	local level = NE_SlotItemLevel.GetItemLevel(self.itemLink)
-	local color = NE_SlotItemLevel.QualityColors[quality]
+	local level = Module.GetItemLevel(self.itemLink)
+	local color = Module.QualityColors[quality]
 	self.iLvl:SetText(level)
 	self.iLvl:SetTextColor(color.r, color.g, color.b)
 end
 
-function NE_SlotItemLevel:ItemLevel_ScrappingShow(event, addon)
+function Module:ItemLevel_ScrappingShow(event, addon)
 	if addon == "Blizzard_ScrappingMachineUI" then
 		for button in pairs(ScrappingMachineFrame.ItemSlots.scrapButtons.activeObjects) do
 			hooksecurefunc(button, "RefreshIcon", self.ItemLevel_ScrappingUpdate)
@@ -494,14 +494,14 @@ function NE_SlotItemLevel:ItemLevel_ScrappingShow(event, addon)
 	end
 end
 
-function NE_SlotItemLevel:ItemLevel_UpdateMerchant(link)
+function Module:ItemLevel_UpdateMerchant(link)
 	if not self.iLvl then
-		self.iLvl = NE_SlotItemLevel.CreateFontString(_G[self:GetName() .. "ItemButton"], 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
+		self.iLvl = Module.CreateFontString(_G[self:GetName() .. "ItemButton"], 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
 	end
 	local quality = link and select(3, GetItemInfo(link)) or nil
 	if quality and quality > 1 then
-		local level = NE_SlotItemLevel.GetItemLevel(link)
-		local color = NE_SlotItemLevel.QualityColors[quality]
+		local level = Module.GetItemLevel(link)
+		local color = Module.QualityColors[quality]
 		self.iLvl:SetText(level)
 		self.iLvl:SetTextColor(color.r, color.g, color.b)
 	else
@@ -509,16 +509,16 @@ function NE_SlotItemLevel:ItemLevel_UpdateMerchant(link)
 	end
 end
 
-function NE_SlotItemLevel.ItemLevel_UpdateTradePlayer(index)
+function Module.ItemLevel_UpdateTradePlayer(index)
 	local button = _G["TradePlayerItem" .. index]
 	local link = GetTradePlayerItemLink(index)
-	NE_SlotItemLevel.ItemLevel_UpdateMerchant(button, link)
+	Module.ItemLevel_UpdateMerchant(button, link)
 end
 
-function NE_SlotItemLevel.ItemLevel_UpdateTradeTarget(index)
+function Module.ItemLevel_UpdateTradeTarget(index)
 	local button = _G["TradeRecipientItem" .. index]
 	local link = GetTradeTargetItemLink(index)
-	NE_SlotItemLevel.ItemLevel_UpdateMerchant(button, link)
+	Module.ItemLevel_UpdateMerchant(button, link)
 end
 
 -- local itemCache = {}
@@ -544,25 +544,25 @@ end
 -- 	return modLink
 -- end
 
--- function NE_SlotItemLevel:ItemLevel_ReplaceGuildNews()
+-- function Module:ItemLevel_ReplaceGuildNews()
 -- 	local newText = gsub(self.text:GetText(), "(|Hitem:%d+:.-|h%[(.-)%]|h)", self.ItemLevel_ReplaceItemLink)
 -- 	if newText then
 -- 		self.text:SetText(newText)
 -- 	end
 -- end
 
-function NE_SlotItemLevel:ItemLevel_UpdateLoot()
+function Module:ItemLevel_UpdateLoot()
 	for i = 1, self.ScrollTarget:GetNumChildren() do
 		local button = select(i, self.ScrollTarget:GetChildren())
 		if button and button.Item and button.GetElementData then
 			if not button.iLvl then
-				button.iLvl = NE_SlotItemLevel.CreateFontString(button.Item, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
+				button.iLvl = Module.CreateFontString(button.Item, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
 			end
 			local slotIndex = button:GetSlotIndex()
 			local quality = select(5, GetLootSlotInfo(slotIndex))
 			if quality and quality > 1 then
-				local level = NE_SlotItemLevel.GetItemLevel(GetLootSlotLink(slotIndex))
-				local color = NE_SlotItemLevel.QualityColors[quality]
+				local level = Module.GetItemLevel(GetLootSlotLink(slotIndex))
+				local color = Module.QualityColors[quality]
 				button.iLvl:SetText(level)
 				button.iLvl:SetTextColor(color.r, color.g, color.b)
 			else
@@ -572,10 +572,10 @@ function NE_SlotItemLevel:ItemLevel_UpdateLoot()
 	end
 end
 
-function NE_SlotItemLevel:ItemLevel_UpdateBags()
+function Module:ItemLevel_UpdateBags()
 	local button = self.__owner
 	if not button.iLvl then
-		button.iLvl = NE_SlotItemLevel.CreateFontString(button, NE_SlotItemLevel.Font[2] + 1, "", false, "OUTLINE", "BOTTOMLEFT", 1, 1)
+		button.iLvl = Module.CreateFontString(button, Module.Font[2] + 1, "", false, "OUTLINE", "BOTTOMLEFT", 1, 1)
 	end
 
 	local bagID = button:GetBagID()
@@ -584,8 +584,8 @@ function NE_SlotItemLevel:ItemLevel_UpdateBags()
 	local link = info and info.hyperlink
 	local quality = info and info.quality
 	if quality and quality > 1 then
-		local level = NE_SlotItemLevel.GetItemLevel(link, bagID, slotID)
-		local color = NE_SlotItemLevel.QualityColors[quality]
+		local level = Module.GetItemLevel(link, bagID, slotID)
+		local color = Module.QualityColors[quality]
 		button.iLvl:SetText(level)
 		button.iLvl:SetTextColor(color.r, color.g, color.b)
 	else
@@ -593,25 +593,25 @@ function NE_SlotItemLevel:ItemLevel_UpdateBags()
 	end
 end
 
-function NE_SlotItemLevel:ItemLevel_Containers()
+function Module:ItemLevel_Containers()
 	for i = 1, 13 do
 		for _, button in _G["ContainerFrame" .. i]:EnumerateItems() do
 			button.IconBorder.__owner = button
-			hooksecurefunc(button.IconBorder, "SetShown", NE_SlotItemLevel.ItemLevel_UpdateBags)
+			hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBags)
 		end
 	end
 
 	for i = 1, 28 do
 		local button = _G["BankFrameItem" .. i]
 		button.IconBorder.__owner = button
-		hooksecurefunc(button.IconBorder, "SetShown", NE_SlotItemLevel.ItemLevel_UpdateBags)
+		hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBags)
 	end
 end
 
 local NUM_SLOTS_PER_GUILDBANK_GROUP = 14
 local PET_CAGE = 82800
 
-function NE_SlotItemLevel:ItemLevel_GuildBankShow(event, addonName)
+function Module:ItemLevel_GuildBankShow(event, addonName)
 	if addonName == "Blizzard_GuildBankUI" then
 		hooksecurefunc(_G.GuildBankFrame, "Update", function(self)
 			if self.mode == "bank" then
@@ -667,11 +667,11 @@ function NE_SlotItemLevel:ItemLevel_GuildBankShow(event, addonName)
 			end
 		end)
 
-		self:UnregisterEvent(event, NE_SlotItemLevel.ItemLevel_GuildBankShow)
+		self:UnregisterEvent(event, Module.ItemLevel_GuildBankShow)
 	end
 end
 
-function NE_SlotItemLevel:PLAYER_LOGIN()
+function Module:PLAYER_LOGIN()
 	-- if not C["Misc"].ItemLevel then
 	-- 	return
 	-- end

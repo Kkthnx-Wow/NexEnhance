@@ -1,4 +1,4 @@
-local NexEnhance, NE_SpecLevel = ...
+local _, Module = ...
 
 -- Credit: Cloudy Unit Info, by Cloudyfa
 local select, max, strfind, format, strsplit = select, math.max, string.find, string.format, string.split
@@ -7,12 +7,12 @@ local UnitGUID, UnitClass, UnitIsUnit, UnitIsPlayer, UnitIsVisible, UnitIsDeadOr
 local GetInventoryItemTexture, GetInventoryItemLink, GetItemGem, GetAverageItemLevel = GetInventoryItemTexture, GetInventoryItemLink, GetItemGem, GetAverageItemLevel
 local HEIRLOOMS = _G.HEIRLOOMS
 
-local levelPrefix = STAT_AVERAGE_ITEM_LEVEL .. ": " .. NE_SpecLevel.InfoColor
+local levelPrefix = STAT_AVERAGE_ITEM_LEVEL .. ": " .. Module.InfoColor
 local isPending = LFG_LIST_LOADING
 local resetTime, frequency = 900, 0.5
 local cache, weapon, currentUNIT, currentGUID = {}, {}
 
-NE_SpecLevel.TierSets = {
+Module.TierSets = {
 	-- WARRIOR
 	[217220] = true,
 	[217219] = true,
@@ -101,7 +101,7 @@ local formatSets = {
 	[5] = " |cffc745f9(5/5)", -- purple
 }
 
-function NE_SpecLevel:InspectOnUpdate(elapsed)
+function Module:InspectOnUpdate(elapsed)
 	self.elapsed = (self.elapsed or frequency) + elapsed
 	if self.elapsed > frequency then
 		self.elapsed = 0
@@ -109,48 +109,48 @@ function NE_SpecLevel:InspectOnUpdate(elapsed)
 		ClearInspectPlayer()
 
 		if currentUNIT and UnitGUID(currentUNIT) == currentGUID then
-			NE_SpecLevel:RegisterEvent("INSPECT_READY", NE_SpecLevel.GetInspectReady)
+			Module:RegisterEvent("INSPECT_READY", Module.GetInspectReady)
 			NotifyInspect(currentUNIT)
 		end
 	end
 end
 
 local updater = CreateFrame("Frame")
-updater:SetScript("OnUpdate", NE_SpecLevel.InspectOnUpdate)
+updater:SetScript("OnUpdate", Module.InspectOnUpdate)
 updater:Hide()
 
 local lastTime = 0
-function NE_SpecLevel:GetUnitInventoryChanged(unit)
+function Module:GetUnitInventoryChanged(unit)
 	local thisTime = GetTime()
 	if thisTime - lastTime > 0.1 then
 		lastTime = thisTime
 
 		if UnitGUID(unit) == currentGUID then
-			NE_SpecLevel:InspectUnit(unit, true)
+			Module:InspectUnit(unit, true)
 		end
 	end
 
-	NE_SpecLevel:UnregisterEvent("UNIT_INVENTORY_CHANGED", NE_SpecLevel.GetUnitInventoryChanged)
+	Module:UnregisterEvent("UNIT_INVENTORY_CHANGED", Module.GetUnitInventoryChanged)
 end
-NE_SpecLevel:RegisterEvent("UNIT_INVENTORY_CHANGED", NE_SpecLevel.GetUnitInventoryChanged)
+Module:RegisterEvent("UNIT_INVENTORY_CHANGED", Module.GetUnitInventoryChanged)
 
-function NE_SpecLevel:GetInspectReady(guid)
+function Module:GetInspectReady(guid)
 	if guid == currentGUID then
-		local level = NE_SpecLevel:GetUnitItemLevel(currentUNIT)
+		local level = Module:GetUnitItemLevel(currentUNIT)
 		cache[guid].level = level
 		cache[guid].getTime = GetTime()
 
 		if level then
-			NE_SpecLevel:SetupItemLevel(level)
+			Module:SetupItemLevel(level)
 		else
-			NE_SpecLevel:InspectUnit(currentUNIT, true)
+			Module:InspectUnit(currentUNIT, true)
 		end
 	end
 
-	NE_SpecLevel:UnregisterEvent("INSPECT_READY", NE_SpecLevel.GetInspectReady)
+	Module:UnregisterEvent("INSPECT_READY", Module.GetInspectReady)
 end
 
-function NE_SpecLevel:SetupItemLevel(level)
+function Module:SetupItemLevel(level)
 	local _, unit = GameTooltip:GetUnit()
 	if not unit or UnitGUID(unit) ~= currentGUID then
 		return
@@ -173,7 +173,7 @@ function NE_SpecLevel:SetupItemLevel(level)
 	end
 end
 
-function NE_SpecLevel:GetUnitItemLevel(unit)
+function Module:GetUnitItemLevel(unit)
 	if not unit or UnitGUID(unit) ~= currentGUID then
 		return
 	end
@@ -202,12 +202,12 @@ function NE_SpecLevel:GetUnitItemLevel(unit)
 						end
 
 						local itemID = GetItemInfoFromHyperlink(itemLink)
-						if NE_SpecLevel.TierSets[itemID] then
+						if Module.TierSets[itemID] then
 							sets = sets + 1
 						end
 
 						if unit ~= "player" then
-							level = NE_SpecLevel.GetItemLevel(itemLink) or level
+							level = Module.GetItemLevel(itemLink) or level
 							if i < 16 then
 								total = total + level
 							elseif i > 15 and quality == Enum.ItemQuality.Artifact then
@@ -287,12 +287,12 @@ function NE_SpecLevel:GetUnitItemLevel(unit)
 	return ilvl
 end
 
-function NE_SpecLevel:InspectUnit(unit, forced)
+function Module:InspectUnit(unit, forced)
 	local level
 
 	if UnitIsUnit(unit, "player") then
-		level = NE_SpecLevel:GetUnitItemLevel("player")
-		NE_SpecLevel:SetupItemLevel(level)
+		level = Module:GetUnitItemLevel("player")
+		Module:SetupItemLevel(level)
 	else
 		if not unit or UnitGUID(unit) ~= currentGUID then
 			return
@@ -303,9 +303,9 @@ function NE_SpecLevel:InspectUnit(unit, forced)
 
 		local currentDB = cache[currentGUID]
 		level = currentDB.level
-		NE_SpecLevel:SetupItemLevel(level)
+		Module:SetupItemLevel(level)
 
-		if not NE_SpecLevel.db.profile.tooltip.SpecLevelByShift and IsShiftKeyDown() then
+		if not Module.db.profile.tooltip.SpecLevelByShift and IsShiftKeyDown() then
 			forced = true
 		end
 		if level and not forced and (GetTime() - currentDB.getTime < resetTime) then
@@ -319,13 +319,13 @@ function NE_SpecLevel:InspectUnit(unit, forced)
 			return
 		end
 
-		NE_SpecLevel:SetupItemLevel()
+		Module:SetupItemLevel()
 		updater:Show()
 	end
 end
 
-function NE_SpecLevel:InspectUnitItemLevel(unit)
-	if NE_SpecLevel.db.profile.tooltip.SpecLevelByShift and not IsShiftKeyDown() then
+function Module:InspectUnitItemLevel(unit)
+	if Module.db.profile.tooltip.SpecLevelByShift and not IsShiftKeyDown() then
 		return
 	end
 
@@ -337,5 +337,5 @@ function NE_SpecLevel:InspectUnitItemLevel(unit)
 		cache[currentGUID] = {}
 	end
 
-	NE_SpecLevel:InspectUnit(unit)
+	Module:InspectUnit(unit)
 end

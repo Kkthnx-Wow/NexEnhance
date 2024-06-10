@@ -49,6 +49,7 @@ Modules\Blizzard\ObjectiveTracker.lua
 Modules\Chat\Core.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
+Modules\Datatext\Guild.lua
 Modules\General\AutoScale.lua
 Modules\Loot\FasterLoot.lua
 Modules\Miscellaneous\MissingStats.lua

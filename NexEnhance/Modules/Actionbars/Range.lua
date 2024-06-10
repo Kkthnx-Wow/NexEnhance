@@ -1,6 +1,6 @@
-local NexEnhance, NE_Range = ...
+local NexEnhance, Module = ...
 
-function NE_Range:UpdateRangeIndicator(checksRange, inRange)
+function Module:UpdateRangeIndicator(checksRange, inRange)
 	if not self.setHooksecurefunc and self.UpdateUsable then
 		hooksecurefunc(self, "UpdateUsable", function(self, _, isUsable)
 			if IsUsableAction(self.action) and ActionHasRange(self.action) and IsActionInRange(self.action) == false then
@@ -29,10 +29,10 @@ function NE_Range:UpdateRangeIndicator(checksRange, inRange)
 	end
 end
 
-function NE_Range:PLAYER_LOGIN()
-	if not NE_Range.db.profile.actionbars.range then
+function Module:PLAYER_LOGIN()
+	if not Module.db.profile.actionbars.range then
 		return
 	end
 
-	hooksecurefunc("ActionButton_UpdateRangeIndicator", NE_Range.UpdateRangeIndicator)
+	hooksecurefunc("ActionButton_UpdateRangeIndicator", Module.UpdateRangeIndicator)
 end

@@ -6,8 +6,11 @@ Core.ScreenWidth, Core.ScreenHeight = GetPhysicalScreenSize()
 -- Define font settings
 Core.Font = { STANDARD_TEXT_FONT, 12, "OUTLINE" }
 
-Core.Name = UnitName("player") -- Get player's name
-Core.Class = select(2, UnitClass("player")) -- Get player's class
+Core.MyName = UnitName("player")
+Core.MyRealm = GetRealmName()
+Core.MyFullName = Core.MyName .. "-" .. Core.MyRealm
+Core.MyClass = select(2, UnitClass("player"))
+Core.MyFaction = UnitFactionGroup("player")
 
 -- Define info color
 Core.InfoColor = "|CFF5bc0be"

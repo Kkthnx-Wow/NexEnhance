@@ -55,6 +55,7 @@ local defaults = {
 			SmallWorldMap = true,
 			SmallWorldMapScale = 0.9,
 		},
+		settingsApplied = false,
 	},
 }
 

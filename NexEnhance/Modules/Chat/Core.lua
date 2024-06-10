@@ -144,16 +144,18 @@ function Module:TabSetAlpha(alpha)
 end
 
 local chatEditboxes = {}
+local chatBottomBox = false
 local function UpdateEditBoxAnchor(eb)
 	local parent = eb.__owner
 	eb:ClearAllPoints()
-	--if C.db["Chat"]["BottomBox"] then
-	--eb:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 4, -10)
-	--eb:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -15, -34)
-	--else
-	eb:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 4, 26)
-	eb:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -15, 50)
-	--end
+
+	if chatBottomBox then
+		eb:SetPoint("TOPLEFT", parent, "BOTTOMLEFT", 4, -10 + 2)
+		eb:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -4, -34 + -2)
+	else
+		eb:SetPoint("BOTTOMLEFT", parent, "TOPLEFT", 4, 26 + -2)
+		eb:SetPoint("TOPRIGHT", parent, "TOPRIGHT", -4, 50 + 2)
+	end
 end
 
 function Module:ToggleEditBoxAnchor()
@@ -163,8 +165,8 @@ function Module:ToggleEditBoxAnchor()
 end
 
 local function UpdateEditboxFont(editbox)
-	editbox:SetFontObject(GameFontNormal)
-	editbox.header:SetFontObject(GameFontNormal)
+	editbox:SetFont(Module.Font[1], 13, "")
+	editbox.header:SetFont(Module.Font[1], 13, "")
 end
 
 function Module:SkinChat()
@@ -177,12 +179,12 @@ function Module:SkinChat()
 	self:SetFont(font, fontSize, "")
 	self:SetClampRectInsets(0, 0, 0, 0)
 	self:SetClampedToScreen(false)
-
 	if self:GetMaxLines() < maxLines then
 		self:SetMaxLines(maxLines)
 	end
 
 	local eb = _G[name .. "EditBox"]
+	Module.RemoveTextures(eb, 2)
 	eb:SetAltArrowKeyMode(false)
 	eb:SetClampedToScreen(true)
 	eb.__owner = self
@@ -191,15 +193,20 @@ function Module:SkinChat()
 	tinsert(chatEditboxes, eb)
 	eb:HookScript("OnTextChanged", editBoxOnTextChanged)
 
+	local backdrop = CreateFrame("Frame", nil, eb, "TooltipBackdropTemplate")
+	backdrop:SetAllPoints(eb)
+	backdrop:SetFrameLevel(eb:GetFrameLevel())
+	eb.backdrop = backdrop
+
 	local lang = _G[name .. "EditBoxLanguage"]
 	lang:GetRegions():SetAlpha(0)
 	lang:SetPoint("TOPLEFT", eb, "TOPRIGHT", 5, 0)
 	lang:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT", 29, 0)
 
 	local tab = _G[name .. "Tab"]
-	tab:SetAlpha(1)
-	tab.Text:SetFont(font, 13, "")
 	Module.RemoveTextures(tab, 7)
+	tab:SetAlpha(1)
+	tab.Text:SetFont(font, Module.Font[2] + 2, "")
 	hooksecurefunc(tab, "SetAlpha", Module.TabSetAlpha)
 
 	-- Character count
@@ -294,7 +301,7 @@ function Module:UpdateEditBoxColor()
 
 	local editBox = ChatEdit_ChooseBoxForSend()
 	local chatType = editBox:GetAttribute("chatType")
-	local editBoxBorder = editBox.KKUI_Border
+	local editBoxBorder = editBox.backdrop
 
 	if not chatType then
 		return
@@ -311,18 +318,18 @@ function Module:UpdateEditBoxColor()
 			if id == 0 then
 				local r, g, b
 				r, g, b = 1, 1, 1
-				editBoxBorder:SetVertexColor(r, g, b)
+				editBoxBorder:SetBackdropBorderColor(r, g, b)
 			else
 				local r, g, b = ChatTypeInfo[chatType .. id].r, ChatTypeInfo[chatType .. id].g, ChatTypeInfo[chatType .. id].b
-				editBoxBorder:SetVertexColor(r, g, b)
+				editBoxBorder:SetBackdropBorderColor(r, g, b)
 			end
 		else
 			local r, g, b = ChatTypeInfo[chatType].r, ChatTypeInfo[chatType].g, ChatTypeInfo[chatType].b
-			editBoxBorder:SetVertexColor(r, g, b)
+			editBoxBorder:SetBackdropBorderColor(r, g, b)
 		end
 	end
 end
--- hooksecurefunc("ChatEdit_UpdateHeader", Module.UpdateEditBoxColor)
+hooksecurefunc("ChatEdit_UpdateHeader", Module.UpdateEditBoxColor)
 
 function Module:SwitchToChannel(chatType)
 	self:SetAttribute("chatType", chatType)

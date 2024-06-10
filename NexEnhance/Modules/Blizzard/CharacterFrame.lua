@@ -69,7 +69,7 @@ function Module:PLAYER_LOGIN()
 	local function UpdateCharacterFrameLayout(isExpanded)
 		local frameWidth, frameHeight = 640, 431
 		local insetOffset = 432
-		local texturePath = "Interface\\DRESSUPFRAME\\DressingRoom" .. Module.Class
+		local texturePath = "Interface\\DRESSUPFRAME\\DressingRoom" .. Module.MyClass
 
 		if not isExpanded then
 			frameWidth = 338

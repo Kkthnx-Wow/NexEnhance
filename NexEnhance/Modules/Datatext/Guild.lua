@@ -3,32 +3,6 @@ local CommaValue = Module.ShortValue
 
 local guildTable = {}
 
-Module.myrealm = GetRealmName()
-
-do
-	local function GWGetClassColor(class, useClassColor, forNameString)
-		if not class or not useClassColor then
-			return RAID_CLASS_COLORS.PRIEST
-		end
-
-		local color = RAID_CLASS_COLORS[class]
-		local colorForNameString
-
-		if type(color) ~= "table" then
-			return
-		end
-
-		if not color.colorStr then
-			color.colorStr = Module.RGBToHex(color.r, color.g, color.b, "ff")
-		elseif strlen(color.colorStr) == 6 then
-			color.colorStr = "ff" .. color.colorStr
-		end
-
-		return forNameString and colorForNameString or color
-	end
-	Module.GWGetClassColor = GWGetClassColor
-end
-
 local menuList = {
 	{ text = OPTIONS, isTitle = true, notCheckable = true },
 	{ text = INVITE, hasArrow = true, notCheckable = true },
@@ -46,14 +20,7 @@ local mobilestatus = {
 	[2] = [[|TInterface\ChatFrame\UI-ChatIcon-ArmoryChat-BusyMobile:14:14:0:0:16:16:0:16:0:16|t]],
 }
 
-Module.FACTION_COLOR = {
-	[1] = { r = 163 / 255, g = 46 / 255, b = 54 / 255 }, --Horde
-	[2] = { r = 57 / 255, g = 115 / 255, b = 186 / 255 }, --Alliance
-}
-
-Module.myfaction, Module.myLocalizedFaction = UnitFactionGroup("player")
-
-local tthead = Module.myfaction == "Alliance" and Module.FACTION_COLOR[2] or Module.FACTION_COLOR[1]
+local tthead = { r = 0.36, g = 0.75, b = 0.74 }
 local ttsubh = { r = 1, g = 0.93, b = 0.73 }
 local ttoff = { r = 0.3, g = 1, b = 0.3 }
 local activezone = { r = 0.3, g = 1.0, b = 0.3 }
@@ -101,7 +68,7 @@ function Module.FetchGuildMembers()
 
 		if connected or isMobile then
 			guildTable[#guildTable + 1] = {
-				name = gsub(name, gsub(Module.myrealm, "[%s%-]", ""), ""),
+				name = gsub(name, gsub(Module.MyRealm, "[%s%-]", ""), ""),
 				rank = rank,
 				level = level,
 				zone = zone,
@@ -183,7 +150,7 @@ function Module.Guild_OnEnter(self)
 			zonec = inactivezone
 		end
 
-		local classc, levelc = Module.GWGetClassColor(info.class, true, true), GetQuestDifficultyColor(info.level)
+		local classc, levelc = Module.ClassColors[info.class], GetQuestDifficultyColor(info.level)
 		if not classc then
 			classc = levelc
 		end
@@ -206,6 +173,7 @@ end
 
 local function inviteClick(_, name, guid)
 	Module.EasyMenu:Hide()
+	print(Module.EasyMenu)
 
 	if not (name and name ~= "") then
 		return
@@ -238,7 +206,7 @@ function Module.Guild_OnClick(self, button)
 
 		for _, info in ipairs(guildTable) do
 			if (info.online or info.isMobile) and strmatch(info.name, "([^%-]+).*") ~= Module.myname then
-				local classc, levelc = Module.GWGetClassColor(info.class, true, true), GetQuestDifficultyColor(info.level)
+				local classc, levelc = Module.ClassColors[info.class], GetQuestDifficultyColor(info.level)
 				if not classc then
 					classc = levelc
 				end

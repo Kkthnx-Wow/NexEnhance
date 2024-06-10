@@ -36,6 +36,8 @@ Init.lua
 # Core
 Core\Database.lua
 Core\Functions.lua
+Core\Developer.lua
+Core\Personal.lua
 
 # Modules
 Modules\Actionbars\Cooldowns.lua

@@ -367,6 +367,52 @@ do
 end
 
 do
+	function Core.GetScreenQuadrant(frame)
+		local x, y = frame:GetCenter()
+		local screenWidth = GetScreenWidth()
+		local screenHeight = GetScreenHeight()
+
+		if not (x and y) then
+			return "UNKNOWN"
+		end
+
+		local point
+		if (x > (screenWidth / 3) and x < (screenWidth / 3) * 2) and y > (screenHeight / 3) * 2 then
+			point = "TOP"
+		elseif x < (screenWidth / 3) and y > (screenHeight / 3) * 2 then
+			point = "TOPLEFT"
+		elseif x > (screenWidth / 3) * 2 and y > (screenHeight / 3) * 2 then
+			point = "TOPRIGHT"
+		elseif (x > (screenWidth / 3) and x < (screenWidth / 3) * 2) and y < (screenHeight / 3) then
+			point = "BOTTOM"
+		elseif x < (screenWidth / 3) and y < (screenHeight / 3) then
+			point = "BOTTOMLEFT"
+		elseif x > (screenWidth / 3) * 2 and y < (screenHeight / 3) then
+			point = "BOTTOMRIGHT"
+		elseif x < (screenWidth / 3) and (y > (screenHeight / 3) and y < (screenHeight / 3) * 2) then
+			point = "LEFT"
+		elseif x > (screenWidth / 3) * 2 and y < (screenHeight / 3) * 2 and y > (screenHeight / 3) then
+			point = "RIGHT"
+		else
+			point = "CENTER"
+		end
+
+		return point
+	end
+
+	Core.EasyMenu = Core.Libs.LibDD:Create_UIDropDownMenu("NE_EasyMenu", UIParent)
+
+	function Core.SetEasyMenuAnchor(menu, frame)
+		local point = Core.GetScreenQuadrant(frame)
+		local bottom = point and strfind(point, "BOTTOM")
+		local left = point and strfind(point, "LEFT")
+
+		local anchor1 = (bottom and left and "BOTTOMLEFT") or (bottom and "BOTTOMRIGHT") or (left and "TOPLEFT") or "TOPRIGHT"
+		local anchor2 = (bottom and left and "TOPLEFT") or (bottom and "TOPRIGHT") or (left and "BOTTOMLEFT") or "BOTTOMRIGHT"
+
+		Core.Libs.LibDD:UIDropDownMenu_SetAnchor(menu, 0, 0, anchor1, frame, anchor2)
+	end
+
 	-- Sets font size for a font string
 	function Core:SetFontSize(fontString, size)
 		fontString:SetFont(Core.Font[1], size, Core.Font[3])

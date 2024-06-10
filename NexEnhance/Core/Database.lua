@@ -39,7 +39,7 @@ for class, value in pairs(colors) do
 end
 
 -- Get RGB values for player's class color
-Core.r, Core.g, Core.b = Core.ClassColors[Core.Class].r, Core.ClassColors[Core.Class].g, Core.ClassColors[Core.Class].b
+Core.r, Core.g, Core.b = Core.ClassColors[Core.MyClass].r, Core.ClassColors[Core.MyClass].g, Core.ClassColors[Core.MyClass].b
 
 -- Convert RGB values to hexadecimal color string
 Core.MyColor = format("|cff%02x%02x%02x", Core.r * 255, Core.g * 255, Core.b * 255)

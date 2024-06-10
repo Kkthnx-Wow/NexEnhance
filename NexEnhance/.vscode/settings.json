@@ -468,7 +468,8 @@
         "GossipFrameCloseButton",
         "StaticPopup_Hide",
         "QuestFrame",
-        "LE_PARTY_CATEGORY_HOME"
+        "LE_PARTY_CATEGORY_HOME",
+        "WORLD"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

@@ -29,8 +29,9 @@ local function CreateSplashScreen()
 
 	splash.logo = splash:CreateTexture(nil, "BACKGROUND")
 	splash.logo:SetBlendMode("ADD")
-	splash.logo:SetAlpha(0.07)
-	splash.logo:SetTexture(Core.Logo)
+	splash.logo:SetAlpha(0.08)
+	splash.logo:SetScale(0.7)
+	splash.logo:SetTexture(Core.Logo256)
 	splash.logo:SetPoint("CENTER")
 
 	local button = CreateFrame("Button", nil, splash, "UIPanelButtonTemplate")
@@ -44,7 +45,7 @@ local function CreateSplashScreen()
 		PlaySound(21968)
 		Core.db.profile.settingsApplied = true
 		splash:Hide()
-		StaticPopup_Show("NEXENHANCE_RELOAD")
+		-- StaticPopup_Show("NEXENHANCE_RELOAD")
 	end)
 
 	return splash

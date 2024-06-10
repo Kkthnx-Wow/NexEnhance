@@ -16,7 +16,11 @@ Core.MyFaction = UnitFactionGroup("player")
 Core.InfoColor = "|CFF5bc0be"
 Core.SystemColor = "|CFFFFCC66"
 
-Core.Logo = "Interface\\AddOns\\NexEnhance\\Media\\Logo.blp"
+Core.Media = "Interface\\AddOns\\NexEnhance\\Media\\"
+
+Core.Logo256 = Core.Media .. "Logo256.blp"
+Core.Logo128 = Core.Media .. "Logo128.blp"
+Core.Logo64 = Core.Media .. "Logo64.blp"
 
 -- Initialize tables for class colors/list and item quality colors
 Core.ClassList = {}

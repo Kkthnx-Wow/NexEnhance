@@ -203,6 +203,11 @@ function Module:SkinChat()
 	lang:SetPoint("TOPLEFT", eb, "TOPRIGHT", 5, 0)
 	lang:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT", 29, 0)
 
+	local backdrop2 = CreateFrame("Frame", nil, lang, "TooltipBackdropTemplate")
+	backdrop2:SetAllPoints(lang)
+	backdrop2:SetFrameLevel(lang:GetFrameLevel())
+	lang.backdrop2 = backdrop2
+
 	local tab = _G[name .. "Tab"]
 	Module.RemoveTextures(tab, 7)
 	tab:SetAlpha(1)

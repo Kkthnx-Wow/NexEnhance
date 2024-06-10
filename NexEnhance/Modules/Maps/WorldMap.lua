@@ -66,7 +66,7 @@ end
 
 local function CoordsFormat(owner, none)
 	local text = none and ": --, --" or ": %.1f, %.1f"
-	return owner .. Module.MyColor .. text
+	return owner .. Module.MyClassColor .. text
 end
 
 function Module:UpdateCoords(elapsed)

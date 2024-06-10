@@ -16,6 +16,8 @@ Core.MyFaction = UnitFactionGroup("player")
 Core.InfoColor = "|CFF5bc0be"
 Core.SystemColor = "|CFFFFCC66"
 
+Core.Logo = "Interface\\AddOns\\NexEnhance\\Media\\Logo.blp"
+
 -- Initialize tables for class colors/list and item quality colors
 Core.ClassList = {}
 Core.ClassColors = {}
@@ -42,7 +44,7 @@ end
 Core.r, Core.g, Core.b = Core.ClassColors[Core.MyClass].r, Core.ClassColors[Core.MyClass].g, Core.ClassColors[Core.MyClass].b
 
 -- Convert RGB values to hexadecimal color string
-Core.MyColor = format("|cff%02x%02x%02x", Core.r * 255, Core.g * 255, Core.b * 255)
+Core.MyClassColor = format("|cff%02x%02x%02x", Core.r * 255, Core.g * 255, Core.b * 255)
 
 -- Populate QualityColors table with item quality colors
 local qualityColors = BAG_ITEM_QUALITY_COLORS

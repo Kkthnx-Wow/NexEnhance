@@ -1,4 +1,4 @@
-local _, Personal = ...
+local AddonName, Core = ...
 
 StaticPopupDialogs["NEXENHANCE_RELOAD"] = {
 	text = "Changes have been made that require a reload.",
@@ -13,36 +13,36 @@ StaticPopupDialogs["NEXENHANCE_RELOAD"] = {
 }
 
 local function CreateSplashScreen()
-	local splash = CreateFrame("Frame", "PersonalSplashScreen", UIParent, "BackdropTemplate")
+	local splash = CreateFrame("Frame", "NE_SplashScreen", UIParent, "TooltipBackdropTemplate")
 	splash:SetSize(400, 200)
 	splash:SetPoint("CENTER")
-	splash:SetBackdrop({
-		bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
-		edgeFile = "Interface\\DialogFrame\\UI-DialogBox-Border",
-		tile = true,
-		tileSize = 32,
-		edgeSize = 32,
-		insets = { left = 11, right = 12, top = 12, bottom = 11 },
-	})
 
 	splash.text = splash:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 	splash.text:SetPoint("TOP", 0, -16)
-	splash.text:SetText("Welcome to NexEnhance")
+	splash.text:SetText("Welcome to " .. Core.InfoColor .. AddonName .. ",|r " .. Core.MyClassColor .. Core.MyName .. "|r")
 
 	splash.desc = splash:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-	splash.desc:SetPoint("TOP", splash.text, "BOTTOM", 0, -8)
-	splash.desc:SetText("Click the button below to apply the default settings.")
+	splash.desc:SetPoint("TOP", splash.text, "BOTTOM", 0, -16)
+	splash.desc:SetWidth(370)
+	splash.desc:SetJustifyH("CENTER")
+	splash.desc:SetText("Click the button below to configure your interface with the recommended settings for an optimized and enhanced gaming experience.|n|nThis step is essential to ensure all features and enhancements are applied correctly.")
+
+	splash.logo = splash:CreateTexture(nil, "BACKGROUND")
+	splash.logo:SetBlendMode("ADD")
+	splash.logo:SetAlpha(0.07)
+	splash.logo:SetTexture(Core.Logo)
+	splash.logo:SetPoint("CENTER")
 
 	local button = CreateFrame("Button", nil, splash, "UIPanelButtonTemplate")
-	button:SetSize(200, 40)
+	button:SetSize(160, 36)
 	button:SetPoint("BOTTOM", 0, 16)
 	button:SetText("Apply Settings")
 
 	button:SetScript("OnClick", function()
-		Personal:ForceDefaultCVars()
-		Personal:ForceChatSettings()
+		Core:ForceDefaultCVars()
+		Core:ForceChatSettings()
 		PlaySound(21968)
-		Personal.db.profile.settingsApplied = true
+		Core.db.profile.settingsApplied = true
 		splash:Hide()
 		StaticPopup_Show("NEXENHANCE_RELOAD")
 	end)
@@ -50,7 +50,7 @@ local function CreateSplashScreen()
 	return splash
 end
 
-function Personal:ForceDefaultCVars()
+function Core:ForceDefaultCVars()
 	local defaultCVars = {
 		{ "RotateMinimap", 0 },
 		{ "ShowClassColorInNameplate", 1 },
@@ -124,20 +124,20 @@ function Personal:ForceDefaultCVars()
 			SetCVar(cvar[1], cvar[2])
 		end
 	else
-		Personal:Print("Skipped setting combat CVars due to combat lockdown.")
+		Core:Print("Skipped setting combat CVars due to combat lockdown.")
 	end
 
-	-- Apply developer-specific CVars if Personal.isDeveloper is true
-	if Personal.isDeveloper then
+	-- Apply developer-specific CVars if isDeveloper is true
+	if Core.isDeveloper then
 		for _, cvar in pairs(developerCVars) do
 			SetCVar(cvar[1], cvar[2])
 		end
 	else
-		Personal:Print("Skipped setting developer CVars as Personal.isDeveloper is not true.")
+		Core:Print("Skipped setting developer CVars as isDeveloper is not true.")
 	end
 end
 
-function Personal:ForceChatSettings()
+function Core:ForceChatSettings()
 	local function resetAndConfigureChatFrames()
 		FCF_ResetChatWindows()
 
@@ -146,12 +146,7 @@ function Personal:ForceChatSettings()
 			local id = frame:GetID()
 
 			-- Configure specific frames based on their IDs
-			if id == 1 then
-				frame:ClearAllPoints()
-				frame:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 7, 11)
-			elseif id == 2 then
-				FCF_SetWindowName(frame, Personal.L["CombatLog"])
-			elseif id == 3 then
+			if id == 3 then
 				-- Voice transcription specific settings
 				VoiceTranscriptionFrame_UpdateVisibility(frame)
 				VoiceTranscriptionFrame_UpdateVoiceTab(frame)
@@ -160,8 +155,6 @@ function Personal:ForceChatSettings()
 
 			-- Common configuration for all frames
 			FCF_SetChatWindowFontSize(nil, frame, 12)
-			FCF_SavePositionAndDimensions(frame)
-			FCF_StopDragging(frame)
 		end
 	end
 
@@ -206,11 +199,11 @@ function Personal:ForceChatSettings()
 	resetAndConfigureChatFrames()
 
 	-- Configure specific chat frames
-	configureChatFrame(ChatFrame1, "General", { "Trade", "Services", "General", "GuildRecruitment", "LookingForGroup" }, { "ACHIEVEMENT", "AFK", "BG_ALLIANCE", "BG_HORDE", "BG_NEUTRAL", "BN_INLINE_TOAST_ALERT", "CHANNEL", "DND", "EMOTE", "ERRORS", "GUILD", "GUILD_ACHIEVEMENT", "IGNORED", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER", "MONSTER_BOSS_EMOTE", "MONSTER_BOSS_WHISPER", "MONSTER_EMOTE", "MONSTER_SAY", "MONSTER_WHISPER", "MONSTER_YELL", "OFFICER", "PARTY", "PARTY_LEADER", "PING", "RAID", "RAID_LEADER", "RAID_WARNING", "SAY", "SYSTEM", "YELL" })
-	configureChatFrame(ChatFrame2, "CombatLog", nil, {}, true)
-	configureChatFrame(ChatFrame4, "Whisper", nil, { "WHISPER", "BN_WHISPER", "BN_CONVERSATION" }, true)
-	configureChatFrame(ChatFrame5, "Trade", nil, {}, true)
-	configureChatFrame(ChatFrame6, "Loot", nil, { "COMBAT_XP_GAIN", "COMBAT_HONOR_GAIN", "COMBAT_FACTION_CHANGE", "SKILL", "LOOT", "CURRENCY", "MONEY" }, true)
+	configureChatFrame(ChatFrame1, Core.L["General"], { "Trade", "Services", "General", "GuildRecruitment", "LookingForGroup" }, { "ACHIEVEMENT", "AFK", "BG_ALLIANCE", "BG_HORDE", "BG_NEUTRAL", "BN_INLINE_TOAST_ALERT", "CHANNEL", "DND", "EMOTE", "ERRORS", "GUILD", "GUILD_ACHIEVEMENT", "IGNORED", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER", "MONSTER_BOSS_EMOTE", "MONSTER_BOSS_WHISPER", "MONSTER_EMOTE", "MONSTER_SAY", "MONSTER_WHISPER", "MONSTER_YELL", "OFFICER", "PARTY", "PARTY_LEADER", "PING", "RAID", "RAID_LEADER", "RAID_WARNING", "SAY", "SYSTEM", "YELL" })
+	configureChatFrame(ChatFrame2, Core.L["Log"], nil, {}, true)
+	configureChatFrame(ChatFrame4, Core.L["Whisper"], nil, { "WHISPER", "BN_WHISPER", "BN_CONVERSATION" }, true)
+	configureChatFrame(ChatFrame5, Core.L["Trade"], nil, {}, true)
+	configureChatFrame(ChatFrame6, Core.L["Loot"], nil, { "COMBAT_XP_GAIN", "COMBAT_HONOR_GAIN", "COMBAT_FACTION_CHANGE", "SKILL", "LOOT", "CURRENCY", "MONEY" }, true)
 
 	configureChatColors()
 	local classColorGroups = { "SAY", "EMOTE", "YELL", "WHISPER", "PARTY", "PARTY_LEADER", "RAID", "RAID_LEADER", "RAID_WARNING", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER", "GUILD", "OFFICER", "ACHIEVEMENT", "GUILD_ACHIEVEMENT", "COMMUNITIES_CHANNEL" }
@@ -221,18 +214,11 @@ function Personal:ForceChatSettings()
 	enableClassColors(classColorGroups)
 end
 
-function Personal:PLAYER_LOGIN()
-	if not Personal.db.profile.settingsApplied then
+function Core:PLAYER_LOGIN()
+	if not Core.db.profile.settingsApplied then
 		local splash = CreateSplashScreen()
 		splash:Show()
+	else
+		Core:Print(Core.InfoColor .. "v" .. Core.SystemColor .. C_AddOns.GetAddOnMetadata(AddonName, "Version"))
 	end
-	-- else
-	-- 	C_Timer.After(1, function()
-	-- 		Personal:ForceDefaultCVars()
-	-- 		Personal:ForceChatSettings()
-	-- 		PlaySound(21968)
-	-- 		Personal:Print("Personal setup completed. Default CVars and Chat Settings applied.")
-	-- 		StaticPopup_Show("NEXENHANCE_RELOAD")
-	-- 	end)
-	-- end
 end

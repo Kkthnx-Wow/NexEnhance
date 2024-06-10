@@ -36,8 +36,8 @@ Init.lua
 # Core
 Core\Database.lua
 Core\Functions.lua
+Core\Installer.lua
 Core\Developer.lua
-Core\Personal.lua
 
 # Modules
 Modules\Actionbars\Cooldowns.lua
@@ -48,6 +48,7 @@ Modules\Blizzard\ChatBubble.lua
 Modules\Blizzard\CharacterFrame.lua
 Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
+Modules\Blizzard\QuestNavigation.lua
 Modules\Chat\Core.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua

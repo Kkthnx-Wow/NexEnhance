@@ -20,14 +20,14 @@ local hooked = {} -- Hooked cooldowns
 
 function Module.FormattedTimer(s, modRate)
 	if s >= day then
-		return format("%d" .. Module.MyColor .. "d", s / day + 0.5), s % day
+		return format("%d" .. Module.MyClassColor .. "d", s / day + 0.5), s % day
 	elseif s > hour then
-		return format("%d" .. Module.MyColor .. "h", s / hour + 0.5), s % hour
+		return format("%d" .. Module.MyClassColor .. "h", s / hour + 0.5), s % hour
 	elseif s >= minute then
 		if s < Module.db.profile.actionbars.MmssTH then
 			return format("%d:%.2d", s / minute, s % minute), s - floor(s)
 		else
-			return format("%d" .. Module.MyColor .. "m", s / minute + 0.5), s % minute
+			return format("%d" .. Module.MyClassColor .. "m", s / minute + 0.5), s % minute
 		end
 	else
 		local colorStr = (s < 3 and "|cffff0000") or (s < 10 and "|cffffff00") or "|cffcccc33"

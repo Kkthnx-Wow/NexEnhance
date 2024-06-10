@@ -1,4 +1,6 @@
-# NexEnhance
+# NexEnhance   
+   
+![Logo (1)](https://github.com/Kkthnx-Wow/NexEnhance/assets/40672673/f335ef6a-c4da-4ede-a850-dd6400c0a6da)
 
 Supercharge your World of Warcraft experience with **NexEnhance**! Developed by Kkthnx, this powerful addon enhances your UI and streamlines your gameplay with customizable features and quality-of-life improvements.
 

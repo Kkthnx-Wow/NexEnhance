@@ -34,3 +34,4 @@ Released under the MIT License. For more information, see the [LICENSE](https://
 
 
 ![WoWScrnShot_061024_124551](https://github.com/Kkthnx-Wow/NexEnhance/assets/40672673/83cf08be-19c0-4852-8d72-90588ab028e5)
+![Wow_g01HeJjxNO](https://github.com/Kkthnx-Wow/NexEnhance/assets/40672673/12d08dce-b576-40c4-b4c1-28edf01c7a0f)

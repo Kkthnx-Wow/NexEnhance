@@ -469,7 +469,25 @@
         "StaticPopup_Hide",
         "QuestFrame",
         "LE_PARTY_CATEGORY_HOME",
-        "WORLD"
+        "WORLD",
+        "FRIENDS_LIST_ONLINE",
+        "FRIENDS_LIST",
+        "PLAYER_STATUS",
+        "BN_BROADCAST_TOOLTIP",
+        "ChatFrame_SendBNetTell",
+        "COMMUNITIES_PRESENCE_MOBILE_CHAT",
+        "BNet_GetValidatedCharacterName",
+        "CHARACTER_FRIEND",
+        "AVAILABLE",
+        "BATTLENET_OPTIONS_LABEL",
+        "NEWBIE_TOOLTIP_CHARACTER",
+        "CharacterMicroButton",
+        "MicroButtonTooltipText",
+        "MainMenuBarMicroButtonMixin",
+        "CHARACTER_BUTTON",
+        "CHAT_MSG_SYSTEM",
+        "GUILD_ONLINE_LABEL",
+        "FRIENDS"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

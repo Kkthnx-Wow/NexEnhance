@@ -42,8 +42,9 @@ Core\Developer.lua
 # Modules
 Modules\Actionbars\Cooldowns.lua
 Modules\Actionbars\Range.lua
-Modules\Automation\AutoSell.lua
 Modules\Automation\AutoRepair.lua
+Modules\Automation\AutoSell.lua
+Modules\Automation\DeclineDuels.lua
 Modules\Blizzard\ChatBubble.lua
 Modules\Blizzard\CharacterFrame.lua
 Modules\Blizzard\InspectFrame.lua
@@ -52,7 +53,6 @@ Modules\Blizzard\QuestNavigation.lua
 Modules\Chat\Core.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
-Modules\Datatext\Guild.lua
 Modules\General\AutoScale.lua
 Modules\Loot\FasterLoot.lua
 Modules\Miscellaneous\MissingStats.lua

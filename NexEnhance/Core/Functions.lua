@@ -495,3 +495,31 @@ do
 		end
 	end
 end
+
+do
+	-- Setup backdrop
+	function Core:CreateBackdropFrame(offsetX, offsetY)
+		local targetFrame = self
+
+		-- Use default offsets if none provided
+		offsetX = offsetX or 0
+		offsetY = offsetY or 0
+
+		-- Adjust targetFrame if the provided object is a texture
+		if self:IsObjectType("Texture") then
+			self = self:GetParent()
+		end
+
+		-- Get the frame level, defaulting to 0 if necessary
+		local targetFrameLevel = targetFrame:GetFrameLevel()
+		local backdropFrameLevel = (targetFrameLevel == 0) and 0 or (targetFrameLevel - 1)
+
+		-- Create the backdrop frame
+		local backdropFrame = CreateFrame("Frame", nil, targetFrame, "TooltipBackdropTemplate")
+		backdropFrame:SetPoint("TOPLEFT", targetFrame, "TOPLEFT", -offsetX, offsetY)
+		backdropFrame:SetPoint("BOTTOMRIGHT", targetFrame, "BOTTOMRIGHT", offsetX, -offsetY)
+		backdropFrame:SetFrameLevel(backdropFrameLevel)
+
+		return backdropFrame
+	end
+end

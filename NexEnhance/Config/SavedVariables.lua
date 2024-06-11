@@ -13,6 +13,9 @@ local defaults = {
 			AnnoyingBuffs = true,
 			AutoRepair = 2,
 			AutoSell = true,
+			DeclineDuels = false,
+			DeclinePetDuels = false,
+			AutoScreenshotAchieve = false,
 		},
 		blizzard = {
 			characterFrame = true,

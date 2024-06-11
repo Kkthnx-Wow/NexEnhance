@@ -1,5 +1,28 @@
 local AddonName, Config = ...
 
+local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
+local DEFAULT_SIZE = 16
+
+local function GetTextureMarkup(icon, size)
+	icon = icon or DEFAULT_ICON
+	size = size or DEFAULT_SIZE
+	return string.format("|T%s:%d|t", icon, size)
+end
+
+local function GetAtlasMarkup(atlas, size)
+	size = size or DEFAULT_SIZE
+	return string.format("|A:%s:%d:%d|a", atlas, size, size)
+end
+
+local function GetIconString(iconMarkup)
+	if not iconMarkup then
+		error("Invalid input parameter for GetIconString")
+	end
+	return iconMarkup
+end
+
+local NewFeature = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
+
 local function CreateOptions()
 	CreateOptions = nop -- we only want to load this once
 
@@ -80,6 +103,11 @@ local function CreateOptions()
 				end,
 				set = function(info, value)
 					Config.db.profile.automation[info[#info]] = value
+					if info[#info] == "DeclineDuels" or info[#info] == "DeclinePetDuels" then
+						Config:CreateAutoDeclineDuels()
+					elseif info[#info] == "AutoScreenshotAchieve" then
+						Config:ToggleAutoScreenshotAchieve()
+					end
 				end,
 				args = {
 					AnnoyingBuffs = {
@@ -100,6 +128,20 @@ local function CreateOptions()
 						order = 3,
 						name = "Auto-Sell Trash",
 						desc = "Automatically sells junk items when visiting a vendor.",
+						type = "toggle",
+						width = "double",
+					},
+					DeclineDuels = {
+						order = 4,
+						name = "Auto-Decline Duels",
+						desc = "Automatically declines incoming duel requests.",
+						type = "toggle",
+						width = "double",
+					},
+					AutoScreenshotAchieve = {
+						order = 5,
+						name = "Auto-Screenshot on Achievement",
+						desc = "Automatically takes a screenshot when you earn an achievement.|n|n|A:UI-Achievement-Alert-Background:0:0:0:0|a",
 						type = "toggle",
 						width = "double",
 					},

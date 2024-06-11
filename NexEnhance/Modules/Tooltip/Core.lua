@@ -319,9 +319,16 @@ end
 
 function Module:ReskinStatusBar()
 	self.StatusBar:ClearAllPoints()
-	self.StatusBar:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 4, 2)
-	self.StatusBar:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", -4, 2)
+	self.StatusBar:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 4, 4)
+	self.StatusBar:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", -4, 4)
 	self.StatusBar:SetHeight(11)
+
+	-- self.StatusBar.backdrop = CreateFrame("Frame", nil, self.StatusBar, "TooltipBackdropTemplate")
+	-- self.StatusBar.backdrop:SetPoint("TOPLEFT", self.StatusBar, "TOPLEFT", -4, 4)
+	-- self.StatusBar.backdrop:SetPoint("BOTTOMRIGHT", self.StatusBar, "BOTTOMRIGHT", 4, -4)
+	-- self.StatusBar.backdrop:SetFrameLevel(self:GetFrameLevel() + 1)
+
+	Module.CreateBackdropFrame(self.StatusBar, 4, 4)
 end
 
 -- A wrapper for Tooltip:SetBackdropBorderColor that continues to work in WoW 9.1.5+. -- Thanks pawn

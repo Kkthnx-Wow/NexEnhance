@@ -34,6 +34,10 @@ for k, v in pairs(LOCALIZED_CLASS_NAMES_FEMALE) do
 	Core.ClassList[v] = k
 end
 
+function Core.ClassListClassName(className)
+	return (className and className ~= "") and Core.ClassList[className]
+end
+
 -- Populate ClassColors table with class colors
 local colors = CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS
 for class, value in pairs(colors) do

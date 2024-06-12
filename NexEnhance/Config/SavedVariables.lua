@@ -22,7 +22,10 @@ local defaults = {
 			chatbubble = true,
 			inspectFrame = true,
 		},
-		chat = {},
+		chat = {
+			Background = false,
+			URL = false,
+		},
 		general = {
 			AutoScale = false,
 			UIScale = 0.53,

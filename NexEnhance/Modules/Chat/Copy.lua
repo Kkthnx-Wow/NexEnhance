@@ -13,6 +13,7 @@ local PlaySound = PlaySound
 local ScrollFrameTemplate_OnMouseWheel = ScrollFrameTemplate_OnMouseWheel
 local UIParent = UIParent
 
+local frame, menu
 local lines = {}
 local editBox
 
@@ -29,14 +30,10 @@ local function isMessageProtected(msg)
 end
 
 local function replaceMessage(msg, r, g, b)
-	-- Convert the color values to a hex string
 	local hexRGB = Module.RGBToHex(r, g, b)
-	-- Replace the texture path or id with only the path/id
-	msg = string.gsub(msg, "|T(.-):.-|t", "%1")
-	-- Replace the atlas path or id with only the path/id
-	msg = string.gsub(msg, "|A(.-):.-|a", "%1")
-	-- Return the modified message with the hex color code added
-	return string.format("%s%s|r", hexRGB, msg)
+	msg = gsub(msg, "|T(.-):.-|t", "")
+	msg = gsub(msg, "|A(.-):.-|a", "")
+	return format("%s%s|r", hexRGB, msg)
 end
 
 function Module:GetChatLines()
@@ -70,7 +67,37 @@ function Module:ChatCopy_OnClick(btn)
 		else
 			frame:Hide()
 		end
+	elseif btn == "RightButton" then
+		-- B:TogglePanel(menu)
+		-- C.db["Chat"]["ChatMenu"] = menu:IsShown()
 	end
+end
+
+local function ResetChatAlertJustify(frame)
+	frame:SetJustification("LEFT")
+end
+
+local CChatMenu = true
+function Module:ChatCopy_CreateMenu()
+	menu = CreateFrame("Frame", "NE_ChatMenu", UIParent)
+	menu:SetSize(25, 100)
+	menu:SetPoint("TOPLEFT", _G.ChatFrame1, "TOPRIGHT", 15, 0)
+	menu:SetShown(CChatMenu)
+
+	_G.ChatFrameMenuButton:ClearAllPoints()
+	_G.ChatFrameMenuButton:SetPoint("TOP", menu)
+	_G.ChatFrameMenuButton:SetParent(menu)
+	_G.ChatFrameChannelButton:ClearAllPoints()
+	_G.ChatFrameChannelButton:SetPoint("TOP", _G.ChatFrameMenuButton, "BOTTOM", 0, -4)
+	_G.ChatFrameChannelButton:SetParent(menu)
+	_G.ChatFrameToggleVoiceDeafenButton:SetParent(menu)
+	_G.ChatFrameToggleVoiceMuteButton:SetParent(menu)
+	_G.QuickJoinToastButton:SetParent(menu)
+
+	_G.ChatAlertFrame:ClearAllPoints()
+	_G.ChatAlertFrame:SetPoint("BOTTOMLEFT", _G.ChatFrame1Tab, "TOPLEFT", 5, 25)
+	ResetChatAlertJustify(_G.ChatAlertFrame)
+	hooksecurefunc(_G.ChatAlertFrame, "SetChatButtonSide", ResetChatAlertJustify)
 end
 
 function Module:ChatCopy_Create()
@@ -117,8 +144,8 @@ function Module:ChatCopy_Create()
 	end)
 
 	local copy = CreateFrame("Button", "NE_ChatCopyButton", UIParent)
-	copy:SetPoint("BOTTOMRIGHT", _G.ChatFrame1, "BOTTOMRIGHT", 14, -6)
-	copy:SetSize(16, 16)
+	copy:SetPoint("BOTTOMRIGHT", _G.ChatFrame1, 15, -6)
+	copy:SetSize(20, 20)
 	copy:SetAlpha(0.25)
 
 	copy.Texture = copy:CreateTexture(nil, "ARTWORK")
@@ -148,5 +175,6 @@ function Module:ChatCopy_Create()
 end
 
 function Module:PLAYER_LOGIN()
+	self:ChatCopy_CreateMenu()
 	self:ChatCopy_Create()
 end

@@ -18,9 +18,13 @@ Core.SystemColor = "|CFFFFCC66"
 
 Core.Media = "Interface\\AddOns\\NexEnhance\\Media\\"
 
-Core.Logo256 = Core.Media .. "Logo256.blp"
-Core.Logo128 = Core.Media .. "Logo128.blp"
-Core.Logo64 = Core.Media .. "Logo64.blp"
+Core.Logo256 = Core.Media .. "Logos\\Logo256.blp"
+Core.Logo128 = Core.Media .. "Logos\\Logo128.blp"
+Core.Logo64 = Core.Media .. "Logos\\Logo64.blp"
+
+Core.Discord64 = Core.Media .. "Icons\\Discord64.blp"
+Core.Patreon64 = Core.Media .. "Icons\\Patreon64.blp"
+Core.PayPal64 = Core.Media .. "Icons\\PayPal64.blp"
 
 -- Initialize tables for class colors/list and item quality colors
 Core.ClassList = {}
@@ -32,10 +36,6 @@ for k, v in pairs(LOCALIZED_CLASS_NAMES_MALE) do
 end
 for k, v in pairs(LOCALIZED_CLASS_NAMES_FEMALE) do
 	Core.ClassList[v] = k
-end
-
-function Core.ClassListClassName(className)
-	return (className and className ~= "") and Core.ClassList[className]
 end
 
 -- Populate ClassColors table with class colors

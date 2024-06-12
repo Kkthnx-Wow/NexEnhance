@@ -1,7 +1,9 @@
 --@curseforge-project-slug: libchatanims@
 local MAJOR, MINOR = "LibChatAnims", 4 -- Bump minor on changes
 local LCA = LibStub:NewLibrary(MAJOR, MINOR)
-if not LCA then return end -- No upgrade needed
+if not LCA then
+	return
+end -- No upgrade needed
 
 LCA.animations = LCA.animations or {} -- Animation storage
 LCA.alerting = LCA.alerting or {} -- Chat tab alerting storage
@@ -134,7 +136,7 @@ end
 --end
 
 FCF_StartAlertFlash = function(chatFrame)
-	local chatTab = _G[chatFrame:GetName().."Tab"]
+	local chatTab = _G[chatFrame:GetName() .. "Tab"]
 
 	if chatFrame.minFrame then
 		if not anims[chatFrame.minFrame] then
@@ -182,7 +184,6 @@ FCF_StartAlertFlash = function(chatFrame)
 	--chatTab.alerting = true
 	alerting[chatTab] = true
 
-
 	-- START function FCFTab_UpdateAlpha(chatFrame)
 	local mouseOverAlpha, noMouseAlpha = 0, 0
 	if not chatFrame.isDocked or chatFrame == FCFDock_GetSelectedWindow(GENERAL_CHAT_DOCK) then
@@ -203,7 +204,7 @@ FCF_StartAlertFlash = function(chatFrame)
 end
 
 FCF_StopAlertFlash = function(chatFrame)
-	local chatTab = _G[chatFrame:GetName().."Tab"]
+	local chatTab = _G[chatFrame:GetName() .. "Tab"]
 
 	if chatFrame.minFrame then
 		if anims[chatFrame.minFrame] then
@@ -239,4 +240,3 @@ FCF_StopAlertFlash = function(chatFrame)
 
 	--FCFDockOverflowButton_UpdatePulseState(GENERAL_CHAT_DOCK.overflowButton)
 end
-

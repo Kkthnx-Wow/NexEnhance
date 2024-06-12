@@ -16,7 +16,6 @@ Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 Libs\LibChatAnims\LibChatAnims.lua
 Libs\Dashi\embed.xml
-Libs\LibUIDropDownMenu\LibUIDropDownMenu.lua
 
 # Initialization
 Init.lua
@@ -42,15 +41,18 @@ Core\Developer.lua
 # Modules
 Modules\Actionbars\Cooldowns.lua
 Modules\Actionbars\Range.lua
+Modules\Automation\AnnoyingBuffs.lua
 Modules\Automation\AutoRepair.lua
 Modules\Automation\AutoSell.lua
 Modules\Automation\DeclineDuels.lua
-Modules\Blizzard\ChatBubble.lua
 Modules\Blizzard\CharacterFrame.lua
+Modules\Blizzard\ChatBubble.lua
+Modules\Blizzard\ChatFrame.lua
 Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
 Modules\Blizzard\QuestNavigation.lua
 Modules\Chat\Core.lua
+Modules\Chat\URL.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
 Modules\General\AutoScale.lua
@@ -69,3 +71,4 @@ Modules\Unitframes\ClassColor.lua
 # Config
 Config\SavedVariables.lua
 Config\Options.lua
+Config\Support.lua

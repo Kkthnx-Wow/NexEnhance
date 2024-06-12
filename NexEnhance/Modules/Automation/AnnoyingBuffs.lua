@@ -3,41 +3,40 @@ local _, Module = ...
 local UnitBuff = UnitBuff
 local InCombatLockdown = InCombatLockdown
 
-Module.CheckBadBuffs = {
-	[172003] = true,
-	[172008] = true,
-	[172010] = true,
-	[172015] = true,
-	[172020] = true,
-	[24709] = true,
-	[24710] = true,
-	[24712] = true,
-	[24723] = true,
-	[24732] = true,
-	[24735] = true,
-	[24740] = true,
-	[279509] = true,
-	[44212] = true,
-	[58493] = true,
-	[61716] = true,
-	[61734] = true,
-	[61781] = true,
-	[261477] = true,
-	[354550] = true,
-	[354481] = true,
+Module.CheckAnnoyingBuffs = {
+	[172003] = true, -- Red Ogre Costume
+	[172008] = true, -- Blue Ogre Costume
+	[172010] = true, -- Ogre Pinata
+	[172015] = true, -- Ogre Pinata
+	[172020] = true, -- Ogre Pinata
+	[24709] = true, -- Pirate Costume
+	[24710] = true, -- Leper Gnome Costume
+	[24712] = true, -- Skeleton Costume
+	[24723] = true, -- Polymorph: Pig
+	[24732] = true, -- Polymorph: Turtle
+	[24735] = true, -- Polymorph: Cow
+	[24740] = true, -- Polymorph: Rabbit
+	[261477] = true, -- Fetch Ball
+	[279509] = true, -- Blood Elf Illusion
+	[354481] = true, -- Sparkle Transformation
+	[354550] = true, -- Spinning Sword
+	[44212] = true, -- Jack-o'-Lanterned!
+	[58493] = true, -- Anxious: Crate Costume
+	[61716] = true, -- Rabbit Costume
+	[61734] = true, -- Iron Boot Flask
+	[61781] = true, -- Headless Horseman Costume
+
+	-- [279997] = true, -- Testing with Heartsbane Curse
 }
 
--- Function to check for bad buffs and remove them
-local function CheckAndRemoveBadBuffs(event)
-	-- Check if the player is in combat, if so, register for the event when the player leaves combat
-	if InCombatLockdown() then
-		return Module:RegisterEvent("PLAYER_REGEN_ENABLED", CheckAndRemoveBadBuffs)
-	-- Unregister the event if the player has left combat
-	elseif event == "PLAYER_REGEN_ENABLED" then
-		Module:UnregisterEvent("PLAYER_REGEN_ENABLED", CheckAndRemoveBadBuffs)
-	end
+-- function Module:PLAYER_REGEN_ENABLED()
+-- 	Module:CheckAndRemoveBadBuffs()
+-- end
 
-	-- Loop through all the player's buffs
+function Module:CheckAndRemoveBadBuffs()
+	-- if InCombatLockdown() then
+	-- 	return end
+	-- else
 	local index = 1
 	while true do
 		local name, _, _, _, _, _, _, _, _, spellId = UnitBuff("player", index)
@@ -45,20 +44,20 @@ local function CheckAndRemoveBadBuffs(event)
 			return
 		end
 
-		-- Check if the current buff is a bad buff, and if so, cancel it and print a message
-		if Module.CheckAnnoyingBuffs[name] then
+		if Module.CheckAnnoyingBuffs[spellId] then -- Adjusted to use spellId instead of name
 			CancelSpellByName(name)
-			Module:Print("Removed Bad Buff" .. " " .. GetSpellLink(spellId) .. "|r")
+			Module:Print("Removed annoying buff" .. " " .. GetSpellLink(spellId) .. "|r")
 		end
 
 		index = index + 1
 	end
+	-- end
 end
 
 function Module:PLAYER_LOGIN()
 	if Module.db.profile.automation.AnnoyingBuffs then
-		Module:RegisterUnitEvent("UNIT_AURA", CheckAndRemoveBadBuffs, "player")
+		Module:RegisterUnitEvent("UNIT_AURA", "player", self.CheckAndRemoveBadBuffs)
 	else
-		Module:UnregisterUnitEvent("UNIT_AURA", CheckAndRemoveBadBuffs)
+		Module:UnregisterUnitEvent("UNIT_AURA", "player", self.CheckAndRemoveBadBuffs)
 	end
 end

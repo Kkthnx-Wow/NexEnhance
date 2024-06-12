@@ -189,6 +189,37 @@ local function CreateOptions()
 					},
 				},
 			},
+			chat = {
+				order = 3,
+				name = "Chat",
+				icon = "2056011", -- :D
+				type = "group",
+				get = function(info)
+					return Config.db.profile.chat[info[#info]]
+				end,
+				set = function(info, value)
+					Config.db.profile.chat[info[#info]] = value
+					if info[#info] == "Background" then
+						Config:ToggleChatBackground()
+					end
+				end,
+				args = {
+					Background = {
+						order = 1,
+						name = "Toggle Chat Background",
+						desc = "Needs Desc",
+						type = "toggle",
+						width = "double",
+					},
+					URL = { -- Change the name from URL to something else. This doesnt explain much!!!
+						order = 1,
+						name = "Copy Chat URLs",
+						desc = "Needs Desc",
+						type = "toggle",
+						width = "double",
+					},
+				},
+			},
 			general = {
 				order = 4,
 				name = "General",
@@ -438,6 +469,7 @@ end
 
 SettingsPanel:HookScript("OnShow", function()
 	CreateOptions() -- Load on demand
+	Config.CreateSupportGUI() -- LoD
 end)
 
 Config:RegisterSlash("/nexe", "/ne", function()

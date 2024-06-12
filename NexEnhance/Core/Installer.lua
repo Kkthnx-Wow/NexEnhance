@@ -1,17 +1,5 @@
 local AddonName, Core = ...
 
-StaticPopupDialogs["NEXENHANCE_RELOAD"] = {
-	text = "Changes have been made that require a reload.",
-	button1 = ACCEPT,
-	button2 = CANCEL,
-	OnAccept = function()
-		ReloadUI()
-	end,
-	hideOnEscape = false,
-	whileDead = 1,
-	preferredIndex = 3,
-}
-
 local function CreateSplashScreen()
 	local splash = CreateFrame("Frame", "NE_SplashScreen", UIParent, "TooltipBackdropTemplate")
 	splash:SetSize(400, 200)
@@ -45,7 +33,7 @@ local function CreateSplashScreen()
 		PlaySound(21968)
 		Core.db.profile.settingsApplied = true
 		splash:Hide()
-		-- StaticPopup_Show("NEXENHANCE_RELOAD")
+		ReloadUI()
 	end)
 
 	return splash

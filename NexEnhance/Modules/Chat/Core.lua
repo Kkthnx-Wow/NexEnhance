@@ -164,6 +164,16 @@ function Module:ToggleEditBoxAnchor()
 	end
 end
 
+local function CreateBackground(self)
+	local frame = CreateFrame("Frame", nil, self, "TooltipBackdropTemplate")
+	frame:SetPoint("TOPLEFT", self.Background, "TOPLEFT", -4, 4)
+	frame:SetPoint("BOTTOMRIGHT", self.Background, "BOTTOMRIGHT", 4, -4)
+	frame:SetFrameLevel(0)
+	frame:SetShown(Module.db.profile.chat.Background)
+
+	return frame
+end
+
 local function UpdateEditboxFont(editbox)
 	editbox:SetFont(Module.Font[1], 13, "")
 	editbox.header:SetFont(Module.Font[1], 13, "")
@@ -183,6 +193,8 @@ function Module:SkinChat()
 		self:SetMaxLines(maxLines)
 	end
 
+	self.__background = CreateBackground(self)
+
 	local eb = _G[name .. "EditBox"]
 	Module.RemoveTextures(eb, 2)
 	eb:SetAltArrowKeyMode(false)
@@ -193,10 +205,12 @@ function Module:SkinChat()
 	tinsert(chatEditboxes, eb)
 	eb:HookScript("OnTextChanged", editBoxOnTextChanged)
 
-	local backdrop = CreateFrame("Frame", nil, eb, "TooltipBackdropTemplate")
-	backdrop:SetAllPoints(eb)
-	backdrop:SetFrameLevel(eb:GetFrameLevel())
-	eb.backdrop = backdrop
+	Module.CreateBackdropFrame(eb)
+
+	-- local backdrop = CreateFrame("Frame", nil, eb, "TooltipBackdropTemplate")
+	-- backdrop:SetAllPoints(eb)
+	-- backdrop:SetFrameLevel(eb:GetFrameLevel())
+	-- eb.backdrop = backdrop
 
 	local lang = _G[name .. "EditBoxLanguage"]
 	lang:GetRegions():SetAlpha(0)
@@ -224,12 +238,33 @@ function Module:SkinChat()
 	eb.characterCount = charCount
 
 	Module.DisableUIElement(self.buttonFrame)
+	Module:ToggleChatFrameTextures(self)
 
 	self.oldAlpha = self.oldAlpha or 0 -- fix blizz error
 
 	self:HookScript("OnMouseWheel", Module.QuickMouseScroll)
 
 	self.styled = true
+end
+
+function Module:ToggleChatFrameTextures(frame)
+	if Module.db.profile.chat.Background then
+		frame:DisableDrawLayer("BORDER")
+		frame:DisableDrawLayer("BACKGROUND")
+	else
+		frame:EnableDrawLayer("BORDER")
+		frame:EnableDrawLayer("BACKGROUND")
+	end
+end
+
+function Module:ToggleChatBackground()
+	for _, chatFrameName in ipairs(CHAT_FRAMES) do
+		local frame = _G[chatFrameName]
+		if frame.__background then
+			frame.__background:SetShown(Module.db.profile.chat.Background)
+		end
+		Module:ToggleChatFrameTextures(frame)
+	end
 end
 
 -- Swith channels by Tab
@@ -306,7 +341,7 @@ function Module:UpdateEditBoxColor()
 
 	local editBox = ChatEdit_ChooseBoxForSend()
 	local chatType = editBox:GetAttribute("chatType")
-	local editBoxBorder = editBox.backdrop
+	local editBoxBorder = editBox.NE_Background
 
 	if not chatType then
 		return

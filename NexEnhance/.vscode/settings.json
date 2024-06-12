@@ -493,7 +493,9 @@
         "ChatFrameToggleVoiceMuteButton",
         "VoiceChatChannelActivatedNotification",
         "ChatEdit_ClearChat",
-        "LAST_ACTIVE_CHAT_EDIT_BOX"
+        "LAST_ACTIVE_CHAT_EDIT_BOX",
+        "Minimap_ZoomIn",
+        "Minimap_ZoomOut"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

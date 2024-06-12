@@ -52,7 +52,7 @@ Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
 Modules\Blizzard\QuestNavigation.lua
 Modules\Chat\Core.lua
-Modules\Chat\URL.lua
+Modules\Chat\URLCopy.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
 Modules\General\AutoScale.lua
@@ -62,6 +62,7 @@ Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\SlotItemLevel.lua
 Modules\Miscellaneous\yClassColors.lua
 Modules\Maps\WorldMap.lua
+Modules\Maps\EasyVolume.lua
 Modules\Tooltip\Core.lua
 Modules\Tooltip\Icons.lua
 Modules\Tooltip\SpecLevel.lua

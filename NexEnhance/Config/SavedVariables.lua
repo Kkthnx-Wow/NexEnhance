@@ -24,7 +24,7 @@ local defaults = {
 		},
 		chat = {
 			Background = false,
-			URL = false,
+			URLCopy = false,
 		},
 		general = {
 			AutoScale = false,
@@ -33,7 +33,9 @@ local defaults = {
 		loot = {
 			FasterLoot = false,
 		},
-		maps = {},
+		minimap = {
+			EasyVolume = false,
+		},
 		miscellaneous = {
 			missingStats = true,
 		},

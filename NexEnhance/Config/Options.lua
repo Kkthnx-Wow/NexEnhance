@@ -138,8 +138,15 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					AutoScreenshotAchieve = {
+					DeclinePetDuels = {
 						order = 5,
+						name = "Auto-Decline Pet Duels",
+						desc = "Automatically declines incoming battle-pet duel requests.",
+						type = "toggle",
+						width = "double",
+					},
+					AutoScreenshotAchieve = {
+						order = 6,
 						name = "Auto-Screenshot on Achievement",
 						desc = "Automatically takes a screenshot when you earn an achievement.|n|n|A:UI-Achievement-Alert-Background:0:0:0:0|a",
 						type = "toggle",
@@ -206,15 +213,15 @@ local function CreateOptions()
 				args = {
 					Background = {
 						order = 1,
-						name = "Toggle Chat Background",
-						desc = "Needs Desc",
+						name = "Chat Background",
+						desc = "Show or hide a background on the chat window.",
 						type = "toggle",
 						width = "double",
 					},
-					URL = { -- Change the name from URL to something else. This doesnt explain much!!!
-						order = 1,
+					URLCopy = { -- Change the name from URL to something else. This doesnt explain much!!!
+						order = 2,
 						name = "Copy Chat URLs",
-						desc = "Needs Desc",
+						desc = "Allow copying of URLs directly from the chat window.",
 						type = "toggle",
 						width = "double",
 					},
@@ -273,6 +280,27 @@ local function CreateOptions()
 						order = 1,
 						name = "Quick Looting",
 						desc = "Enhances looting speed, requires auto-loot to be enabled.",
+						type = "toggle",
+						width = "double",
+					},
+				},
+			},
+			minimap = {
+				order = 4,
+				name = "Minimap",
+				icon = "1064187", -- :D
+				type = "group",
+				get = function(info)
+					return Config.db.profile.minimap[info[#info]]
+				end,
+				set = function(info, value)
+					Config.db.profile.minimap[info[#info]] = value
+				end,
+				args = {
+					EasyVolume = {
+						order = 1,
+						name = "Easy Volume Control",
+						desc = "Easy control of the master volume using the mouse wheel on the minimap while holding the Control key.",
 						type = "toggle",
 						width = "double",
 					},

@@ -24,6 +24,13 @@ Supercharge your World of Warcraft experience with **NexEnhance**! Developed by 
 
 We welcome contributions! If you encounter any issues or have suggestions, feel free to open an issue or pull request on GitHub.
 
+## Gift of Appreciation
+Show your support for the hard work and dedication put into NexEnhance by gifting gametime or Blizzard balance to Kkthnx's gamertag: **Kkthnx#1105** or send it to **JRussell20@gmail.com** or donate through PayPal @ https://www.paypal.com/paypalme/kkthnxtv.
+
+### Gold Appreciation
+You can also show your support by sending gold to Kkthnx on the Area 52 realm.
+Contact Kkthnx in-game on Area 52 or send gold by mail.
+
 ## Credits
 
 Developed and maintained by **Kkthnx**. Special thanks to all contributors for their invaluable input.

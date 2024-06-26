@@ -36,11 +36,6 @@ local messageSoundID = SOUNDKIT.TELL_MESSAGE
 local maxLines = 2048
 Module.MuteCache = {}
 
-local whisperEvents = {
-	["CHAT_MSG_WHISPER"] = true,
-	["CHAT_MSG_BN_WHISPER"] = true,
-}
-
 local function getGroupDistribution()
 	local _, instanceType = GetInstanceInfo()
 	if instanceType == "pvp" then
@@ -138,8 +133,6 @@ end
 function Module:TabSetAlpha(alpha)
 	if self.glow:IsShown() and alpha ~= 1 then
 		self:SetAlpha(1)
-	elseif alpha < 0 then
-		self:SetAlpha(0)
 	end
 end
 
@@ -196,36 +189,25 @@ function Module:SkinChat()
 	self.__background = CreateBackground(self)
 
 	local eb = _G[name .. "EditBox"]
-	Module.RemoveTextures(eb, 2)
 	eb:SetAltArrowKeyMode(false)
 	eb:SetClampedToScreen(true)
+	eb:HookScript("OnTextChanged", editBoxOnTextChanged)
 	eb.__owner = self
 	UpdateEditBoxAnchor(eb)
+	Module.StripTextures(eb, 2)
+	Module.CreateBackdropFrame(eb)
 	UpdateEditboxFont(eb)
 	tinsert(chatEditboxes, eb)
-	eb:HookScript("OnTextChanged", editBoxOnTextChanged)
-
-	Module.CreateBackdropFrame(eb)
-
-	-- local backdrop = CreateFrame("Frame", nil, eb, "TooltipBackdropTemplate")
-	-- backdrop:SetAllPoints(eb)
-	-- backdrop:SetFrameLevel(eb:GetFrameLevel())
-	-- eb.backdrop = backdrop
 
 	local lang = _G[name .. "EditBoxLanguage"]
-	lang:GetRegions():SetAlpha(0)
-	lang:SetPoint("TOPLEFT", eb, "TOPRIGHT", 5, 0)
-	lang:SetPoint("BOTTOMRIGHT", eb, "BOTTOMRIGHT", 29, 0)
-
-	local backdrop2 = CreateFrame("Frame", nil, lang, "TooltipBackdropTemplate")
-	backdrop2:SetAllPoints(lang)
-	backdrop2:SetFrameLevel(lang:GetFrameLevel())
-	lang.backdrop2 = backdrop2
+	lang.Show = lang.Hide
+	lang:Hide()
 
 	local tab = _G[name .. "Tab"]
-	Module.RemoveTextures(tab, 7)
+	local tabFont, tabFontSize = tab.Text:GetFont()
 	tab:SetAlpha(1)
-	tab.Text:SetFont(font, Module.Font[2] + 2, "")
+	tab.Text:SetFont(tabFont, tabFontSize + 2, "")
+	Module.StripTextures(tab, 7)
 	hooksecurefunc(tab, "SetAlpha", Module.TabSetAlpha)
 
 	-- Character count
@@ -237,7 +219,9 @@ function Module:SkinChat()
 	charCount:SetWidth(40)
 	eb.characterCount = charCount
 
-	Module.DisableUIElement(self.buttonFrame)
+	Module.HideObject(self.buttonFrame)
+	Module.HideObject(self.ScrollBar)
+	Module.HideObject(self.ScrollToBottomButton)
 	Module:ToggleChatFrameTextures(self)
 
 	self.oldAlpha = self.oldAlpha or 0 -- fix blizz error
@@ -275,42 +259,36 @@ local cycles = {
 			return true
 		end,
 	},
-
 	{
 		chatType = "PARTY",
 		IsActive = function()
 			return IsInGroup()
 		end,
 	},
-
 	{
 		chatType = "RAID",
 		IsActive = function()
 			return IsInRaid()
 		end,
 	},
-
 	{
 		chatType = "INSTANCE_CHAT",
 		IsActive = function()
 			return IsPartyLFG()
 		end,
 	},
-
 	{
 		chatType = "GUILD",
 		IsActive = function()
 			return IsInGuild()
 		end,
 	},
-
 	{
 		chatType = "OFFICER",
 		IsActive = function()
 			return C_GuildInfo_IsGuildOfficer()
 		end,
 	},
-
 	{
 		chatType = "CHANNEL",
 		IsActive = function(_, editbox)
@@ -320,7 +298,6 @@ local cycles = {
 			end
 		end,
 	},
-
 	{
 		chatType = "SAY",
 		IsActive = function()
@@ -329,19 +306,48 @@ local cycles = {
 	},
 }
 
--- Update editbox border color
-function Module:UpdateEditBoxColor()
-	-- if not C["Chat"].Enable then
-	-- 	return
-	-- end
+function Module:SwitchToChannel(chatType)
+	self:SetAttribute("chatType", chatType)
+	ChatEdit_UpdateHeader(self)
+end
 
-	if IsAddOnLoaded("Prat-3.0") or IsAddOnLoaded("Chatter") or IsAddOnLoaded("BasicChatMods") or IsAddOnLoaded("Glass") then
+function Module:UpdateTabChannelSwitch()
+	if strsub(self:GetText(), 1, 1) == "/" then
 		return
 	end
 
+	local isShiftKeyDown = IsShiftKeyDown()
+	local currentType = self:GetAttribute("chatType")
+	if isShiftKeyDown and (currentType == "WHISPER" or currentType == "BN_WHISPER") then
+		Module.SwitchToChannel(self, "SAY")
+		return
+	end
+
+	local numCycles = #cycles
+	for i = 1, numCycles do
+		local cycle = cycles[i]
+		if currentType == cycle.chatType then
+			local from, to, step = i + 1, numCycles, 1
+			if isShiftKeyDown then
+				from, to, step = i - 1, 1, -1
+			end
+			for j = from, to, step do
+				local nextCycle = cycles[j]
+				if nextCycle:IsActive(self) then
+					Module.SwitchToChannel(self, nextCycle.chatType)
+					return
+				end
+			end
+		end
+	end
+end
+hooksecurefunc("ChatEdit_CustomTabPressed", Module.UpdateTabChannelSwitch)
+
+-- Update editbox border color
+function Module:UpdateEditBoxColor()
 	local editBox = ChatEdit_ChooseBoxForSend()
 	local chatType = editBox:GetAttribute("chatType")
-	local editBoxBorder = editBox.NE_Background
+	local editBoxBorder = editBox.backdropFrame
 
 	if not chatType then
 		return
@@ -371,62 +377,8 @@ function Module:UpdateEditBoxColor()
 end
 hooksecurefunc("ChatEdit_UpdateHeader", Module.UpdateEditBoxColor)
 
-function Module:SwitchToChannel(chatType)
-	self:SetAttribute("chatType", chatType)
-	ChatEdit_UpdateHeader(self)
-end
-
-function Module:UpdateTabChannelSwitch()
-	-- if not C["Chat"].Enable then
-	-- 	return
-	-- end
-
-	if IsAddOnLoaded("Prat-3.0") or IsAddOnLoaded("Chatter") or IsAddOnLoaded("BasicChatMods") or IsAddOnLoaded("Glass") then
-		return
-	end
-
-	if string_sub(self:GetText(), 1, 1) == "/" then
-		return
-	end
-
-	local isShiftKeyDown = IsShiftKeyDown()
-	local currentType = self:GetAttribute("chatType")
-	if isShiftKeyDown and (currentType == "WHISPER" or currentType == "BN_WHISPER") then
-		Module.SwitchToChannel(self, "SAY")
-		return
-	end
-
-	local numCycles = #cycles
-	for i = 1, numCycles do
-		local cycle = cycles[i]
-		if currentType == cycle.chatType then
-			local from, to, step = i + 1, numCycles, 1
-			if isShiftKeyDown then
-				from, to, step = i - 1, 1, -1
-			end
-
-			for j = from, to, step do
-				local nextCycle = cycles[j]
-				if nextCycle:IsActive() then
-					Module.SwitchToChannel(self, nextCycle.chatType)
-					return
-				end
-			end
-		end
-	end
-end
-hooksecurefunc("ChatEdit_CustomTabPressed", Module.UpdateTabChannelSwitch)
-
 -- Quick Scroll
 function Module:QuickMouseScroll(dir)
-	-- if not C["Chat"].Enable then
-	-- 	return
-	-- end
-
-	if IsAddOnLoaded("Prat-3.0") or IsAddOnLoaded("Chatter") or IsAddOnLoaded("BasicChatMods") or IsAddOnLoaded("Glass") then
-		return
-	end
-
 	if dir > 0 then
 		if IsShiftKeyDown() then
 			self:ScrollToTop()
@@ -446,13 +398,13 @@ end
 
 -- Sticky whisper
 function Module:ChatWhisperSticky()
-	--if C["Chat"].Sticky then
-	ChatTypeInfo["WHISPER"].sticky = 1
-	ChatTypeInfo["BN_WHISPER"].sticky = 1
-	--else
-	--ChatTypeInfo["WHISPER"].sticky = 0
-	--ChatTypeInfo["BN_WHISPER"].sticky = 0
-	--end
+	if Module.db.profile.chat.Sticky then
+		ChatTypeInfo["WHISPER"].sticky = 1
+		ChatTypeInfo["BN_WHISPER"].sticky = 1
+	else
+		ChatTypeInfo["WHISPER"].sticky = 0
+		ChatTypeInfo["BN_WHISPER"].sticky = 0
+	end
 end
 
 -- Tab colors
@@ -476,7 +428,6 @@ end
 function Module:UpdateTabEventColors(event)
 	local tab = _G[self:GetName() .. "Tab"]
 	local selected = GeneralDockManager.selected:GetID() == tab:GetID()
-
 	if event == "CHAT_MSG_WHISPER" then
 		tab.whisperIndex = 1
 		Module.UpdateTabColors(tab, selected)
@@ -486,11 +437,18 @@ function Module:UpdateTabEventColors(event)
 	end
 end
 
+local whisperEvents = {
+	["CHAT_MSG_WHISPER"] = true,
+	["CHAT_MSG_BN_WHISPER"] = true,
+}
 function Module:PlayWhisperSound(event, _, author)
+	if not Module.db.profile.chat.WhisperSound then
+		return
+	end
+
 	if whisperEvents[event] then
 		local name = Ambiguate(author, "none")
 		local currentTime = GetTime()
-
 		if Module.MuteCache[name] == currentTime then
 			return
 		end
@@ -498,7 +456,6 @@ function Module:PlayWhisperSound(event, _, author)
 		if not self.soundTimer or currentTime > self.soundTimer then
 			PlaySound(messageSoundID, "master")
 		end
-
 		self.soundTimer = currentTime + 5
 	end
 end
@@ -541,6 +498,7 @@ function Module:PLAYER_LOGIN()
 	end
 	SetCVar("chatStyle", "classic")
 	SetCVar("chatMouseScroll", 1) -- Enable mousescroll
+	CombatLogQuickButtonFrame_CustomTexture:SetTexture(nil)
 
 	Module:ChatWhisperSticky()
 end

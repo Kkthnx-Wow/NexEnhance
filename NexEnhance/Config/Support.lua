@@ -51,7 +51,7 @@ end
 
 -- Function to create the support GUI
 local function CreateSupportGUI()
-	local supportFrame = CreateFrame("Frame", addonName, InterfaceOptionsFramePanelContainer)
+	local supportFrame = CreateFrame("Frame", addonName)
 	supportFrame.name = "|A:GarrisonTroops-Health:10:10|a Support"
 	supportFrame.parent = addonName
 
@@ -87,6 +87,6 @@ end
 
 -- Create the support GUI once
 function Config.CreateSupportGUI()
-	Config.CreateSupportGUI = nop -- we only want to run this once
+	Config.CreateSupportGUI = Config.Dummy -- we only want to run this once
 	CreateSupportGUI()
 end

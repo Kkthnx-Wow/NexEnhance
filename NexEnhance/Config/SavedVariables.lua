@@ -1,4 +1,5 @@
 local AddonName, Config = ...
+local database
 
 local defaults = {
 	profile = {
@@ -12,19 +13,29 @@ local defaults = {
 		automation = {
 			AnnoyingBuffs = true,
 			AutoRepair = 2,
+			AutoScreenshotAchieve = false,
 			AutoSell = true,
+			CinematicSkip = false,
 			DeclineDuels = false,
 			DeclinePetDuels = false,
-			AutoScreenshotAchieve = false,
 		},
 		blizzard = {
 			characterFrame = true,
 			chatbubble = true,
 			inspectFrame = true,
+			objectiveTracker = true,
 		},
 		chat = {
 			Background = false,
 			URLCopy = false,
+		},
+		experience = {
+			enableExp = true,
+			numberFormat = 1,
+			barTextFormat = "CURPERC",
+			barWidth = 570,
+			barHeight = 12,
+			showBubbles = true,
 		},
 		general = {
 			AutoScale = false,
@@ -39,6 +50,7 @@ local defaults = {
 		miscellaneous = {
 			missingStats = true,
 		},
+		settingsApplied = false,
 		tempanchor = {},
 		tooltip = {
 			ShowID = true,
@@ -63,14 +75,17 @@ local defaults = {
 			SmallWorldMap = true,
 			SmallWorldMapScale = 0.9,
 		},
-		settingsApplied = false,
+		bugfixes = {
+			DruidFormFix = false,
+		},
 	},
 }
 
 function Config:ADDON_LOADED(name)
 	if name == AddonName then
 		-- initialize database with defaults
-		Config.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults, true)
+		Config.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults)
+
 		return true
 	end
 end

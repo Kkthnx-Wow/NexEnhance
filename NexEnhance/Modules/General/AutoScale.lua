@@ -7,10 +7,13 @@ local function GetBestScale()
 end
 
 function Module:SetupUIScale()
-	if Module.db.profile.general.AutoScale then
-		Module.db.profile.general.UIScale = GetBestScale()
+	local profileGeneral = Module.db.profile.general
+
+	if profileGeneral.AutoScale then
+		profileGeneral.UIScale = GetBestScale()
 	end
-	local scale = Module.db.profile.general.UIScale
+
+	local scale = profileGeneral.UIScale
 	if not InCombatLockdown() then
 		UIParent:SetScale(scale)
 	end

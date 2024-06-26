@@ -13,9 +13,9 @@ local PlaySound = PlaySound
 local ScrollFrameTemplate_OnMouseWheel = ScrollFrameTemplate_OnMouseWheel
 local UIParent = UIParent
 
-local frame, menu
-local lines = {}
-local editBox
+local chatFrame, chatMenu
+local chatLines = {}
+local chatEditBox
 
 local leftButtonString = "|TInterface\\TutorialFrame\\UI-TUTORIAL-FRAME:16:12:0:0:512:512:1:76:218:318|t "
 
@@ -43,7 +43,7 @@ function Module:GetChatLines()
 		if msg and not isMessageProtected(msg) then
 			r, g, b = r or 1, g or 1, b or 1
 			msg = replaceMessage(msg, r, g, b)
-			lines[index] = tostring(msg)
+			chatLines[index] = tostring(msg)
 			index = index + 1
 		end
 	end
@@ -53,23 +53,23 @@ end
 
 function Module:ChatCopy_OnClick(btn)
 	if btn == "LeftButton" then
-		if not frame:IsShown() then
+		if not chatFrame:IsShown() then
 			local chatframe = SELECTED_DOCK_FRAME
 			local _, fontSize = chatframe:GetFont()
 			FCF_SetChatWindowFontSize(chatframe, chatframe, 0.01)
 			PlaySound(21968)
-			frame:Show()
+			chatFrame:Show()
 
 			local lineCt = Module.GetChatLines(chatframe)
-			local text = table_concat(lines, "\n", 1, lineCt)
+			local text = table_concat(chatLines, "\n", 1, lineCt)
 			FCF_SetChatWindowFontSize(chatframe, chatframe, fontSize)
-			editBox:SetText(text)
+			chatEditBox:SetText(text)
 		else
-			frame:Hide()
+			chatFrame:Hide()
 		end
 	elseif btn == "RightButton" then
-		-- B:TogglePanel(menu)
-		-- C.db["Chat"]["ChatMenu"] = menu:IsShown()
+		-- Module:TogglePanel(chatMenu)
+		-- CChatMenu = chatMenu:IsShown()
 	end
 end
 
@@ -79,20 +79,20 @@ end
 
 local CChatMenu = true
 function Module:ChatCopy_CreateMenu()
-	menu = CreateFrame("Frame", "NE_ChatMenu", UIParent)
-	menu:SetSize(25, 100)
-	menu:SetPoint("TOPLEFT", _G.ChatFrame1, "TOPRIGHT", 15, 0)
-	menu:SetShown(CChatMenu)
+	chatMenu = CreateFrame("Frame", "NE_ChatMenu", UIParent)
+	chatMenu:SetSize(20, 20)
+	chatMenu:SetPoint("TOPRIGHT", _G.ChatFrame1, 12, 0)
+	chatMenu:SetShown(CChatMenu)
 
 	_G.ChatFrameMenuButton:ClearAllPoints()
-	_G.ChatFrameMenuButton:SetPoint("TOP", menu)
-	_G.ChatFrameMenuButton:SetParent(menu)
+	_G.ChatFrameMenuButton:SetPoint("TOP", chatMenu)
+	_G.ChatFrameMenuButton:SetParent(chatMenu)
 	_G.ChatFrameChannelButton:ClearAllPoints()
 	_G.ChatFrameChannelButton:SetPoint("TOP", _G.ChatFrameMenuButton, "BOTTOM", 0, -4)
-	_G.ChatFrameChannelButton:SetParent(menu)
-	_G.ChatFrameToggleVoiceDeafenButton:SetParent(menu)
-	_G.ChatFrameToggleVoiceMuteButton:SetParent(menu)
-	_G.QuickJoinToastButton:SetParent(menu)
+	_G.ChatFrameChannelButton:SetParent(chatMenu)
+	_G.ChatFrameToggleVoiceDeafenButton:SetParent(chatMenu)
+	_G.ChatFrameToggleVoiceMuteButton:SetParent(chatMenu)
+	_G.QuickJoinToastButton:SetParent(chatMenu)
 
 	_G.ChatAlertFrame:ClearAllPoints()
 	_G.ChatAlertFrame:SetPoint("BOTTOMLEFT", _G.ChatFrame1Tab, "TOPLEFT", 5, 25)
@@ -101,33 +101,33 @@ function Module:ChatCopy_CreateMenu()
 end
 
 function Module:ChatCopy_Create()
-	frame = Module:CreateFrame("Frame", "Module", UIParent, "TooltipBackdropTemplate")
-	frame:SetPoint("CENTER")
-	frame:SetSize(700, 400)
-	frame:Hide()
-	frame:SetFrameStrata("DIALOG")
-	Module.CreateMoverFrame(frame)
+	chatFrame = Module:CreateFrame("Frame", "Module", UIParent, "TooltipBackdropTemplate")
+	chatFrame:SetPoint("CENTER")
+	chatFrame:SetSize(700, 400)
+	chatFrame:Hide()
+	chatFrame:SetFrameStrata("DIALOG")
+	Module.CreateMoverFrame(chatFrame)
 
-	frame.close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
-	frame.close:SetPoint("TOPRIGHT", frame)
+	chatFrame.close = CreateFrame("Button", nil, chatFrame, "UIPanelCloseButton")
+	chatFrame.close:SetPoint("TOPRIGHT", chatFrame)
 
-	local scrollArea = CreateFrame("ScrollFrame", "ModuleScrollFrame", frame, "UIPanelScrollFrameTemplate")
+	local scrollArea = CreateFrame("ScrollFrame", "ModuleScrollFrame", chatFrame, "UIPanelScrollFrameTemplate")
 	scrollArea:SetPoint("TOPLEFT", 12, -40)
 	scrollArea:SetPoint("BOTTOMRIGHT", -30, 20)
 
-	editBox = CreateFrame("EditBox", nil, frame)
-	editBox:SetMultiLine(true)
-	editBox:SetMaxLetters(99999)
-	editBox:EnableMouse(true)
-	editBox:SetAutoFocus(false)
-	editBox:SetFontObject(GameFontNormal)
-	editBox:SetWidth(scrollArea:GetWidth())
-	editBox:SetHeight(400)
-	editBox:SetScript("OnEscapePressed", function()
-		frame:Hide()
+	chatEditBox = CreateFrame("EditBox", nil, chatFrame)
+	chatEditBox:SetMultiLine(true)
+	chatEditBox:SetMaxLetters(99999)
+	chatEditBox:EnableMouse(true)
+	chatEditBox:SetAutoFocus(false)
+	chatEditBox:SetFontObject(GameFontNormal)
+	chatEditBox:SetWidth(scrollArea:GetWidth())
+	chatEditBox:SetHeight(400)
+	chatEditBox:SetScript("OnEscapePressed", function()
+		chatFrame:Hide()
 	end)
 
-	editBox:SetScript("OnTextChanged", function(_, userInput)
+	chatEditBox:SetScript("OnTextChanged", function(_, userInput)
 		if userInput then
 			return
 		end
@@ -138,13 +138,13 @@ function Module:ChatCopy_Create()
 		end
 	end)
 
-	scrollArea:SetScrollChild(editBox)
+	scrollArea:SetScrollChild(chatEditBox)
 	scrollArea:HookScript("OnVerticalScroll", function(self, offset)
-		editBox:SetHitRectInsets(0, 0, offset, (editBox:GetHeight() - offset - self:GetHeight()))
+		chatEditBox:SetHitRectInsets(0, 0, offset, (chatEditBox:GetHeight() - offset - self:GetHeight()))
 	end)
 
 	local copy = CreateFrame("Button", "NE_ChatCopyButton", UIParent)
-	copy:SetPoint("BOTTOMRIGHT", _G.ChatFrame1, 15, -6)
+	copy:SetPoint("BOTTOMRIGHT", _G.ChatFrame1, 12, -4)
 	copy:SetSize(20, 20)
 	copy:SetAlpha(0.25)
 

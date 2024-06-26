@@ -17,7 +17,7 @@ Module:HookAddOn("Blizzard_InspectUI", function()
 		InspectPaperDollItemsFrame.InspectTalents:SetPoint("TOPRIGHT", InspectFrame, "BOTTOMRIGHT", 0, -1)
 	end
 
-	Module.RemoveTextures(InspectModelFrame, true)
+	Module.StripTextures(InspectModelFrame, true)
 
 	local equipmentSlots = {
 		"InspectHeadSlot",
@@ -44,7 +44,7 @@ Module:HookAddOn("Blizzard_InspectUI", function()
 
 	for i = 1, numEquipmentSlots do
 		local slot = _G[equipmentSlots[i]]
-		Module.RemoveTextures(slot)
+		Module.StripTextures(slot)
 	end
 
 	local InspectHeadSlot = InspectHeadSlot

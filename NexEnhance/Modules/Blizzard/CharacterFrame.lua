@@ -1,10 +1,9 @@
 local _, Module = ...
-local select = select
 
 local function styleEquipmentSlot(slotName)
 	local slot = _G[slotName]
 
-	Module.RemoveTextures(slot)
+	Module.StripTextures(slot)
 
 	-- Set ignore texture
 	slot.ignoreTexture:SetTexture("Interface\\PaperDollInfoFrame\\UI-GearManager-LeaveItem-Transparent")
@@ -19,7 +18,7 @@ function Module:PLAYER_LOGIN()
 	CharacterModelScene:DisableDrawLayer("BACKGROUND")
 	CharacterModelScene:DisableDrawLayer("BORDER")
 	CharacterModelScene:DisableDrawLayer("OVERLAY")
-	Module.RemoveTextures(CharacterModelScene, true)
+	Module.StripTextures(CharacterModelScene, true)
 
 	local equipmentSlots = {
 		"CharacterBackSlot",

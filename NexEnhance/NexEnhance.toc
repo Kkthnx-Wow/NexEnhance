@@ -1,10 +1,10 @@
 ## Interface: 100107
-## Name: NexEnchance
-## Title: |cff5bc0beNexEnchance|r
+## Name: NexEnhance
+## Title: |cff5bc0beNexEnhance|r
 ## Notes: Enhance WoW with quality of life improvements and UI enhancements.|n|n|cff669DFFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "Kkthnx" Russell
 ## Version: 1.0.0
-## IconTexture: Interface\AddOns\NexEnhance\Media\Logo64
+## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64.blp
 ## SavedVariables: NexEnhanceDB
 ## X-Support: DF
 
@@ -38,36 +38,57 @@ Core\Functions.lua
 Core\Installer.lua
 Core\Developer.lua
 
-# Modules
+# Actionbars
 Modules\Actionbars\Cooldowns.lua
 Modules\Actionbars\Range.lua
+Modules\Actionbars\Style.lua
+# Automation
 Modules\Automation\AnnoyingBuffs.lua
 Modules\Automation\AutoRepair.lua
 Modules\Automation\AutoSell.lua
+Modules\Automation\CinematicSkip.lua
 Modules\Automation\DeclineDuels.lua
+Modules\Automation\ScreenShots.lua
+# Blizzard
+Modules\Blizzard\Auras.lua
+Modules\Blizzard\ExpRep.lua
 Modules\Blizzard\CharacterFrame.lua
 Modules\Blizzard\ChatBubble.lua
 Modules\Blizzard\ChatFrame.lua
 Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
 Modules\Blizzard\QuestNavigation.lua
+# BugFixes
+Modules\BugFixes\DruidFormFix.lua
+# Chat
 Modules\Chat\Core.lua
 Modules\Chat\URLCopy.lua
 Modules\Chat\Copy.lua
 Modules\Chat\Rename.lua
+# General
 Modules\General\AutoScale.lua
+Modules\General\Grid.lua
+# Loot
 Modules\Loot\FasterLoot.lua
+# Miscellaneous
 Modules\Miscellaneous\MissingStats.lua
 Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\SlotItemLevel.lua
 Modules\Miscellaneous\yClassColors.lua
+# Maps
 Modules\Maps\WorldMap.lua
+Modules\Maps\Minimap.lua
 Modules\Maps\EasyVolume.lua
+# Tooltip
 Modules\Tooltip\Core.lua
 Modules\Tooltip\Icons.lua
 Modules\Tooltip\SpecLevel.lua
 Modules\Tooltip\ID.lua
+# Unitframes
 Modules\Unitframes\ClassColor.lua
+Modules\Unitframes\Desaturate.lua
+Modules\Unitframes\HitIndicator.lua
+Modules\Unitframes\Stealable.lua
 
 # Config
 Config\SavedVariables.lua

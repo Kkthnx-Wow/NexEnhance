@@ -32,13 +32,13 @@ function Module:CreateSoundVolume()
 	fadeAnim:SetSmoothing("OUT")
 	fadeAnim:SetStartDelay(1)
 
-	self.VolumeText = volumeText
-	self.VolumeAnim = animGroup
+	Module.VolumeText = volumeText
+	Module.VolumeAnim = animGroup
 end
 
 -- Event handler for mouse wheel scrolling on the minimap
 function Module:Minimap_OnMouseWheel(delta)
-	if IsControlKeyDown() and self.VolumeText then
+	if IsControlKeyDown() and Module.VolumeText then
 		local currentVolume = GetCurrentVolume()
 		local increment = IsAltKeyDown() and 100 or 2
 		local newVolume = currentVolume + delta * increment
@@ -46,10 +46,10 @@ function Module:Minimap_OnMouseWheel(delta)
 		newVolume = math.max(0, math.min(newVolume, 100))
 
 		SetCVar("Sound_MasterVolume", tostring(newVolume / 100))
-		self.VolumeText:SetText(newVolume .. "%")
-		self.VolumeText:SetTextColor(GetVolumeColor(newVolume))
-		self.VolumeAnim:Stop()
-		self.VolumeAnim:Play()
+		Module.VolumeText:SetText(newVolume .. "%")
+		Module.VolumeText:SetTextColor(GetVolumeColor(newVolume))
+		Module.VolumeAnim:Stop()
+		Module.VolumeAnim:Play()
 	else
 		if delta > 0 then
 			Minimap_ZoomIn()
@@ -61,11 +61,11 @@ end
 
 -- Event handler for player login
 function Module:PLAYER_LOGIN()
-	if not self.db.profile.minimap.EasyVolume then
+	if not Module.db.profile.minimap.EasyVolume then
 		return
 	end
 
 	Minimap:EnableMouseWheel(true)
-	Minimap:SetScript("OnMouseWheel", self.Minimap_OnMouseWheel)
+	Minimap:SetScript("OnMouseWheel", Module.Minimap_OnMouseWheel)
 	Module:CreateSoundVolume()
 end

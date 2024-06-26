@@ -135,7 +135,9 @@ function Core:ForceChatSettings()
 			local id = frame:GetID()
 
 			-- Configure specific frames based on their IDs
-			if id == 3 then
+			if id == 2 then
+				FCF_SetWindowName(frame, Core.L["Log"])
+			elseif id == 3 then
 				-- Voice transcription specific settings
 				VoiceTranscriptionFrame_UpdateVisibility(frame)
 				VoiceTranscriptionFrame_UpdateVoiceTab(frame)

@@ -3,6 +3,12 @@ local AddonName, Config = ...
 local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local DEFAULT_SIZE = 16
 
+local function UpdateOptions()
+	if SettingsPanel:IsShown() then
+		LibStub("AceConfigRegistry-3.0"):NotifyChange(AddonName)
+	end
+end
+
 local function GetTextureMarkup(icon, size)
 	icon = icon or DEFAULT_ICON
 	size = size or DEFAULT_SIZE
@@ -22,9 +28,10 @@ local function GetIconString(iconMarkup)
 end
 
 local NewFeature = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
+local HeaderTag = "|cff00cc4c"
 
 local function CreateOptions()
-	CreateOptions = nop -- we only want to load this once
+	CreateOptions = Config.Dummy -- we only want to load this once
 
 	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, {
 		type = "group",
@@ -131,22 +138,29 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					DeclineDuels = {
+					CinematicSkip = {
 						order = 4,
+						name = "Cinematic Skipping",
+						desc = "Skip cinematics by pressing a designated key (ESC, SPACE, or ENTER).",
+						type = "toggle",
+						width = "double",
+					},
+					DeclineDuels = {
+						order = 5,
 						name = "Auto-Decline Duels",
 						desc = "Automatically declines incoming duel requests.",
 						type = "toggle",
 						width = "double",
 					},
 					DeclinePetDuels = {
-						order = 5,
+						order = 6,
 						name = "Auto-Decline Pet Duels",
 						desc = "Automatically declines incoming battle-pet duel requests.",
 						type = "toggle",
 						width = "double",
 					},
 					AutoScreenshotAchieve = {
-						order = 6,
+						order = 7,
 						name = "Auto-Screenshot on Achievement",
 						desc = "Automatically takes a screenshot when you earn an achievement.|n|n|A:UI-Achievement-Alert-Background:0:0:0:0|a",
 						type = "toggle",
@@ -188,9 +202,9 @@ local function CreateOptions()
 						width = "double",
 					},
 					objectiveTracker = {
-						order = 4,
-						name = "Clean Objective Tracker",
-						desc = "Simplify and clean up the objective tracker display.",
+						order = 3,
+						name = "Enhanced ObjectiveTracker",
+						desc = "Enhances the ObjectiveTracker for a more modern look.",
 						type = "toggle",
 						width = "double",
 					},
@@ -223,6 +237,88 @@ local function CreateOptions()
 						name = "Copy Chat URLs",
 						desc = "Allow copying of URLs directly from the chat window.",
 						type = "toggle",
+						width = "double",
+					},
+				},
+			},
+			experience = {
+				order = 3,
+				name = "Experience",
+				icon = "894556", -- :D
+				type = "group",
+				get = function(info)
+					return Config.db.profile.experience[info[#info]]
+				end,
+				set = function(info, value)
+					Config.db.profile.experience[info[#info]] = value
+					if info[#info] == "showBubbles" then
+						if Config.bar then
+							Config:ManageBarBubbles(Config.bar)
+						end
+					elseif info[#info] == "barTextFormat" or info[#info] == "numberFormat" then
+						if Config.bar then
+							Config.OnExpBarEvent(Config.bar)
+						end
+					elseif info[#info] == "barWidth" then
+						if Config.bar then
+							Config.bar:SetWidth(value)
+							Config:ManageBarBubbles(Config.bar)
+						end
+					elseif info[#info] == "barHeight" then
+						if Config.bar then
+							Config.bar:SetHeight(value)
+							Config:ManageBarBubbles(Config.bar)
+							Config:ForceTextScaling(Config.bar)
+						end
+					end
+				end,
+				args = {
+					enableExp = {
+						order = 1,
+						name = HeaderTag .. "Enable",
+						desc = "Toggle the display of NexEnhances experience bar.",
+						type = "toggle",
+						width = "double",
+					},
+					showBubbles = {
+						order = 2,
+						name = "Show Bubbles",
+						desc = "Show bubbles on experience / rep bars.",
+						type = "toggle",
+						width = "double",
+					},
+					numberFormat = {
+						order = 3,
+						name = "Number Format",
+						desc = "Choose the format for numbers.",
+						type = "select",
+						values = { [1] = "Standard: b/m/k", [2] = "Asian: y/w", [3] = PLAYER },
+					},
+					barTextFormat = {
+						order = 4,
+						name = "Bar Text Format",
+						desc = "Choose the format for the text on the bar",
+						type = "select",
+						values = { ["PERCENT"] = "Percent", ["CURMAX"] = "Current - Max", ["CURPERC"] = "Current - Percent", ["CUR"] = "Current", ["REM"] = "Remaining", ["CURREM"] = "Current - Remaining", ["CURPERCREM"] = "Current - Percent (Remaining)" },
+					},
+					barWidth = {
+						order = 5,
+						name = "Bar Width",
+						desc = "Adjust the width of the bar. Default is 500. Minimum is 200. Maximum is the screen width.",
+						type = "range",
+						min = 200,
+						max = Config.ScreenWidth,
+						step = 1,
+						width = "double",
+					},
+					barHeight = {
+						order = 6,
+						name = "Bar Height",
+						desc = "Adjust the height of the bar. Default is 12. Minimum is 10. Maximum is 40.",
+						type = "range",
+						min = 10,
+						max = 40,
+						step = 1,
 						width = "double",
 					},
 				},
@@ -488,11 +584,45 @@ local function CreateOptions()
 					},
 				},
 			},
+			bugfixes = {
+				order = 9,
+				name = "BugFixes",
+				icon = "134520", -- :D
+				type = "group",
+				get = function(info)
+					return Config.db.profile.bugfixes[info[#info]]
+				end,
+				set = function(info, value)
+					Config.db.profile.bugfixes[info[#info]] = value
+					if info[#info] == "DruidFormFix" then
+						Config:EnableModule(value)
+					end
+				end,
+				args = {
+					DruidFormFix = {
+						order = 1,
+						name = "Druid Model Display Fix",
+						desc = "Resolves the Character UI model display issue caused by using the Glyph of Stars.|n|nThis bug is expected to be fixed by Blizzard in patch 10.2.0, after which this module will be removed.",
+						type = "toggle",
+						width = "double",
+						disabled = function()
+							local _, _, classID = UnitClass("player")
+							return classID ~= 11
+						end,
+					},
+				},
+			},
 			-- Add additional sections similarly
 		},
 	})
 
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName)
+
+	-- handle combat updates
+	local EventHandler = CreateFrame("Frame", nil, SettingsPanel)
+	EventHandler:RegisterEvent("PLAYER_REGEN_ENABLED")
+	EventHandler:RegisterEvent("PLAYER_REGEN_DISABLED")
+	EventHandler:SetScript("OnEvent", UpdateOptions)
 end
 
 SettingsPanel:HookScript("OnShow", function()

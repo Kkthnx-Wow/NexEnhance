@@ -2,38 +2,36 @@
 local _, Core = ...
 local cr, cg, cb = Core.r, Core.g, Core.b
 
--- Frame to hide UI elements
-Core.UIFrameHider = CreateFrame("Frame")
-Core.UIFrameHider:Hide()
-
 -- Movable Frame
-function Core:CreateMoverFrame(parent, saved)
-	local frame = parent or self
-	frame:SetMovable(true)
-	frame:SetUserPlaced(true)
-	frame:SetClampedToScreen(true)
+do
+	function Core:CreateMoverFrame(parent, saved)
+		local frame = parent or self
+		frame:SetMovable(true)
+		frame:SetUserPlaced(true)
+		frame:SetClampedToScreen(true)
 
-	self:EnableMouse(true)
-	self:RegisterForDrag("LeftButton")
-	self:SetScript("OnDragStart", function()
-		frame:StartMoving()
-	end)
-	self:SetScript("OnDragStop", function()
-		frame:StopMovingOrSizing()
-		if not saved then
-			return
+		self:EnableMouse(true)
+		self:RegisterForDrag("LeftButton")
+		self:SetScript("OnDragStart", function()
+			frame:StartMoving()
+		end)
+		self:SetScript("OnDragStop", function()
+			frame:StopMovingOrSizing()
+			if not saved then
+				return
+			end
+			local orig, _, tar, x, y = frame:GetPoint()
+			x, y = Core:Round(x), Core:Round(y)
+			Core.db.profile["tempanchor"][frame:GetName()] = { orig, "UIParent", tar, x, y }
+		end)
+	end
+
+	function Core:RestoreMoverFrame()
+		local name = self:GetName()
+		if name and Core.db.profile["tempanchor"][name] then
+			self:ClearAllPoints()
+			self:SetPoint(unpack(Core.db.profile["tempanchor"][name]))
 		end
-		local orig, _, tar, x, y = frame:GetPoint()
-		x, y = Core:Round(x), Core:Round(y)
-		Core.db.profile["tempanchor"][frame:GetName()] = { orig, "UIParent", tar, x, y }
-	end)
-end
-
-function Core:RestoreMoverFrame()
-	local name = self:GetName()
-	if name and Core.db.profile["tempanchor"][name] then
-		self:ClearAllPoints()
-		self:SetPoint(unpack(Core.db.profile["tempanchor"][name]))
 	end
 end
 
@@ -138,66 +136,82 @@ do
 	end
 end
 
--- Function to disable and hide UI elements
-function Core.DisableUIElement(element)
-	if element.UnregisterAllEvents then
-		element:UnregisterAllEvents()
-		element:SetParent(Core.UIFrameHider)
-	else
-		element.Show = element.Hide
+-- Kill regions
+do
+	function Core:Dummy()
+		return
 	end
-	element:Hide()
-end
 
--- List of common Blizzard UI textures to be removed
-local BlizzardTextures = {
-	"Inset",
-	"inset",
-	"InsetFrame",
-	"LeftInset",
-	"RightInset",
-	"NineSlice",
-	"BG",
-	"border",
-	"Border",
-	"Background",
-	"BorderFrame",
-	"bottomInset",
-	"BottomInset",
-	"bgLeft",
-	"bgRight",
-	"Portrait",
-	"portrait",
-	"ScrollFrameBorder",
-	"ScrollUpBorder",
-	"ScrollDownBorder",
-}
+	Core.HiddenFrame = CreateFrame("Frame")
+	Core.HiddenFrame:Hide()
 
--- Function to remove textures from UI elements
-function Core.RemoveTextures(element, removeCompletely)
-	local elementName = element.GetName and element:GetName()
-
-	for _, textureName in pairs(BlizzardTextures) do
-		local textureElement = element[textureName] or (elementName and _G[elementName .. textureName])
-		if textureElement then
-			Core.RemoveTextures(textureElement, removeCompletely)
+	function Core:HideObject()
+		if self.UnregisterAllEvents then
+			self:UnregisterAllEvents()
+			self:SetParent(Core.HiddenFrame)
+		else
+			self.Show = self.Hide
 		end
+		self:Hide()
 	end
 
-	if element.GetNumRegions then
-		for i = 1, element:GetNumRegions() do
-			local region = select(i, element:GetRegions())
-			if region and region.IsObjectType and region:IsObjectType("Texture") then
-				if removeCompletely and type(removeCompletely) == "boolean" then
-					region:Hide()
-				elseif tonumber(removeCompletely) then
-					if removeCompletely == 0 then
-						region:SetAlpha(0)
-					elseif i ~= removeCompletely then
-						region:SetTexture(nil)
+	function Core:HideOption()
+		self:SetAlpha(0)
+		self:SetScale(0.0001)
+	end
+
+	local blizzTextures = {
+		"Inset",
+		"inset",
+		"InsetFrame",
+		"LeftInset",
+		"RightInset",
+		"NineSlice",
+		"BG",
+		"Bg",
+		"border",
+		"Border",
+		"Background",
+		"BorderFrame",
+		"bottomInset",
+		"BottomInset",
+		"bgLeft",
+		"bgRight",
+		"FilligreeOverlay",
+		"PortraitOverlay",
+		"ArtOverlayFrame",
+		"Portrait",
+		"portrait",
+		"ScrollFrameBorder",
+		"ScrollUpBorder",
+		"ScrollDownBorder",
+	}
+	function Core:StripTextures(kill)
+		local frameName = self.GetName and self:GetName()
+		for _, texture in pairs(blizzTextures) do
+			local blizzFrame = self[texture] or (frameName and _G[frameName .. texture])
+			if blizzFrame then
+				Core.StripTextures(blizzFrame, kill)
+			end
+		end
+
+		if self.GetNumRegions then
+			for i = 1, self:GetNumRegions() do
+				local region = select(i, self:GetRegions())
+				if region and region.IsObjectType and region:IsObjectType("Texture") then
+					if kill and type(kill) == "boolean" then
+						Core.HideObject(region)
+					elseif tonumber(kill) then
+						if kill == 0 then
+							region:SetAlpha(0)
+						elseif i ~= kill then
+							region:SetTexture("")
+							region:SetAtlas("")
+						end
+					else
+						region:SetTexture("")
+						region:SetAtlas("")
 					end
-				else
-					region:SetTexture(nil)
 				end
 			end
 		end
@@ -441,21 +455,28 @@ do
 		offsetY = offsetY or 0
 
 		-- Adjust targetFrame if the provided object is a texture
-		if self:IsObjectType("Texture") then
-			self = self:GetParent()
+		if targetFrame:IsObjectType("Texture") then
+			targetFrame = targetFrame:GetParent()
+		end
+
+		-- Ensure targetFrame is valid
+		if not targetFrame then
+			return nil
 		end
 
 		-- Get the frame level, defaulting to 0 if necessary
-		local targetFrameLevel = targetFrame:GetFrameLevel()
-		local backdropFrameLevel = (targetFrameLevel == 0) and 0 or (targetFrameLevel - 1)
+		local targetFrameLevel = targetFrame:GetFrameLevel() + 1 or 0
+		local backdropFrameLevel = (targetFrameLevel > 0) and (targetFrameLevel - 1) or 0
 
 		-- Create the backdrop frame
 		local backdropFrame = CreateFrame("Frame", nil, targetFrame, "TooltipBackdropTemplate")
 		backdropFrame:SetPoint("TOPLEFT", targetFrame, "TOPLEFT", -offsetX, offsetY)
 		backdropFrame:SetPoint("BOTTOMRIGHT", targetFrame, "BOTTOMRIGHT", offsetX, -offsetY)
 		backdropFrame:SetFrameLevel(backdropFrameLevel)
+		backdropFrame:SetFrameStrata(targetFrame:GetFrameStrata())
 
-		targetFrame.NE_Background = backdropFrame
+		-- Store reference to the backdrop frame
+		targetFrame.backdropFrame = backdropFrame
 
 		return backdropFrame
 	end

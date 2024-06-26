@@ -7,14 +7,13 @@ local PVP, LEVEL, FACTION_HORDE, FACTION_ALLIANCE = PVP, LEVEL, FACTION_HORDE, F
 local YOU, TARGET, AFK, DND, DEAD, PLAYER_OFFLINE = YOU, TARGET, AFK, DND, DEAD, PLAYER_OFFLINE
 local FOREIGN_SERVER_LABEL, INTERACTIVE_SERVER_LABEL = FOREIGN_SERVER_LABEL, INTERACTIVE_SERVER_LABEL
 local LE_REALM_RELATION_COALESCED, LE_REALM_RELATION_VIRTUAL = LE_REALM_RELATION_COALESCED, LE_REALM_RELATION_VIRTUAL
-local UnitIsPVP, UnitFactionGroup, UnitRealmRelationship, UnitGUID = UnitIsPVP, UnitFactionGroup, UnitRealmRelationship, UnitGUID
+local UnitIsPVP, UnitFactionGroup, UnitRealmRelationship = UnitIsPVP, UnitFactionGroup, UnitRealmRelationship
 local UnitIsConnected, UnitIsDeadOrGhost, UnitIsAFK, UnitIsDND, UnitReaction = UnitIsConnected, UnitIsDeadOrGhost, UnitIsAFK, UnitIsDND, UnitReaction
-local InCombatLockdown, IsShiftKeyDown, GetMouseFocus, GetItemInfo = InCombatLockdown, IsShiftKeyDown, GetMouseFocus, GetItemInfo
+local InCombatLockdown, IsShiftKeyDown, GetItemInfo = InCombatLockdown, IsShiftKeyDown, GetItemInfo
 local GetCreatureDifficultyColor, UnitCreatureType, UnitClassification = GetCreatureDifficultyColor, UnitCreatureType, UnitClassification
 local UnitIsWildBattlePet, UnitIsBattlePetCompanion, UnitBattlePetLevel = UnitIsWildBattlePet, UnitIsBattlePetCompanion, UnitBattlePetLevel
 local UnitIsPlayer, UnitName, UnitPVPName, UnitClass, UnitRace, UnitLevel = UnitIsPlayer, UnitName, UnitPVPName, UnitClass, UnitRace, UnitLevel
 local GetRaidTargetIndex, UnitGroupRolesAssigned, GetGuildInfo, IsInGuild = GetRaidTargetIndex, UnitGroupRolesAssigned, GetGuildInfo, IsInGuild
-local C_PetBattles_GetNumAuras, C_PetBattles_GetAuraInfo = C_PetBattles.GetNumAuras, C_PetBattles.GetAuraInfo
 local C_ChallengeMode_GetDungeonScoreRarityColor = C_ChallengeMode.GetDungeonScoreRarityColor
 local C_PlayerInfo_GetPlayerMythicPlusRatingSummary = C_PlayerInfo.GetPlayerMythicPlusRatingSummary
 local GameTooltip_ClearMoney, GameTooltip_ClearStatusBars, GameTooltip_ClearProgressBars, GameTooltip_ClearWidgetSet = GameTooltip_ClearMoney, GameTooltip_ClearStatusBars, GameTooltip_ClearProgressBars, GameTooltip_ClearWidgetSet
@@ -99,11 +98,9 @@ function Module:InsertFactionFrame(faction)
 		local f = self:CreateTexture(nil, "OVERLAY")
 		f:SetPoint("TOPRIGHT", -10, -10)
 		f:SetBlendMode("ADD")
-		-- f:SetScale(0.9)
-		-- f:SetAlpha(0.7)
 		self.factionFrame = f
 	end
-	self.factionFrame:SetAtlas("MountJournalIcons-" .. faction, true) --  charcreatetest-logo-horde
+	self.factionFrame:SetAtlas("MountJournalIcons-" .. faction, true)
 	self.factionFrame:Show()
 end
 
@@ -322,11 +319,6 @@ function Module:ReskinStatusBar()
 	self.StatusBar:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 4, 4)
 	self.StatusBar:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", -4, 4)
 	self.StatusBar:SetHeight(11)
-
-	-- self.StatusBar.backdrop = CreateFrame("Frame", nil, self.StatusBar, "TooltipBackdropTemplate")
-	-- self.StatusBar.backdrop:SetPoint("TOPLEFT", self.StatusBar, "TOPLEFT", -4, 4)
-	-- self.StatusBar.backdrop:SetPoint("BOTTOMRIGHT", self.StatusBar, "BOTTOMRIGHT", 4, -4)
-	-- self.StatusBar.backdrop:SetFrameLevel(self:GetFrameLevel() + 1)
 
 	Module.CreateBackdropFrame(self.StatusBar, 4, 4)
 end

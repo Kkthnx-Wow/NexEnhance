@@ -6,6 +6,7 @@ Core.ScreenWidth, Core.ScreenHeight = GetPhysicalScreenSize()
 -- Define font settings
 Core.Font = { STANDARD_TEXT_FONT, 12, "OUTLINE" }
 
+Core.MyLevel = UnitLevel("player")
 Core.MyName = UnitName("player")
 Core.MyRealm = GetRealmName()
 Core.MyFullName = Core.MyName .. "-" .. Core.MyRealm
@@ -25,6 +26,10 @@ Core.Logo64 = Core.Media .. "Logos\\Logo64.blp"
 Core.Discord64 = Core.Media .. "Icons\\Discord64.blp"
 Core.Patreon64 = Core.Media .. "Icons\\Patreon64.blp"
 Core.PayPal64 = Core.Media .. "Icons\\PayPal64.blp"
+
+Core.White8x8 = "Interface\\BUTTONS\\WHITE8X8.BLP"
+
+Core.EasyMenu = CreateFrame("Frame", "NE_EasyMenu", UIParent, "UIDropDownMenuTemplate")
 
 -- Initialize tables for class colors/list and item quality colors
 Core.ClassList = {}

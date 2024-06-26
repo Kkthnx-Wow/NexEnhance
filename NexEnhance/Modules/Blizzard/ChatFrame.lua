@@ -45,7 +45,7 @@ function Module:ADDON_LOADED()
 	end)
 
 	ChatFrameChannelButton:SetSize(18, 18)
-	Module.RemoveTextures(ChatFrameChannelButton)
+	Module.StripTextures(ChatFrameChannelButton)
 	ChatFrameChannelButton:SetNormalTexture(CHANNEL_TEXTURE)
 	ChatFrameChannelButton:SetPushedTexture(CHANNEL_TEXTURE)
 	ChatFrameChannelButton:SetHighlightTexture(CHANNEL_TEXTURE)

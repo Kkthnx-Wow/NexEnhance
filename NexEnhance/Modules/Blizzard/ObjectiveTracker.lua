@@ -1,21 +1,72 @@
 local _, Module = ...
 
 -- Extract color components for easier reference
-local red, green, blue = Module.r, Module.g, Module.b
+local colorRed, colorGreen, colorBlue = Module.r, Module.g, Module.b
 
 -- Function to apply skin to a header
-function Module:ApplyHeaderSkin(header)
-	header.Text:SetTextColor(red, green, blue)
+function Module:ApplySkinToHeader(header)
+	header.Text:SetTextColor(colorRed, colorGreen, colorBlue)
 	header.Background:SetTexture(nil)
 
-	local backgroundTexture = header:CreateTexture(nil, "ARTWORK")
-	backgroundTexture:SetTexture("Interface\\LFGFrame\\UI-LFG-SEPARATOR")
-	backgroundTexture:SetTexCoord(0, 0.66, 0, 0.31)
-	backgroundTexture:SetVertexColor(red, green, blue, 0.8)
-	backgroundTexture:SetPoint("BOTTOMLEFT", 0, -4)
-	backgroundTexture:SetSize(250, 30)
+	local headerBackgroundTexture = header:CreateTexture(nil, "ARTWORK")
+	headerBackgroundTexture:SetTexture("Interface\\LFGFrame\\UI-LFG-SEPARATOR")
+	headerBackgroundTexture:SetTexCoord(0, 0.66, 0, 0.31)
+	headerBackgroundTexture:SetVertexColor(colorRed, colorGreen, colorBlue, 0.8)
+	headerBackgroundTexture:SetPoint("BOTTOMLEFT", 0, -4)
+	headerBackgroundTexture:SetSize(250, 30)
 
-	header.bg = backgroundTexture -- Make accessible for other addons
+	header.bg = headerBackgroundTexture -- Make accessible for other addons
+end
+
+-- Handle collapse
+local function UpdateCollapseIcon(texture, collapsed)
+	local atlas = collapsed and "Campaign_HeaderIcon_Closed" or "Campaign_HeaderIcon_Open"
+	texture:SetAtlas(atlas, true)
+end
+
+local function ResetCollapseIcon(self, texture)
+	if self.settingTexture then
+		return
+	end
+	self.settingTexture = true
+	self:SetNormalTexture(0)
+
+	if texture and texture ~= "" then
+		if strfind(texture, "Plus") or strfind(texture, "[Cc]losed") then
+			self.__texture:UpdateCollapseIcon(true)
+		elseif strfind(texture, "Minus") or strfind(texture, "[Oo]pen") then
+			self.__texture:UpdateCollapseIcon(false)
+		end
+	end
+	self.settingTexture = nil
+end
+
+-- Handle close button
+function Module:ReskinCollapseButton()
+	self:SetNormalTexture(0)
+	self:SetHighlightTexture(0)
+	self:SetPushedTexture(0)
+
+	self.__texture = self:CreateTexture(nil, "OVERLAY")
+	self.__texture:SetPoint("CENTER")
+	self.__texture.UpdateCollapseIcon = UpdateCollapseIcon
+
+	hooksecurefunc(self, "SetNormalAtlas", ResetCollapseIcon)
+end
+
+local function UpdateMinimizeButtonState(button, collapsed)
+	button = button.MinimizeButton or button
+	button.__texture:UpdateCollapseIcon(collapsed)
+end
+
+local function ReskinMinimizeButton(button)
+	Module.ReskinCollapseButton(button)
+	button:GetNormalTexture():SetAlpha(0)
+	button:GetPushedTexture():SetAlpha(0)
+	button.__texture:UpdateCollapseIcon(false)
+	if button.SetCollapsed then
+		hooksecurefunc(button, "SetCollapsed", UpdateMinimizeButtonState)
+	end
 end
 
 -- Function triggered on PLAYER_LOGIN event
@@ -37,6 +88,17 @@ function Module:PLAYER_LOGIN()
 	}
 
 	for _, header in pairs(headers) do
-		self:ApplyHeaderSkin(header)
+		self:ApplySkinToHeader(header)
+	end
+
+	-- Minimize Button
+	local mainMinimizeButton = ObjectiveTrackerFrame.HeaderMenu.MinimizeButton
+	ReskinMinimizeButton(mainMinimizeButton)
+
+	for _, header in pairs(headers) do
+		local minimizeButton = header.MinimizeButton
+		if minimizeButton then
+			ReskinMinimizeButton(minimizeButton)
+		end
 	end
 end

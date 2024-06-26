@@ -281,24 +281,4 @@ function Module:PLAYER_LOGIN()
 	WorldMapFrame:HookScript("OnHide", self.WorldMap_OnHide)
 
 	hooksecurefunc(PlayerMovementFrameFader, "AddDeferredFrame", self.UpdateMapFade)
-
-	-- if C["General"].NoTutorialButtons then
-	-- 	WorldMapFrame.BorderFrame.Tutorial:Kill()
-	-- end
-
-	local loadWorldMapModules = {
-		"CreateWorldMapReveal",
-		"CreateWowHeadLinks",
-		"CreateWorldMapPins",
-	}
-
-	for _, funcName in ipairs(loadWorldMapModules) do
-		local func = self[funcName]
-		if type(func) == "function" then
-			local success, err = pcall(func, self)
-			if not success then
-				error("Error in function " .. funcName .. ": " .. tostring(err), 2)
-			end
-		end
-	end
 end

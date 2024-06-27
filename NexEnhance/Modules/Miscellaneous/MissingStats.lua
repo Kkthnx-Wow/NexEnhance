@@ -8,9 +8,10 @@ local STAT_HASTE = STAT_HASTE
 local HIGHLIGHT_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE = HIGHLIGHT_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE
 
 function Module:PLAYER_LOGIN()
-	-- if not C["Misc"].ImprovedStats then
-	-- 	return
-	-- end
+	if not Module.db.profile.miscellaneous.missingStats then
+		return
+	end
+
 	if IsAddOnLoaded("DejaCharacterStats") then
 		return
 	end

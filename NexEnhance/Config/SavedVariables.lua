@@ -48,6 +48,7 @@ local defaults = {
 			EasyVolume = false,
 		},
 		miscellaneous = {
+			enableAFKMode = false,
 			missingStats = true,
 		},
 		settingsApplied = false,

@@ -480,4 +480,25 @@ do
 
 		return backdropFrame
 	end
+
+	function Core:CreateNexBackdrop(anchor, border_size, parent)
+		local parent_frame = parent or anchor
+		local size = border_size or 16
+
+		-- Determine the frame level
+		local flvl = parent_frame:GetFrameLevel()
+		local backdropFrameLevel = (flvl > 0) and (flvl - 1) or 0
+
+		-- Create the backdrop frame
+		local bd_frame = CreateFrame("Frame", nil, parent_frame, "TooltipBackdropTemplate")
+		bd_frame:SetFrameLevel(backdropFrameLevel)
+		bd_frame:SetPoint("TOPLEFT", anchor, "TOPLEFT", -size, size)
+		bd_frame:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", size, -size)
+		-- bd_frame:SetBackdrop(TooltipBackdropTemplate)
+
+		-- Store reference to the backdrop frame in the parent frame
+		parent_frame.backdropFrame = bd_frame
+
+		return bd_frame
+	end
 end

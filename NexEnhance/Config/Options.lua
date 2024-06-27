@@ -402,6 +402,37 @@ local function CreateOptions()
 					},
 				},
 			},
+			miscellaneous = {
+				order = 4,
+				name = "Miscellaneous",
+				icon = "134169", -- :D
+				type = "group",
+				get = function(info)
+					return Config.db.profile.miscellaneous[info[#info]]
+				end,
+				set = function(info, value)
+					Config.db.profile.miscellaneous[info[#info]] = value
+					if info[#info] == "enableAFKMode" then
+						Config.ToggleAFKMode()
+					end
+				end,
+				args = {
+					enableAFKMode = {
+						order = 1,
+						name = "AFK Mode",
+						desc = "AFK mode with dynamic features such as automatic guild display, random statistics updates, and a countdown timer, enhancing the AFK experience for players..",
+						type = "toggle",
+						width = "double",
+					},
+					missingStats = {
+						order = 1,
+						name = "Enhanced Character Statistics",
+						desc = "Enhances the default character statistics panel by organizing stats, adjusting display data for improved readability, and integrating additional functionalities for detailed stat insights.",
+						type = "toggle",
+						width = "double",
+					},
+				},
+			},
 			tooltip = {
 				order = 6,
 				name = "Tooltip",

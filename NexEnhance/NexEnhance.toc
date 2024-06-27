@@ -71,6 +71,7 @@ Modules\General\Grid.lua
 # Loot
 Modules\Loot\FasterLoot.lua
 # Miscellaneous
+Modules\Miscellaneous\AFK.lua
 Modules\Miscellaneous\MissingStats.lua
 Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\SlotItemLevel.lua

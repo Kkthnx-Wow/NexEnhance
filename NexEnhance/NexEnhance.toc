@@ -74,6 +74,7 @@ Modules\Loot\FasterLoot.lua
 Modules\Miscellaneous\AFK.lua
 Modules\Miscellaneous\MissingStats.lua
 Modules\Miscellaneous\MovableFrames.lua
+Modules\Miscellaneous\QuestRewardDisplay.lua
 Modules\Miscellaneous\SlotItemLevel.lua
 Modules\Miscellaneous\yClassColors.lua
 # Maps

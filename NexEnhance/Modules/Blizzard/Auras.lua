@@ -60,19 +60,19 @@ local function ApplySkin(aura)
 			aura.hook = true
 		end
 
-		aura.bd = Module:CreateNexBackdrop(aura.Icon, 2, aura)
-		aura.bd:SetFrameLevel(aura:GetFrameLevel())
+		aura.bd = Module:CreateAtlasBackdrop(aura.Icon, 2, aura, "UI-HUD-ActionBar-IconFrame")
+		aura.bd:SetFrameLevel(aura:GetFrameLevel() + 1)
 
 		hooksecurefunc(aura, "UpdateAuraType", function(self, auraType)
 			self.DebuffBorder:Hide()
 			self.TempEnchantBorder:Hide()
 			if self.auraType == "Buff" then
-				self.bd:SetBackdropBorderColor(1, 1, 1)
+				self.bd.texture:SetVertexColor(1, 1, 1)
 			elseif self.auraType == "Debuff" or self.auraType == "DeadlyDebuff" then
 				local color = DebuffTypeColor["none"] or { r = 0.8, g = 0.1, b = 0.1 } -- Default color if 'none' is not defined
-				self.bd:SetBackdropBorderColor(color.r, color.g, color.b)
+				self.bd.texture:SetVertexColor(color.r, color.g, color.b)
 			elseif self.auraType == "TempEnchant" then
-				self.bd:SetBackdropBorderColor(0.5, 0, 1)
+				self.bd.texture:SetVertexColor(0.5, 0, 1)
 			end
 		end)
 

@@ -640,7 +640,12 @@
         "PVEFrame",
         "TIMEMANAGER_TICKER_24HOUR",
         "TIMEMANAGER_TICKER_12HOUR",
-        "GetClampedCurrentExpansionLevel"
+        "GetClampedCurrentExpansionLevel",
+        "MAX_NUM_ITEMS",
+        "QuestInfoRewardsFrameQuestInfoItem1",
+        "QuestInfoFrame",
+        "QuestInfoXPFrame",
+        "MapQuestInfoRewardsFrame"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

@@ -34,6 +34,8 @@ local UIParent = UIParent
 local UnitCastingInfo = UnitCastingInfo
 local UnitIsAFK = UnitIsAFK
 
+local AFKMode
+
 local ignoreKeys = {
 	LALT = true,
 	LSHIFT = true,
@@ -218,11 +220,6 @@ local function UpdateStatMessage(self)
 	UIFrameFadeIn(self.statMsg.info, 1, 0, 1)
 end
 
--- local function UpdateTimer(self)
--- 	local time = GetTime() - self.startTime
--- 	self.bottom.time:SetFormattedText("%02d:%02d", floor(time / 60), time % 60)
--- end
-
 local function SetAFK(self, status)
 	if status then
 		MoveViewLeftStart(0.035)
@@ -315,8 +312,6 @@ local function SetAFK(self, status)
 		if self.animTimer then
 			self.animTimer:Cancel()
 		end
-
-		-- self.bottom.time:SetText("00:00")
 
 		self.countd.text:SetFormattedText("%s: |cfff0ff00-30:00|r", "Logout Timer")
 		self.statMsg.info:SetFormattedText("|cffb3b3b3%s|r", "Random Stats")
@@ -496,7 +491,6 @@ function Module:PLAYER_LOGIN()
 
 	AFKMode.chat = CreateFrame("ScrollingMessageFrame", nil, AFKMode)
 	AFKMode.chat:SetSize(500, 200)
-	-- AFKMode.chat:SetPoint("TOPLEFT", AFKMode, "TOPLEFT", 4, -4)
 	AFKMode.chat:SetFont(UNIT_NAME_FONT, 12, "")
 	AFKMode.chat:SetJustifyH("LEFT")
 	AFKMode.chat:SetMaxLines(100)
@@ -697,12 +691,6 @@ function Module:PLAYER_LOGIN()
 	AFKMode.countd.text:SetJustifyH("CENTER")
 	AFKMode.countd.text:SetFormattedText("%s: |cfff0ff00-30:00|r", "Logout Timer")
 	AFKMode.countd.text:SetTextColor(0.7, 0.7, 0.7)
-
-	-- AFKMode.bottom.time = AFKMode.bottom:CreateFontString(nil, "OVERLAY")
-	-- AFKMode.bottom.time:SetFont(UNIT_NAME_FONT, 20, "")
-	-- AFKMode.bottom.time:SetText("00:00")
-	-- AFKMode.bottom.time:SetPoint("TOPLEFT", AFKMode.bottom.guild, "BOTTOMLEFT", 0, -6)
-	-- AFKMode.bottom.time:SetTextColor(0.7, 0.7, 0.7)
 
 	--Use this frame to control position of the model
 	AFKMode.bottom.modelHolder = CreateFrame("Frame", nil, AFKMode.bottom)

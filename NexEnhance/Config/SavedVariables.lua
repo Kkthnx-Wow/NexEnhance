@@ -50,6 +50,9 @@ local defaults = {
 		miscellaneous = {
 			enableAFKMode = false,
 			missingStats = true,
+
+			questXPPercent = false,
+			questRewardsMostValueIcon = false,
 		},
 		settingsApplied = false,
 		tempanchor = {},

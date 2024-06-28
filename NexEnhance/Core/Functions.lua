@@ -446,7 +446,6 @@ do
 end
 
 do
-	-- Setup backdrop
 	function Core:CreateBackdropFrame(offsetX, offsetY)
 		local targetFrame = self
 
@@ -462,6 +461,11 @@ do
 		-- Ensure targetFrame is valid
 		if not targetFrame then
 			return nil
+		end
+
+		-- Check if backdrop frame already exists
+		if targetFrame.backdropFrame then
+			return targetFrame.backdropFrame
 		end
 
 		-- Get the frame level, defaulting to 0 if necessary
@@ -481,24 +485,33 @@ do
 		return backdropFrame
 	end
 
-	function Core:CreateNexBackdrop(anchor, border_size, parent)
-		local parent_frame = parent or anchor
-		local size = border_size or 16
+	function Core:CreateAtlasBackdrop(anchor, borderSize, parent, atlas)
+		local parentFrame = parent or anchor
+		local size = borderSize or 16
+
+		-- Check if backdrop frame already exists
+		if parentFrame.backdropFrame then
+			return parentFrame.backdropFrame
+		end
 
 		-- Determine the frame level
-		local flvl = parent_frame:GetFrameLevel()
-		local backdropFrameLevel = (flvl > 0) and (flvl - 1) or 0
+		local frameLevel = parentFrame:GetFrameLevel()
+		local backdropFrameLevel = (frameLevel > 0) and (frameLevel - 1) or 0
 
 		-- Create the backdrop frame
-		local bd_frame = CreateFrame("Frame", nil, parent_frame, "TooltipBackdropTemplate")
-		bd_frame:SetFrameLevel(backdropFrameLevel)
-		bd_frame:SetPoint("TOPLEFT", anchor, "TOPLEFT", -size, size)
-		bd_frame:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", size, -size)
-		-- bd_frame:SetBackdrop(TooltipBackdropTemplate)
+		local backdropFrame = CreateFrame("Frame", nil, parentFrame, BackdropTemplateMixin and "BackdropTemplate")
+		backdropFrame:SetFrameLevel(backdropFrameLevel)
+		backdropFrame:SetPoint("TOPLEFT", anchor, "TOPLEFT", -size, size)
+		backdropFrame:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", size, -size)
+
+		-- Create and set texture (example using a default atlas)
+		backdropFrame.texture = backdropFrame:CreateTexture(nil, "BACKGROUND")
+		backdropFrame.texture:SetAllPoints(backdropFrame)
+		backdropFrame.texture:SetAtlas(atlas, true)
 
 		-- Store reference to the backdrop frame in the parent frame
-		parent_frame.backdropFrame = bd_frame
+		parentFrame.backdropFrame = backdropFrame
 
-		return bd_frame
+		return backdropFrame
 	end
 end

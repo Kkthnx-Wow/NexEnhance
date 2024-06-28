@@ -382,7 +382,7 @@ local function CreateOptions()
 				},
 			},
 			minimap = {
-				order = 4,
+				order = 6,
 				name = "Minimap",
 				icon = "1064187", -- :D
 				type = "group",
@@ -403,7 +403,7 @@ local function CreateOptions()
 				},
 			},
 			miscellaneous = {
-				order = 4,
+				order = 7,
 				name = "Miscellaneous",
 				icon = "134169", -- :D
 				type = "group",
@@ -425,16 +425,30 @@ local function CreateOptions()
 						width = "double",
 					},
 					missingStats = {
-						order = 1,
+						order = 2,
 						name = "Enhanced Character Statistics",
 						desc = "Enhances the default character statistics panel by organizing stats, adjusting display data for improved readability, and integrating additional functionalities for detailed stat insights.",
+						type = "toggle",
+						width = "double",
+					},
+					questXPPercent = {
+						order = 3,
+						name = "Enhanced Quest XP Display",
+						desc = "Enhances the display of quest XP rewards to show percentage of total experience gained.",
+						type = "toggle",
+						width = "double",
+					},
+					questRewardsMostValueIcon = {
+						order = 4,
+						name = "Highlight Best Quest Reward",
+						desc = "Highlights the most valuable quest reward choice with a gold coin icon overlay based on potential sell value.",
 						type = "toggle",
 						width = "double",
 					},
 				},
 			},
 			tooltip = {
-				order = 6,
+				order = 8,
 				name = "Tooltip",
 				icon = "4622480", -- :D
 				type = "group",
@@ -518,7 +532,7 @@ local function CreateOptions()
 				},
 			},
 			unitframes = {
-				order = 7,
+				order = 9,
 				name = "Unit Frames",
 				icon = "648207", -- :D
 				type = "group",
@@ -555,7 +569,7 @@ local function CreateOptions()
 				},
 			},
 			worldmap = {
-				order = 8,
+				order = 10,
 				name = "WorldMap",
 				icon = "134269", -- :D
 				type = "group",
@@ -616,7 +630,7 @@ local function CreateOptions()
 				},
 			},
 			bugfixes = {
-				order = 9,
+				order = 11,
 				name = "BugFixes",
 				icon = "134520", -- :D
 				type = "group",

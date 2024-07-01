@@ -36,9 +36,15 @@ local function CreateOptions()
 	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, {
 		type = "group",
 		args = {
+			intro = {
+				name = "Enhance WoW with quality of life improvements and UI enhancements." .. "\n\n",
+				type = "description",
+				order = 0,
+			},
 			actionbars = {
 				order = 1,
 				name = "Actionbars",
+				desc = "Configure action bar settings, including cooldown timers, range indicators, and more to enhance your gameplay experience.",
 				icon = "4200123", -- :D
 				type = "group",
 				get = function(info)
@@ -48,17 +54,23 @@ local function CreateOptions()
 					Config.db.profile.actionbars[info[#info]] = value
 				end,
 				args = {
+					description = {
+						name = "Configure action bar settings, including cooldown timers, range indicators, and more to enhance your gameplay experience.\n\n",
+						type = "description",
+						order = 0,
+						width = "double",
+					},
 					cooldowns = {
 						order = 1,
-						name = "Cooldowns",
-						desc = "Show Cooldown Timers",
+						name = "Show Cooldown Timers",
+						desc = "Enable or disable cooldown timers on action buttons.",
 						type = "toggle",
 						width = "double",
 					},
 					MmssTH = {
 						order = 2,
-						name = "MMSS Threshold",
-						desc = "If cooldown less than current threshold, show cooldown in format MM:SS.|n|nEg. 2 mins and half presents as 2:30..",
+						name = "MM:SS Threshold",
+						desc = "Display cooldowns in MM:SS format if below this threshold. For example, 2 minutes and 30 seconds will be shown as 2:30.",
 						type = "range",
 						min = 60,
 						max = 600,
@@ -68,27 +80,10 @@ local function CreateOptions()
 							return not Config.db.profile.actionbars.cooldowns
 						end,
 					},
-					OverrideWA = {
-						order = 3,
-						name = "OverrideWA",
-						desc = "Hide Cooldown on WA.",
-						type = "toggle",
-						width = "double",
-						disabled = function()
-							return not Config.db.profile.actionbars.cooldowns
-						end,
-					},
-					range = {
-						order = 4,
-						name = "Range Indicator",
-						desc = "Changes the color of action buttons when they are out of range or when the player is out of resources (e.g., energy, mana, focus).",
-						type = "toggle",
-						width = "double",
-					},
 					TenthTH = {
-						order = 5,
-						name = "Tenth Threshold",
-						desc = "If cooldown less than current threshold, show cooldown in format decimal.|n|nEg. 3 secs will show as 3.0.",
+						order = 3,
+						name = "Decimal Threshold",
+						desc = "Display cooldowns in decimal format if below this threshold. For example, 3 seconds will be shown as 3.0.",
 						type = "range",
 						min = 0,
 						max = 60,
@@ -97,6 +92,23 @@ local function CreateOptions()
 						disabled = function()
 							return not Config.db.profile.actionbars.cooldowns
 						end,
+					},
+					OverrideWA = {
+						order = 4,
+						name = "Override WeakAuras",
+						desc = "Hide cooldown timers on WeakAuras.",
+						type = "toggle",
+						width = "double",
+						disabled = function()
+							return not Config.db.profile.actionbars.cooldowns
+						end,
+					},
+					range = {
+						order = 5,
+						name = "Range Indicator",
+						desc = "Change the color of action buttons when they are out of range or when the player lacks the resources (e.g., energy, mana) to use them.",
+						type = "toggle",
+						width = "double",
 					},
 				},
 			},
@@ -117,6 +129,12 @@ local function CreateOptions()
 					end
 				end,
 				args = {
+					description = {
+						name = "Customize automated actions to streamline gameplay, from removing annoying buffs to auto-repairing gear and more." .. "\n\n",
+						type = "description",
+						order = 0,
+						width = "double",
+					},
 					AnnoyingBuffs = {
 						order = 1,
 						name = "Remove Annoying Buffs",
@@ -162,7 +180,7 @@ local function CreateOptions()
 					AutoScreenshotAchieve = {
 						order = 7,
 						name = "Auto-Screenshot on Achievement",
-						desc = "Automatically takes a screenshot when you earn an achievement.|n|n|A:UI-Achievement-Alert-Background:0:0:0:0|a",
+						desc = "Automatically takes a screenshot when you earn an achievement.",
 						type = "toggle",
 						width = "double",
 					},
@@ -213,6 +231,7 @@ local function CreateOptions()
 			chat = {
 				order = 3,
 				name = "Chat",
+				desc = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior.",
 				icon = "2056011", -- :D
 				type = "group",
 				get = function(info)
@@ -221,10 +240,18 @@ local function CreateOptions()
 				set = function(info, value)
 					Config.db.profile.chat[info[#info]] = value
 					if info[#info] == "Background" then
-						Config:ToggleChatBackground()
+						Config.Chat:ToggleChatBackground()
+					elseif info[#info] == "StickyChat" then
+						Config.Chat:ChatWhisperSticky()
 					end
 				end,
 				args = {
+					description = {
+						name = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior." .. "\n\n",
+						type = "description",
+						order = 0,
+						width = "double",
+					},
 					Background = {
 						order = 1,
 						name = "Chat Background",
@@ -236,6 +263,13 @@ local function CreateOptions()
 						order = 2,
 						name = "Copy Chat URLs",
 						desc = "Allow copying of URLs directly from the chat window.",
+						type = "toggle",
+						width = "double",
+					},
+					StickyChat = { -- Change the name from URL to something else. This doesnt explain much!!!
+						order = 3,
+						name = "StickyChat",
+						desc = "StickyChat.",
 						type = "toggle",
 						width = "double",
 					},
@@ -335,6 +369,8 @@ local function CreateOptions()
 					Config.db.profile.general[info[#info]] = value
 					if info[#info] == "AutoScale" or info[#info] == "UIScale" then
 						Config:SetupUIScale()
+					elseif info[#info] == "numberPrefixStyle" then
+						Config:UpdateNumberPrefixStyle()
 					end
 				end,
 				args = {
@@ -357,6 +393,13 @@ local function CreateOptions()
 						disabled = function()
 							return Config.db.profile.general.AutoScale
 						end,
+					},
+					numberPrefixStyle = {
+						order = 3,
+						name = "Number Abbreviation Style",
+						desc = "Select how numerical values should be abbreviated in the UI.",
+						type = "select",
+						values = { ["STANDARD"] = "Standard: b/m/k", ["ASIAN"] = "Asian: y/w", ["FULL"] = "Full digitals" },
 					},
 				},
 			},
@@ -461,71 +504,71 @@ local function CreateOptions()
 				args = {
 					combatHide = {
 						order = 1,
-						name = "Hide in Combat",
-						desc = "Automatically hide the tip in combat.",
+						name = "Combat Tip Hide",
+						desc = "Automatically hide tooltips during combat.",
 						type = "toggle",
 						width = "double",
 					},
 					factionIcon = {
 						order = 2,
-						name = "Show Faction Icon",
-						desc = "Display faction icons.",
+						name = "Faction Icons",
+						desc = "Display faction icons on tooltips.",
 						type = "toggle",
 						width = "double",
 					},
 					hideJunkGuild = {
 						order = 3,
-						name = "Hide Junk Guild",
-						desc = "Abbreviated GuildName.",
+						name = "Abbreviate Guild Names",
+						desc = "Show abbreviated guild names.",
 						type = "toggle",
 						width = "double",
 					},
 					hideRank = {
 						order = 4,
-						name = "Hide Rank",
-						desc = "Hide player guild ranks.",
+						name = "Hide Guild Ranks",
+						desc = "Hide player guild ranks in tooltips.",
 						type = "toggle",
 						width = "double",
 					},
 					hideTitle = {
 						order = 5,
-						name = "Hide Title",
-						desc = "Hide player titles.",
+						name = "Hide Player Titles",
+						desc = "Hide player titles in tooltips.",
 						type = "toggle",
 						width = "double",
 					},
 					lfdRole = {
 						order = 6,
-						name = "Show LFD Role Text",
-						desc = "Display LFD role icons (tank, healer, damage).",
+						name = "LFD Role Icons",
+						desc = "Display role icons for tank, healer, and damage.",
 						type = "toggle",
 						width = "double",
 					},
 					mdScore = {
 						order = 7,
-						name = "Show Mythic Dungeon Score",
+						name = "Mythic Dungeon Score",
 						desc = "Display the player's Mythic Dungeon score.",
 						type = "toggle",
 						width = "double",
 					},
 					qualityColor = {
 						order = 8,
-						name = "Use Quality Colors",
-						desc = "Color the borders of items by their quality.",
+						name = "Item Quality Colors",
+						desc = "Color item borders by their quality.",
 						type = "toggle",
 						width = "double",
 					},
 					ShowID = {
 						order = 9,
-						name = "Display Tooltip IDs",
-						desc = "Enable this option to display spell, item, quest, and other IDs in tooltips.",
+						name = "Show Tooltip IDs",
+						desc = "Display spell, item, quest, and other IDs in tooltips.",
 						type = "toggle",
 						width = "double",
 					},
 					SpecLevelByShift = {
 						order = 10,
-						name = "Spec-Level By Shift",
-						desc = "Show iLvl by SHIFT.",
+						name = "Shift+Spec Level",
+						desc = "Show item level when holding SHIFT.",
 						type = "toggle",
 						width = "double",
 					},
@@ -661,7 +704,7 @@ local function CreateOptions()
 		},
 	})
 
-	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName)
+	Config.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, AddonName)
 
 	-- handle combat updates
 	local EventHandler = CreateFrame("Frame", nil, SettingsPanel)
@@ -670,10 +713,17 @@ local function CreateOptions()
 	EventHandler:SetScript("OnEvent", UpdateOptions)
 end
 
-SettingsPanel:HookScript("OnShow", function()
-	CreateOptions() -- Load on demand
-	Config.CreateSupportGUI() -- LoD
-end)
+function Config:ADDON_LOADED(addon)
+	if addon == AddonName then
+		CreateOptions() -- Load on demand
+		Config.CreateSupportGUI() -- LoD
+	end
+end
+
+-- SettingsPanel:HookScript("OnShow", function()
+-- 	CreateOptions() -- Load on demand
+-- 	Config.CreateSupportGUI() -- LoD
+-- end)
 
 Config:RegisterSlash("/nexe", "/ne", function()
 	Settings.OpenToCategory(AddonName)

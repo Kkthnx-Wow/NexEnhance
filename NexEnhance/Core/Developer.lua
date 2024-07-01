@@ -178,7 +178,7 @@ local function hookNameplateFunctions()
 	hooksecurefunc("CompactUnitFrame_UpdateName", updatePlayerNameplate)
 end
 
-function Core:PLAYER_LOGIN()
+function Core:OnLogin()
 	if IsAddOnLoaded("Plater") or IsAddOnLoaded("BetterBlizzPlates") or IsAddOnLoaded("TidyPlates_ThreatPlates") or IsAddOnLoaded("TidyPlates") or IsAddOnLoaded("Kui_Nameplates") then
 		return
 	end

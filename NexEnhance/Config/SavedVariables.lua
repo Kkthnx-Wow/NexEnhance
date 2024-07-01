@@ -1,5 +1,4 @@
 local AddonName, Config = ...
-local database
 
 local defaults = {
 	profile = {
@@ -28,6 +27,7 @@ local defaults = {
 		chat = {
 			Background = false,
 			URLCopy = false,
+			StickyChat = false,
 		},
 		experience = {
 			enableExp = true,
@@ -40,6 +40,7 @@ local defaults = {
 		general = {
 			AutoScale = false,
 			UIScale = 0.53,
+			numberPrefixStyle = "STANDARD",
 		},
 		loot = {
 			FasterLoot = false,
@@ -50,7 +51,6 @@ local defaults = {
 		miscellaneous = {
 			enableAFKMode = false,
 			missingStats = true,
-
 			questXPPercent = false,
 			questRewardsMostValueIcon = false,
 		},
@@ -73,6 +73,8 @@ local defaults = {
 			classColorHealth = true,
 		},
 		worldmap = {
+			RevealWorldMap = false,
+			RevealWorldMapGlow = true,
 			AlphaWhenMoving = 0.35,
 			Coordinates = true,
 			FadeWhenMoving = true,
@@ -81,6 +83,10 @@ local defaults = {
 		},
 		bugfixes = {
 			DruidFormFix = false,
+			suboptions = {
+				subOptionA = false,
+				subOptionB = true,
+			},
 		},
 	},
 }

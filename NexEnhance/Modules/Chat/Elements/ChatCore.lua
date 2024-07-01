@@ -1,4 +1,5 @@
-local _, Module = ...
+local _, Modules = ...
+local Module = Modules.Chat
 
 -- Lua Standard Functions
 local ipairs = ipairs
@@ -70,7 +71,7 @@ local function editBoxOnTextChanged(self)
 			local repeatChar = true
 			for i = 1, MIN_REPEAT_CHARACTERS do
 				local first = -1 - i
-				if string.sub(text, -i, -i) ~= string.sub(text, first, first) then
+				if string_sub(text, -i, -i) ~= string_sub(text, first, first) then
 					repeatChar = false
 					break
 				end
@@ -100,7 +101,7 @@ local function editBoxOnTextChanged(self)
 				UIErrorsFrame:AddMessage(Module.L["Invalid Target"])
 			end
 		elseif text == "/gr " then
-			self:SetText(getGroupDistribution() .. string.sub(text, 5))
+			self:SetText(getGroupDistribution() .. string_sub(text, 5))
 			ChatEdit_ParseText(self, 0)
 		end
 	end
@@ -162,14 +163,14 @@ local function CreateBackground(self)
 	frame:SetPoint("TOPLEFT", self.Background, "TOPLEFT", -4, 4)
 	frame:SetPoint("BOTTOMRIGHT", self.Background, "BOTTOMRIGHT", 4, -4)
 	frame:SetFrameLevel(0)
-	frame:SetShown(Module.db.profile.chat.Background)
+	frame:SetShown(Modules.db.profile.chat.Background)
 
 	return frame
 end
 
 local function UpdateEditboxFont(editbox)
-	editbox:SetFont(Module.Font[1], 13, "")
-	editbox.header:SetFont(Module.Font[1], 13, "")
+	editbox:SetFont(Modules.Font[1], 13, "")
+	editbox.header:SetFont(Modules.Font[1], 13, "")
 end
 
 function Module:SkinChat()
@@ -194,8 +195,8 @@ function Module:SkinChat()
 	eb:HookScript("OnTextChanged", editBoxOnTextChanged)
 	eb.__owner = self
 	UpdateEditBoxAnchor(eb)
-	Module.StripTextures(eb, 2)
-	Module.CreateBackdropFrame(eb)
+	Modules.StripTextures(eb, 2)
+	Modules.CreateBackdropFrame(eb)
 	UpdateEditboxFont(eb)
 	tinsert(chatEditboxes, eb)
 
@@ -207,7 +208,7 @@ function Module:SkinChat()
 	local tabFont, tabFontSize = tab.Text:GetFont()
 	tab:SetAlpha(1)
 	tab.Text:SetFont(tabFont, tabFontSize + 2, "")
-	Module.StripTextures(tab, 7)
+	Modules.StripTextures(tab, 7)
 	hooksecurefunc(tab, "SetAlpha", Module.TabSetAlpha)
 
 	-- Character count
@@ -219,9 +220,9 @@ function Module:SkinChat()
 	charCount:SetWidth(40)
 	eb.characterCount = charCount
 
-	Module.HideObject(self.buttonFrame)
-	Module.HideObject(self.ScrollBar)
-	Module.HideObject(self.ScrollToBottomButton)
+	Modules.HideObject(self.buttonFrame)
+	Modules.HideObject(self.ScrollBar)
+	Modules.HideObject(self.ScrollToBottomButton)
 	Module:ToggleChatFrameTextures(self)
 
 	self.oldAlpha = self.oldAlpha or 0 -- fix blizz error
@@ -232,7 +233,7 @@ function Module:SkinChat()
 end
 
 function Module:ToggleChatFrameTextures(frame)
-	if Module.db.profile.chat.Background then
+	if Modules.db.profile.chat.Background then
 		frame:DisableDrawLayer("BORDER")
 		frame:DisableDrawLayer("BACKGROUND")
 	else
@@ -245,7 +246,7 @@ function Module:ToggleChatBackground()
 	for _, chatFrameName in ipairs(CHAT_FRAMES) do
 		local frame = _G[chatFrameName]
 		if frame.__background then
-			frame.__background:SetShown(Module.db.profile.chat.Background)
+			frame.__background:SetShown(Modules.db.profile.chat.Background)
 		end
 		Module:ToggleChatFrameTextures(frame)
 	end
@@ -398,7 +399,7 @@ end
 
 -- Sticky whisper
 function Module:ChatWhisperSticky()
-	if Module.db.profile.chat.Sticky then
+	if Modules.db.profile.chat.StickyChat then
 		ChatTypeInfo["WHISPER"].sticky = 1
 		ChatTypeInfo["BN_WHISPER"].sticky = 1
 	else
@@ -442,7 +443,7 @@ local whisperEvents = {
 	["CHAT_MSG_BN_WHISPER"] = true,
 }
 function Module:PlayWhisperSound(event, _, author)
-	if not Module.db.profile.chat.WhisperSound then
+	if not Modules.db.profile.chat.WhisperSound then
 		return
 	end
 
@@ -460,7 +461,17 @@ function Module:PlayWhisperSound(event, _, author)
 	end
 end
 
-function Module:PLAYER_LOGIN()
+function Module:RegisterChatHooks()
+	hooksecurefunc("FCFTab_UpdateColors", Module.UpdateTabColors)
+	hooksecurefunc("FloatingChatFrame_OnEvent", Module.UpdateTabEventColors)
+	hooksecurefunc("ChatFrame_MessageEventHandler", Module.PlayWhisperSound)
+
+	if Modules:IsEventRegistered("ADDON_LOADED", Module.RegisterChatHooks) then
+		Modules:UnregisterEvent("ADDON_LOADED", Module.RegisterChatHooks)
+	end
+end
+
+function Module:RegisterChat()
 	-- if not C["Chat"].Enable then
 	-- 	return
 	-- end
@@ -482,10 +493,6 @@ function Module:PLAYER_LOGIN()
 			end
 		end
 	end)
-
-	hooksecurefunc("FCFTab_UpdateColors", Module.UpdateTabColors)
-	hooksecurefunc("FloatingChatFrame_OnEvent", Module.UpdateTabEventColors)
-	hooksecurefunc("ChatFrame_MessageEventHandler", Module.PlayWhisperSound)
 
 	-- Font size
 	for i = 1, 15 do

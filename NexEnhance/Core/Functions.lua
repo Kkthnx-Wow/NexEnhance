@@ -36,27 +36,37 @@ do
 end
 
 do
+	local prefixStyle
+	function Core:UpdateNumberPrefixStyle()
+		prefixStyle = Core.db.profile.general.numberPrefixStyle
+	end
+
 	-- Function to shorten numerical values
 	function Core.ShortValue(n)
-		local prefixStyle = 1
-		local abs_n = abs(n)
-		local suffix, div = "", 1
-
-		if abs_n >= 1e12 then
-			suffix, div = (prefixStyle == 1 and "t" or "z"), 1e12
-		elseif abs_n >= 1e9 then
-			suffix, div = (prefixStyle == 1 and "b" or "y"), 1e9
-		elseif abs_n >= 1e6 then
-			suffix, div = (prefixStyle == 1 and "m" or "w"), 1e6
-		elseif abs_n >= 1e3 then
-			suffix, div = (prefixStyle == 1 and "k" or "w"), 1e3
-		end
-
-		local val = n / div
-		if div > 1 and val < 10 then
-			return string.format("%.1f%s", val, suffix)
+		if prefixStyle == "STANDARD" then
+			if n >= 1e12 then
+				return format("%.2ft", n / 1e12)
+			elseif n >= 1e9 then
+				return format("%.2fb", n / 1e9)
+			elseif n >= 1e6 then
+				return format("%.2fm", n / 1e6)
+			elseif n >= 1e3 then
+				return format("%.1fk", n / 1e3)
+			else
+				return format("%.0f", n)
+			end
+		elseif prefixStyle == "ASIAN" then
+			if n >= 1e12 then
+				return format("%.2f" .. "z", n / 1e12) -- Need local for z,y,w
+			elseif n >= 1e8 then
+				return format("%.2f" .. "y", n / 1e8) -- Need local for z,y,w
+			elseif n >= 1e4 then
+				return format("%.1f" .. "w", n / 1e4) -- Need local for z,y,w
+			else
+				return format("%.0f", n)
+			end
 		else
-			return string.format("%d%s", val, suffix)
+			return format("%.0f", n)
 		end
 	end
 
@@ -446,12 +456,14 @@ do
 end
 
 do
-	function Core:CreateBackdropFrame(offsetX, offsetY)
+	function Core:CreateBackdropFrame(offsetA, offsetB, offsetC, offsetD)
 		local targetFrame = self
 
 		-- Use default offsets if none provided
-		offsetX = offsetX or 0
-		offsetY = offsetY or 0
+		offsetA = offsetA or 0
+		offsetB = offsetB or 0
+		offsetC = offsetC or 0
+		offsetD = offsetD or 0
 
 		-- Adjust targetFrame if the provided object is a texture
 		if targetFrame:IsObjectType("Texture") then
@@ -474,8 +486,8 @@ do
 
 		-- Create the backdrop frame
 		local backdropFrame = CreateFrame("Frame", nil, targetFrame, "TooltipBackdropTemplate")
-		backdropFrame:SetPoint("TOPLEFT", targetFrame, "TOPLEFT", -offsetX, offsetY)
-		backdropFrame:SetPoint("BOTTOMRIGHT", targetFrame, "BOTTOMRIGHT", offsetX, -offsetY)
+		backdropFrame:SetPoint("TOPLEFT", targetFrame, "TOPLEFT", -offsetA, offsetB)
+		backdropFrame:SetPoint("BOTTOMRIGHT", targetFrame, "BOTTOMRIGHT", offsetC, -offsetD)
 		backdropFrame:SetFrameLevel(backdropFrameLevel)
 		backdropFrame:SetFrameStrata(targetFrame:GetFrameStrata())
 
@@ -499,7 +511,7 @@ do
 		local backdropFrameLevel = (frameLevel > 0) and (frameLevel - 1) or 0
 
 		-- Create the backdrop frame
-		local backdropFrame = CreateFrame("Frame", nil, parentFrame, BackdropTemplateMixin and "BackdropTemplate")
+		local backdropFrame = CreateFrame("Frame", nil, parentFrame, "BackdropTemplate")
 		backdropFrame:SetFrameLevel(backdropFrameLevel)
 		backdropFrame:SetPoint("TOPLEFT", anchor, "TOPLEFT", -size, size)
 		backdropFrame:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", size, -size)

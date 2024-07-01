@@ -1,4 +1,5 @@
-local _, Module = ...
+local _, Modules = ...
+local Module = Modules.Chat
 
 local string_find, string_gsub = string.find, string.gsub
 local INTERFACE_ACTION_BLOCKED = INTERFACE_ACTION_BLOCKED
@@ -36,10 +37,10 @@ function Module:RenameChatStrings()
 	_G.ERR_FRIEND_ONLINE_SS = string_gsub(_G.ERR_FRIEND_ONLINE_SS, "%]%|h", "]|h|cff00c957")
 	_G.ERR_FRIEND_OFFLINE_S = string_gsub(_G.ERR_FRIEND_OFFLINE_S, "%%s", "%%s|cffff7f50")
 
-	_G.CHAT_WHISPER_INFORM_GET = Module.L["To"] .. " %s "
-	_G.CHAT_WHISPER_GET = Module.L["From"] .. " %s "
-	_G.CHAT_BN_WHISPER_INFORM_GET = Module.L["To"] .. " %s "
-	_G.CHAT_BN_WHISPER_GET = Module.L["From"] .. " %s "
+	_G.CHAT_WHISPER_INFORM_GET = Modules.L["To"] .. " %s "
+	_G.CHAT_WHISPER_GET = Modules.L["From"] .. " %s "
+	_G.CHAT_BN_WHISPER_INFORM_GET = Modules.L["To"] .. " %s "
+	_G.CHAT_BN_WHISPER_GET = Modules.L["From"] .. " %s "
 
 	_G.CHAT_SAY_GET = "%s "
 	_G.CHAT_YELL_GET = "%s "
@@ -67,7 +68,7 @@ function Module:RenameChatStrings()
 	_G.CHAT_FLAG_GM = "[GM] "
 end
 
-function Module:PLAYER_LOGIN()
+function Module:RegisterChatRename()
 	Module:RenameChatFrames()
 	Module:RenameChatStrings()
 end

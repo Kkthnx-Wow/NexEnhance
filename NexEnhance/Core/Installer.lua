@@ -1,9 +1,33 @@
 local AddonName, Core = ...
 
+TOOLTIP_AZERITE_BACKGROUND_COLOR = CreateColor(1, 1, 1)
+GAME_TOOLTIP_BACKDROP_STYLE_AZERITE_ITEM = {
+	bgFile = "Interface/Tooltips/UI-Tooltip-Background-Azerite",
+	edgeFile = "Interface/Tooltips/UI-Tooltip-Border-Azerite",
+	tile = true,
+	tileEdge = false,
+	tileSize = 16,
+	edgeSize = 19,
+	insets = { left = 4, right = 4, top = 4, bottom = 4 },
+}
+
 local function CreateSplashScreen()
-	local splash = CreateFrame("Frame", "NE_SplashScreen", UIParent, "TooltipBackdropTemplate")
+	local splash = CreateFrame("Frame", "NE_SplashScreen", UIParent, "BackdropTemplate")
 	splash:SetSize(400, 200)
 	splash:SetPoint("CENTER")
+	splash:SetBackdrop(GAME_TOOLTIP_BACKDROP_STYLE_AZERITE_ITEM)
+	splash:SetBackdropBorderColor((TOOLTIP_DEFAULT_COLOR):GetRGB())
+	splash:SetBackdropColor((TOOLTIP_AZERITE_BACKGROUND_COLOR):GetRGB())
+
+	splash.top = splash:CreateTexture(nil, "ARTWORK")
+	splash.top:SetPoint("TOP", 0, 16)
+	splash.top:SetAtlas("AzeriteTooltip-Topper", true)
+	splash.top:SetScale(0.75)
+
+	splash.bottom = splash:CreateTexture(nil, "ARTWORK")
+	splash.bottom:SetPoint("BOTTOM", 0, -6)
+	splash.bottom:SetAtlas("AzeriteTooltip-Bottom", true)
+	splash.bottom:SetScale(1)
 
 	splash.text = splash:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
 	splash.text:SetPoint("TOP", 0, -16)
@@ -205,7 +229,7 @@ function Core:ForceChatSettings()
 	enableClassColors(classColorGroups)
 end
 
-function Core:PLAYER_LOGIN()
+function Core:OnLogin()
 	if not Core.db.profile.settingsApplied then
 		local splash = CreateSplashScreen()
 		splash:Show()

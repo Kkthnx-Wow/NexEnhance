@@ -1,4 +1,5 @@
-local _, Module = ...
+local _, Modules = ...
+local Module = Modules.Chat
 
 -- Sourced: NDui (siweia)
 
@@ -101,12 +102,12 @@ function Module:ChatCopy_CreateMenu()
 end
 
 function Module:ChatCopy_Create()
-	chatFrame = Module:CreateFrame("Frame", "Module", UIParent, "TooltipBackdropTemplate")
+	chatFrame = Modules:CreateFrame("Frame", "Module", UIParent, "TooltipBackdropTemplate")
 	chatFrame:SetPoint("CENTER")
 	chatFrame:SetSize(700, 400)
 	chatFrame:Hide()
 	chatFrame:SetFrameStrata("DIALOG")
-	Module.CreateMoverFrame(chatFrame)
+	Modules.CreateMoverFrame(chatFrame)
 
 	chatFrame.close = CreateFrame("Button", nil, chatFrame, "UIPanelCloseButton")
 	chatFrame.close:SetPoint("TOPRIGHT", chatFrame)
@@ -174,7 +175,7 @@ function Module:ChatCopy_Create()
 	end)
 end
 
-function Module:PLAYER_LOGIN()
+function Module:RegisterChatCopy()
 	self:ChatCopy_CreateMenu()
 	self:ChatCopy_Create()
 end

@@ -1,4 +1,5 @@
-local _, Module = ...
+local _, Modules = ...
+local Module = Modules.Chat
 
 local string_find = string.find
 local string_gsub = string.gsub
@@ -82,8 +83,8 @@ function Module:HyperlinkShowHook(link)
 	end
 end
 
-function Module:PLAYER_LOGIN()
-	if not Module.db.profile.chat.URL then
+function Module:RegisterChatURLCopy()
+	if not Modules.db.profile.chat.URL then
 		return
 	end
 

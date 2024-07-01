@@ -17,6 +17,9 @@ Libs\AceConfig-3.0\AceConfig-3.0.xml
 Libs\LibChatAnims\LibChatAnims.lua
 Libs\Dashi\embed.xml
 
+# Fonts
+FontStyles.xml
+
 # Initialization
 Init.lua
 
@@ -38,10 +41,15 @@ Core\Functions.lua
 Core\Installer.lua
 Core\Developer.lua
 
+# Data
+Data\Automation\DataAnnoyingBuffs.lua
+Data\Maps\DataWorldMapRevel.lua
+
 # Actionbars
 Modules\Actionbars\Cooldowns.lua
 Modules\Actionbars\Range.lua
 Modules\Actionbars\Style.lua
+
 # Automation
 Modules\Automation\AnnoyingBuffs.lua
 Modules\Automation\AutoRepair.lua
@@ -49,6 +57,7 @@ Modules\Automation\AutoSell.lua
 Modules\Automation\CinematicSkip.lua
 Modules\Automation\DeclineDuels.lua
 Modules\Automation\ScreenShots.lua
+
 # Blizzard
 Modules\Blizzard\Auras.lua
 Modules\Blizzard\ExpRep.lua
@@ -58,39 +67,54 @@ Modules\Blizzard\ChatFrame.lua
 Modules\Blizzard\InspectFrame.lua
 Modules\Blizzard\ObjectiveTracker.lua
 Modules\Blizzard\QuestNavigation.lua
+
 # BugFixes
 Modules\BugFixes\DruidFormFix.lua
+
 # Chat
-Modules\Chat\Core.lua
-Modules\Chat\URLCopy.lua
-Modules\Chat\Copy.lua
-Modules\Chat\Rename.lua
+Modules\Chat\Elements\ChatCore.lua
+Modules\Chat\Elements\ChatURLCopy.lua
+Modules\Chat\Elements\ChatCopy.lua
+Modules\Chat\Elements\ChatChannelRename.lua
+Modules\Chat\ChatLoad.lua
+
 # General
 Modules\General\AutoScale.lua
 Modules\General\Grid.lua
+
 # Loot
 Modules\Loot\FasterLoot.lua
+
 # Miscellaneous
 Modules\Miscellaneous\AFK.lua
+Modules\Miscellaneous\ImprovedMail.lua
 Modules\Miscellaneous\MissingStats.lua
 Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\QuestRewardDisplay.lua
 Modules\Miscellaneous\SlotItemLevel.lua
 Modules\Miscellaneous\yClassColors.lua
+
 # Maps
 Modules\Maps\WorldMap.lua
 Modules\Maps\Minimap.lua
 Modules\Maps\EasyVolume.lua
+Modules\Maps\WorldMapReveal.lua
+
 # Tooltip
 Modules\Tooltip\Core.lua
 Modules\Tooltip\Icons.lua
 Modules\Tooltip\SpecLevel.lua
 Modules\Tooltip\ID.lua
+
 # Unitframes
 Modules\Unitframes\ClassColor.lua
 Modules\Unitframes\Desaturate.lua
 Modules\Unitframes\HitIndicator.lua
 Modules\Unitframes\Stealable.lua
+Modules\Unitframes\Castbars.lua
+
+# Skins
+Modules\Skins\Addons\Details.lua
 
 # Config
 Config\SavedVariables.lua

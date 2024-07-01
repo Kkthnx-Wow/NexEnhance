@@ -8,7 +8,7 @@ local select, pairs = select, pairs
 
 -- Caching frequently used functions and variables
 local GetXPExhaustion = GetXPExhaustion
-local IsShiftKeyDown, IsWatchingHonorAsXP = IsShiftKeyDown, IsWatchingHonorAsXP
+local IsWatchingHonorAsXP = IsWatchingHonorAsXP
 local UnitHonor, UnitHonorLevel, UnitHonorMax = UnitHonor, UnitHonorLevel, UnitHonorMax
 local UnitXP, UnitXPMax = UnitXP, UnitXPMax
 local C_AzeriteItem_FindActiveAzeriteItem = C_AzeriteItem.FindActiveAzeriteItem

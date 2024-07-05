@@ -156,21 +156,18 @@ function Core:ForceChatSettings()
 
 		for _, name in ipairs(_G.CHAT_FRAMES) do
 			local frame = _G[name]
-			local id = frame:GetID()
 
-			-- Configure specific frames based on their IDs
-			if id == 2 then
-				FCF_SetWindowName(frame, Core.L["Log"])
-			elseif id == 3 then
-				-- Voice transcription specific settings
-				VoiceTranscriptionFrame_UpdateVisibility(frame)
-				VoiceTranscriptionFrame_UpdateVoiceTab(frame)
-				VoiceTranscriptionFrame_UpdateEditBox(frame)
+			if frame.Tab then -- only Voice has .Tab
+				FCF_UnDockFrame(frame)
+				FCF_SetLocked(frame, false)
+				FCF_Close(frame)
 			end
 
 			-- Common configuration for all frames
 			FCF_SetChatWindowFontSize(nil, frame, 12)
 		end
+
+		FCF_SelectDockFrame(ChatFrame1)
 	end
 
 	local function configureChatFrame(chatFrame, windowName, removeChannels, messageGroups, isDocked)
@@ -181,7 +178,7 @@ function Core:ForceChatSettings()
 			FCF_OpenNewWindow(windowName)
 		end
 
-		FCF_SetLocked(chatFrame, 1)
+		FCF_SetLocked(chatFrame, true)
 		FCF_SetWindowName(chatFrame, windowName)
 		chatFrame:Show()
 
@@ -194,6 +191,8 @@ function Core:ForceChatSettings()
 		for _, group in ipairs(messageGroups) do
 			ChatFrame_AddMessageGroup(chatFrame, group)
 		end
+
+		FCF_SelectDockFrame(ChatFrame1)
 	end
 
 	local function configureChatColors()
@@ -237,3 +236,10 @@ function Core:OnLogin()
 		Core:Print(Core.InfoColor .. "v" .. Core.SystemColor .. C_AddOns.GetAddOnMetadata(AddonName, "Version"))
 	end
 end
+
+Core:RegisterSlash("/nexinstall", function()
+	local splash = CreateSplashScreen()
+	if not splash:IsShown() then
+		splash:Show()
+	end
+end)

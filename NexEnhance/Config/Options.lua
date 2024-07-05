@@ -714,16 +714,14 @@ local function CreateOptions()
 end
 
 function Config:ADDON_LOADED(addon)
-	if addon == AddonName then
-		CreateOptions() -- Load on demand
-		Config.CreateSupportGUI() -- LoD
+	if addon ~= "NexEnhance" then
+		return
 	end
-end
 
--- SettingsPanel:HookScript("OnShow", function()
--- 	CreateOptions() -- Load on demand
--- 	Config.CreateSupportGUI() -- LoD
--- end)
+	CreateOptions() -- Load on demand
+	Config.CreateSupportGUI() -- LoD
+	Config:SetupUIScale(true)
+end
 
 Config:RegisterSlash("/nexe", "/ne", function()
 	Settings.OpenToCategory(AddonName)

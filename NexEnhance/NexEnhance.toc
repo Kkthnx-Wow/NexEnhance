@@ -15,6 +15,7 @@ Libs\AceDB-3.0\AceDB-3.0.lua
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 Libs\LibChatAnims\LibChatAnims.lua
+Libs\Unfit-1.0\Unfit-1.0.lua
 Libs\Dashi\embed.xml
 
 # Fonts
@@ -45,12 +46,12 @@ Core\Developer.lua
 Data\Automation\DataAnnoyingBuffs.lua
 Data\Maps\DataWorldMapRevel.lua
 
-# Actionbars
+# Actionbars 
 Modules\Actionbars\Cooldowns.lua
 Modules\Actionbars\Range.lua
 Modules\Actionbars\Style.lua
 
-# Automation
+# Automation 
 Modules\Automation\AnnoyingBuffs.lua
 Modules\Automation\AutoRepair.lua
 Modules\Automation\AutoSell.lua
@@ -58,65 +59,64 @@ Modules\Automation\CinematicSkip.lua
 Modules\Automation\DeclineDuels.lua
 Modules\Automation\ScreenShots.lua
 
-# Blizzard
+# Blizzard 
 Modules\Blizzard\Auras.lua
 Modules\Blizzard\ExpRep.lua
-Modules\Blizzard\CharacterFrame.lua
-Modules\Blizzard\ChatBubble.lua
-Modules\Blizzard\ChatFrame.lua
-Modules\Blizzard\InspectFrame.lua
-Modules\Blizzard\ObjectiveTracker.lua
-Modules\Blizzard\QuestNavigation.lua
+Modules\Blizzard\CharacterFrame.lua 
+Modules\Blizzard\ChatBubble.lua 
+Modules\Blizzard\ChatFrame.lua 
+Modules\Blizzard\InspectFrame.lua 
+Modules\Blizzard\ObjectiveTracker.lua 
+Modules\Blizzard\QuestNavigation.lua 
 
 # BugFixes
 Modules\BugFixes\DruidFormFix.lua
 
 # Chat
-Modules\Chat\Elements\ChatCore.lua
-Modules\Chat\Elements\ChatURLCopy.lua
-Modules\Chat\Elements\ChatCopy.lua
-Modules\Chat\Elements\ChatChannelRename.lua
-Modules\Chat\ChatLoad.lua
+Modules\Chat\Elements\Styling.lua
+Modules\Chat\Elements\URL.lua
+Modules\Chat\Elements\Copy.lua
+Modules\Chat\Elements\Formatting.lua
+Modules\Chat\Core.lua
 
 # General
-Modules\General\AutoScale.lua
-Modules\General\Grid.lua
+Modules\General\UIScaling.lua
+Modules\General\GridOverlay.lua
+
+# Inventory
+Modules\Inventory\ItemUsability.lua
 
 # Loot
-Modules\Loot\FasterLoot.lua
+Modules\Loot\FasterAutoLoot.lua
 
 # Miscellaneous
-Modules\Miscellaneous\AFK.lua
-Modules\Miscellaneous\ImprovedMail.lua
-Modules\Miscellaneous\MissingStats.lua
+Modules\Miscellaneous\AFKMode.lua
+Modules\Miscellaneous\MailManager.lua
+Modules\Miscellaneous\CharacterStats.lua
 Modules\Miscellaneous\MovableFrames.lua
 Modules\Miscellaneous\QuestRewardDisplay.lua
-Modules\Miscellaneous\SlotItemLevel.lua
-Modules\Miscellaneous\yClassColors.lua
+Modules\Miscellaneous\ItemLevelManagement.lua
+Modules\Miscellaneous\GuildFriendsColors.lua
 
-# Maps
+# Maps 
 Modules\Maps\WorldMap.lua
 Modules\Maps\Minimap.lua
 Modules\Maps\EasyVolume.lua
 Modules\Maps\WorldMapReveal.lua
 
-# Tooltip
+# Tooltip 
 Modules\Tooltip\Core.lua
 Modules\Tooltip\Icons.lua
 Modules\Tooltip\SpecLevel.lua
 Modules\Tooltip\ID.lua
 
-# Unitframes
+# Unitframes 
 Modules\Unitframes\ClassColor.lua
-Modules\Unitframes\Desaturate.lua
-Modules\Unitframes\HitIndicator.lua
-Modules\Unitframes\Stealable.lua
-Modules\Unitframes\Castbars.lua
 
-# Skins
+# Skins 
 Modules\Skins\Addons\Details.lua
 
-# Config
+# Config 
 Config\SavedVariables.lua
 Config\Options.lua
 Config\Support.lua

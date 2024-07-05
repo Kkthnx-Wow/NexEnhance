@@ -91,11 +91,14 @@ local defaults = {
 	},
 }
 
-function Config:ADDON_LOADED(name)
-	if name == AddonName then
-		-- initialize database with defaults
-		Config.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults)
-
-		return true
+function Config:ADDON_LOADED(addon)
+	if addon ~= "NexEnhance" then
+		return
 	end
+
+	-- initialize database with defaults
+	Config.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults)
+	Config:SetupUIScale(true)
+
+	return true
 end

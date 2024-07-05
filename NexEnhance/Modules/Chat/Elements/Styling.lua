@@ -207,7 +207,7 @@ function Module:SkinChat()
 	local tab = _G[name .. "Tab"]
 	local tabFont, tabFontSize = tab.Text:GetFont()
 	tab:SetAlpha(1)
-	tab.Text:SetFont(tabFont, tabFontSize + 2, "")
+	tab.Text:SetFont(tabFont, tabFontSize + 2, "NONE")
 	Modules.StripTextures(tab, 7)
 	hooksecurefunc(tab, "SetAlpha", Module.TabSetAlpha)
 

@@ -681,7 +681,14 @@
         "IsSecureCmd",
         "ChatEdit_GetActiveWindow",
         "FCF_SetTabPosition",
-        "CHAT"
+        "CHAT",
+        "MouseIsOver",
+        "FCF_UnDockFrame",
+        "FCF_Close",
+        "FCF_SelectDockFrame",
+        "ChatFrame_AddChannel",
+        "GeneralDockManagerOverflowButton",
+        "VOICE_LABEL"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

@@ -410,7 +410,7 @@ local function CreateOptions()
 					if info[#info] == "AutoScale" or info[#info] == "UIScale" then
 						Config:SetupUIScale()
 					elseif info[#info] == "numberPrefixStyle" then
-						Config:UpdateNumberPrefixStyle()
+						Config:ForceUpdatePrefixStyle()
 					end
 				end,
 				args = {

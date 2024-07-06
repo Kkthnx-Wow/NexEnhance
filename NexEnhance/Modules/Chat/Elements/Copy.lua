@@ -31,7 +31,7 @@ local function isMessageProtected(msg)
 end
 
 local function replaceMessage(msg, r, g, b)
-	local hexRGB = Module.RGBToHex(r, g, b)
+	local hexRGB = Modules.RGBToHex(r, g, b)
 	msg = gsub(msg, "|T(.-):.-|t", "")
 	msg = gsub(msg, "|A(.-):.-|a", "")
 	return format("%s%s|r", hexRGB, msg)
@@ -161,7 +161,7 @@ function Module:ChatCopy_Create()
 		local anchor, _, xoff, yoff = "ANCHOR_RIGHT", self:GetParent(), 10, 5
 		GameTooltip:SetOwner(self, anchor, xoff, yoff)
 		GameTooltip:ClearLines()
-		GameTooltip:AddDoubleLine(leftButtonString .. Module.L["Left Click"], "Copy Chat", 1, 1, 1)
+		GameTooltip:AddDoubleLine(leftButtonString .. Modules.L["Left Click"], "Copy Chat", 1, 1, 1)
 
 		GameTooltip:Show()
 	end)

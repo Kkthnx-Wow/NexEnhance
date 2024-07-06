@@ -36,13 +36,20 @@ do
 end
 
 do
-	local prefixStyle
+	-- Function to update the prefix style
 	function Core:UpdateNumberPrefixStyle()
-		prefixStyle = Core.db.profile.general.numberPrefixStyle
+		return Core.db.profile.general.numberPrefixStyle
+	end
+
+	-- Function to force update prefix style and use it immediately
+	function Core:ForceUpdatePrefixStyle()
+		self:UpdateNumberPrefixStyle() -- Update prefixStyle immediately
 	end
 
 	-- Function to shorten numerical values
 	function Core.ShortValue(n)
+		local prefixStyle = Core.db.profile.general.numberPrefixStyle -- Get the current prefix style
+
 		if prefixStyle == "STANDARD" then
 			if n >= 1e12 then
 				return format("%.2ft", n / 1e12)

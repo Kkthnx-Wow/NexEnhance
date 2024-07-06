@@ -32,15 +32,15 @@ local function CreateChangelogGUI()
 	backgroundImage:SetPoint("CENTER", changelogFrame)
 
 	local offset = 0
-	local indexAtlas = "|A:ui-ej-icon-empoweredraid-small:14:14|a"
+	local indexAtlas = "|A:ui-ej-icon-empoweredraid-small:14:12|a"
 	for index, entry in pairs(changelogEntries) do
 		local change = changelogFrame:CreateFontString(nil, "ARTWORK", "GameFontHighlightMedium")
 		change:SetPoint("TOPLEFT", changelogFrame, "TOPLEFT", 15, -(100 + offset))
 		change:SetText(indexAtlas .. " " .. entry)
 		if index % 2 == 0 then
-			change:SetTextColor(0.8, 0.8, 0.8) -- Slightly off-white
+			change:SetTextColor(0.93, 0.93, 0.87) -- Light Beige
 		else
-			change:SetTextColor(1, 1, 1) -- White
+			change:SetTextColor(0.86, 0.86, 0.86) -- Light Gray
 		end
 		offset = offset + 28 -- Adjusted for larger font size
 	end

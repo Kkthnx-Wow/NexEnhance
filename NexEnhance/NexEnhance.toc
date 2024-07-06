@@ -120,3 +120,4 @@ Modules\Skins\Addons\Details.lua
 Config\SavedVariables.lua
 Config\Options.lua
 Config\Support.lua
+Config\Changelog.lua

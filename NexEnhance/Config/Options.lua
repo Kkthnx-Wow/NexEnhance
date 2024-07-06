@@ -740,9 +740,45 @@ local function CreateOptions()
 					},
 				},
 			},
-			-- Add additional sections similarly
-
-			GitHubButton = {
+			-- changelog = {
+			-- 	name = "|cff32CD32Changelog|r",
+			-- 	icon = "4200123",
+			-- 	desc = "View the latest updates and fixes for NexEnhance.",
+			-- 	type = "group",
+			-- 	order = 98,
+			-- 	args = {
+			-- 		versionHeader = {
+			-- 			name = "|cffFFD100" .. C_AddOns.GetAddOnMetadata(AddonName, "Version") .. "|r",
+			-- 			order = 1,
+			-- 			type = "description",
+			-- 			fontSize = "large",
+			-- 		},
+			-- 		changedHeader = {
+			-- 			name = "Changed",
+			-- 			order = 20,
+			-- 			type = "header",
+			-- 		},
+			-- 		changedText = {
+			-- 			name = "|cffFFD100-|r Improved performance in tooltip handling.",
+			-- 			order = 21,
+			-- 			type = "description",
+			-- 			fontSize = "medium",
+			-- 		},
+			-- 		fixedHeader = {
+			-- 			name = "Fixed",
+			-- 			order = 30,
+			-- 			type = "header",
+			-- 		},
+			-- 		fixedText = {
+			-- 			name = "|cffFFD100-|r Resolved issue causing Lua errors during quest interactions.",
+			-- 			order = 31,
+			-- 			type = "description",
+			-- 			fontSize = "medium",
+			-- 		},
+			-- 		-- Add more sections as needed
+			-- 	},
+			-- },
+			github = {
 				name = "|CFFf6f8faGitHub|r",
 				desc = "Open the GitHub repository for Nexenhance",
 				order = 99,
@@ -790,6 +826,7 @@ function Config:ADDON_LOADED(addon)
 
 	CreateOptions() -- Load on demand
 	Config.CreateSupportGUI() -- LoD
+	Config.CreateChangelogGUI() -- LoD
 	Config:SetupUIScale(true)
 end
 

@@ -751,7 +751,20 @@
         "BAG_FILTER_CONSUMABLES",
         "BAG_FILTER_TRADE_GOODS",
         "BAG_FILTER_JUNK",
-        "BAG_FILTER_QUEST_ITEMS"
+        "BAG_FILTER_QUEST_ITEMS",
+        "LOSS_OF_CONTROL_DISPLAY_PACIFYSILENCE",
+        "EXPANSION_NAME1",
+        "EXPANSION_NAME2",
+        "EXPANSION_NAME3",
+        "EXPANSION_NAME4",
+        "EXPANSION_NAME5",
+        "EXPANSION_NAME6",
+        "EXPANSION_NAME7",
+        "EXPANSION_NAME8",
+        "ClassTalentImportExportMixin",
+        "ExportUtil",
+        "LOADOUT_ERROR_BAD_STRING",
+        "LOADOUT_ERROR_SERIALIZATION_VERSION_MISMATCH"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"

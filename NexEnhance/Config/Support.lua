@@ -1,11 +1,11 @@
 local addonName, Config = ...
 
 -- Constants for commonly used values
-local EDITBOX_WIDTH = 250 -- Increased the width of the EditBox
+local EDITBOX_WIDTH = 250
 local EDITBOX_HEIGHT = 20
 local ICON_SIZE = 32
 local ICON_OFFSET = 4
-local EDITBOX_SPACING = 60 -- Space between each EditBox
+local EDITBOX_SPACING = 60
 local DISCORD_LINK = "https://discord.gg/Rc9wcK9cAB"
 local PATREON_LINK = "https://www.patreon.com/kkthnx"
 local PAYPAL_LINK = "https://paypal.me/kkthnxtv"
@@ -21,16 +21,12 @@ local function CreateReadOnlyEditBox(parent, point, relativeTo, relativePoint, x
 	editBox:SetCursorPosition(0)
 	editBox:ClearFocus()
 
-	editBox:SetScript("OnEscapePressed", function(self)
-		self:ClearFocus()
-	end)
+	editBox:SetScript("OnEscapePressed", editBox.ClearFocus)
 	editBox:SetScript("OnTextChanged", function(self)
 		self:SetText(text)
 	end)
 	editBox:SetScript("OnCursorChanged", function() end)
-	editBox:SetScript("OnEditFocusGained", function(self)
-		self:HighlightText()
-	end)
+	editBox:SetScript("OnEditFocusGained", editBox.HighlightText)
 	editBox:SetScript("OnMouseUp", function(self)
 		if not self:IsMouseOver() then
 			self:ClearFocus()
@@ -52,7 +48,7 @@ end
 -- Function to create the support GUI
 local function CreateSupportGUI()
 	local supportFrame = CreateFrame("Frame", addonName)
-	supportFrame.name = "|A:GarrisonTroops-Health:10:10|a Support"
+	supportFrame.name = "Support"
 	supportFrame.parent = addonName
 
 	local title = supportFrame:CreateFontString("$parentTitle", "ARTWORK", "GameFontNormalLarge")
@@ -87,6 +83,6 @@ end
 
 -- Create the support GUI once
 function Config.CreateSupportGUI()
-	Config.CreateSupportGUI = Config.Dummy -- we only want to run this once
+	Config.CreateSupportGUI = Config.Dummy -- Ensure this is only executed once
 	CreateSupportGUI()
 end

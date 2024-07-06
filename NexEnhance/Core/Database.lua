@@ -1,6 +1,8 @@
 -- Database management for NexEnhance addon
 local _, Core = ...
 
+Core.Version = C_AddOns.GetAddOnMetadata("NexEnhance", "Version")
+
 Core.ScreenWidth, Core.ScreenHeight = GetPhysicalScreenSize()
 
 -- Define font settings

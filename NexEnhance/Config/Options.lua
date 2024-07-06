@@ -1,25 +1,36 @@
 local AddonName, Config = ...
 
+-- Constants
 local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local DEFAULT_SIZE = 16
+local HeaderTag = "|cff00cc4c"
 
+-- Variables
+local reloadUIPending = false -- Flag to track if a UI reload popup is already shown or pending
+
+-- Functions
+
+-- Updates options in AceConfigRegistry-3.0 if SettingsPanel is shown
 local function UpdateOptions()
 	if SettingsPanel:IsShown() then
 		LibStub("AceConfigRegistry-3.0"):NotifyChange(AddonName)
 	end
 end
 
+-- Generates texture markup for an icon
 local function GetTextureMarkup(icon, size)
 	icon = icon or DEFAULT_ICON
 	size = size or DEFAULT_SIZE
 	return string.format("|T%s:%d|t", icon, size)
 end
 
+-- Generates atlas markup for an icon
 local function GetAtlasMarkup(atlas, size)
 	size = size or DEFAULT_SIZE
 	return string.format("|A:%s:%d:%d|a", atlas, size, size)
 end
 
+-- Retrieves icon string; validation check included
 local function GetIconString(iconMarkup)
 	if not iconMarkup then
 		error("Invalid input parameter for GetIconString")
@@ -27,8 +38,37 @@ local function GetIconString(iconMarkup)
 	return iconMarkup
 end
 
+-- Helper function to show a reload UI confirmation popup
+local function ShowReloadUIPopup()
+	if not reloadUIPending then
+		reloadUIPending = true
+		StaticPopupDialogs["RELOAD_UI_CONFIRM"] = {
+			text = "Reloading " .. AddonName .. " is necessary to apply this setting.\nDo you want to reload now?",
+			button1 = "Reload UI",
+			button2 = "Remind Me Later",
+			OnAccept = function()
+				reloadUIPending = false
+				ReloadUI()
+			end,
+			OnCancel = function()
+				reloadUIPending = false
+				Config:Print("We'll remind you again right away when you change another option that requires this reload! :D")
+			end,
+			timeout = 0,
+			whileDead = true,
+			hideOnEscape = true,
+			preferredIndex = 3,
+		}
+		StaticPopup_Show("RELOAD_UI_CONFIRM")
+	end
+end
+
+-- Tooltip notice for reload requirement
+-- Only to be placed on settings we need to have a reload to take effect
+local AddReloadNotice = "|n|n|cff5bc0beChanging this option requires a UI reload.|r"
+
+-- Lets users know this is a new feature
 local NewFeature = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
-local HeaderTag = "|cff00cc4c"
 
 local function CreateOptions()
 	CreateOptions = Config.Dummy -- we only want to load this once
@@ -701,6 +741,36 @@ local function CreateOptions()
 				},
 			},
 			-- Add additional sections similarly
+
+			GitHubButton = {
+				name = "|CFFf6f8faGitHub|r",
+				desc = "Open the GitHub repository for Nexenhance",
+				order = 99,
+				type = "execute",
+				func = function()
+					StaticPopupDialogs["NE_GITHUB_POPUP"] = {
+						text = "|T236688:36|t\n\n" .. "Copy the link below and thank you for using NexEnhance!",
+						button1 = "OK",
+						OnShow = function(self, data)
+							self.editBox:SetText("https://github.com/Kkthnx-Wow/NexEnhance")
+							self.editBox:HighlightText()
+						end,
+						OnCancel = function(_, _, reason)
+							if reason == "timeout" then
+								Config:Print("Your GitHub link edit box timed out. If this was a mistake, please try again. Thank you.")
+							end
+						end,
+						timeout = 4,
+						whileDead = false,
+						hideOnEscape = true,
+						enterClicksFirstButton = true,
+						hasEditBox = true,
+						editBoxWidth = 350, -- Adjust the width as needed
+						preferredIndex = 3,
+					}
+					StaticPopup_Show("NE_GITHUB_POPUP")
+				end,
+			},
 		},
 	})
 

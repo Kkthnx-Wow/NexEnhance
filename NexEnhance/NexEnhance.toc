@@ -98,6 +98,8 @@ Modules\Miscellaneous\QuestRewardDisplay.lua
 Modules\Miscellaneous\ItemLevelManagement.lua
 Modules\Miscellaneous\GuildFriendsColors.lua
 
+Modules\Profiles\Kkthnx.lua
+
 # Maps 
 Modules\Maps\WorldMap.lua
 Modules\Maps\Minimap.lua

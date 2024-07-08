@@ -522,14 +522,14 @@ local function CreateOptions()
 							Config.db.profile.skins.blizzskins[info[#info]] = value
 						end,
 						args = {
-							charFrame = {
+							characterFrame = {
 								order = 1,
 								name = "Enhanced Character Frame",
 								desc = "Improves the appearance and functionality of the character frame.",
 								type = "toggle",
 								width = "double",
 							},
-							chatBubble = {
+							chatbubble = {
 								order = 2,
 								name = "Chat Bubble Enhancements",
 								desc = "Toggle the enhancements for chat bubbles, such as customized colors and textures.",
@@ -543,7 +543,7 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 							},
-							objTracker = {
+							objectiveTracker = {
 								order = 4,
 								name = "Enhanced Objective Tracker",
 								desc = "Enhances the Objective Tracker for a more modern look.",
@@ -564,14 +564,14 @@ local function CreateOptions()
 							Config.db.profile.skins.addonskins[info[#info]] = value
 						end,
 						args = {
-							detailsSkin = {
+							details = {
 								order = 1,
 								name = "Enhanced Details! Skin",
 								desc = "Improves the appearance and functionality of the Details! addon frames.",
 								type = "toggle",
 								width = "normal",
 							},
-							applyDetailsSkin = { -- Add popup one day. Too lazy to do it. I need to add a file to hold popups.
+							applyDetails = { -- Add popup one day. Too lazy to do it. I need to add a file to hold popups.
 								order = 2,
 								name = "Reset Details! Skin",
 								desc = "Resets the enhanced Details! skin settings.",
@@ -826,7 +826,7 @@ local function CreateOptions()
 				end,
 			},
 			kkthnxprofile = {
-				name = "|CFFf6f8faKkthnx Profile|r",
+				name = GetAtlasMarkup("BuildanAbomination-32x32", 18) .. " |CFFf6f8faKkthnx Profile|r",
 				desc = "Brace yourself for Kkthnx's epic setup! Unleash the power...or just enjoy a better UI.",
 				order = 100,
 				type = "execute",

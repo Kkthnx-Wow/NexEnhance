@@ -81,9 +81,9 @@ local function ReskinDetails()
 		return
 	end
 
-	-- if not C["Skins"].Details then
-	-- 	return
-	-- end
+	if not Module.db.profile.skins.addonskins.details then
+		return
+	end
 
 	local Details = Details
 	-- instance table can be nil sometimes

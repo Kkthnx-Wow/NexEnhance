@@ -1,7 +1,7 @@
 local _, Module = ...
 
 Module:HookAddOn("Blizzard_InspectUI", function()
-	if not Module.db.profile.blizzard.inspectFrame then
+	if not Module.db.profile.skins.blizzskins.inspectFrame then
 		return
 	end
 

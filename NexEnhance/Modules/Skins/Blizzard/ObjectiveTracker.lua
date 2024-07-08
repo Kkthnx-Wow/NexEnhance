@@ -71,7 +71,7 @@ end
 
 -- Function triggered on PLAYER_LOGIN event
 function Module:PLAYER_LOGIN()
-	if not self.db.profile.blizzard.objectiveTracker then
+	if not Module.db.profile.skins.blizzskins.objectiveTracker then
 		return
 	end
 

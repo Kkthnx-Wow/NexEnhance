@@ -70,10 +70,20 @@ local AddReloadNotice = "|n|n|cff5bc0beChanging this option requires a UI reload
 -- Lets users know this is a new feature
 local NewFeature = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
 
+-- Function to open the config and select a specific group
+function OpenConfigWithDefaultGroup(groupName)
+	-- Open the main options panel
+	LibStub("AceConfigDialog-3.0"):Open(AddonName)
+	-- Select the specified group
+	LibStub("AceConfigDialog-3.0"):SelectGroup(AddonName, groupName)
+end
+
 local function CreateOptions()
 	CreateOptions = Config.Dummy -- we only want to load this once
 
-	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, {
+	--LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, {
+	-- Register the options table with AceConfig
+	local options = {
 		type = "group",
 		args = {
 			intro = {
@@ -226,48 +236,6 @@ local function CreateOptions()
 					},
 				},
 			},
-			blizzard = {
-				order = 3,
-				name = "Blizzard",
-				icon = "135857", -- :D
-				type = "group",
-				get = function(info)
-					return Config.db.profile.blizzard[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.blizzard[info[#info]] = value
-				end,
-				args = {
-					characterFrame = {
-						order = 1,
-						name = "Enhanced Character Frame",
-						desc = "Improves the appearance and functionality of the character frame.",
-						type = "toggle",
-						width = "double",
-					},
-					chatbubble = {
-						order = 2,
-						name = "Chat Bubble Enhancements",
-						desc = "Toggle the enhancements for chat bubbles, such as customized colors and textures.",
-						type = "toggle",
-						width = "double",
-					},
-					inspectFrame = {
-						order = 3,
-						name = "Enhanced Inspect Frame",
-						desc = "Enhances the inspect frame for better display and usability.",
-						type = "toggle",
-						width = "double",
-					},
-					objectiveTracker = {
-						order = 3,
-						name = "Enhanced ObjectiveTracker",
-						desc = "Enhances the ObjectiveTracker for a more modern look.",
-						type = "toggle",
-						width = "double",
-					},
-				},
-			},
 			chat = {
 				order = 3,
 				name = "Chat",
@@ -316,7 +284,7 @@ local function CreateOptions()
 				},
 			},
 			experience = {
-				order = 3,
+				order = 4,
 				name = "Experience",
 				icon = "894556", -- :D
 				type = "group",
@@ -398,7 +366,7 @@ local function CreateOptions()
 				},
 			},
 			general = {
-				order = 4,
+				order = 5,
 				name = "General",
 				icon = "463852", -- :D
 				type = "group",
@@ -444,7 +412,7 @@ local function CreateOptions()
 				},
 			},
 			loot = {
-				order = 5,
+				order = 6,
 				name = "Loot",
 				icon = "901746", -- :D
 				type = "group",
@@ -465,7 +433,7 @@ local function CreateOptions()
 				},
 			},
 			minimap = {
-				order = 6,
+				order = 7,
 				name = "Minimap",
 				icon = "1064187", -- :D
 				type = "group",
@@ -486,7 +454,7 @@ local function CreateOptions()
 				},
 			},
 			miscellaneous = {
-				order = 7,
+				order = 8,
 				name = "Miscellaneous",
 				icon = "134169", -- :D
 				type = "group",
@@ -530,8 +498,96 @@ local function CreateOptions()
 					},
 				},
 			},
+			skins = {
+				order = 9,
+				name = "Skins",
+				icon = "4620680", -- :D
+				type = "group",
+				get = function(info)
+					return Config.db.profile.skins[info[#info]]
+				end,
+				set = function(info, value)
+					Config.db.profile.skins[info[#info]] = value
+				end,
+				args = {
+					blizzskins = {
+						order = 1,
+						name = "Blizzard Frame Enhancements",
+						type = "group",
+						inline = true,
+						get = function(info)
+							return Config.db.profile.skins.blizzskins[info[#info]]
+						end,
+						set = function(info, value)
+							Config.db.profile.skins.blizzskins[info[#info]] = value
+						end,
+						args = {
+							charFrame = {
+								order = 1,
+								name = "Enhanced Character Frame",
+								desc = "Improves the appearance and functionality of the character frame.",
+								type = "toggle",
+								width = "double",
+							},
+							chatBubble = {
+								order = 2,
+								name = "Chat Bubble Enhancements",
+								desc = "Toggle the enhancements for chat bubbles, such as customized colors and textures.",
+								type = "toggle",
+								width = "double",
+							},
+							inspectFrame = {
+								order = 3,
+								name = "Enhanced Inspect Frame",
+								desc = "Enhances the inspect frame for better display and usability.",
+								type = "toggle",
+								width = "double",
+							},
+							objTracker = {
+								order = 4,
+								name = "Enhanced Objective Tracker",
+								desc = "Enhances the Objective Tracker for a more modern look.",
+								type = "toggle",
+								width = "double",
+							},
+						},
+					},
+					addonskins = {
+						order = 3,
+						name = "Addon Frame Enhancements",
+						type = "group",
+						inline = true,
+						get = function(info)
+							return Config.db.profile.skins.addonskins[info[#info]]
+						end,
+						set = function(info, value)
+							Config.db.profile.skins.addonskins[info[#info]] = value
+						end,
+						args = {
+							detailsSkin = {
+								order = 1,
+								name = "Enhanced Details! Skin",
+								desc = "Improves the appearance and functionality of the Details! addon frames.",
+								type = "toggle",
+								width = "normal",
+							},
+							applyDetailsSkin = { -- Add popup one day. Too lazy to do it. I need to add a file to hold popups.
+								order = 2,
+								name = "Reset Details! Skin",
+								desc = "Resets the enhanced Details! skin settings.",
+								type = "execute",
+								func = function()
+									print("Resetting Details! skin settings...")
+									Config:ResetDetailsAnchor(true)
+								end,
+								width = "normal",
+							},
+						},
+					},
+				},
+			},
 			tooltip = {
-				order = 8,
+				order = 10,
 				name = "Tooltip",
 				icon = "4622480", -- :D
 				type = "group",
@@ -615,7 +671,7 @@ local function CreateOptions()
 				},
 			},
 			unitframes = {
-				order = 9,
+				order = 11,
 				name = "Unit Frames",
 				icon = "648207", -- :D
 				type = "group",
@@ -652,7 +708,7 @@ local function CreateOptions()
 				},
 			},
 			worldmap = {
-				order = 10,
+				order = 12,
 				name = "WorldMap",
 				icon = "134269", -- :D
 				type = "group",
@@ -713,7 +769,7 @@ local function CreateOptions()
 				},
 			},
 			bugfixes = {
-				order = 11,
+				order = 13,
 				name = "BugFixes",
 				icon = "134520", -- :D
 				type = "group",
@@ -794,9 +850,10 @@ local function CreateOptions()
 				end,
 			},
 		},
-	})
+	}
 
-	Config.optionsFrame = LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, AddonName)
+	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, options)
+	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, AddonName)
 
 	-- handle combat updates
 	local EventHandler = CreateFrame("Frame", nil, SettingsPanel)
@@ -817,5 +874,5 @@ function Config:ADDON_LOADED(addon)
 end
 
 Config:RegisterSlash("/nexe", "/ne", function()
-	Settings.OpenToCategory(AddonName)
+	OpenConfigWithDefaultGroup("general")
 end)

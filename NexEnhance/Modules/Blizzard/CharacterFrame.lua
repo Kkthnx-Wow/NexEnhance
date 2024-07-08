@@ -10,7 +10,7 @@ local function styleEquipmentSlot(slotName)
 end
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.blizzard.characterFrame then
+	if not Module.db.profile.skins.characterFrame then
 		return
 	end
 

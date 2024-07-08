@@ -18,12 +18,7 @@ local defaults = {
 			DeclineDuels = false,
 			DeclinePetDuels = false,
 		},
-		blizzard = {
-			characterFrame = false,
-			chatbubble = false,
-			inspectFrame = false,
-			objectiveTracker = false,
-		},
+		blizzard = {},
 		chat = {
 			Background = false,
 			URLCopy = false,
@@ -55,6 +50,17 @@ local defaults = {
 			questRewardsMostValueIcon = false,
 		},
 		settingsApplied = false,
+		skins = {
+			blizzskins = {
+				characterFrame = false,
+				inspectFrame = false,
+				chatbubble = false,
+				objectiveTracker = false,
+			},
+			addonskins = {
+				details = false,
+			},
+		},
 		tempanchor = {},
 		tooltip = {
 			ShowID = false,

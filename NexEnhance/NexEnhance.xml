@@ -1,0 +1,124 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/">
+    <!-- Fixes -->
+    <Include file="TaintLess.xml" />
+
+    <!-- Libs -->
+    <Script file="Libs\LibStub\LibStub.lua" />
+    <Script file="Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua" />
+    <Script file="Libs\AceDB-3.0\AceDB-3.0.lua" />
+    <Include file="Libs\AceGUI-3.0\AceGUI-3.0.xml" />
+    <Include file="Libs\AceConfig-3.0\AceConfig-3.0.xml" />
+    <Script file="Libs\LibChatAnims\LibChatAnims.lua" />
+    <Script file="Libs\Unfit-1.0\Unfit-1.0.lua" />
+    <Include file="Libs\Dashi\embed.xml" />
+
+    <!-- Fonts -->
+    <Include file="FontStyles.xml" />
+
+    <!-- Initialization -->
+    <Script file="Init.lua" />
+
+    <!-- Locales -->
+    <!--
+    <Script file="Locales\deDE.lua" />
+    <Script file="Locales\esES.lua" />
+    <Script file="Locales\esMX.lua" />
+    <Script file="Locales\frFR.lua" />
+    <Script file="Locales\itIT.lua" />
+    <Script file="Locales\koKR.lua" />
+    <Script file="Locales\ptBR.lua" />
+    <Script file="Locales\ruRU.lua" />
+    <Script file="Locales\zhCN.lua" />
+    <Script file="Locales\zhTW.lua" />
+    -->
+
+    <!-- Core -->
+    <Script file="Core\Database.lua" />
+    <Script file="Core\Functions.lua" />
+    <Script file="Core\Installer.lua" />
+    <Script file="Core\Developer.lua" />
+
+    <!-- Data -->
+    <Script file="Data\Automation\DataAnnoyingBuffs.lua" />
+    <Script file="Data\Maps\DataWorldMapRevel.lua" />
+
+    <!-- Actionbars -->
+    <Script file="Modules\Actionbars\Cooldowns.lua" />
+    <Script file="Modules\Actionbars\Range.lua" />
+    <Script file="Modules\Actionbars\Style.lua" />
+
+    <!-- Automation -->
+    <Script file="Modules\Automation\AnnoyingBuffs.lua" />
+    <Script file="Modules\Automation\AutoRepair.lua" />
+    <Script file="Modules\Automation\AutoSell.lua" />
+    <Script file="Modules\Automation\CinematicSkip.lua" />
+    <Script file="Modules\Automation\DeclineDuels.lua" />
+    <Script file="Modules\Automation\ScreenShots.lua" />
+
+    <!-- Blizzard -->
+    <Script file="Modules\Blizzard\Auras.lua" />
+    <Script file="Modules\Blizzard\ExpRep.lua" />
+    <Script file="Modules\Blizzard\ChatFrame.lua" />
+    <Script file="Modules\Blizzard\QuestNavigation.lua" />
+
+    <!-- BugFixes -->
+    <Script file="Modules\BugFixes\DruidFormFix.lua" />
+
+    <!-- Chat -->
+    <Script file="Modules\Chat\Elements\Styling.lua" />
+    <Script file="Modules\Chat\Elements\URL.lua" />
+    <Script file="Modules\Chat\Elements\Copy.lua" />
+    <Script file="Modules\Chat\Elements\Formatting.lua" />
+    <Script file="Modules\Chat\Core.lua" />
+
+    <!-- General -->
+    <Script file="Modules\General\UIScaling.lua" />
+    <Script file="Modules\General\GridOverlay.lua" />
+
+    <!-- Inventory -->
+    <Script file="Modules\Inventory\ItemUsability.lua" />
+
+    <!-- Loot -->
+    <Script file="Modules\Loot\FasterAutoLoot.lua" />
+
+    <!-- Miscellaneous -->
+    <Script file="Modules\Miscellaneous\AFKMode.lua" />
+    <Script file="Modules\Miscellaneous\MailManager.lua" />
+    <Script file="Modules\Miscellaneous\CharacterStats.lua" />
+    <Script file="Modules\Miscellaneous\MovableFrames.lua" />
+    <Script file="Modules\Miscellaneous\QuestRewardDisplay.lua" />
+    <Script file="Modules\Miscellaneous\ItemLevelManagement.lua" />
+    <Script file="Modules\Miscellaneous\GuildFriendsColors.lua" />
+
+    <Script file="Modules\Profiles\Kkthnx.lua" />
+
+    <!-- Maps -->
+    <Script file="Modules\Maps\WorldMap.lua" />
+    <Script file="Modules\Maps\Minimap.lua" />
+    <Script file="Modules\Maps\EasyVolume.lua" />
+    <Script file="Modules\Maps\WorldMapReveal.lua" />
+
+    <!-- Tooltip -->
+    <Script file="Modules\Tooltip\Core.lua" />
+    <Script file="Modules\Tooltip\Icons.lua" />
+    <Script file="Modules\Tooltip\SpecLevel.lua" />
+    <Script file="Modules\Tooltip\ID.lua" />
+
+    <!-- Unitframes -->
+    <Script file="Modules\Unitframes\ClassColor.lua" />
+
+    <!-- Skins Blizz -->
+    <Script file="Modules\Skins\Blizzard\CharacterFrame.lua" />
+    <Script file="Modules\Skins\Blizzard\ChatBubble.lua" />
+    <Script file="Modules\Skins\Blizzard\InspectFrame.lua" />
+    <Script file="Modules\Skins\Blizzard\ObjectiveTracker.lua" />
+
+    <!-- Skins Addons -->
+    <Script file="Modules\Skins\Addons\Details.lua" />
+
+    <!-- Config -->
+    <Script file="Config\SavedVariables.lua" />
+    <Script file="Config\Options.lua" />
+    <Script file="Config\Support.lua" />
+    <Script file="Config\Changelog.lua" />
+</Ui>

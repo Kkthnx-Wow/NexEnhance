@@ -127,8 +127,6 @@ local function ReskinDetails()
 			instance1:SetBarTextSettings(12, "NexEnhanceFont", nil, nil, nil, false, false, nil, nil, nil, nil, nil, nil, true, { 0.04, 0.04, 0.04, 0.9 }, true, { 0.04, 0.04, 0.04, 0.9 })
 		end
 	end
-
-	Module:ResetDetailsAnchor(true)
 end
 
 Module:RegisterEvent("PLAYER_LOGIN", ReskinDetails)

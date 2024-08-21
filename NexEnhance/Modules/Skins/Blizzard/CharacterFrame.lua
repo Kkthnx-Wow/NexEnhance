@@ -65,34 +65,20 @@ function Module:PLAYER_LOGIN()
 	CharacterModelScene:SetPoint("TOPLEFT", CharacterFrame.Inset, 4, -4)
 	CharacterModelScene:SetPoint("BOTTOMRIGHT", CharacterFrame.Inset, -4, 4)
 
-	local function UpdateCharacterFrameLayout(isExpanded)
-		local frameWidth, frameHeight = 640, 431
-		local insetOffset = 432
-		local texturePath = "Interface\\DRESSUPFRAME\\DressingRoom" .. Module.MyClass
+	hooksecurefunc(CharacterFrame, "UpdateSize", function()
+		if CharacterFrame.activeSubframe == "PaperDollFrame" then
+			CharacterFrame:SetSize(640, 431)
+			CharacterFrame.Inset:SetPoint("BOTTOMRIGHT", CharacterFrame, "BOTTOMLEFT", 432, 4)
 
-		if not isExpanded then
-			frameWidth = 338
-			frameHeight = 424
-			insetOffset = 332
-			texturePath = "Interface\\FrameGeneral\\UI-Background-Marble"
+			CharacterFrame.Inset.Bg:SetTexture("Interface\\DRESSUPFRAME\\DressingRoom" .. Module.MyClass)
+			CharacterFrame.Inset.Bg:SetTexCoord(1 / 512, 479 / 512, 46 / 512, 455 / 512)
+			CharacterFrame.Inset.Bg:SetHorizTile(false)
+			CharacterFrame.Inset.Bg:SetVertTile(false)
+
+			CharacterFrame.Background:Hide()
+		else
+			CharacterFrame.Background:Show()
 		end
-
-		CharacterFrame:SetSize(frameWidth, frameHeight)
-		CharacterFrame.Inset:SetPoint("BOTTOMRIGHT", CharacterFrame, "BOTTOMLEFT", insetOffset, 4)
-
-		CharacterFrame.Inset.Bg:SetTexture(texturePath)
-		CharacterFrame.Inset.Bg:SetTexCoord(0, isExpanded and 0.935547 or 1, 0, 1)
-		CharacterFrame.Inset.Bg:SetHorizTile(isExpanded)
-		CharacterFrame.Inset.Bg:SetVertTile(isExpanded)
-	end
-
-	-- Expand/collapse hooks
-	hooksecurefunc("CharacterFrame_Expand", function()
-		UpdateCharacterFrameLayout(true)
-	end)
-
-	hooksecurefunc("CharacterFrame_Collapse", function()
-		UpdateCharacterFrameLayout(false)
 	end)
 
 	-- Class background

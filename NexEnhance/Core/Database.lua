@@ -33,6 +33,7 @@ Core.Patreon64 = Core.Media .. "Icons\\Patreon64.blp"
 Core.PayPal64 = Core.Media .. "Icons\\PayPal64.blp"
 
 Core.White8x8 = "Interface\\BUTTONS\\WHITE8X8.BLP"
+Core.StatusBarTexture = Core.Media .. "Statusbar.tga"
 
 Core.EasyMenu = CreateFrame("Frame", "NE_EasyMenu", UIParent, "UIDropDownMenuTemplate")
 

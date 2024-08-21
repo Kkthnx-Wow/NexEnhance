@@ -476,7 +476,7 @@ function Module:RegisterChat()
 	-- 	return
 	-- end
 
-	if IsAddOnLoaded("Prat-3.0") or IsAddOnLoaded("Chatter") or IsAddOnLoaded("BasicChatMods") or IsAddOnLoaded("Glass") then
+	if C_AddOns.IsAddOnLoaded("Prat-3.0") or C_AddOns.IsAddOnLoaded("Chatter") or C_AddOns.IsAddOnLoaded("BasicChatMods") or C_AddOns.IsAddOnLoaded("Glass") then
 		return
 	end
 

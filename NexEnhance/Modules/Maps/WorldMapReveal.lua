@@ -136,7 +136,7 @@ function Module:MapData_ResetTexturePool(texture)
 end
 
 function Module:PLAYER_LOGIN()
-	if IsAddOnLoaded("Leatrix_Maps") then
+	if C_AddOns.IsAddOnLoaded("Leatrix_Maps") then
 		return
 	end
 

@@ -123,7 +123,7 @@ function Module.TargetReputationColor()
 end
 
 function Module:PLAYER_LOGIN()
-	if IsAddOnLoaded("BetterBlizzFrames") then
+	if C_AddOns.IsAddOnLoaded("BetterBlizzFrames") then
 		return
 	end
 

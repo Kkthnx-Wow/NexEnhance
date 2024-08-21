@@ -87,7 +87,7 @@ local function StyleActionButton(button)
 end
 
 function Module:PLAYER_LOGIN()
-	if IsAddOnLoaded("Masque") and IsAddOnLoaded("MasqueBlizzBars") then
+	if C_AddOns.IsAddOnLoaded("Masque") and C_AddOns.IsAddOnLoaded("MasqueBlizzBars") then
 		return
 	end
 

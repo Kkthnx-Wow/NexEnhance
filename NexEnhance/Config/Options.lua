@@ -570,6 +570,9 @@ local function CreateOptions()
 								desc = "Improves the appearance and functionality of the Details! addon frames.",
 								type = "toggle",
 								width = "normal",
+								disabled = function()
+									return not C_AddOns.IsAddOnLoaded("Details")
+								end,
 							},
 							applyDetails = { -- Add popup one day. Too lazy to do it. I need to add a file to hold popups.
 								order = 2,
@@ -581,6 +584,9 @@ local function CreateOptions()
 									Config:ResetDetailsAnchor(true)
 								end,
 								width = "normal",
+								disabled = function()
+									return not C_AddOns.IsAddOnLoaded("Details")
+								end,
 							},
 						},
 					},
@@ -702,7 +708,7 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						disabled = function()
-							return IsAddOnLoaded("BetterBlizzFrames")
+							return C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
 						end,
 					},
 				},
@@ -768,34 +774,21 @@ local function CreateOptions()
 					},
 				},
 			},
-			bugfixes = {
-				order = 13,
-				name = "BugFixes",
-				icon = "134520", -- :D
-				type = "group",
-				get = function(info)
-					return Config.db.profile.bugfixes[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.bugfixes[info[#info]] = value
-					if info[#info] == "DruidFormFix" then
-						Config:EnableModule(value)
-					end
-				end,
-				args = {
-					DruidFormFix = {
-						order = 1,
-						name = "Druid Model Display Fix",
-						desc = "Resolves the Character UI model display issue caused by using the Glyph of Stars.|n|nThis bug is expected to be fixed by Blizzard in patch 10.2.0, after which this module will be removed.",
-						type = "toggle",
-						width = "double",
-						disabled = function()
-							local _, _, classID = UnitClass("player")
-							return classID ~= 11
-						end,
-					},
-				},
-			},
+			-- bugfixes = {
+			-- 	order = 13,
+			-- 	name = "BugFixes",
+			-- 	icon = "134520", -- :D
+			-- 	type = "group",
+			-- 	get = function(info)
+			-- 		return Config.db.profile.bugfixes[info[#info]]
+			-- 	end,
+			-- 	set = function(info, value)
+			-- 		Config.db.profile.bugfixes[info[#info]] = value
+			-- 		if info[#info] == "DruidFormFix" then
+			-- 			Config:EnableModule(value)
+			-- 		end
+			-- 	end,
+			-- },
 			githublink = {
 				name = "|CFFf6f8faGitHub|r",
 				desc = "Open the GitHub repository for Nexenhance",

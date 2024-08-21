@@ -77,7 +77,7 @@ function Module:ResetDetailsAnchor(force)
 end
 
 local function ReskinDetails()
-	if not IsAddOnLoaded("Details") then
+	if not C_AddOns.IsAddOnLoaded("Details") then
 		return
 	end
 

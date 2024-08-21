@@ -219,7 +219,7 @@ function Module:PLAYER_LOGIN()
 	-- 	return
 	-- end
 
-	if IsAddOnLoaded("Postal") then
+	if C_AddOns.IsAddOnLoaded("Postal") then
 		return
 	end
 

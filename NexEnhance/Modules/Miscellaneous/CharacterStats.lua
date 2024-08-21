@@ -12,7 +12,7 @@ function Module:PLAYER_LOGIN()
 		return
 	end
 
-	if IsAddOnLoaded("DejaCharacterStats") then
+	if C_AddOns.IsAddOnLoaded("DejaCharacterStats") then
 		return
 	end
 

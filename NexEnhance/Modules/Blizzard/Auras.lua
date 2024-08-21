@@ -39,18 +39,18 @@ local function ApplySkin(aura)
 	if aura and not aura.isAuraAnchor and not aura.styled then
 		aura.Icon:SetTexCoord(0.04, 0.96, 0.04, 0.96)
 
-		local durationFont, durationSize, durationStyle = aura.Duration:GetFont()
-		aura.Duration:SetFont(durationFont, durationSize + 1, durationStyle)
+		local durationFont, durationSize = aura.Duration:GetFont()
+		aura.Duration:SetFont(durationFont, durationSize + 1, "OUTLINE")
 		aura.Duration:SetShadowOffset(0, 0)
 		aura.Duration:ClearAllPoints()
-		aura.Duration:SetPoint("BOTTOM", 0, -2)
+		aura.Duration:SetPoint("BOTTOM", 0, -4)
 
 		if aura.Count then
-			local countFont, countSize, countStyle = aura.Count:GetFont()
-			aura.Count:SetFont(countFont, countSize + 1, countStyle)
+			local countFont, countSize = aura.Count:GetFont()
+			aura.Count:SetFont(countFont, countSize + 1, "OUTLINE")
 			aura.Count:SetShadowOffset(0, 0)
 			aura.Count:ClearAllPoints()
-			aura.Count:SetPoint("TOPRIGHT", 2, 2)
+			aura.Count:SetPoint("TOPRIGHT", 2, 4)
 		end
 
 		if not aura.hook then

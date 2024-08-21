@@ -8,8 +8,8 @@ local type = type
 
 -- Unit and item information functions
 local UnitGUID = UnitGUID
-local GetItemInfo = GetItemInfo
-local GetSpellInfo = GetSpellInfo
+local GetItemInfo = C_Item.GetItemInfo
+local GetSpellInfo = C_Spell.GetSpellInfo
 local GetContainerItemLink = C_Container.GetContainerItemLink
 local GetInventoryItemLink = GetInventoryItemLink
 local GetTradePlayerItemLink = GetTradePlayerItemLink
@@ -193,7 +193,7 @@ function Module:CanEnchantSlot(unit, slot)
 	if slot == 17 then
 		local offHandItemLink = GetInventoryItemLink(unit, slot)
 		if offHandItemLink then
-			local itemEquipLoc = select(4, GetItemInfoInstant(offHandItemLink))
+			local itemEquipLoc = select(4, C_Item.GetItemInfoInstant(offHandItemLink))
 			-- Off-hand items that are not holdable or shields can typically be enchanted
 			return itemEquipLoc ~= "INVTYPE_HOLDABLE" and itemEquipLoc ~= "INVTYPE_SHIELD"
 		end
@@ -344,7 +344,7 @@ local function CalculateAverageItemLevel(unit, fontstring)
 				table.insert(items, item)
 
 				-- Update mainhand and offhand equipment locations
-				local equipLoc = select(4, GetItemInfoInstant(itemLink or itemID))
+				local equipLoc = select(4, C_Item.GetItemInfoInstant(itemLink or itemID))
 				if slot == INVSLOT_MAINHAND then
 					mainhandEquipLoc = equipLoc
 				elseif slot == INVSLOT_OFFHAND then

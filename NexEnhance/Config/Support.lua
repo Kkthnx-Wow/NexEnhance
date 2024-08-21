@@ -77,7 +77,7 @@ local function CreateSupportGUI()
 	local paypalEditBox = CreateReadOnlyEditBox(supportFrame, "TOP", patreonEditBox, "BOTTOM", 0, -EDITBOX_SPACING, EDITBOX_WIDTH, EDITBOX_HEIGHT, PAYPAL_LINK)
 	local paypalIcon = CreateIconTexture(supportFrame, Config.PayPal64, "BOTTOM", paypalEditBox, "TOP", 0, ICON_OFFSET)
 
-	InterfaceOptions_AddCategory(supportFrame) -- DEPRECATED
+	-- InterfaceOptions_AddCategory(supportFrame) -- DEPRECATED
 	return supportFrame
 end
 

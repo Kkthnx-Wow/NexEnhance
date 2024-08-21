@@ -10,7 +10,7 @@
     <Include file="Libs\AceConfig-3.0\AceConfig-3.0.xml" />
     <Script file="Libs\LibChatAnims\LibChatAnims.lua" />
     <Script file="Libs\Unfit-1.0\Unfit-1.0.lua" />
-    <Include file="Libs\Dashi\embed.xml" />
+    <Include file="Libs\NexCore\NexCore.xml" />
 
     <!-- Fonts -->
     <Include file="FontStyles.xml" />
@@ -62,7 +62,6 @@
     <Script file="Modules\Blizzard\QuestNavigation.lua" />
 
     <!-- BugFixes -->
-    <Script file="Modules\BugFixes\DruidFormFix.lua" />
 
     <!-- Chat -->
     <Script file="Modules\Chat\Elements\Styling.lua" />

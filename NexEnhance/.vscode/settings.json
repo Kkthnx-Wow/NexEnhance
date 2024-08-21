@@ -764,9 +764,46 @@
         "ClassTalentImportExportMixin",
         "ExportUtil",
         "LOADOUT_ERROR_BAD_STRING",
-        "LOADOUT_ERROR_SERIALIZATION_VERSION_MISMATCH"
+        "LOADOUT_ERROR_SERIALIZATION_VERSION_MISMATCH",
+        "SetCVar",
+        "BAG_ITEM_QUALITY_COLORS",
+        "RAID_CLASS_COLORS",
+        "UIParent",
+        "LOCALIZED_CLASS_NAMES_MALE",
+        "LOCALIZED_CLASS_NAMES_FEMALE",
+        "CreateColor",
+        "CHAT_FONT_HEIGHTS",
+        "KEY_PLUS",
+        "ScenarioObjectiveTracker",
+        "UIWidgetObjectiveTracker",
+        "CampaignQuestObjectiveTracker",
+        "QuestObjectiveTracker",
+        "AdventureObjectiveTracker",
+        "AchievementObjectiveTracker",
+        "MonthlyActivitiesObjectiveTracker",
+        "ProfessionsRecipeTracker",
+        "BonusObjectiveTracker",
+        "WorldQuestObjectiveTracker",
+        "CreateDataProvider",
+        "CreateScrollBoxListLinearView",
+        "CreateScrollBoxListGridView"
     ],
     "Lua.diagnostics.disable": [
         "missing-fields"
+    ],
+    "Lua.runtime.version": "Lua 5.1",
+    "Lua.runtime.builtin": {
+        "basic": "disable",
+        "debug": "disable",
+        "io": "disable",
+        "math": "disable",
+        "os": "disable",
+        "package": "disable",
+        "string": "disable",
+        "table": "disable",
+        "utf8": "disable"
+    },
+    "Lua.workspace.library": [
+        "~\\.vscode\\extensions\\ketho.wow-api-0.17.4\\Annotations"
     ]
 }

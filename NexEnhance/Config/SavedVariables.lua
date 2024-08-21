@@ -87,9 +87,7 @@ local defaults = {
 			SmallWorldMap = true,
 			SmallWorldMapScale = 0.9,
 		},
-		bugfixes = {
-			DruidFormFix = false,
-		},
+		-- bugfixes = {},
 	},
 }
 

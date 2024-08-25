@@ -1,15 +1,9 @@
 local _, Module = ...
 local L = Module.L
 
-local C_PetBattles_IsInBattle = C_PetBattles.IsInBattle
-local C_Timer_After = C_Timer.After
 local C_Timer_NewTicker = C_Timer.NewTicker
-local C_Timer_NewTimer = C_Timer.NewTimer
 local math_floor = math.floor
 local math_random = math.random
-local string_format = string.format
-local string_gsub = string.gsub
-local string_sub = string.sub
 
 local ChatFrame_GetMobileEmbeddedTexture = ChatFrame_GetMobileEmbeddedTexture
 local ChatHistory_GetAccessID = ChatHistory_GetAccessID
@@ -29,7 +23,6 @@ local IsInGuild = IsInGuild
 local IsMacClient = IsMacClient
 local IsShiftKeyDown = IsShiftKeyDown
 local NONE = NONE
-local SetCVar = SetCVar
 local UIParent = UIParent
 local UnitCastingInfo = UnitCastingInfo
 local UnitIsAFK = UnitIsAFK

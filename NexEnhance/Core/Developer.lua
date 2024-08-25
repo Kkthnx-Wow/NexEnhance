@@ -2,7 +2,7 @@ local _, Core = ...
 
 -- Devs list
 local Developers = {
-	["Kkthnx-Valdrakken"] = true,
+	["Kkthnx-Area 52"] = true,
 }
 
 -- Utility function to check if the player is a developer

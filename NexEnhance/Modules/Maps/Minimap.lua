@@ -1,4 +1,5 @@
 local _, Module = ...
+Module.LibEasyMenu = LibStub("LibEasyMenu-1.0")
 
 local function UpdateMinimapButton(button, icon)
 	button:ClearAllPoints()
@@ -35,10 +36,10 @@ local function SetupGarrisonMinimapButton()
 		end)
 
 		local menuList = {
-			{ text = _G.GARRISON_TYPE_9_0_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_9_0, notCheckable = true },
-			{ text = _G.WAR_CAMPAIGN, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_8_0, notCheckable = true },
-			{ text = _G.ORDER_HALL_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_7_0, notCheckable = true },
-			{ text = _G.GARRISON_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_6_0, notCheckable = true },
+			{ text = _G.GARRISON_TYPE_9_0_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_9_0_Garrison, notCheckable = true },
+			{ text = _G.WAR_CAMPAIGN, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_8_0_Garrison, notCheckable = true },
+			{ text = _G.ORDER_HALL_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_7_0_Garrison, notCheckable = true },
+			{ text = _G.GARRISON_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_6_0_Garrison, notCheckable = true },
 		}
 
 		garrMinimapButton:HookScript("OnMouseDown", function(self, btn)
@@ -49,7 +50,7 @@ local function SetupGarrisonMinimapButton()
 				if _G.ExpansionLandingPage and _G.ExpansionLandingPage:IsShown() then
 					HideUIPanel(_G.ExpansionLandingPage)
 				end
-				EasyMenu(menuList, Module.EasyMenu, self, -80, 0, "MENU", 1)
+				Module.LibEasyMenu.Create(menuList, Module.EasyMenu, self, -80, 0, "MENU", 1)
 			end
 		end)
 

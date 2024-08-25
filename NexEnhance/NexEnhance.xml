@@ -8,6 +8,7 @@
     <Script file="Libs\AceDB-3.0\AceDB-3.0.lua" />
     <Include file="Libs\AceGUI-3.0\AceGUI-3.0.xml" />
     <Include file="Libs\AceConfig-3.0\AceConfig-3.0.xml" />
+    <Script file="Libs\LibEasyMenu-1.0\LibEasyMenu-1.0.lua" />
     <Script file="Libs\LibChatAnims\LibChatAnims.lua" />
     <Script file="Libs\Unfit-1.0\Unfit-1.0.lua" />
     <Include file="Libs\NexCore\NexCore.xml" />
@@ -82,6 +83,7 @@
 
     <!-- Miscellaneous -->
     <Script file="Modules\Miscellaneous\AFKMode.lua" />
+    <Script file="Modules\Miscellaneous\DisableTalkingHead.lua" />
     <Script file="Modules\Miscellaneous\MailManager.lua" />
     <Script file="Modules\Miscellaneous\CharacterStats.lua" />
     <Script file="Modules\Miscellaneous\MovableFrames.lua" />
@@ -118,6 +120,4 @@
     <!-- Config -->
     <Script file="Config\SavedVariables.lua" />
     <Script file="Config\Options.lua" />
-    <!-- <Script file="Config\Support.lua" />
-    <Script file="Config\Changelog.lua" /> -->
 </Ui>

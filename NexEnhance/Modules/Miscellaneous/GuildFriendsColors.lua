@@ -69,19 +69,11 @@ local function updateGuildView()
 	end
 end
 
-function Module:ADDON_LOADED(addon)
-	if addon ~= "Blizzard_GuildUI" then
-		return
-	end
-
+Module:HookAddOn("Blizzard_GuildUI", function()
 	hooksecurefunc("GuildRoster_SetView", setView)
 	hooksecurefunc("GuildRoster_Update", updateGuildView)
 	hooksecurefunc(GuildRosterContainer, "update", updateGuildView)
-
-	if self:IsEventRegistered("ADDON_LOADED", self.ADDON_LOADED) then
-		self:UnregisterEvent("ADDON_LOADED")
-	end
-end
+end)
 
 -- Friends List Update
 local FRIENDS_LEVEL_TEMPLATE = FRIENDS_LEVEL_TEMPLATE:gsub("%%d", "%%s")
@@ -139,6 +131,10 @@ hooksecurefunc(FriendsListFrame.ScrollBox, "Update", UpdateFriendsList)
 
 -- WhoFrame Update
 local columnTable = {}
+local currentType = "zone"
+hooksecurefunc(C_FriendList, "SortWho", function(sortType)
+	currentType = sortType
+end)
 --- Updates the WhoFrame with the current player's zone, guild, and race.
 hooksecurefunc(WhoFrame.ScrollBox, "Update", function(self)
 	local playerZone, playerGuild, playerRace = GetRealZoneText(), GetGuildInfo("player"), UnitRace("player")
@@ -155,7 +151,7 @@ hooksecurefunc(WhoFrame.ScrollBox, "Update", function(self)
 				tinsert(columnTable, applyZoneColor(race, race, playerRace))
 				button.Name:SetTextColor(classColor(class, true))
 				button.Level:SetText(diffColor(level) .. level)
-				button.Variable:SetText(columnTable[UIDropDownMenu_GetSelectedID(WhoFrameDropDown)])
+				button.Variable:SetText(columnTable[currentType])
 			end
 		end
 	else

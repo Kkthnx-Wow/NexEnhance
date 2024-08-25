@@ -44,10 +44,11 @@ local defaults = {
 			EasyVolume = false,
 		},
 		miscellaneous = {
+			diableTalkingHead = false,
 			enableAFKMode = false,
 			missingStats = true,
-			questXPPercent = false,
 			questRewardsMostValueIcon = false,
+			questXPPercent = false,
 		},
 		settingsApplied = false,
 		skins = {

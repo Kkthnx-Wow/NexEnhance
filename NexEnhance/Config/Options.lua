@@ -468,29 +468,36 @@ local function CreateOptions()
 					end
 				end,
 				args = {
-					enableAFKMode = {
+					disableTalkingHead = {
 						order = 1,
+						name = "Disable TalkingHead",
+						desc = "Disables the Talking Head Frame, preventing pop-up dialogues from appearing during gameplay.",
+						type = "toggle",
+						width = "double",
+					},
+					enableAFKMode = {
+						order = 2,
 						name = "AFK Mode",
 						desc = "AFK mode with dynamic features such as automatic guild display, random statistics updates, and a countdown timer, enhancing the AFK experience for players..",
 						type = "toggle",
 						width = "double",
 					},
 					missingStats = {
-						order = 2,
+						order = 3,
 						name = "Enhanced Character Statistics",
 						desc = "Enhances the default character statistics panel by organizing stats, adjusting display data for improved readability, and integrating additional functionalities for detailed stat insights.",
 						type = "toggle",
 						width = "double",
 					},
 					questXPPercent = {
-						order = 3,
+						order = 4,
 						name = "Enhanced Quest XP Display",
 						desc = "Enhances the display of quest XP rewards to show percentage of total experience gained.",
 						type = "toggle",
 						width = "double",
 					},
 					questRewardsMostValueIcon = {
-						order = 4,
+						order = 5,
 						name = "Highlight Best Quest Reward",
 						desc = "Highlights the most valuable quest reward choice with a gold coin icon overlay based on potential sell value.",
 						type = "toggle",
@@ -789,6 +796,35 @@ local function CreateOptions()
 			-- 		end
 			-- 	end,
 			-- },
+			discordlink = {
+				name = "|CFFf6f8faDiscord|r",
+				desc = "Open the Discord link for Nexenhance",
+				order = 98,
+				type = "execute",
+				func = function()
+					StaticPopupDialogs["NE_DISCORD_POPUP"] = {
+						text = "|T236688:36|t\n\n" .. "Copy the link below and thank you for using NexEnhance!",
+						button1 = "OK",
+						OnShow = function(self, data)
+							self.editBox:SetText("https://discord.com/invite/Rc9wcK9cAB")
+							self.editBox:HighlightText()
+						end,
+						OnCancel = function(_, _, reason)
+							if reason == "timeout" then
+								Config:Print("Your Discord link edit box timed out. If this was a mistake, please try again. Thank you.")
+							end
+						end,
+						timeout = 20,
+						whileDead = false,
+						hideOnEscape = true,
+						enterClicksFirstButton = true,
+						hasEditBox = true,
+						editBoxWidth = 350, -- Adjust the width as needed
+						preferredIndex = 3,
+					}
+					StaticPopup_Show("NE_DISCORD_POPUP")
+				end,
+			},
 			githublink = {
 				name = "|CFFf6f8faGitHub|r",
 				desc = "Open the GitHub repository for Nexenhance",
@@ -847,7 +883,6 @@ local function CreateOptions()
 
 	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, options)
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, "|cff5bc0be" .. AddonName .. "|r")
-	-- LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, "|TInterface\\AddOns\\NexEnhance\\Media\\Logos\\Logo64:18:18|t |cff5bc0be" .. AddonName .. "|r")
 
 	-- handle combat updates
 	local EventHandler = CreateFrame("Frame", nil, SettingsPanel)

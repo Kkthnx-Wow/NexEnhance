@@ -1,22 +1,28 @@
 local _, Module = ...
 
-local UnitBuff = UnitBuff
-
 function Module:CheckAndRemoveBadBuffs()
+	-- Loop through buffs on the player
 	local index = 1
 	while true do
-		local name, _, _, _, _, _, _, _, _, spellId = UnitBuff("player", index)
-		if not name then
-			return
+		-- Get buff data for current index
+		local aura = C_UnitAuras.GetBuffDataByIndex("player", index)
+
+		-- Exit loop if no more buffs
+		if not aura then
+			break
 		end
 
-		if Module.Data.AnnoyingBuffsInfo[spellId] then -- Adjusted to use spellId instead of name
-			CancelSpellByName(name)
-			Module:Print("Removed annoying buff" .. " " .. GetSpellLink(spellId) .. "|r")
+		-- Check for bad buffs and cancel them
+		if Module.Data.AnnoyingBuffsInfo[spellId] then
+			CancelSpellByName(aura.name)
+			local spellLink = C_Spell.GetSpellLink(aura.spellId)
+			Module:Print("Removed annoying buff" .. " " .. (spellLink or aura.name) .. "|r")
 		end
 
 		index = index + 1
 	end
+
+	index = index + 1
 end
 
 function Module:PLAYER_LOGIN()

@@ -118,6 +118,6 @@
     <!-- Config -->
     <Script file="Config\SavedVariables.lua" />
     <Script file="Config\Options.lua" />
-    <Script file="Config\Support.lua" />
-    <Script file="Config\Changelog.lua" />
+    <!-- <Script file="Config\Support.lua" />
+    <Script file="Config\Changelog.lua" /> -->
 </Ui>

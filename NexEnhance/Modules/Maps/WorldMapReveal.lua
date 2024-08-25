@@ -11,7 +11,7 @@ local C_MapExplorationInfo_GetExploredMapTextures = C_MapExplorationInfo.GetExpl
 local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
 
-local shownMapCache, exploredCache, fileDataIDs = {}, {}, {}
+local shownMapCache, exploredCache, fileDataIDs, storedTex = {}, {}, {}, {}
 
 local function GetStringFromInfo(info)
 	return format("W%dH%dX%dY%d", info.textureWidth, info.textureHeight, info.offsetX, info.offsetY)
@@ -33,6 +33,10 @@ end
 function Module:MapData_RefreshOverlays(fullUpdate)
 	table_wipe(shownMapCache)
 	table_wipe(exploredCache)
+	for _, tex in pairs(storedTex) do
+		tex:SetVertexColor(1, 1, 1)
+	end
+	wipe(storedTex)
 
 	local mapID = WorldMapFrame.mapID
 	if not mapID then
@@ -89,6 +93,7 @@ function Module:MapData_RefreshOverlays(fullUpdate)
 				end
 				for k = 1, numTexturesWide do
 					local texture = self.overlayTexturePool:Acquire()
+					tinsert(storedTex, texture)
 					if k < numTexturesWide then
 						texturePixelWidth = TILE_SIZE_WIDTH
 						textureFileWidth = TILE_SIZE_WIDTH

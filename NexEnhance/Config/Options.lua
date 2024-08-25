@@ -846,7 +846,8 @@ local function CreateOptions()
 	}
 
 	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, options)
-	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, AddonName)
+	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, "|cff5bc0be" .. AddonName .. "|r")
+	-- LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, "|TInterface\\AddOns\\NexEnhance\\Media\\Logos\\Logo64:18:18|t |cff5bc0be" .. AddonName .. "|r")
 
 	-- handle combat updates
 	local EventHandler = CreateFrame("Frame", nil, SettingsPanel)
@@ -861,8 +862,6 @@ function Config:ADDON_LOADED(addon)
 	end
 
 	CreateOptions() -- Load on demand
-	Config.CreateSupportGUI() -- LoD
-	Config.CreateChangelogGUI() -- LoD
 	Config:SetupUIScale(true)
 end
 

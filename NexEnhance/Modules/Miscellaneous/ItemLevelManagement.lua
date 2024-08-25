@@ -570,20 +570,18 @@ function Module:ItemLevel_UpdateLoot()
 	end
 end
 
-function Module:ItemLevel_UpdateBags()
-	local button = self.__owner
+function Module:ItemLevel_UpdateBags(button, bag, slot)
 	if not button.iLvl then
 		button.iLvl = Module.CreateFontString(button, Module.Font[2] + 1, "", false, "OUTLINE", "BOTTOMLEFT", 1, 1)
 	end
 
-	local bagID = button:GetBagID()
-	local slotID = button:GetID()
+	local bagID = bag or button:GetBagID()
+	local slotID = slot or button:GetID()
 	local info = C_Container.GetContainerItemInfo(bagID, slotID)
-	local link = info and info.hyperlink
-	local quality = info and info.quality
-	if quality and quality > 1 then
-		local level = Module.GetItemLevel(link, bagID, slotID)
-		local color = Module.QualityColors[quality]
+
+	if info and info.quality and info.quality > 1 then
+		local level = Module.GetItemLevel(info.hyperlink, bagID, slotID)
+		local color = Module.QualityColors[info.quality]
 		button.iLvl:SetText(level)
 		button.iLvl:SetTextColor(color.r, color.g, color.b)
 	else
@@ -592,17 +590,43 @@ function Module:ItemLevel_UpdateBags()
 end
 
 function Module:ItemLevel_Containers()
-	for i = 1, 13 do
-		for _, button in _G["ContainerFrame" .. i]:EnumerateItems() do
-			button.IconBorder.__owner = button
-			hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBags)
+	local update = function(frame)
+		for _, itemButton in frame:EnumerateValidItems() do
+			Module:ItemLevel_UpdateBags(itemButton, itemButton:GetBagID(), itemButton:GetID())
 		end
 	end
 
-	for i = 1, 28 do
-		local button = _G["BankFrameItem" .. i]
-		button.IconBorder.__owner = button
-		hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBags)
+	hooksecurefunc(ContainerFrameCombinedBags, "UpdateItems", update)
+	for _, frame in ipairs((ContainerFrameContainer or UIParent).ContainerFrames) do
+		hooksecurefunc(frame, "UpdateItems", update)
+	end
+
+	hooksecurefunc("BankFrameItemButton_Update", function(button)
+		if not button.isBag then
+			Module:ItemLevel_UpdateBags(button, button:GetParent():GetID())
+		end
+	end)
+
+	if _G.AccountBankPanel then
+		local lastButtons = {}
+		local update = function(frame)
+			table.wipe(lastButtons)
+			for itemButton in frame:EnumerateValidItems() do
+				Module:ItemLevel_UpdateBags(itemButton, itemButton:GetBankTabID(), itemButton:GetContainerSlotID())
+				table.insert(lastButtons, itemButton)
+			end
+		end
+
+		hooksecurefunc(AccountBankPanel, "GenerateItemSlotsForSelectedTab", update)
+		hooksecurefunc(AccountBankPanel, "RefreshAllItemsForSelectedTab", update)
+
+		hooksecurefunc(AccountBankPanel, "SetItemDisplayEnabled", function(_, state)
+			if state == false then
+				for _, itemButton in ipairs(lastButtons) do
+					itemButton.iLvl:SetText("")
+				end
+			end
+		end)
 	end
 end
 

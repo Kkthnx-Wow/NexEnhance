@@ -39,7 +39,5 @@ Developed and maintained by **Kkthnx**. Special thanks to all contributors for t
 
 Released under the MIT License. For more information, see the [LICENSE](https://github.com/Kkthnx-Wow/NexEnhance/blob/main/LICENSE) file.
 
-
-![image](https://github.com/user-attachments/assets/a6d4aaf3-be6d-4afe-846b-64b9fce41ab9)
+![image](https://github.com/user-attachments/assets/8e21acff-a26a-4f0c-a0fd-889a5330a34c)
 ![image](https://github.com/user-attachments/assets/780914ce-7e1e-4dac-af55-7aad2213817c)
-

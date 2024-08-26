@@ -347,6 +347,23 @@ function Module:SetTooltipBorderColor(Tooltip, r, g, b, a)
 	end
 end
 
+-- Anchor and mover
+local cursorIndex = {
+	["DISABLE"] = "ANCHOR_NONE",
+	["LEFT"] = "ANCHOR_CURSOR_LEFT",
+	["TOP"] = "ANCHOR_CURSOR",
+	["RIGHT"] = "ANCHOR_CURSOR_RIGHT",
+}
+
+function Module:GameTooltip_SetDefaultAnchor(parent)
+	if self:IsForbidden() or not parent then
+		return
+	end
+
+	local mode = Module.db.profile.tooltip.cursorPosition
+	self:SetOwner(parent, cursorIndex[mode])
+end
+
 -- Tooltip skin
 function Module:ReskinTooltip()
 	if not self then
@@ -422,6 +439,7 @@ function Module:PLAYER_LOGIN()
 	hooksecurefunc(GameTooltip.StatusBar, "SetValue", self.RefreshStatusBar)
 	TooltipDataProcessor.AddLinePreCall(Enum.TooltipDataLineType.None, self.UpdateFactionLine)
 	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, self.FixRecipeItemNameWidth)
+	hooksecurefunc("GameTooltip_SetDefaultAnchor", self.GameTooltip_SetDefaultAnchor)
 
 	Module:FixStoneSoupError()
 

@@ -67,6 +67,7 @@ local defaults = {
 			ShowID = false,
 			SpecLevelByShift = true,
 			combatHide = false,
+			cursorPosition = "DISABLE",
 			factionIcon = false,
 			hideJunkGuild = false,
 			hideRank = false,

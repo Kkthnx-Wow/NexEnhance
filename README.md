@@ -1,6 +1,6 @@
 # NexEnhance - Supercharge Your WoW Experience 🚀✨
 
-[![Last Commit](https://img.shields.io/github/last-commit/Kkthnx-Wow/NexEnhance/master)](https://github.com/Kkthnx-Wow/NexEnhance/commits/master)
+[![Last Commit](https://img.shields.io/github/last-commit/Kkthnx-WoW/NexEnhance)](https://github.com/Kkthnx-WoW/NexEhance/commits/master) 
 [![Issues](https://img.shields.io/github/issues/Kkthnx-Wow/NexEnhance)](https://github.com/Kkthnx-Wow/NexEnhance/issues)
 [![Download](https://img.shields.io/badge/CurseForge-Download-orange)](https://www.curseforge.com/wow/addons/nexenhance)
 

@@ -7,6 +7,8 @@
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64.blp
 ## SavedVariables: NexEnhanceDB
 ## X-Support: TWW
+## X-Curse-Project-ID: 1090729
+## X-Wago-ID: BNBea0Gx
 
 # NexEnhance
 NexEnhance.xml

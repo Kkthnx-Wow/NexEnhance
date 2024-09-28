@@ -11,6 +11,7 @@ local defaults = {
 		},
 		automation = {
 			AnnoyingBuffs = false,
+			AutoInvite = false,
 			AutoRepair = 2,
 			AutoScreenshotAchieve = false,
 			AutoSell = false,

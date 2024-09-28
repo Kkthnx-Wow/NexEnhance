@@ -50,6 +50,7 @@
 
     <!-- Automation -->
     <Script file="Modules\Automation\AnnoyingBuffs.lua" />
+    <Script file="Modules\Automation\AutoInvite.lua" />
     <Script file="Modules\Automation\AutoRepair.lua" />
     <Script file="Modules\Automation\AutoSell.lua" />
     <Script file="Modules\Automation\CinematicSkip.lua" />
@@ -83,13 +84,14 @@
 
     <!-- Miscellaneous -->
     <Script file="Modules\Miscellaneous\AFKMode.lua" />
-    <Script file="Modules\Miscellaneous\DisableTalkingHead.lua" />
-    <Script file="Modules\Miscellaneous\MailManager.lua" />
     <Script file="Modules\Miscellaneous\CharacterStats.lua" />
+    <Script file="Modules\Miscellaneous\DisableTalkingHead.lua" />
+    <Script file="Modules\Miscellaneous\GameMenuButton.lua" />
+    <Script file="Modules\Miscellaneous\GuildFriendsColors.lua" />
+    <Script file="Modules\Miscellaneous\ItemLevelManagement.lua" />
+    <Script file="Modules\Miscellaneous\MailManager.lua" />
     <Script file="Modules\Miscellaneous\MovableFrames.lua" />
     <Script file="Modules\Miscellaneous\QuestRewardDisplay.lua" />
-    <Script file="Modules\Miscellaneous\ItemLevelManagement.lua" />
-    <Script file="Modules\Miscellaneous\GuildFriendsColors.lua" />
 
     <Script file="Modules\Profiles\Kkthnx.lua" />
 

@@ -1,7 +1,8 @@
 -- Database management for NexEnhance addon
-local _, Core = ...
+local AddOn, Core = ...
 
-Core.Version = C_AddOns.GetAddOnMetadata("NexEnhance", "Version")
+Core.Title = C_AddOns.GetAddOnMetadata(AddOn, "Title")
+Core.Version = C_AddOns.GetAddOnMetadata(AddOn, "Version")
 
 Core.ScreenWidth, Core.ScreenHeight = GetPhysicalScreenSize()
 
@@ -35,7 +36,7 @@ Core.PayPal64 = Core.Media .. "Icons\\PayPal64.blp"
 Core.White8x8 = "Interface\\BUTTONS\\WHITE8X8.BLP"
 Core.StatusBarTexture = Core.Media .. "Statusbar.tga"
 
-Core.EasyMenu = CreateFrame("Frame", "NE_EasyMenu", UIParent, "UIDropDownMenuTemplate")
+Core.EasyMenu = CreateFrame("Frame", "NexEnhance_EasyMenu", UIParent, "UIDropDownMenuTemplate")
 
 -- Initialize tables for class colors/list and item quality colors
 Core.ClassList = {}

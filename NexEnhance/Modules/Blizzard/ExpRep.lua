@@ -157,7 +157,7 @@ function Module:OnExpBarEvent()
 		if not standing and factionID and C_Reputation_IsMajorFaction(factionID) then
 			local majorFactionData = C_MajorFactions_GetMajorFactionData(factionID)
 			local renownColor = { r = 0, g = 0.74, b = 0.95 }
-			local renownHex = K.RGBToHex(renownColor.r, renownColor.g, renownColor.b)
+			local renownHex = Module.RGBToHex(renownColor.r, renownColor.g, renownColor.b)
 
 			reaction, currentReactionThreshold, nextReactionThreshold = 10, 0, majorFactionData.renownLevelThreshold
 			currentStanding = C_MajorFactions_HasMaximumRenown(factionID) and majorFactionData.renownLevelThreshold or majorFactionData.renownReputationEarned or 0
@@ -340,12 +340,12 @@ function Module:OnExpBarEnter()
 		if isParagon then
 			local current, threshold = C_Reputation_GetFactionParagonInfo(factionID)
 			if current and threshold then
-				standing, currentReactionThreshold, nextReactionThreshold, currentStanding = L["Paragon"], 0, threshold, current % threshold
+				standing, currentReactionThreshold, nextReactionThreshold, currentStanding = Module.L["Paragon"], 0, threshold, current % threshold
 			end
 		end
 
 		if name then
-			GameTooltip:AddLine(name, K.RGBToHex(0, 0.74, 0.95))
+			GameTooltip:AddLine(name, Module.RGBToHex(0, 0.74, 0.95))
 			GameTooltip:AddLine(" ")
 
 			local info = factionID and C_GossipInfo.GetFriendshipReputation(factionID)

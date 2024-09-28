@@ -176,6 +176,8 @@ local function CreateOptions()
 						Config:CreateAutoDeclineDuels()
 					elseif info[#info] == "AutoScreenshotAchieve" then
 						Config:ToggleAutoScreenshotAchieve()
+					elseif info[#info] == "AutoInvite" then
+						Config:CreateAutoInvite()
 					end
 				end,
 				args = {
@@ -192,43 +194,50 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					AutoRepair = {
+					AutoInvite = {
 						order = 2,
+						name = "Auto Accept Party Invites",
+						desc = "Automatically accepts party invites from friends, guild members, or Battle.net friends.",
+						type = "toggle",
+						width = "double",
+					},
+					AutoRepair = {
+						order = 3,
 						name = "Auto Repair",
 						desc = "Automatically repairs your gear using the specified source: None, Guild Bank, or Player Funds.",
 						type = "select",
 						values = { [0] = NONE, [1] = GUILD, [2] = PLAYER },
 					},
 					AutoSell = {
-						order = 3,
+						order = 4,
 						name = "Auto-Sell Trash",
 						desc = "Automatically sells junk items when visiting a vendor.",
 						type = "toggle",
 						width = "double",
 					},
 					CinematicSkip = {
-						order = 4,
+						order = 5,
 						name = "Cinematic Skipping",
 						desc = "Skip cinematics by pressing a designated key (ESC, SPACE, or ENTER).",
 						type = "toggle",
 						width = "double",
 					},
 					DeclineDuels = {
-						order = 5,
+						order = 6,
 						name = "Auto-Decline Duels",
 						desc = "Automatically declines incoming duel requests.",
 						type = "toggle",
 						width = "double",
 					},
 					DeclinePetDuels = {
-						order = 6,
+						order = 7,
 						name = "Auto-Decline Pet Duels",
 						desc = "Automatically declines incoming battle-pet duel requests.",
 						type = "toggle",
 						width = "double",
 					},
 					AutoScreenshotAchieve = {
-						order = 7,
+						order = 8,
 						name = "Auto-Screenshot on Achievement",
 						desc = "Automatically takes a screenshot when you earn an achievement.",
 						type = "toggle",

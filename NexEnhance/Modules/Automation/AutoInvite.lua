@@ -1,5 +1,6 @@
-local _, Module = ...
+local addonName, Module = ...
 
+-- Cache global references for performance
 local C_BattleNet = C_BattleNet
 local C_FriendList = C_FriendList
 local IsGuildMember = IsGuildMember
@@ -33,11 +34,13 @@ local function HandlePartyInvite(inviterGUID)
 	end
 end
 
-function Module:PARTY_INVITE_REQUEST(_, _, _, _, _, _, _, inviterGUID)
+-- Use the eventMixin to handle party invite requests
+local function OnPartyInviteReceived(_, _, _, _, _, _, inviterGUID)
 	HandlePartyInvite(inviterGUID)
 end
 
-function Module:GROUP_ROSTER_UPDATE()
+-- Use the eventMixin to clear the previous inviter when the group roster updates
+local function OnGroupRosterUpdated()
 	StaticPopupSpecial_Hide(LFGInvitePopup)
 	StaticPopup_Hide("PARTY_INVITE")
 	previousInviterGUID = nil
@@ -46,14 +49,18 @@ end
 -- Initializes or disables the AutoInvite module based on user settings.
 function Module:CreateAutoInvite()
 	if Module.db.profile.automation.AutoInvite then
-		self:RegisterEvent("PARTY_INVITE_REQUEST", self.PARTY_INVITE_REQUEST)
-		self:RegisterEvent("GROUP_ROSTER_UPDATE", self.GROUP_ROSTER_UPDATE)
+		-- Debugging prints
+		print("Registering events for AutoInvite")
+		Module:RegisterEvent("PARTY_INVITE_REQUEST", OnPartyInviteReceived)
+		Module:RegisterEvent("GROUP_ROSTER_UPDATE", OnGroupRosterUpdated)
 	else
-		self:UnregisterEvent("PARTY_INVITE_REQUEST", self.PARTY_INVITE_REQUEST)
-		self:UnregisterEvent("GROUP_ROSTER_UPDATE", self.GROUP_ROSTER_UPDATE)
+		-- Debugging prints
+		print("Unregistering events for AutoInvite")
+		Module:UnregisterEvent("PARTY_INVITE_REQUEST", OnPartyInviteReceived)
+		Module:UnregisterEvent("GROUP_ROSTER_UPDATE", OnGroupRosterUpdated)
 	end
 end
 
 function Module:PLAYER_LOGIN()
-	self:CreateAutoInvite()
+	Module:CreateAutoInvite()
 end

@@ -1,4 +1,4 @@
-local addonName, Module = ...
+local _, Module = ...
 
 -- Cache global references for performance
 local C_BattleNet = C_BattleNet
@@ -49,13 +49,9 @@ end
 -- Initializes or disables the AutoInvite module based on user settings.
 function Module:CreateAutoInvite()
 	if Module.db.profile.automation.AutoInvite then
-		-- Debugging prints
-		print("Registering events for AutoInvite")
 		Module:RegisterEvent("PARTY_INVITE_REQUEST", OnPartyInviteReceived)
 		Module:RegisterEvent("GROUP_ROSTER_UPDATE", OnGroupRosterUpdated)
 	else
-		-- Debugging prints
-		print("Unregistering events for AutoInvite")
 		Module:UnregisterEvent("PARTY_INVITE_REQUEST", OnPartyInviteReceived)
 		Module:UnregisterEvent("GROUP_ROSTER_UPDATE", OnGroupRosterUpdated)
 	end

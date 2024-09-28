@@ -2,6 +2,16 @@
 local _, Core = ...
 local cr, cg, cb = Core.r, Core.g, Core.b
 
+local debugMode = true
+
+-- Debugging function
+function Core:DebugPrint(...)
+	if debugMode then
+		local message = string.format(...)
+		Core.Print("|cffFF4500[NexEnhance Debug]:|r", message)
+	end
+end
+
 -- Movable Frame
 do
 	function Core:CreateMoverFrame(parent, saved)

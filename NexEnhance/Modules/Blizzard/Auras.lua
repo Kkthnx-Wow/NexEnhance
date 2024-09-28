@@ -37,20 +37,18 @@ end
 -- Function to apply skin to an aura
 local function ApplySkin(aura)
 	if aura and not aura.isAuraAnchor and not aura.styled then
-		aura.Icon:SetTexCoord(0.04, 0.96, 0.04, 0.96)
-
 		local durationFont, durationSize = aura.Duration:GetFont()
 		aura.Duration:SetFont(durationFont, durationSize + 1, "OUTLINE")
 		aura.Duration:SetShadowOffset(0, 0)
 		aura.Duration:ClearAllPoints()
-		aura.Duration:SetPoint("BOTTOM", 0, -4)
+		aura.Duration:SetPoint("BOTTOM", 0, 4)
 
 		if aura.Count then
 			local countFont, countSize = aura.Count:GetFont()
-			aura.Count:SetFont(countFont, countSize + 1, "OUTLINE")
+			aura.Count:SetFont(countFont, countSize, "OUTLINE")
 			aura.Count:SetShadowOffset(0, 0)
 			aura.Count:ClearAllPoints()
-			aura.Count:SetPoint("TOPRIGHT", 2, 4)
+			aura.Count:SetPoint("TOPRIGHT", -2, -2)
 		end
 
 		if not aura.hook then
@@ -59,22 +57,6 @@ local function ApplySkin(aura)
 			end)
 			aura.hook = true
 		end
-
-		aura.bd = Module:CreateAtlasBackdrop(aura.Icon, 2, aura, "UI-HUD-ActionBar-IconFrame")
-		aura.bd:SetFrameLevel(aura:GetFrameLevel() + 1)
-
-		hooksecurefunc(aura, "UpdateAuraType", function(self, auraType)
-			self.DebuffBorder:Hide()
-			self.TempEnchantBorder:Hide()
-			if self.auraType == "Buff" then
-				self.bd.texture:SetVertexColor(1, 1, 1)
-			elseif self.auraType == "Debuff" or self.auraType == "DeadlyDebuff" then
-				local color = DebuffTypeColor["none"] or { r = 0.8, g = 0.1, b = 0.1 } -- Default color if 'none' is not defined
-				self.bd.texture:SetVertexColor(color.r, color.g, color.b)
-			elseif self.auraType == "TempEnchant" then
-				self.bd.texture:SetVertexColor(0.5, 0, 1)
-			end
-		end)
 
 		aura.styled = true
 	end

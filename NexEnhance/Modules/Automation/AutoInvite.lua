@@ -13,36 +13,44 @@ local previousInviterGUID
 
 -- Handles the party invite by checking if the inviter is a friend, guild member, or Battle.net friend.
 local function HandlePartyInvite(inviterGUID)
-	if IsInGroup() or QueueStatusButton:IsShown() or inviterGUID == previousInviterGUID then
+	if IsInGroup() then
+		return
+	end
+
+	if QueueStatusButton:IsShown() then
+		return
+	end
+
+	if inviterGUID == previousInviterGUID then
 		return
 	end
 
 	local accountInfo = C_BattleNet.GetAccountInfoByGUID(inviterGUID)
 	if accountInfo or C_FriendList.IsFriend(inviterGUID) or IsGuildMember(inviterGUID) then
+		Module:DebugPrint("Accepting group invite from inviterGUID:", inviterGUID)
 		AcceptGroup()
 		previousInviterGUID = inviterGUID
 	end
 end
 
--- Event handler for party invite requests and group roster updates.
-local function AutoInvite(event, _, _, _, _, _, _, inviterGUID)
-	if event == "PARTY_INVITE_REQUEST" then
-		HandlePartyInvite(inviterGUID)
-	elseif event == "GROUP_ROSTER_UPDATE" then
-		StaticPopupSpecial_Hide(LFGInvitePopup)
-		StaticPopup_Hide("PARTY_INVITE")
-		previousInviterGUID = nil
-	end
+function Module:PARTY_INVITE_REQUEST(_, _, _, _, _, _, _, inviterGUID)
+	HandlePartyInvite(inviterGUID)
+end
+
+function Module:GROUP_ROSTER_UPDATE()
+	StaticPopupSpecial_Hide(LFGInvitePopup)
+	StaticPopup_Hide("PARTY_INVITE")
+	previousInviterGUID = nil
 end
 
 -- Initializes or disables the AutoInvite module based on user settings.
 function Module:CreateAutoInvite()
 	if Module.db.profile.automation.AutoInvite then
-		self:RegisterEvent("PARTY_INVITE_REQUEST", AutoInvite)
-		self:RegisterEvent("GROUP_ROSTER_UPDATE", AutoInvite)
+		self:RegisterEvent("PARTY_INVITE_REQUEST", self.PARTY_INVITE_REQUEST)
+		self:RegisterEvent("GROUP_ROSTER_UPDATE", self.GROUP_ROSTER_UPDATE)
 	else
-		self:UnregisterEvent("PARTY_INVITE_REQUEST", AutoInvite)
-		self:UnregisterEvent("GROUP_ROSTER_UPDATE", AutoInvite)
+		self:UnregisterEvent("PARTY_INVITE_REQUEST", self.PARTY_INVITE_REQUEST)
+		self:UnregisterEvent("GROUP_ROSTER_UPDATE", self.GROUP_ROSTER_UPDATE)
 	end
 end
 

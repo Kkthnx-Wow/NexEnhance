@@ -266,7 +266,7 @@ function Module.ReplaceChatHyperlink(link, linkType, value)
 		end
 		return link
 	elseif linkType == "dungeonScore" then
-		return value and gsub(link, "|h%[(.-)%]|h", "|h[" .. format(Modules.L["Mythic Score: %s"], GetDungeonScoreInColor(value)) .. "]|h")
+		return value and gsub(link, "|h%[(.-)%]|h", "|h[" .. format(DUNGEON_SCORE_LEADER, GetDungeonScoreInColor(value)) .. "]|h")
 	end
 end
 

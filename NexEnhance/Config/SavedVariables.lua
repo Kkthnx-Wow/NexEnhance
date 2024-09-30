@@ -24,6 +24,16 @@ local defaults = {
 			Background = false,
 			URLCopy = false,
 			StickyChat = false,
+			chatfilters = {
+				BlockStrangers = false,
+				BlockSpammer = false,
+				FilterMatches = 1,
+				ChatItemLevel = false,
+				EnableFilter = false,
+				BlockAddonAlert = false,
+				ChatFilterList = "%*",
+				ChatFilterWhiteList = "",
+			},
 		},
 		experience = {
 			enableExp = false,

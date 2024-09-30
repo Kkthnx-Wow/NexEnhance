@@ -66,10 +66,11 @@
     <!-- BugFixes -->
 
     <!-- Chat -->
+    <Script file="Modules\Chat\Elements\Copy.lua" />
+    <Script file="Modules\Chat\Elements\Filters.lua" />
+    <Script file="Modules\Chat\Elements\Formatting.lua" />
     <Script file="Modules\Chat\Elements\Styling.lua" />
     <Script file="Modules\Chat\Elements\URL.lua" />
-    <Script file="Modules\Chat\Elements\Copy.lua" />
-    <Script file="Modules\Chat\Elements\Formatting.lua" />
     <Script file="Modules\Chat\Core.lua" />
 
     <!-- General -->

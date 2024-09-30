@@ -283,12 +283,98 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					StickyChat = { -- Change the name from URL to something else. This doesnt explain much!!!
+					StickyChat = {
 						order = 3,
 						name = "StickyChat",
 						desc = "StickyChat.",
 						type = "toggle",
 						width = "double",
+					},
+					chatfilters = {
+						order = 4,
+						name = "Chat Filters",
+						type = "group",
+						inline = true,
+						get = function(info)
+							return Config.db.profile.chat.chatfilters[info[#info]]
+						end,
+						set = function(info, value)
+							Config.db.profile.chat.chatfilters[info[#info]] = value
+							if info[#info] == "ChatFilterList" then
+								Config.Chat:UpdateFilterList()
+							elseif info[#info] == "ChatFilterWhiteList" then
+								Config.Chat:UpdateFilterWhiteList()
+							end
+						end,
+						args = {
+							EnableFilter = {
+								order = 1,
+								name = HeaderTag .. "Enable Chat Filter",
+								desc = "Enables or disables the chat filtering system.",
+								type = "toggle",
+								width = "normal",
+							},
+							FilterMatches = {
+								order = 2,
+								name = "Filter Matches Count",
+								desc = "Enter the number of keyword matches required to filter a message.",
+								type = "input",
+								width = "normal",
+								-- validate input as a number
+								validate = function(info, value)
+									local numValue = tonumber(value)
+									if numValue and numValue > 0 then
+										return true
+									else
+										return "Please enter a valid number."
+									end
+								end,
+							},
+							BlockStrangers = {
+								order = 3,
+								name = "Block Strangers",
+								desc = "Blocks messages from unknown players who are not in your friends list or guild.",
+								type = "toggle",
+								width = "double",
+							},
+							BlockSpammer = {
+								order = 4,
+								name = "Block Spammers",
+								desc = "Filters out messages from players who are flagged as spammers or sending repetitive messages.",
+								type = "toggle",
+								width = "double",
+							},
+							ChatItemLevel = {
+								order = 5,
+								name = "Show Item Level in Chat",
+								desc = "Displays the item level of linked gear in chat.",
+								type = "toggle",
+								width = "double",
+							},
+							BlockAddonAlert = {
+								order = 6,
+								name = "Block Addon Alerts",
+								desc = "Blocks automated messages from addons, including announcements of abilities, deaths, or interrupts.",
+								type = "toggle",
+								width = "double",
+							},
+							ChatFilterList = {
+								order = 7,
+								name = "Chat Filter List",
+								desc = "Specify a list of patterns to filter out messages in chat. Use spaces to separate multiple patterns.",
+								type = "input",
+								width = "full",
+								multiline = true, -- Allows multiple lines for ease of input
+							},
+							ChatFilterWhiteList = {
+								order = 8,
+								name = "Chat Filter Whitelist",
+								desc = "Specify a list of allowed terms or patterns that bypass the chat filter. Use spaces to separate multiple terms.",
+								type = "input",
+								width = "full",
+								multiline = true, -- Allows multiple lines for ease of input
+							},
+						},
 					},
 				},
 			},

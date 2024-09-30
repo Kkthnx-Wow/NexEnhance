@@ -92,6 +92,19 @@ do
 		local mult = 10 ^ idp
 		return floor(number * mult + 0.5) / mult
 	end
+
+	function Core.SplitList(list, variable, cleanup)
+		if cleanup then
+			wipe(list) -- Clear the list if cleanup is requested
+		end
+
+		if variable and variable ~= "" then -- Ensure variable is not nil or empty
+			for word in string.gmatch(variable, "%S+") do
+				local numberValue = tonumber(word) -- Attempt to convert to a number
+				list[numberValue or word] = true -- Use the number if it exists, otherwise use the word
+			end
+		end
+	end
 end
 
 -- Color conversion functions

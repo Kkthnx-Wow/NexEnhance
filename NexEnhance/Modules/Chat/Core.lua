@@ -9,4 +9,5 @@ function Modules:PLAYER_LOGIN()
 	Modules.Chat:RegisterChatCopy()
 	Modules.Chat:RegisterChatRename()
 	Modules.Chat:RegisterChatURLCopy()
+	Modules.Chat:RegisterChatFilters()
 end

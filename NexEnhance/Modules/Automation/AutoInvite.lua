@@ -1,8 +1,7 @@
 local _, Module = ...
 
--- Cache global references for performance
-local C_BattleNet = C_BattleNet
-local C_FriendList = C_FriendList
+local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet.GetGameAccountInfoByGUID
+local C_FriendList_IsFriend = C_FriendList.IsFriend
 local IsGuildMember = IsGuildMember
 local IsInGroup = IsInGroup
 local QueueStatusButton = QueueStatusButton
@@ -10,53 +9,41 @@ local StaticPopupSpecial_Hide = StaticPopupSpecial_Hide
 local StaticPopup_Hide = StaticPopup_Hide
 local LFGInvitePopup = LFGInvitePopup
 
-local previousInviterGUID
+local hideStatic
 
--- Handles the party invite by checking if the inviter is a friend, guild member, or Battle.net friend.
-local function HandlePartyInvite(inviterGUID)
-	if IsInGroup() then
+-- Function to handle PARTY_INVITE_REQUEST
+function Module:PARTY_INVITE_REQUEST(_, _, _, _, _, _, _, inviterGUID)
+	if not Module.db.profile.automation.AutoInvite then
 		return
 	end
 
-	if QueueStatusButton:IsShown() then
+	if not inviterGUID or inviterGUID == "" or IsInGroup() then
 		return
 	end
 
-	if inviterGUID == previousInviterGUID then
+	local queueButton = QueueStatusButton -- don't auto accept during a queue
+	if queueButton and queueButton:IsShown() then
 		return
 	end
 
-	local accountInfo = C_BattleNet.GetAccountInfoByGUID(inviterGUID)
-	if accountInfo or C_FriendList.IsFriend(inviterGUID) or IsGuildMember(inviterGUID) then
-		Module:DebugPrint("Accepting group invite from inviterGUID:", inviterGUID)
+	if C_BattleNet_GetGameAccountInfoByGUID(inviterGUID) or C_FriendList_IsFriend(inviterGUID) or IsGuildMember(inviterGUID) then
+		hideStatic = true
 		AcceptGroup()
-		previousInviterGUID = inviterGUID
 	end
 end
 
--- Use the eventMixin to handle party invite requests
-local function OnPartyInviteReceived(_, _, _, _, _, _, inviterGUID)
-	HandlePartyInvite(inviterGUID)
-end
-
--- Use the eventMixin to clear the previous inviter when the group roster updates
-local function OnGroupRosterUpdated()
-	StaticPopupSpecial_Hide(LFGInvitePopup)
-	StaticPopup_Hide("PARTY_INVITE")
-	previousInviterGUID = nil
-end
-
--- Initializes or disables the AutoInvite module based on user settings.
-function Module:CreateAutoInvite()
-	if Module.db.profile.automation.AutoInvite then
-		Module:RegisterEvent("PARTY_INVITE_REQUEST", OnPartyInviteReceived)
-		Module:RegisterEvent("GROUP_ROSTER_UPDATE", OnGroupRosterUpdated)
-	else
-		Module:UnregisterEvent("PARTY_INVITE_REQUEST", OnPartyInviteReceived)
-		Module:UnregisterEvent("GROUP_ROSTER_UPDATE", OnGroupRosterUpdated)
+-- Function to handle GROUP_ROSTER_UPDATE
+function Module:GROUP_ROSTER_UPDATE()
+	if not Module.db.profile.automation.AutoInvite then
+		return
 	end
-end
 
-function Module:PLAYER_LOGIN()
-	Module:CreateAutoInvite()
+	if hideStatic then
+		if LFGInvitePopup then -- invited in custom created group
+			StaticPopupSpecial_Hide(LFGInvitePopup)
+		end
+
+		StaticPopup_Hide("PARTY_INVITE")
+		hideStatic = nil
+	end
 end

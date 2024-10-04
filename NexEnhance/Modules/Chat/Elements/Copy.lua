@@ -68,9 +68,8 @@ function Module:ChatCopy_OnClick(btn)
 		else
 			chatFrame:Hide()
 		end
-	elseif btn == "RightButton" then -- Add config toggle here
-		-- Module:TogglePanel(chatMenu)
-		-- CChatMenu = chatMenu:IsShown()
+	elseif btn == "RightButton" then
+		OpenConfigWithDefaultGroup("general")
 	end
 end
 

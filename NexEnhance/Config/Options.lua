@@ -591,13 +591,6 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					itemLevels = {
-						order = 5,
-						name = "Show Item Levels",
-						desc = "Shows item levels on various frames, including the Character Frame, Inspect Frame, Merchant Frame, Trade Frame, and more, making it easy to evaluate gear at a glance.",
-						type = "toggle",
-						width = "double",
-					},
 					questXPPercent = {
 						order = 6,
 						name = "Enhanced Quest XP Display",
@@ -611,6 +604,83 @@ local function CreateOptions()
 						desc = "Highlights the most valuable quest reward choice with a gold coin icon overlay based on potential sell value.",
 						type = "toggle",
 						width = "double",
+					},
+					itemlevels = {
+						order = 8,
+						name = "ItemLevels",
+						type = "group",
+						inline = true,
+						get = function(info)
+							return Config.db.profile.miscellaneous.itemlevels[info[#info]]
+						end,
+						set = function(info, value)
+							Config.db.profile.miscellaneous.itemlevels[info[#info]] = value
+						end,
+						args = {
+							characterFrame = {
+								order = 1,
+								name = "Show Item Level on Character Frame",
+								desc = "Shows item levels on the character frame.",
+								type = "toggle",
+								width = "double",
+							},
+							inspectFrame = {
+								order = 2,
+								name = "Show Item Level on Inspect Frame",
+								desc = "Shows item levels on the inspect frame.",
+								type = "toggle",
+								width = "double",
+							},
+							merchantFrame = {
+								order = 3,
+								name = "Show Item Level on Merchant Frame",
+								desc = "Shows item levels on the merchant frame.",
+								type = "toggle",
+								width = "double",
+							},
+							tradeFrame = {
+								order = 4,
+								name = "Show Item Level on Trade Frame",
+								desc = "Shows item levels on the trade frame.",
+								type = "toggle",
+								width = "double",
+							},
+							lootFrame = {
+								order = 5,
+								name = "Show Item Level on Loot Frame",
+								desc = "Shows item levels on the loot frame.",
+								type = "toggle",
+								width = "double",
+							},
+							guildBankFrame = {
+								order = 6,
+								name = "Show Item Level on Guild Bank Frame",
+								desc = "Shows item levels on the guild bank frame.",
+								type = "toggle",
+								width = "double",
+							},
+							containers = {
+								order = 7,
+								name = "Show Item Level on Containers",
+								desc = "Shows item levels on default containers (bags).",
+								type = "toggle",
+								width = "double",
+							},
+							flyout = {
+								order = 8,
+								name = "Show Item Level on Equipment Flyout",
+								desc = "Shows item levels on equipment flyout buttons.",
+								type = "toggle",
+								width = "double",
+							},
+							scrapping = {
+								order = 9,
+								name = "Show Item Level on Scrapping Machine Frame",
+								desc = "Shows item levels on the scrapping machine frame.",
+								type = "toggle",
+								width = "double",
+							},
+						},
 					},
 				},
 			},

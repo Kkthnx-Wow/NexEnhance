@@ -676,45 +676,61 @@ function Module:ItemLevel_GuildBankShow(event, addonName)
 end
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.miscellaneous.itemLevels then
-		return
-	end
+	-- -- Check if the global itemLevels setting is enabled
+	-- if not Module.db.profile.miscellaneous.itemLevels then
+	-- 	return
+	-- end
 
 	-- iLvl on CharacterFrame
-	CharacterFrame:HookScript("OnShow", self.ItemLevel_UpdatePlayer)
-	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", self.ItemLevel_UpdatePlayer)
+	if Module.db.profile.miscellaneous.itemlevels.characterFrame then
+		CharacterFrame:HookScript("OnShow", self.ItemLevel_UpdatePlayer)
+		self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", self.ItemLevel_UpdatePlayer)
+	end
 
 	-- iLvl on InspectFrame
-	self:RegisterEvent("INSPECT_READY", self.ItemLevel_UpdateInspect)
+	if Module.db.profile.miscellaneous.itemlevels.inspectFrame then
+		self:RegisterEvent("INSPECT_READY", self.ItemLevel_UpdateInspect)
+	end
 
 	-- iLvl on FlyoutButtons
-	hooksecurefunc("EquipmentFlyout_UpdateItems", function()
-		for _, button in pairs(EquipmentFlyoutFrame.buttons) do
-			if button:IsShown() then
-				self.ItemLevel_FlyoutSetup(button)
+	if Module.db.profile.miscellaneous.itemlevels.flyout then
+		hooksecurefunc("EquipmentFlyout_UpdateItems", function()
+			for _, button in pairs(EquipmentFlyoutFrame.buttons) do
+				if button:IsShown() then
+					self.ItemLevel_FlyoutSetup(button)
+				end
 			end
-		end
-	end)
+		end)
+	end
 
 	-- iLvl on ScrappingMachineFrame
-	self:RegisterEvent("ADDON_LOADED", self.ItemLevel_ScrappingShow)
+	if Module.db.profile.miscellaneous.itemlevels.scrapping then
+		self:RegisterEvent("ADDON_LOADED", self.ItemLevel_ScrappingShow)
+	end
 
 	-- iLvl on MerchantFrame
-	hooksecurefunc("MerchantFrameItem_UpdateQuality", self.ItemLevel_UpdateMerchant)
+	if Module.db.profile.miscellaneous.itemlevels.merchantFrame then
+		hooksecurefunc("MerchantFrameItem_UpdateQuality", self.ItemLevel_UpdateMerchant)
+	end
 
 	-- iLvl on TradeFrame
-	hooksecurefunc("TradeFrame_UpdatePlayerItem", self.ItemLevel_UpdateTradePlayer)
-	hooksecurefunc("TradeFrame_UpdateTargetItem", self.ItemLevel_UpdateTradeTarget)
-
-	-- iLvl on GuildNews
-	-- hooksecurefunc("GuildNewsButton_SetText", self.ItemLevel_ReplaceGuildNews)
+	if Module.db.profile.miscellaneous.itemlevels.tradeFrame then
+		hooksecurefunc("TradeFrame_UpdatePlayerItem", self.ItemLevel_UpdateTradePlayer)
+		hooksecurefunc("TradeFrame_UpdateTargetItem", self.ItemLevel_UpdateTradeTarget)
+	end
 
 	-- iLvl on LootFrame
-	hooksecurefunc(LootFrame.ScrollBox, "Update", self.ItemLevel_UpdateLoot)
+	if Module.db.profile.miscellaneous.itemlevels.lootFrame then
+		hooksecurefunc(LootFrame.ScrollBox, "Update", self.ItemLevel_UpdateLoot)
+	end
 
 	-- iLvl on GuildBankFrame
-	self:RegisterEvent("ADDON_LOADED", self.ItemLevel_GuildBankShow)
+	if Module.db.profile.miscellaneous.itemlevels.guildBankFrame then
+		self:RegisterEvent("ADDON_LOADED", self.ItemLevel_GuildBankShow)
+	end
 
 	-- iLvl on default Container
-	self:ItemLevel_Containers()
+	if Module.db.profile.miscellaneous.itemlevels.containers then
+		self:ItemLevel_Containers()
+	end
 end

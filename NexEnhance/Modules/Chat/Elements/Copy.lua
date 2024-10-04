@@ -68,7 +68,7 @@ function Module:ChatCopy_OnClick(btn)
 		else
 			chatFrame:Hide()
 		end
-	elseif btn == "RightButton" then
+	elseif btn == "RightButton" then -- Test github webhook to discord :D
 		OpenConfigWithDefaultGroup("general")
 	end
 end

@@ -237,9 +237,9 @@ function Module:ItemLevel_UpdateInfo(slotFrame, info, quality)
 			if gem then
 				texture:SetTexture(gem)
 				if color then
-					-- bg.KKUI_Border:SetVertexColor(color.r, color.g, color.b)
+					-- bg.KKUI_Border:SetVertexColor(color.r, color.g, color.b) -- Fix me soon!
 				else
-					-- bg.KKUI_Border:SetVertexColor(1, 1, 1)
+					-- bg.KKUI_Border:SetVertexColor(1, 1, 1) -- Fix me soon!
 				end
 				bg:Show()
 
@@ -249,9 +249,9 @@ function Module:ItemLevel_UpdateInfo(slotFrame, info, quality)
 				local g = essence[5]
 				local b = essence[6]
 				if r and g and b then
-					-- bg.KKUI_Border:SetVertexColor(r, g, b)
+					-- bg.KKUI_Border:SetVertexColor(r, g, b) -- Fix me soon!
 				else
-					-- bg.KKUI_Border:SetVertexColor(1, 1, 1)
+					-- bg.KKUI_Border:SetVertexColor(1, 1, 1) -- Fix me soon!
 				end
 
 				local selected = essence[1]
@@ -267,7 +267,7 @@ end
 function Module:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
 	C_Timer.After(0.1, function()
 		local quality = select(3, GetItemInfo(link))
-		local info = Module.GetItemLevel(link, unit, index, true) -- GemEnchantInfo
+		local info = Module.GetItemLevel(link, unit, index, Module.db.profile.miscellaneous.gemsNEnchants) -- GemEnchantInfo
 		if info == "tooSoon" then
 			return
 		end
@@ -296,7 +296,7 @@ function Module:ItemLevel_SetupLevel(frame, strType, unit)
 			local link = GetInventoryItemLink(unit, index)
 			if link then
 				local quality = select(3, GetItemInfo(link))
-				local info = Module.GetItemLevel(link, unit, index, true) -- GemEnchantInfo
+				local info = Module.GetItemLevel(link, unit, index, Module.db.profile.miscellaneous.gemsNEnchants) -- GemEnchantInfo
 				if info == "tooSoon" then
 					Module:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
 				else
@@ -304,7 +304,7 @@ function Module:ItemLevel_SetupLevel(frame, strType, unit)
 				end
 
 				if strType == "Character" then
-					-- Module:ItemLevel_UpdateTraits(slotFrame, index, link)
+					-- Module:ItemLevel_UpdateTraits(slotFrame, index, link) -- Fix me soon!
 				end
 			end
 		end
@@ -570,18 +570,20 @@ function Module:ItemLevel_UpdateLoot()
 	end
 end
 
-function Module:ItemLevel_UpdateBags(button, bag, slot)
+function Module:ItemLevel_UpdateBag()
+	local button = self.__owner
 	if not button.iLvl then
 		button.iLvl = Module.CreateFontString(button, Module.Font[2] + 1, "", false, "OUTLINE", "BOTTOMLEFT", 1, 1)
 	end
 
-	local bagID = bag or button:GetBagID()
-	local slotID = slot or button:GetID()
+	local bagID = button.GetBankTabID and button:GetBankTabID() or button:GetBagID()
+	local slotID = button.GetContainerSlotID and button:GetContainerSlotID() or button:GetID()
 	local info = C_Container.GetContainerItemInfo(bagID, slotID)
-
-	if info and info.quality and info.quality > 1 then
-		local level = Module.GetItemLevel(info.hyperlink, bagID, slotID)
-		local color = Module.QualityColors[info.quality]
+	local link = info and info.hyperlink
+	local quality = info and info.quality
+	if quality and quality > 1 then
+		local level = Module.GetItemLevel(link, bagID, slotID)
+		local color = Module.QualityColors[quality]
 		button.iLvl:SetText(level)
 		button.iLvl:SetTextColor(color.r, color.g, color.b)
 	else
@@ -589,45 +591,25 @@ function Module:ItemLevel_UpdateBags(button, bag, slot)
 	end
 end
 
+function Module:ItemLevel_HandleSlots()
+	for button in self.itemButtonPool:EnumerateActive() do
+		if not button.hooked then
+			button.IconBorder.__owner = button
+			hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBag)
+			button.hooked = true
+		end
+	end
+end
+
 function Module:ItemLevel_Containers()
-	local update = function(frame)
-		for _, itemButton in frame:EnumerateValidItems() do
-			Module:ItemLevel_UpdateBags(itemButton, itemButton:GetBagID(), itemButton:GetID())
+	for i = 1, 13 do
+		local frame = _G["ContainerFrame" .. i]
+		if frame then
+			hooksecurefunc(frame, "UpdateItemSlots", Module.ItemLevel_HandleSlots)
 		end
 	end
-
-	hooksecurefunc(ContainerFrameCombinedBags, "UpdateItems", update)
-	for _, frame in ipairs((ContainerFrameContainer or UIParent).ContainerFrames) do
-		hooksecurefunc(frame, "UpdateItems", update)
-	end
-
-	hooksecurefunc("BankFrameItemButton_Update", function(button)
-		if not button.isBag then
-			Module:ItemLevel_UpdateBags(button, button:GetParent():GetID())
-		end
-	end)
-
-	if _G.AccountBankPanel then
-		local lastButtons = {}
-		local update = function(frame)
-			table.wipe(lastButtons)
-			for itemButton in frame:EnumerateValidItems() do
-				Module:ItemLevel_UpdateBags(itemButton, itemButton:GetBankTabID(), itemButton:GetContainerSlotID())
-				table.insert(lastButtons, itemButton)
-			end
-		end
-
-		hooksecurefunc(AccountBankPanel, "GenerateItemSlotsForSelectedTab", update)
-		hooksecurefunc(AccountBankPanel, "RefreshAllItemsForSelectedTab", update)
-
-		hooksecurefunc(AccountBankPanel, "SetItemDisplayEnabled", function(_, state)
-			if state == false then
-				for _, itemButton in ipairs(lastButtons) do
-					itemButton.iLvl:SetText("")
-				end
-			end
-		end)
-	end
+	hooksecurefunc(ContainerFrameCombinedBags, "UpdateItemSlots", Module.ItemLevel_HandleSlots)
+	hooksecurefunc(AccountBankPanel, "GenerateItemSlotsForSelectedTab", Module.ItemLevel_HandleSlots)
 end
 
 local NUM_SLOTS_PER_GUILDBANK_GROUP = 14
@@ -694,9 +676,9 @@ function Module:ItemLevel_GuildBankShow(event, addonName)
 end
 
 function Module:PLAYER_LOGIN()
-	-- if not C["Misc"].ItemLevel then
-	-- 	return
-	-- end
+	if not Module.db.profile.miscellaneous.itemLevels then
+		return
+	end
 
 	-- iLvl on CharacterFrame
 	CharacterFrame:HookScript("OnShow", self.ItemLevel_UpdatePlayer)

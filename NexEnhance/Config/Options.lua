@@ -584,15 +584,29 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					questXPPercent = {
+					gemsNEnchants = {
 						order = 4,
+						name = "Show Gems and Enchants",
+						desc = "Displays gems and enchantments on the character frame and inspect frame, allowing quick access to view gear enhancements without additional tooltips.",
+						type = "toggle",
+						width = "double",
+					},
+					itemLevels = {
+						order = 5,
+						name = "Show Item Levels",
+						desc = "Shows item levels on various frames, including the Character Frame, Inspect Frame, Merchant Frame, Trade Frame, and more, making it easy to evaluate gear at a glance.",
+						type = "toggle",
+						width = "double",
+					},
+					questXPPercent = {
+						order = 6,
 						name = "Enhanced Quest XP Display",
 						desc = "Enhances the display of quest XP rewards to show percentage of total experience gained.",
 						type = "toggle",
 						width = "double",
 					},
 					questRewardsMostValueIcon = {
-						order = 5,
+						order = 7,
 						name = "Highlight Best Quest Reward",
 						desc = "Highlights the most valuable quest reward choice with a gold coin icon overlay based on potential sell value.",
 						type = "toggle",

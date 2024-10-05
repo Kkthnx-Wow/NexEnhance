@@ -18,16 +18,19 @@ local function UpdateOptions()
 end
 
 -- Generates texture markup for an icon
-local function GetTextureMarkup(icon, size)
+local function GetTextureMarkup(icon, width, height)
 	icon = icon or DEFAULT_ICON
-	size = size or DEFAULT_SIZE
-	return string.format("|T%s:%d|t", icon, size)
+	width = width or DEFAULT_SIZE
+	height = height or DEFAULT_SIZE
+	return string.format("|T%s:%d|t", icon, width, height)
 end
 
 -- Generates atlas markup for an icon
-local function GetAtlasMarkup(atlas, size)
-	size = size or DEFAULT_SIZE
-	return string.format("|A:%s:%d:%d|a", atlas, size, size)
+local function GetAtlasMarkup(atlas, width, height)
+	-- atlas = atlas or DEFAULT_ATLAS
+	width = width or DEFAULT_SIZE
+	height = height or DEFAULT_SIZE
+	return string.format("|A:%s:%d:%d|a", atlas, width, height)
 end
 
 -- Retrieves icon string; validation check included
@@ -68,7 +71,8 @@ end
 local AddReloadNotice = "|n|n|cff5bc0beChanging this option requires a UI reload.|r"
 
 -- Lets users know this is a new feature
-local NewFeature = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
+local NewFeatureIcon = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
+local NewFeatureAtlas = GetAtlasMarkup("CharacterCreate-NewLabel", 32, 48)
 
 -- Function to open the config and select a specific group
 function OpenConfigWithDefaultGroup(groupName)
@@ -586,7 +590,7 @@ local function CreateOptions()
 					},
 					gemsNEnchants = {
 						order = 4,
-						name = "Show Gems and Enchants",
+						name = NewFeatureAtlas .. "Show Gems and Enchants",
 						desc = "Displays gems and enchantments on the character frame and inspect frame, allowing quick access to view gear enhancements without additional tooltips.",
 						type = "toggle",
 						width = "double",
@@ -605,8 +609,15 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					itemlevels = {
+					alreadyKnown = {
 						order = 8,
+						name = NewFeatureAtlas .. "Highlight Already Known Items",
+						desc = "Highlights items that are already known (e.g., mounts, pets, recipes) in various UI elements like quest rewards, buyback items, and guild bank.",
+						type = "toggle",
+						width = "double",
+					},
+					itemlevels = {
+						order = 9,
 						name = "ItemLevels",
 						type = "group",
 						inline = true,
@@ -619,63 +630,63 @@ local function CreateOptions()
 						args = {
 							characterFrame = {
 								order = 1,
-								name = "Show Item Level on Character Frame",
+								name = NewFeatureAtlas .. "Show Item Level on Character Frame",
 								desc = "Shows item levels on the character frame.",
 								type = "toggle",
 								width = "double",
 							},
 							inspectFrame = {
 								order = 2,
-								name = "Show Item Level on Inspect Frame",
+								name = NewFeatureAtlas .. "Show Item Level on Inspect Frame",
 								desc = "Shows item levels on the inspect frame.",
 								type = "toggle",
 								width = "double",
 							},
 							merchantFrame = {
 								order = 3,
-								name = "Show Item Level on Merchant Frame",
+								name = NewFeatureAtlas .. "Show Item Level on Merchant Frame",
 								desc = "Shows item levels on the merchant frame.",
 								type = "toggle",
 								width = "double",
 							},
 							tradeFrame = {
 								order = 4,
-								name = "Show Item Level on Trade Frame",
+								name = NewFeatureAtlas .. "Show Item Level on Trade Frame",
 								desc = "Shows item levels on the trade frame.",
 								type = "toggle",
 								width = "double",
 							},
 							lootFrame = {
 								order = 5,
-								name = "Show Item Level on Loot Frame",
+								name = NewFeatureAtlas .. "Show Item Level on Loot Frame",
 								desc = "Shows item levels on the loot frame.",
 								type = "toggle",
 								width = "double",
 							},
 							guildBankFrame = {
 								order = 6,
-								name = "Show Item Level on Guild Bank Frame",
+								name = NewFeatureAtlas .. "Show Item Level on Guild Bank Frame",
 								desc = "Shows item levels on the guild bank frame.",
 								type = "toggle",
 								width = "double",
 							},
 							containers = {
 								order = 7,
-								name = "Show Item Level on Containers",
+								name = NewFeatureAtlas .. "Show Item Level on Containers",
 								desc = "Shows item levels on default containers (bags).",
 								type = "toggle",
 								width = "double",
 							},
 							flyout = {
 								order = 8,
-								name = "Show Item Level on Equipment Flyout",
+								name = NewFeatureAtlas .. "Show Item Level on Equipment Flyout",
 								desc = "Shows item levels on equipment flyout buttons.",
 								type = "toggle",
 								width = "double",
 							},
 							scrapping = {
 								order = 9,
-								name = "Show Item Level on Scrapping Machine Frame",
+								name = NewFeatureAtlas .. "Show Item Level on Scrapping Machine Frame",
 								desc = "Shows item levels on the scrapping machine frame.",
 								type = "toggle",
 								width = "double",

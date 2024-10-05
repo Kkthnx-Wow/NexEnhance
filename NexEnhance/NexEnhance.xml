@@ -85,6 +85,7 @@
 
     <!-- Miscellaneous -->
     <Script file="Modules\Miscellaneous\AFKMode.lua" />
+    <Script file="Modules\Miscellaneous\AlreadyKnown.lua" />
     <Script file="Modules\Miscellaneous\CharacterStats.lua" />
     <Script file="Modules\Miscellaneous\DisableTalkingHead.lua" />
     <Script file="Modules\Miscellaneous\GameMenuButton.lua" />

@@ -55,6 +55,7 @@ local defaults = {
 			EasyVolume = false,
 		},
 		miscellaneous = {
+			alreadyKnown = false,
 			diableTalkingHead = false,
 			enableAFKMode = false,
 			gemsNEnchants = false,

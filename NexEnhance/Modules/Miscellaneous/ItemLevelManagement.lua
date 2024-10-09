@@ -311,7 +311,11 @@ function Module:ItemLevel_SetupLevel(frame, strType, unit)
 	end
 end
 
-function Module:ItemLevel_UpdatePlayer()
+function Module:PLAYER_EQUIPMENT_CHANGED()
+	if not Module.db.profile.miscellaneous.itemlevels.characterFrame then
+		return
+	end
+
 	Module:ItemLevel_SetupLevel(CharacterFrame, "Character", "player")
 end
 
@@ -388,7 +392,11 @@ local function CalculateAverageItemLevel(unit, fontstring)
 end
 
 -- Update the inspect frame with item level and average item level
-function Module:ItemLevel_UpdateInspect(...)
+function Module:INSPECT_READY(...)
+	if not Module.db.profile.miscellaneous.itemlevels.inspectFrame then
+		return
+	end
+
 	local guid = ...
 	if InspectFrame and InspectFrame.unit and UnitGUID(InspectFrame.unit) == guid then
 		Module:ItemLevel_SetupLevel(InspectFrame, "Inspect", InspectFrame.unit)
@@ -426,6 +434,10 @@ function Module:ItemLevel_FlyoutUpdate(bag, slot, quality)
 end
 
 function Module:ItemLevel_FlyoutSetup()
+	if not Module.db.profile.miscellaneous.itemlevels.flyout then
+		return
+	end
+
 	if self.iLvl then
 		self.iLvl:SetText("")
 	end
@@ -482,17 +494,21 @@ function Module:ItemLevel_ScrappingUpdate()
 	self.iLvl:SetTextColor(color.r, color.g, color.b)
 end
 
-function Module:ItemLevel_ScrappingShow(event, addon)
-	if addon == "Blizzard_ScrappingMachineUI" then
-		for button in pairs(ScrappingMachineFrame.ItemSlots.scrapButtons.activeObjects) do
-			hooksecurefunc(button, "RefreshIcon", self.ItemLevel_ScrappingUpdate)
-		end
-
-		self:UnregisterEvent(event, self.ItemLevel_ScrappingShow)
+Module:HookAddOn("Blizzard_ScrappingMachineUI", function(self)
+	if not Module.db.profile.miscellaneous.itemlevels.scrapping then
+		return
 	end
-end
+
+	for button in pairs(ScrappingMachineFrame.ItemSlots.scrapButtons.activeObjects) do
+		hooksecurefunc(button, "RefreshIcon", self.ItemLevel_ScrappingUpdate)
+	end
+end)
 
 function Module:ItemLevel_UpdateMerchant(link)
+	if not Module.db.profile.miscellaneous.itemlevels.merchantFrame then
+		return
+	end
+
 	if not self.iLvl then
 		self.iLvl = Module.CreateFontString(_G[self:GetName() .. "ItemButton"], 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
 	end
@@ -508,12 +524,20 @@ function Module:ItemLevel_UpdateMerchant(link)
 end
 
 function Module.ItemLevel_UpdateTradePlayer(index)
+	if not Module.db.profile.miscellaneous.itemlevels.tradeFrame then
+		return
+	end
+
 	local button = _G["TradePlayerItem" .. index]
 	local link = GetTradePlayerItemLink(index)
 	Module.ItemLevel_UpdateMerchant(button, link)
 end
 
 function Module.ItemLevel_UpdateTradeTarget(index)
+	if not Module.db.profile.miscellaneous.itemlevels.tradeFrame then
+		return
+	end
+
 	local button = _G["TradeRecipientItem" .. index]
 	local link = GetTradeTargetItemLink(index)
 	Module.ItemLevel_UpdateMerchant(button, link)
@@ -550,6 +574,10 @@ end
 -- end
 
 function Module:ItemLevel_UpdateLoot()
+	if not Module.db.profile.miscellaneous.itemlevels.lootFrame then
+		return
+	end
+
 	for i = 1, self.ScrollTarget:GetNumChildren() do
 		local button = select(i, self.ScrollTarget:GetChildren())
 		if button and button.Item and button.GetElementData then
@@ -602,6 +630,10 @@ function Module:ItemLevel_HandleSlots()
 end
 
 function Module:ItemLevel_Containers()
+	if not Module.db.profile.miscellaneous.itemlevels.containers then
+		return
+	end
+
 	for i = 1, 13 do
 		local frame = _G["ContainerFrame" .. i]
 		if frame then
@@ -615,122 +647,89 @@ end
 local NUM_SLOTS_PER_GUILDBANK_GROUP = 14
 local PET_CAGE = 82800
 
-function Module:ItemLevel_GuildBankShow(event, addonName)
-	if addonName == "Blizzard_GuildBankUI" then
-		hooksecurefunc(_G.GuildBankFrame, "Update", function(self)
-			if self.mode == "bank" then
-				local tab = GetCurrentGuildBankTab()
-				local button, index, column
-				for i = 1, #self.Columns * NUM_SLOTS_PER_GUILDBANK_GROUP do
-					index = mod(i, NUM_SLOTS_PER_GUILDBANK_GROUP)
-					if index == 0 then
-						index = NUM_SLOTS_PER_GUILDBANK_GROUP
-					end
-					column = ceil((i - 0.5) / NUM_SLOTS_PER_GUILDBANK_GROUP)
-					button = self.Columns[column].Buttons[index]
+Module:HookAddOn("Blizzard_GuildBankUI", function(self)
+	if not Module.db.profile.miscellaneous.itemlevels.guildBankFrame then
+		return
+	end
 
-					if button and button:IsShown() then
-						local link = GetGuildBankItemLink(tab, i)
-						if link then
-							if not button.iLvl then
-								button.iLvl = self.CreateFontString(button, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
-							end
+	hooksecurefunc(_G.GuildBankFrame, "Update", function(self)
+		if self.mode == "bank" then
+			local tab = GetCurrentGuildBankTab()
+			local button, index, column
+			for i = 1, #self.Columns * NUM_SLOTS_PER_GUILDBANK_GROUP do
+				index = mod(i, NUM_SLOTS_PER_GUILDBANK_GROUP)
+				if index == 0 then
+					index = NUM_SLOTS_PER_GUILDBANK_GROUP
+				end
+				column = ceil((i - 0.5) / NUM_SLOTS_PER_GUILDBANK_GROUP)
+				button = self.Columns[column].Buttons[index]
 
-							local level, quality
-							local itemID = tonumber(strmatch(link, "Hitem:(%d+):"))
-
-							if itemID == PET_CAGE then
-								local data = C_TooltipInfo.GetGuildBankItem(tab, i)
-								if data then
-									local speciesID, petLevel, breedQuality = data.battlePetSpeciesID, data.battlePetLevel, data.battlePetBreedQuality
-									if speciesID and speciesID > 0 then
-										level, quality = petLevel, breedQuality
-									end
-								end
-							else
-								level = self.GetItemLevel(link)
-								quality = select(3, GetItemInfo(link))
-							end
-
-							if level and quality then
-								local color = self.QualityColors[quality]
-								button.iLvl:SetText(level)
-								button.iLvl:SetTextColor(color.r, color.g, color.b)
-
-								if button.KKUI_Border and itemID == PET_CAGE then
-									button.KKUI_Border:SetVertexColor(color.r, color.g, color.b)
-								end
-							else
-								button.iLvl:SetText("")
-							end
-						elseif button.iLvl then
-							button.iLvl:SetText("") -- Clear the FontString if the slot is empty
+				if button and button:IsShown() then
+					local link = GetGuildBankItemLink(tab, i)
+					if link then
+						if not button.iLvl then
+							button.iLvl = self.CreateFontString(button, 12, "", false, "OUTLINE", "BOTTOMLEFT", 2, 2)
 						end
+
+						local level, quality
+						local itemID = tonumber(strmatch(link, "Hitem:(%d+):"))
+
+						if itemID == PET_CAGE then
+							local data = C_TooltipInfo.GetGuildBankItem(tab, i)
+							if data then
+								local speciesID, petLevel, breedQuality = data.battlePetSpeciesID, data.battlePetLevel, data.battlePetBreedQuality
+								if speciesID and speciesID > 0 then
+									level, quality = petLevel, breedQuality
+								end
+							end
+						else
+							level = self.GetItemLevel(link)
+							quality = select(3, GetItemInfo(link))
+						end
+
+						if level and quality then
+							local color = self.QualityColors[quality]
+							button.iLvl:SetText(level)
+							button.iLvl:SetTextColor(color.r, color.g, color.b)
+
+							if button.KKUI_Border and itemID == PET_CAGE then
+								button.KKUI_Border:SetVertexColor(color.r, color.g, color.b)
+							end
+						else
+							button.iLvl:SetText("")
+						end
+					elseif button.iLvl then
+						button.iLvl:SetText("") -- Clear the FontString if the slot is empty
 					end
 				end
 			end
-		end)
-
-		self:UnregisterEvent(event, Module.ItemLevel_GuildBankShow)
-	end
-end
+		end
+	end)
+end)
 
 function Module:PLAYER_LOGIN()
-	-- -- Check if the global itemLevels setting is enabled
-	-- if not Module.db.profile.miscellaneous.itemLevels then
-	-- 	return
-	-- end
-
 	-- iLvl on CharacterFrame
-	if Module.db.profile.miscellaneous.itemlevels.characterFrame then
-		CharacterFrame:HookScript("OnShow", self.ItemLevel_UpdatePlayer)
-		self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", self.ItemLevel_UpdatePlayer)
-	end
-
-	-- iLvl on InspectFrame
-	if Module.db.profile.miscellaneous.itemlevels.inspectFrame then
-		self:RegisterEvent("INSPECT_READY", self.ItemLevel_UpdateInspect)
-	end
+	CharacterFrame:HookScript("OnShow", self.PLAYER_EQUIPMENT_CHANGED)
 
 	-- iLvl on FlyoutButtons
-	if Module.db.profile.miscellaneous.itemlevels.flyout then
-		hooksecurefunc("EquipmentFlyout_UpdateItems", function()
-			for _, button in pairs(EquipmentFlyoutFrame.buttons) do
-				if button:IsShown() then
-					self.ItemLevel_FlyoutSetup(button)
-				end
+	hooksecurefunc("EquipmentFlyout_UpdateItems", function()
+		for _, button in pairs(EquipmentFlyoutFrame.buttons) do
+			if button:IsShown() then
+				self.ItemLevel_FlyoutSetup(button)
 			end
-		end)
-	end
-
-	-- iLvl on ScrappingMachineFrame
-	if Module.db.profile.miscellaneous.itemlevels.scrapping then
-		self:RegisterEvent("ADDON_LOADED", self.ItemLevel_ScrappingShow)
-	end
+		end
+	end)
 
 	-- iLvl on MerchantFrame
-	if Module.db.profile.miscellaneous.itemlevels.merchantFrame then
-		hooksecurefunc("MerchantFrameItem_UpdateQuality", self.ItemLevel_UpdateMerchant)
-	end
+	hooksecurefunc("MerchantFrameItem_UpdateQuality", self.ItemLevel_UpdateMerchant)
 
 	-- iLvl on TradeFrame
-	if Module.db.profile.miscellaneous.itemlevels.tradeFrame then
-		hooksecurefunc("TradeFrame_UpdatePlayerItem", self.ItemLevel_UpdateTradePlayer)
-		hooksecurefunc("TradeFrame_UpdateTargetItem", self.ItemLevel_UpdateTradeTarget)
-	end
+	hooksecurefunc("TradeFrame_UpdatePlayerItem", self.ItemLevel_UpdateTradePlayer)
+	hooksecurefunc("TradeFrame_UpdateTargetItem", self.ItemLevel_UpdateTradeTarget)
 
 	-- iLvl on LootFrame
-	if Module.db.profile.miscellaneous.itemlevels.lootFrame then
-		hooksecurefunc(LootFrame.ScrollBox, "Update", self.ItemLevel_UpdateLoot)
-	end
-
-	-- iLvl on GuildBankFrame
-	if Module.db.profile.miscellaneous.itemlevels.guildBankFrame then
-		self:RegisterEvent("ADDON_LOADED", self.ItemLevel_GuildBankShow)
-	end
+	hooksecurefunc(LootFrame.ScrollBox, "Update", self.ItemLevel_UpdateLoot)
 
 	-- iLvl on default Container
-	if Module.db.profile.miscellaneous.itemlevels.containers then
-		self:ItemLevel_Containers()
-	end
+	self:ItemLevel_Containers()
 end

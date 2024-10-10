@@ -53,6 +53,7 @@ local defaults = {
 		},
 		minimap = {
 			EasyVolume = false,
+			recycleBin = false,
 		},
 		miscellaneous = {
 			alreadyKnown = false,

@@ -550,6 +550,13 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
+					recycleBin = {
+						order = 1,
+						name = "Minimap Button Collection",
+						desc = "Collects minimap buttons into a single pop-up menu for easier access and cleaner minimap.",
+						type = "toggle",
+						width = "double",
+					},
 				},
 			},
 			miscellaneous = {

@@ -98,9 +98,10 @@
     <Script file="Modules\Profiles\Kkthnx.lua" />
 
     <!-- Maps -->
-    <Script file="Modules\Maps\WorldMap.lua" />
-    <Script file="Modules\Maps\Minimap.lua" />
     <Script file="Modules\Maps\EasyVolume.lua" />
+    <Script file="Modules\Maps\Minimap.lua" />
+    <Script file="Modules\Maps\RecycleBin.lua" />
+    <Script file="Modules\Maps\WorldMap.lua" />
     <Script file="Modules\Maps\WorldMapReveal.lua" />
 
     <!-- Tooltip -->

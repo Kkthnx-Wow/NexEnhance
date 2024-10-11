@@ -551,11 +551,19 @@ local function CreateOptions()
 						width = "double",
 					},
 					recycleBin = {
-						order = 1,
+						order = 2, -- Changed to 2 to maintain order with EasyVolume
 						name = "Minimap Button Collection",
 						desc = "Collects minimap buttons into a single pop-up menu for easier access and cleaner minimap.",
 						type = "toggle",
 						width = "double",
+						disabled = function()
+							if C_AddOns.IsAddOnLoaded("MBB") then
+								-- Set recycleBin to false if the addon is loaded
+								Config.db.profile.minimap.recycleBin = false
+								return true
+							end
+							return false
+						end,
 					},
 				},
 			},

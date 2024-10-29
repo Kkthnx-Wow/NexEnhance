@@ -2,7 +2,9 @@ local AddonName, Config = ...
 
 -- Constants
 local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
-local DEFAULT_SIZE = 16
+local DEFAULT_ICON_SIZE = 16
+local DEFAULT_ATLAS_ICON = "SmallQuestBang"
+local DEFAULT_ATLAS_SIZE = 32
 local HeaderTag = "|cff00cc4c"
 
 -- Variables
@@ -18,18 +20,18 @@ local function UpdateOptions()
 end
 
 -- Generates texture markup for an icon
-local function GetTextureMarkup(icon, width, height)
+local function GetTextureMarkup(icon, height, width)
 	icon = icon or DEFAULT_ICON
-	width = width or DEFAULT_SIZE
-	height = height or DEFAULT_SIZE
+	height = height or DEFAULT_ICON_SIZE
+	width = width or DEFAULT_ICON_SIZE
 	return string.format("|T%s:%d|t", icon, width, height)
 end
 
 -- Generates atlas markup for an icon
-local function GetAtlasMarkup(atlas, width, height)
-	-- atlas = atlas or DEFAULT_ATLAS
-	width = width or DEFAULT_SIZE
-	height = height or DEFAULT_SIZE
+local function GetAtlasMarkup(atlas, height, width)
+	atlas = atlas or DEFAULT_ATLAS_ICON
+	height = height or DEFAULT_ATLAS_SIZE
+	width = width or DEFAULT_ATLAS_SIZE
 	return string.format("|A:%s:%d:%d|a", atlas, width, height)
 end
 
@@ -71,8 +73,8 @@ end
 local AddReloadNotice = "|n|n|cff5bc0beChanging this option requires a UI reload.|r"
 
 -- Lets users know this is a new feature
-local NewFeatureIcon = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
-local NewFeatureAtlas = GetAtlasMarkup("CharacterCreate-NewLabel", 32, 48)
+local NewFeatureIcon = GetTextureMarkup(DEFAULT_ICON, DEFAULT_ICON_SIZE, DEFAULT_ICON_SIZE)
+local NewFeatureAtlas = GetAtlasMarkup("CharacterCreate-NewLabel", 42, 34)
 
 -- Function to open the config and select a specific group
 function OpenConfigWithDefaultGroup(groupName)
@@ -180,8 +182,6 @@ local function CreateOptions()
 						Config:CreateAutoDeclineDuels()
 					elseif info[#info] == "AutoScreenshotAchieve" then
 						Config:ToggleAutoScreenshotAchieve()
-					elseif info[#info] == "AutoInvite" then
-						Config:CreateAutoInvite()
 					end
 				end,
 				args = {
@@ -552,17 +552,12 @@ local function CreateOptions()
 					},
 					recycleBin = {
 						order = 2, -- Changed to 2 to maintain order with EasyVolume
-						name = "Minimap Button Collection",
+						name = NewFeatureAtlas .. "Minimap Button Collection",
 						desc = "Collects minimap buttons into a single pop-up menu for easier access and cleaner minimap.",
 						type = "toggle",
 						width = "double",
 						disabled = function()
-							if C_AddOns.IsAddOnLoaded("MBB") then
-								-- Set recycleBin to false if the addon is loaded
-								Config.db.profile.minimap.recycleBin = false
-								return true
-							end
-							return false
+							return C_AddOns.IsAddOnLoaded("MBB")
 						end,
 					},
 				},
@@ -603,8 +598,15 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					gemsNEnchants = {
+					moveableFrames = {
 						order = 4,
+						name = NewFeatureAtlas .. "Enable Movable Frames",
+						desc = "Allows certain Blizzard frames to be movable, giving you the flexibility to reposition them as needed.",
+						type = "toggle",
+						width = "double",
+					},
+					gemsNEnchants = {
+						order = 5,
 						name = NewFeatureAtlas .. "Show Gems and Enchants",
 						desc = "Displays gems and enchantments on the character frame and inspect frame, allowing quick access to view gear enhancements without additional tooltips.",
 						type = "toggle",
@@ -1067,7 +1069,7 @@ local function CreateOptions()
 				end,
 			},
 			kkthnxprofile = {
-				name = GetAtlasMarkup("BuildanAbomination-32x32", 18) .. " |CFFf6f8faKkthnx Profile|r",
+				name = GetAtlasMarkup("BuildanAbomination-32x32", 18, 18) .. " |CFFf6f8faKkthnx Profile|r",
 				desc = "Brace yourself for Kkthnx's epic setup! Unleash the power...or just enjoy a better UI.",
 				order = 100,
 				type = "execute",

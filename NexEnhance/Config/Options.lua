@@ -2,7 +2,9 @@ local AddonName, Config = ...
 
 -- Constants
 local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
-local DEFAULT_SIZE = 16
+local DEFAULT_ICON_SIZE = 16
+local DEFAULT_ATLAS_ICON = "SmallQuestBang"
+local DEFAULT_ATLAS_SIZE = 32
 local HeaderTag = "|cff00cc4c"
 
 -- Variables
@@ -18,18 +20,18 @@ local function UpdateOptions()
 end
 
 -- Generates texture markup for an icon
-local function GetTextureMarkup(icon, width, height)
+local function GetTextureMarkup(icon, height, width)
 	icon = icon or DEFAULT_ICON
-	width = width or DEFAULT_SIZE
-	height = height or DEFAULT_SIZE
+	height = height or DEFAULT_ICON_SIZE
+	width = width or DEFAULT_ICON_SIZE
 	return string.format("|T%s:%d|t", icon, width, height)
 end
 
 -- Generates atlas markup for an icon
-local function GetAtlasMarkup(atlas, width, height)
-	-- atlas = atlas or DEFAULT_ATLAS
-	width = width or DEFAULT_SIZE
-	height = height or DEFAULT_SIZE
+local function GetAtlasMarkup(atlas, height, width)
+	atlas = atlas or DEFAULT_ATLAS_ICON
+	height = height or DEFAULT_ATLAS_SIZE
+	width = width or DEFAULT_ATLAS_SIZE
 	return string.format("|A:%s:%d:%d|a", atlas, width, height)
 end
 
@@ -71,8 +73,8 @@ end
 local AddReloadNotice = "|n|n|cff5bc0beChanging this option requires a UI reload.|r"
 
 -- Lets users know this is a new feature
-local NewFeatureIcon = GetTextureMarkup(DEFAULT_ICON, DEFAULT_SIZE)
-local NewFeatureAtlas = GetAtlasMarkup("CharacterCreate-NewLabel", 32, 48)
+local NewFeatureIcon = GetTextureMarkup(DEFAULT_ICON, DEFAULT_ICON_SIZE, DEFAULT_ICON_SIZE)
+local NewFeatureAtlas = GetAtlasMarkup("CharacterCreate-NewLabel", 42, 34)
 
 -- Function to open the config and select a specific group
 function OpenConfigWithDefaultGroup(groupName)
@@ -166,45 +168,6 @@ local function CreateOptions()
 					},
 				},
 			},
-			announcements = {
-				order = 2,
-				name = "Announcements", -- Updated name
-				icon = "1405803",
-				type = "group",
-				get = function(info)
-					return Config.db.profile.announcements[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.announcements[info[#info]] = value
-					if info[#info] == "ignoredRares" then
-						Config:RareAlert_UpdateIgnored()
-					end
-				end,
-				args = {
-					description = {
-						name = "Announcements & Alerts", -- Updated name
-						type = "description",
-						order = 0,
-						width = "double",
-						desc = "Configure announcements and alerts for various in-game events, including rare spawns, achievements, and more.", -- Updated description
-					},
-					rareAlert = {
-						order = 1,
-						name = "Rare Alerts", -- Updated name
-						desc = "Receive alerts when rare NPCs are spotted in your area.", -- Updated description
-						type = "toggle",
-						width = "double",
-					},
-					ignoredRares = {
-						order = 8,
-						name = "Rare blacklist",
-						desc = "Enter the rare id that you don't need to be notified, use space in between for multiple ids.",
-						type = "input",
-						width = "full",
-						multiline = true, -- Allows multiple lines for ease of input
-					},
-				},
-			},
 			automation = {
 				order = 2,
 				name = "Automation",
@@ -219,8 +182,6 @@ local function CreateOptions()
 						Config:CreateAutoDeclineDuels()
 					elseif info[#info] == "AutoScreenshotAchieve" then
 						Config:ToggleAutoScreenshotAchieve()
-						-- elseif info[#info] == "IgnoreQuestNPC" then
-						-- 	Config:UpdateIgnoreList()
 					end
 				end,
 				args = {
@@ -591,17 +552,12 @@ local function CreateOptions()
 					},
 					recycleBin = {
 						order = 2, -- Changed to 2 to maintain order with EasyVolume
-						name = "Minimap Button Collection",
+						name = NewFeatureAtlas .. "Minimap Button Collection",
 						desc = "Collects minimap buttons into a single pop-up menu for easier access and cleaner minimap.",
 						type = "toggle",
 						width = "double",
 						disabled = function()
-							if C_AddOns.IsAddOnLoaded("MBB") then
-								-- Set recycleBin to false if the addon is loaded
-								Config.db.profile.minimap.recycleBin = false
-								return true
-							end
-							return false
+							return C_AddOns.IsAddOnLoaded("MBB")
 						end,
 					},
 				},
@@ -642,8 +598,15 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					gemsNEnchants = {
+					moveableFrames = {
 						order = 4,
+						name = NewFeatureAtlas .. "Enable Movable Frames",
+						desc = "Allows certain Blizzard frames to be movable, giving you the flexibility to reposition them as needed.",
+						type = "toggle",
+						width = "double",
+					},
+					gemsNEnchants = {
+						order = 5,
 						name = NewFeatureAtlas .. "Show Gems and Enchants",
 						desc = "Displays gems and enchantments on the character frame and inspect frame, allowing quick access to view gear enhancements without additional tooltips.",
 						type = "toggle",
@@ -1003,13 +966,6 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 					},
-					easyWayPoints = {
-						order = 3,
-						name = "Easy Waypoints",
-						desc = "Set waypoints easily using /way or /go with coordinates and map IDs (e.g., /way 37 50.60 13.70 or /way #37 32.6, 49.5).",
-						type = "toggle",
-						width = "double",
-					},
 					FadeWhenMoving = {
 						order = 3,
 						name = "Fade Map When Moving",
@@ -1039,6 +995,21 @@ local function CreateOptions()
 					},
 				},
 			},
+			-- bugfixes = {
+			-- 	order = 13,
+			-- 	name = "BugFixes",
+			-- 	icon = "134520", -- :D
+			-- 	type = "group",
+			-- 	get = function(info)
+			-- 		return Config.db.profile.bugfixes[info[#info]]
+			-- 	end,
+			-- 	set = function(info, value)
+			-- 		Config.db.profile.bugfixes[info[#info]] = value
+			-- 		if info[#info] == "DruidFormFix" then
+			-- 			Config:EnableModule(value)
+			-- 		end
+			-- 	end,
+			-- },
 			discordlink = {
 				name = "|CFFf6f8faDiscord|r",
 				desc = "Open the Discord link for Nexenhance",
@@ -1098,7 +1069,7 @@ local function CreateOptions()
 				end,
 			},
 			kkthnxprofile = {
-				name = GetAtlasMarkup("BuildanAbomination-32x32", 18) .. " |CFFf6f8faKkthnx Profile|r",
+				name = GetAtlasMarkup("BuildanAbomination-32x32", 18, 18) .. " |CFFf6f8faKkthnx Profile|r",
 				desc = "Brace yourself for Kkthnx's epic setup! Unleash the power...or just enjoy a better UI.",
 				order = 100,
 				type = "execute",

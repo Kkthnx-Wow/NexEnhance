@@ -101,7 +101,7 @@ function Module:ChatCopy_CreateMenu()
 end
 
 function Module:ChatCopy_Create()
-	chatFrame = CreateFrame("Frame", "Module", UIParent, "TooltipBackdropTemplate")
+	chatFrame = Modules:CreateFrame("Frame", "Module", UIParent, "TooltipBackdropTemplate")
 	chatFrame:SetPoint("CENTER")
 	chatFrame:SetSize(700, 400)
 	chatFrame:Hide()

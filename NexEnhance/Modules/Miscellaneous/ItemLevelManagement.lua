@@ -598,14 +598,14 @@ function Module:ItemLevel_UpdateLoot()
 	end
 end
 
-function Module:ItemLevel_UpdateBags()
+function Module:ItemLevel_UpdateBag()
 	local button = self.__owner
 	if not button.iLvl then
 		button.iLvl = Module.CreateFontString(button, Module.Font[2] + 1, "", false, "OUTLINE", "BOTTOMLEFT", 1, 1)
 	end
 
-	local bagID = button:GetBagID()
-	local slotID = button:GetID()
+	local bagID = button.GetBankTabID and button:GetBankTabID() or button:GetBagID()
+	local slotID = button.GetContainerSlotID and button:GetContainerSlotID() or button:GetID()
 	local info = C_Container.GetContainerItemInfo(bagID, slotID)
 	local link = info and info.hyperlink
 	local quality = info and info.quality
@@ -619,23 +619,29 @@ function Module:ItemLevel_UpdateBags()
 	end
 end
 
+function Module:ItemLevel_HandleSlots()
+	for button in self.itemButtonPool:EnumerateActive() do
+		if not button.hooked then
+			button.IconBorder.__owner = button
+			hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBag)
+			button.hooked = true
+		end
+	end
+end
+
 function Module:ItemLevel_Containers()
 	if not Module.db.profile.miscellaneous.itemlevels.containers then
 		return
 	end
 
 	for i = 1, 13 do
-		for _, button in _G["ContainerFrame" .. i]:EnumerateItems() do
-			button.IconBorder.__owner = button
-			hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBags)
+		local frame = _G["ContainerFrame" .. i]
+		if frame then
+			hooksecurefunc(frame, "UpdateItemSlots", Module.ItemLevel_HandleSlots)
 		end
 	end
-
-	for i = 1, 28 do
-		local button = _G["BankFrameItem" .. i]
-		button.IconBorder.__owner = button
-		hooksecurefunc(button.IconBorder, "SetShown", Module.ItemLevel_UpdateBags)
-	end
+	hooksecurefunc(ContainerFrameCombinedBags, "UpdateItemSlots", Module.ItemLevel_HandleSlots)
+	hooksecurefunc(AccountBankPanel, "GenerateItemSlotsForSelectedTab", Module.ItemLevel_HandleSlots)
 end
 
 local NUM_SLOTS_PER_GUILDBANK_GROUP = 14

@@ -95,13 +95,13 @@ do
 
 	function Core.SplitList(list, variable, cleanup)
 		if cleanup then
-			wipe(list)
+			wipe(list) -- Clear the list if cleanup is requested
 		end
 
-		if variable and variable ~= "" then
+		if variable and variable ~= "" then -- Ensure variable is not nil or empty
 			for word in string.gmatch(variable, "%S+") do
-				local numberValue = tonumber(word)
-				list[numberValue or word] = true
+				local numberValue = tonumber(word) -- Attempt to convert to a number
+				list[numberValue or word] = true -- Use the number if it exists, otherwise use the word
 			end
 		end
 	end

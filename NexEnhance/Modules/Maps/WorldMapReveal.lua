@@ -147,7 +147,7 @@ function Module:PLAYER_LOGIN()
 
 	local bu = CreateFrame("CheckButton", nil, WorldMapFrame.BorderFrame.TitleContainer, "OptionsBaseCheckButtonTemplate")
 	bu:SetHitRectInsets(-5, -5, -5, -5)
-	bu:SetPoint("TOPRIGHT", -120, 0)
+	bu:SetPoint("TOPRIGHT", -160, 0)
 	bu:SetSize(24, 24)
 	bu:SetChecked(Module.db.profile.worldmap.RevealWorldMap)
 	bu.text = Module.CreateFontString(bu, 12, "Map Reveal", "system", "", "LEFT", 24, 0)

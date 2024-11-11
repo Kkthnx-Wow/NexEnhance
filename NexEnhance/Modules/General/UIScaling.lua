@@ -22,22 +22,20 @@ function Module:SetupUIScale(init)
 end
 
 local isScaling = false
-local function UpdatePixelScale(event)
+function Module:UI_SCALE_CHANGED()
 	if isScaling then
 		return
 	end
 	isScaling = true
 
-	if event == "UI_SCALE_CHANGED" then
-		Module.ScreenWidth, Module.ScreenHeight = GetPhysicalScreenSize()
-	end
+	Module.ScreenWidth, Module.ScreenHeight = GetPhysicalScreenSize()
+
 	Module:SetupUIScale(true)
 	Module:SetupUIScale()
 
 	isScaling = false
 end
 
-Module:RegisterEvent("PLAYER_LOGIN", function()
+function Module:OnLogin()
 	Module:SetupUIScale()
-	Module:RegisterEvent("UI_SCALE_CHANGED", UpdatePixelScale)
-end)
+end

@@ -11,6 +11,7 @@
     <Script file="Libs\LibEasyMenu-1.0\LibEasyMenu-1.0.lua" />
     <Script file="Libs\LibChatAnims\LibChatAnims.lua" />
     <Script file="Libs\Unfit-1.0\Unfit-1.0.lua" />
+    <Include file="Libs\NexCore\NexCore.xml" />
     <Include file="Libs\Dashi\embed.xml" />
 
     <!-- Fonts -->
@@ -33,7 +34,7 @@
     <Script file="Locales\zhTW.lua" />
     -->
 
-    <!-- Core -->
+    Core
     <Script file="Core\Database.lua" />
     <Script file="Core\Functions.lua" />
     <Script file="Core\Installer.lua" />
@@ -41,7 +42,6 @@
 
     <!-- Data -->
     <Script file="Data\Automation\DataAnnoyingBuffs.lua" />
-    <Script file="Data\Automation\DataAutoQuest.lua" />
     <Script file="Data\Maps\DataWorldMapRevel.lua" />
 
     <!-- Actionbars -->
@@ -49,13 +49,9 @@
     <Script file="Modules\Actionbars\Range.lua" />
     <Script file="Modules\Actionbars\Style.lua" />
 
-    <!-- Announcements -->
-    <Script file="Modules\Announcements\RareAlert.lua" />
-
     <!-- Automation -->
     <Script file="Modules\Automation\AnnoyingBuffs.lua" />
     <Script file="Modules\Automation\AutoInvite.lua" />
-    <Script file="Modules\Automation\AutoQuest.lua" />
     <Script file="Modules\Automation\AutoRepair.lua" />
     <Script file="Modules\Automation\AutoSell.lua" />
     <Script file="Modules\Automation\CinematicSkip.lua" />
@@ -63,10 +59,9 @@
     <Script file="Modules\Automation\ScreenShots.lua" />
 
     <!-- Blizzard -->
-    <Script file="Modules\Blizzard\AlertFrames.lua" />
     <Script file="Modules\Blizzard\Auras.lua" />
-    <Script file="Modules\Blizzard\ChatFrame.lua" />
     <Script file="Modules\Blizzard\ExpRep.lua" />
+    <Script file="Modules\Blizzard\ChatFrame.lua" />
     <Script file="Modules\Blizzard\QuestNavigation.lua" />
 
     <!-- BugFixes -->
@@ -105,7 +100,6 @@
 
     <!-- Maps -->
     <Script file="Modules\Maps\EasyVolume.lua" />
-    <Script file="Modules\Maps\EasyWayPoints.lua" />
     <Script file="Modules\Maps\Minimap.lua" />
     <Script file="Modules\Maps\RecycleBin.lua" />
     <Script file="Modules\Maps\WorldMap.lua" />

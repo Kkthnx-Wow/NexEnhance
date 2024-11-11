@@ -151,7 +151,7 @@ end
 
 function Module:PLAYER_LOGIN()
 	if C_AddOns.IsAddOnLoaded("MBB") then
-		Module.db.profile.minimap.recycleBin = false
+		return
 	end
 
 	if not Module.db.profile.minimap.recycleBin then

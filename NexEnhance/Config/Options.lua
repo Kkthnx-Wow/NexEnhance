@@ -74,7 +74,7 @@ local AddReloadNotice = "|n|n|cff5bc0beChanging this option requires a UI reload
 
 -- Lets users know this is a new feature
 local NewFeatureIcon = GetTextureMarkup(DEFAULT_ICON, DEFAULT_ICON_SIZE, DEFAULT_ICON_SIZE)
-local NewFeatureAtlas = GetAtlasMarkup("CharacterCreate-NewLabel", 42, 34)
+local NewFeatureAtlas = GetAtlasMarkup("newplayerchat-chaticon-newcomer", 15, 15)
 
 -- Function to open the config and select a specific group
 function OpenConfigWithDefaultGroup(groupName)
@@ -577,64 +577,81 @@ local function CreateOptions()
 					end
 				end,
 				args = {
-					disableTalkingHead = {
+					hideWidgetTexture = {
 						order = 1,
+						name = NewFeatureAtlas .. "Hide Vigor Wings",
+						desc = "Hides the wing textures on the Dragonriding Vigor bar.",
+						type = "toggle",
+						width = "double",
+					},
+					widgetScale = {
+						order = 2,
+						name = NewFeatureAtlas .. "Vigor Bar Scale",
+						desc = "Adjusts the scale of the Dragonriding Vigor bar.",
+						type = "range",
+						min = 0.5,
+						max = 1.0,
+						step = 0.01,
+						width = "double",
+					},
+					disableTalkingHead = {
+						order = 3,
 						name = "Disable TalkingHead",
 						desc = "Disables the Talking Head Frame, preventing pop-up dialogues from appearing during gameplay.",
 						type = "toggle",
 						width = "double",
 					},
 					enableAFKMode = {
-						order = 2,
+						order = 4,
 						name = "AFK Mode",
 						desc = "AFK mode with dynamic features such as automatic guild display, random statistics updates, and a countdown timer, enhancing the AFK experience for players..",
 						type = "toggle",
 						width = "double",
 					},
 					missingStats = {
-						order = 3,
+						order = 5,
 						name = "Enhanced Character Statistics",
 						desc = "Enhances the default character statistics panel by organizing stats, adjusting display data for improved readability, and integrating additional functionalities for detailed stat insights.",
 						type = "toggle",
 						width = "double",
 					},
 					moveableFrames = {
-						order = 4,
-						name = NewFeatureAtlas .. "Enable Movable Frames",
+						order = 6,
+						name = "Enable Movable Frames",
 						desc = "Allows certain Blizzard frames to be movable, giving you the flexibility to reposition them as needed.",
 						type = "toggle",
 						width = "double",
 					},
 					gemsNEnchants = {
-						order = 5,
-						name = NewFeatureAtlas .. "Show Gems and Enchants",
+						order = 7,
+						name = "Show Gems and Enchants",
 						desc = "Displays gems and enchantments on the character frame and inspect frame, allowing quick access to view gear enhancements without additional tooltips.",
 						type = "toggle",
 						width = "double",
 					},
 					questXPPercent = {
-						order = 6,
+						order = 8,
 						name = "Enhanced Quest XP Display",
 						desc = "Enhances the display of quest XP rewards to show percentage of total experience gained.",
 						type = "toggle",
 						width = "double",
 					},
 					questRewardsMostValueIcon = {
-						order = 7,
+						order = 9,
 						name = "Highlight Best Quest Reward",
 						desc = "Highlights the most valuable quest reward choice with a gold coin icon overlay based on potential sell value.",
 						type = "toggle",
 						width = "double",
 					},
 					alreadyKnown = {
-						order = 8,
-						name = NewFeatureAtlas .. "Highlight Already Known Items",
+						order = 10,
+						name = "Highlight Already Known Items",
 						desc = "Highlights items that are already known (e.g., mounts, pets, recipes) in various UI elements like quest rewards, buyback items, and guild bank.",
 						type = "toggle",
 						width = "double",
 					},
 					itemlevels = {
-						order = 9,
+						order = 11,
 						name = "ItemLevels",
 						type = "group",
 						inline = true,
@@ -647,63 +664,63 @@ local function CreateOptions()
 						args = {
 							characterFrame = {
 								order = 1,
-								name = NewFeatureAtlas .. "Show Item Level on Character Frame",
+								name = "Show Item Level on Character Frame",
 								desc = "Shows item levels on the character frame.",
 								type = "toggle",
 								width = "double",
 							},
 							inspectFrame = {
 								order = 2,
-								name = NewFeatureAtlas .. "Show Item Level on Inspect Frame",
+								name = "Show Item Level on Inspect Frame",
 								desc = "Shows item levels on the inspect frame.",
 								type = "toggle",
 								width = "double",
 							},
 							merchantFrame = {
 								order = 3,
-								name = NewFeatureAtlas .. "Show Item Level on Merchant Frame",
+								name = "Show Item Level on Merchant Frame",
 								desc = "Shows item levels on the merchant frame.",
 								type = "toggle",
 								width = "double",
 							},
 							tradeFrame = {
 								order = 4,
-								name = NewFeatureAtlas .. "Show Item Level on Trade Frame",
+								name = "Show Item Level on Trade Frame",
 								desc = "Shows item levels on the trade frame.",
 								type = "toggle",
 								width = "double",
 							},
 							lootFrame = {
 								order = 5,
-								name = NewFeatureAtlas .. "Show Item Level on Loot Frame",
+								name = "Show Item Level on Loot Frame",
 								desc = "Shows item levels on the loot frame.",
 								type = "toggle",
 								width = "double",
 							},
 							guildBankFrame = {
 								order = 6,
-								name = NewFeatureAtlas .. "Show Item Level on Guild Bank Frame",
+								name = "Show Item Level on Guild Bank Frame",
 								desc = "Shows item levels on the guild bank frame.",
 								type = "toggle",
 								width = "double",
 							},
 							containers = {
 								order = 7,
-								name = NewFeatureAtlas .. "Show Item Level on Containers",
+								name = "Show Item Level on Containers",
 								desc = "Shows item levels on default containers (bags).",
 								type = "toggle",
 								width = "double",
 							},
 							flyout = {
 								order = 8,
-								name = NewFeatureAtlas .. "Show Item Level on Equipment Flyout",
+								name = "Show Item Level on Equipment Flyout",
 								desc = "Shows item levels on equipment flyout buttons.",
 								type = "toggle",
 								width = "double",
 							},
 							scrapping = {
 								order = 9,
-								name = NewFeatureAtlas .. "Show Item Level on Scrapping Machine Frame",
+								name = "Show Item Level on Scrapping Machine Frame",
 								desc = "Shows item levels on the scrapping machine frame.",
 								type = "toggle",
 								width = "double",
@@ -1011,7 +1028,7 @@ local function CreateOptions()
 			-- 	end,
 			-- },
 			discordlink = {
-				name = "|CFFf6f8faDiscord|r",
+				name = "|CFF82A8C9Discord|r",
 				desc = "Open the Discord link for Nexenhance",
 				order = 98,
 				type = "execute",
@@ -1040,7 +1057,7 @@ local function CreateOptions()
 				end,
 			},
 			githublink = {
-				name = "|CFFf6f8faGitHub|r",
+				name = "|CFFf5f5f5GitHub|r",
 				desc = "Open the GitHub repository for Nexenhance",
 				order = 99,
 				type = "execute",
@@ -1069,13 +1086,13 @@ local function CreateOptions()
 				end,
 			},
 			kkthnxprofile = {
-				name = GetAtlasMarkup("BuildanAbomination-32x32", 18, 18) .. " |CFFf6f8faKkthnx Profile|r",
+				name = "|cff83adb5Kkthnx Profile|r",
 				desc = "Brace yourself for Kkthnx's epic setup! Unleash the power...or just enjoy a better UI.",
 				order = 100,
 				type = "execute",
 				func = function()
 					StaticPopupDialogs["KK_PROFILE_POPUP"] = {
-						text = "Are you sure you would like to load |cff669DFFKkthnx's|r personal profile for |cff5bc0beNexEnhance|r?",
+						text = "Are you sure you would like to load |cff83adb5Kkthnx's|r personal profile for |cff5bc0beNexEnhance|r?",
 						button1 = "Yes, bring it on!",
 						button2 = "No, maybe later...",
 						OnAccept = function()

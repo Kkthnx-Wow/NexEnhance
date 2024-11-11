@@ -11,7 +11,6 @@
     <Script file="Libs\LibEasyMenu-1.0\LibEasyMenu-1.0.lua" />
     <Script file="Libs\LibChatAnims\LibChatAnims.lua" />
     <Script file="Libs\Unfit-1.0\Unfit-1.0.lua" />
-    <Include file="Libs\NexCore\NexCore.xml" />
     <Include file="Libs\Dashi\embed.xml" />
 
     <!-- Fonts -->

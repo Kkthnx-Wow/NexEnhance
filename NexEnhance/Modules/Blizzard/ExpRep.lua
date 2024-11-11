@@ -2,7 +2,7 @@
 local _, Module = ...
 
 -- Caching global functions and variables
-local math_min, math_floor = math.min, math.floor
+local math_min = math.min
 local string_format = string.format
 local select, pairs = select, pairs
 
@@ -19,7 +19,7 @@ local C_MajorFactions_GetMajorFactionData = C_MajorFactions.GetMajorFactionData
 local C_MajorFactions_HasMaximumRenown = C_MajorFactions.HasMaximumRenown
 local C_Reputation_GetFactionParagonInfo = C_Reputation.GetFactionParagonInfo
 local C_Reputation_IsFactionParagon, C_Reputation_IsMajorFaction = C_Reputation.IsFactionParagon, C_Reputation.IsMajorFaction
-local GameTooltip, GetWatchedFactionInfo = GameTooltip, GetWatchedFactionInfo
+local GameTooltip = GameTooltip
 
 -- Experience
 local CurrentXP, XPToLevel, PercentRested, PercentXP, RemainXP, RemainTotal, RemainBars
@@ -439,13 +439,9 @@ function Module:OnExpBarLeave()
 	GameTooltip:Hide()
 end
 
-function Module:OnExpBarMouseUp()
-	local point, relativeTo, relativePoint, xOffset, yOffset = self:GetPoint()
-
-	-- Check if the current position is the same as the desired position
-	if point ~= "TOP" or relativeTo ~= UIParent or relativePoint ~= "TOP" or xOffset ~= 0 or yOffset ~= -6 then
-		self:ClearAllPoints()
-		self:SetPoint("TOP", UIParent, "TOP", 0, -6)
+function Module:OnExpBarMouseUp(btn)
+	if IsShiftKeyDown() and btn == "RightButton" then
+		Module.ResetMoverFrame(self, "TOP", UIParent, "TOP", 0, -6)
 	end
 end
 
@@ -535,6 +531,9 @@ function Module:PLAYER_LOGIN()
 	bar:SetHitRectInsets(0, 0, 0, -10)
 	bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
 
+	Module.CreateMoverFrame(bar, nil, true)
+	Module.RestoreMoverFrame(bar)
+
 	local border = CreateFrame("Frame", nil, bar, "TooltipBackdropTemplate")
 	border:SetPoint("TOPLEFT", bar, "TOPLEFT", -4, 4)
 	border:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 4, -4)
@@ -574,6 +573,10 @@ function Module:PLAYER_LOGIN()
 	Module:SetupExpRepScript(bar)
 	Module:ManageBarBubbles(bar)
 	Module:ForceTextScaling(bar)
-	Module.CreateMoverFrame(bar, nil, true)
-	Module.RestoreMoverFrame(bar)
+
+	-- UIWidget reanchor
+	if not UIWidgetTopCenterContainerFrame:IsMovable() then -- can be movable for some addons, eg BattleInfo
+		UIWidgetTopCenterContainerFrame:ClearAllPoints()
+		UIWidgetTopCenterContainerFrame:SetPoint("TOP", 0, -30)
+	end
 end

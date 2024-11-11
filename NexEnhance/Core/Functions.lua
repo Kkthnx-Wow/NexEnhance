@@ -2,16 +2,6 @@
 local _, Core = ...
 local cr, cg, cb = Core.r, Core.g, Core.b
 
-local debugMode = true
-
--- Debugging function
-function Core:DebugPrint(...)
-	if debugMode then
-		local message = string.format(...)
-		Core.Print("|cffFF4500[NexEnhance Debug]:|r", message)
-	end
-end
-
 -- Movable Frame
 do
 	function Core:CreateMoverFrame(parent, saved)
@@ -25,11 +15,13 @@ do
 		self:SetScript("OnDragStart", function()
 			frame:StartMoving()
 		end)
+
 		self:SetScript("OnDragStop", function()
 			frame:StopMovingOrSizing()
 			if not saved then
 				return
 			end
+
 			local orig, _, tar, x, y = frame:GetPoint()
 			x, y = Core:Round(x), Core:Round(y)
 			Core.db.profile["tempanchor"][frame:GetName()] = { orig, "UIParent", tar, x, y }
@@ -43,17 +35,21 @@ do
 			self:SetPoint(unpack(Core.db.profile["tempanchor"][name]))
 		end
 	end
+
+	function Core:ResetMoverFrame(defaultPoint, ...)
+		local name = self:GetName()
+		if name and Core.db.profile["tempanchor"][name] then
+			Core.db.profile["tempanchor"][name] = nil
+		end
+		self:ClearAllPoints()
+		self:SetPoint(defaultPoint, ...)
+	end
 end
 
 do
-	-- Function to update the prefix style
-	function Core:UpdateNumberPrefixStyle()
-		return Core.db.profile.general.numberPrefixStyle
-	end
-
 	-- Function to force update prefix style and use it immediately
 	function Core:ForceUpdatePrefixStyle()
-		self:UpdateNumberPrefixStyle() -- Update prefixStyle immediately
+		return Core.db.profile.general.numberPrefixStyle
 	end
 
 	-- Function to shorten numerical values

@@ -19,7 +19,6 @@ local defaults = {
 			DeclineDuels = false,
 			DeclinePetDuels = false,
 		},
-		blizzard = {},
 		chat = {
 			Background = false,
 			URLCopy = false,
@@ -56,6 +55,9 @@ local defaults = {
 			recycleBin = false,
 		},
 		miscellaneous = {
+			widgetScale = 0.8,
+			hideWidgetTexture = true,
+
 			alreadyKnown = false,
 			diableTalkingHead = false,
 			enableAFKMode = false,

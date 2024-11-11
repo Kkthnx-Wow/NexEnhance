@@ -22,13 +22,16 @@ function Module:SetupUIScale(init)
 end
 
 local isScaling = false
-function Module:UI_SCALE_CHANGED()
+local function UpdatePixelScale(event)
+	print(event)
 	if isScaling then
 		return
 	end
 	isScaling = true
 
-	Module.ScreenWidth, Module.ScreenHeight = GetPhysicalScreenSize()
+	if event == "UI_SCALE_CHANGED" then
+		Module.ScreenWidth, Module.ScreenHeight = GetPhysicalScreenSize()
+	end
 
 	Module:SetupUIScale(true)
 	Module:SetupUIScale()
@@ -38,4 +41,5 @@ end
 
 function Module:OnLogin()
 	Module:SetupUIScale()
+	Module:RegisterEvent("UI_SCALE_CHANGED", UpdatePixelScale)
 end

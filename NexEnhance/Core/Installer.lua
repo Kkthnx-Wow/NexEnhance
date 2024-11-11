@@ -213,7 +213,12 @@ function Core:ForceChatSettings()
 	resetAndConfigureChatFrames()
 
 	-- Configure specific chat frames
-	configureChatFrame(ChatFrame1, Core.L["General"], { "Trade", "Services", "General", "GuildRecruitment", "LookingForGroup" }, { "ACHIEVEMENT", "AFK", "BG_ALLIANCE", "BG_HORDE", "BG_NEUTRAL", "BN_INLINE_TOAST_ALERT", "CHANNEL", "DND", "EMOTE", "ERRORS", "GUILD", "GUILD_ACHIEVEMENT", "IGNORED", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER", "MONSTER_BOSS_EMOTE", "MONSTER_BOSS_WHISPER", "MONSTER_EMOTE", "MONSTER_SAY", "MONSTER_WHISPER", "MONSTER_YELL", "OFFICER", "PARTY", "PARTY_LEADER", "PING", "RAID", "RAID_LEADER", "RAID_WARNING", "SAY", "SYSTEM", "YELL" })
+	configureChatFrame(
+		ChatFrame1,
+		Core.L["General"],
+		{ "Trade", "Services", "General", "GuildRecruitment", "LookingForGroup" },
+		{ "ACHIEVEMENT", "AFK", "BG_ALLIANCE", "BG_HORDE", "BG_NEUTRAL", "BN_INLINE_TOAST_ALERT", "CHANNEL", "DND", "EMOTE", "ERRORS", "GUILD", "GUILD_ACHIEVEMENT", "IGNORED", "INSTANCE_CHAT", "INSTANCE_CHAT_LEADER", "MONSTER_BOSS_EMOTE", "MONSTER_BOSS_WHISPER", "MONSTER_EMOTE", "MONSTER_SAY", "MONSTER_WHISPER", "MONSTER_YELL", "OFFICER", "PARTY", "PARTY_LEADER", "PING", "RAID", "RAID_LEADER", "RAID_WARNING", "SAY", "SYSTEM", "YELL" }
+	)
 	configureChatFrame(ChatFrame2, Core.L["Log"], nil, {}, true)
 	configureChatFrame(ChatFrame4, Core.L["Whisper"], nil, { "WHISPER", "BN_WHISPER", "BN_CONVERSATION" }, true)
 	configureChatFrame(ChatFrame5, Core.L["Trade"], nil, {}, true)

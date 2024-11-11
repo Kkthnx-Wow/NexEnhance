@@ -6,20 +6,20 @@ A multi-purpose [event](https://warcraft.wiki.gg/wiki/Events)-[mixin](https://en
 These methods are also available as methods directly on `namespace`, e.g:
 
 ```lua
-addon:RegisterEvent('BAG_UPDATE', function(self, ...)
+namespace:RegisterEvent('BAG_UPDATE', function(self, ...)
     -- do something
 end)
 ```
 --]]
 
-local eventHandler = CreateFrame("Frame")
+local eventHandler = CreateFrame('Frame')
 local callbacks = {}
 
 local IsEventValid
 if addon:IsRetail() then
 	IsEventValid = C_EventUtils.IsEventValid
 else
-	local eventValidator = CreateFrame("Frame")
+	local eventValidator = CreateFrame('Frame')
 	function IsEventValid(event)
 		local isValid = pcall(eventValidator.RegisterEvent, eventValidator, event)
 		if isValid then
@@ -29,7 +29,7 @@ else
 	end
 end
 
-local unitEventValidator = CreateFrame("Frame")
+local unitEventValidator = CreateFrame('Frame')
 local function IsUnitEventValid(event, unit)
 	-- C_EventUntils.IsEventValid doesn't cover unit events, so we'll have to do this the old fashioned way
 	local isValid = pcall(unitEventValidator.RegisterUnitEvent, unitEventValidator, event, unit)
@@ -39,11 +39,11 @@ local function IsUnitEventValid(event, unit)
 	return isValid
 end
 
-local unitValidator = CreateFrame("Frame")
+local unitValidator = CreateFrame('Frame')
 local function IsUnitValid(unit)
-	if unitValidator:RegisterUnitEvent("UNIT_HEALTH", unit) then
-		local _, registeredUnit = unitValidator:IsEventRegistered("UNIT_HEALTH")
-		unitValidator:UnregisterEvent("UNIT_HEALTH")
+	if unitValidator:RegisterUnitEvent('UNIT_HEALTH', unit) then
+		local _, registeredUnit = unitValidator:IsEventRegistered('UNIT_HEALTH')
+		unitValidator:UnregisterEvent('UNIT_HEALTH')
 		return not not registeredUnit -- it will be nil if the registered unit is invalid
 	end
 end
@@ -54,8 +54,8 @@ Registers a [frame `event`](https://warcraft.wiki.gg/wiki/Events) with the `call
 If the callback returns positive it will be unregistered.
 --]]
 function eventMixin:RegisterEvent(event, callback)
-	assert(IsEventValid(event), "arg1 must be an event")
-	assert(type(callback) == "function", "arg2 must be a function")
+	assert(IsEventValid(event), 'arg1 must be an event')
+	assert(type(callback) == 'function', 'arg2 must be a function')
 
 	if not callbacks[event] then
 		callbacks[event] = {}
@@ -75,8 +75,8 @@ end
 Unregisters a [frame `event`](https://warcraft.wiki.gg/wiki/Events) from the `callback` function.
 --]]
 function eventMixin:UnregisterEvent(event, callback)
-	assert(IsEventValid(event), "arg1 must be an event")
-	assert(type(callback) == "function", "arg2 must be a function")
+	assert(IsEventValid(event), 'arg1 must be an event')
+	assert(type(callback) == 'function', 'arg2 must be a function')
 
 	if callbacks[event] then
 		for index, data in next, callbacks[event] do
@@ -96,8 +96,8 @@ end
 Checks if the [frame `event`](https://warcraft.wiki.gg/wiki/Events) is registered with the `callback` function.
 --]]
 function eventMixin:IsEventRegistered(event, callback)
-	assert(IsEventValid(event), "arg1 must be an event")
-	assert(type(callback) == "function", "arg2 must be a function")
+	assert(IsEventValid(event), 'arg1 must be an event')
+	assert(type(callback) == 'function', 'arg2 must be a function')
 
 	if callbacks[event] then
 		for _, data in next, callbacks[event] do
@@ -128,7 +128,7 @@ function eventMixin:TriggerEvent(event, ...)
 	end
 end
 
-eventHandler:SetScript("OnEvent", function(_, event, ...)
+eventHandler:SetScript('OnEvent', function(_, event, ...)
 	eventMixin:TriggerEvent(event, ...)
 end)
 
@@ -136,8 +136,8 @@ end)
 local unitEventHandlers = {}
 local function getUnitEventHandler(unit)
 	if not unitEventHandlers[unit] then
-		local unitEventHandler = CreateFrame("Frame")
-		unitEventHandler:SetScript("OnEvent", function(_, event, ...)
+		local unitEventHandler = CreateFrame('Frame')
+		unitEventHandler:SetScript('OnEvent', function(_, event, ...)
 			eventMixin:TriggerUnitEvent(event, unit, ...)
 		end)
 		unitEventHandlers[unit] = unitEventHandler
@@ -151,13 +151,13 @@ Registers a [`unit`](https://warcraft.wiki.gg/wiki/UnitId)-specific [frame `even
 If the callback returns positive it will be unregistered for that unit.
 --]]
 function eventMixin:RegisterUnitEvent(event, ...)
-	assert(IsEventValid(event), "arg1 must be an event")
-	local callback = select(select("#", ...), ...)
-	assert(type(callback) == "function", "last argument must be a function")
+	assert(IsEventValid(event), 'arg1 must be an event')
+	local callback = select(select('#', ...), ...)
+	assert(type(callback) == 'function', 'last argument must be a function')
 
-	for i = 1, select("#", ...) - 1 do
+	for i = 1, select('#', ...) - 1 do
 		local unit = select(i, ...)
-		assert(IsUnitValid(unit), "arg" .. (i + 1) .. " must be a valid unit")
+		assert(IsUnitValid(unit), 'arg' .. (i + 1) .. ' must be a valid unit')
 		assert(IsUnitEventValid(event, unit), 'event "' .. event .. '" is not valid for the given unit')
 
 		if not unitEventCallbacks[unit] then
@@ -177,7 +177,7 @@ function eventMixin:RegisterUnitEvent(event, ...)
 		if not isRegistered then
 			unitEventHandler:RegisterUnitEvent(event, unit)
 		elseif registeredUnit ~= unit then
-			error("unit event somehow registered with the wrong unit")
+			error('unit event somehow registered with the wrong unit')
 		end
 	end
 end
@@ -186,14 +186,14 @@ end
 Unregisters a [`unit`](https://warcraft.wiki.gg/wiki/UnitId)-specific [frame `event`](https://warcraft.wiki.gg/wiki/Events) from the `callback` function.
 --]]
 function eventMixin:UnregisterUnitEvent(event, ...)
-	assert(IsEventValid(event), "arg1 must be an event")
-	local callback = select(select("#", ...), ...)
-	assert(type(callback) == "function", "last argument must be a function")
+	assert(IsEventValid(event), 'arg1 must be an event')
+	local callback = select(select('#', ...), ...)
+	assert(type(callback) == 'function', 'last argument must be a function')
 
-	for i = 1, select("#", ...) - 1 do
+	for i = 1, select('#', ...) - 1 do
 		local unit = select(i, ...)
-		assert(IsUnitValid(unit), "arg" .. (i + 1) .. " must be a valid unit")
-		assert(IsUnitEventValid(event, unit), "event is not valid for the given unit")
+		assert(IsUnitValid(unit), 'arg' .. (i + 1) .. ' must be a valid unit')
+		assert(IsUnitEventValid(event, unit), 'event is not valid for the given unit')
 
 		if unitEventCallbacks[unit] and unitEventCallbacks[unit][event] then
 			for index, data in next, unitEventCallbacks[unit][event] do
@@ -214,14 +214,14 @@ end
 Checks if the [`unit`](https://warcraft.wiki.gg/wiki/UnitId)-specific [frame `event`](https://warcraft.wiki.gg/wiki/Events) is registered with the `callback` function.
 --]]
 function eventMixin:IsUnitEventRegistered(event, ...)
-	assert(IsEventValid(event), "arg1 must be an event")
-	local callback = select(select("#", ...), ...)
-	assert(type(callback) == "function", "last argument must be a function")
+	assert(IsEventValid(event), 'arg1 must be an event')
+	local callback = select(select('#', ...), ...)
+	assert(type(callback) == 'function', 'last argument must be a function')
 
-	for i = 1, select("#", ...) - 1 do
+	for i = 1, select('#', ...) - 1 do
 		local unit = select(i, ...)
-		assert(IsUnitValid(unit), "arg" .. (i + 1) .. " must be a valid unit")
-		assert(IsUnitEventValid(event, unit), "event is not valid for the given unit")
+		assert(IsUnitValid(unit), 'arg' .. (i + 1) .. ' must be a valid unit')
+		assert(IsUnitEventValid(event, unit), 'event is not valid for the given unit')
 
 		if unitEventCallbacks[unit] and unitEventCallbacks[unit][event] then
 			for _, data in next, unitEventCallbacks[unit][event] do
@@ -258,8 +258,8 @@ Registers a [combat `subEvent`](https://warcraft.wiki.gg/wiki/COMBAT_LOG_EVENT) 
 If the callback returns positive it will be unregistered.
 --]]
 function eventMixin:RegisterCombatEvent(event, callback)
-	assert(type(event) == "string", "arg1 must be a string")
-	assert(type(callback) == "function", "arg2 must be a function")
+	assert(type(event) == 'string', 'arg1 must be a string')
+	assert(type(callback) == 'function', 'arg2 must be a function')
 
 	if not combatEventCallbacks[event] then
 		combatEventCallbacks[event] = {}
@@ -270,8 +270,8 @@ function eventMixin:RegisterCombatEvent(event, callback)
 		owner = self,
 	})
 
-	if not self:IsEventRegistered("COMBAT_LOG_EVENT_UNFILTERED", self.TriggerCombatEvent) then
-		self:RegisterEvent("COMBAT_LOG_EVENT_UNFILTERED", self.TriggerCombatEvent)
+	if not self:IsEventRegistered('COMBAT_LOG_EVENT_UNFILTERED', self.TriggerCombatEvent) then
+		self:RegisterEvent('COMBAT_LOG_EVENT_UNFILTERED', self.TriggerCombatEvent)
 	end
 end
 
@@ -279,8 +279,8 @@ end
 Unregisters a [combat `subEvent`](https://warcraft.wiki.gg/wiki/COMBAT_LOG_EVENT) from the `callback` function.
 --]]
 function eventMixin:UnregisterCombatEvent(event, callback)
-	assert(type(event) == "string", "arg1 must be a string")
-	assert(type(callback) == "function", "arg2 must be a function")
+	assert(type(event) == 'string', 'arg1 must be a string')
+	assert(type(callback) == 'function', 'arg2 must be a function')
 
 	if combatEventCallbacks[event] then
 		for index, data in next, combatEventCallbacks[event] do
@@ -323,7 +323,7 @@ addon.eventMixin = eventMixin
 -- anonymous event registration
 addon = setmetatable(addon, {
 	__newindex = function(t, key, value)
-		if key == "OnLoad" then
+		if key == 'OnLoad' then
 			--[[ namespace:OnLoad()
 			Shorthand for the [`ADDON_LOADED`](https://warcraft.wiki.gg/wiki/ADDON_LOADED) for the addon.
 
@@ -334,7 +334,7 @@ addon = setmetatable(addon, {
 			end
 			```
 			--]]
-			addon:RegisterEvent("ADDON_LOADED", function(self, name)
+			addon:RegisterEvent('ADDON_LOADED', function(self, name)
 				if name == addonName then
 					local successful, ret = pcall(value, self)
 					if not successful then
@@ -343,7 +343,7 @@ addon = setmetatable(addon, {
 					return true -- unregister event
 				end
 			end)
-		elseif key == "OnLogin" then
+		elseif key == 'OnLogin' then
 			--[[ namespace:OnLogin()
 			Shorthand for the [`PLAYER_LOGIN`](https://warcraft.wiki.gg/wiki/PLAYER_LOGIN).
 
@@ -354,7 +354,7 @@ addon = setmetatable(addon, {
 			end
 			```
 			--]]
-			addon:RegisterEvent("PLAYER_LOGIN", function(self)
+			addon:RegisterEvent('PLAYER_LOGIN', function(self)
 				local successful, ret = pcall(value, self)
 				if not successful then
 					error(ret)

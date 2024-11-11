@@ -1,4 +1,4 @@
-local AddonName, Config = ...
+local _, Config = ...
 
 local defaults = {
 	profile = {
@@ -9,9 +9,16 @@ local defaults = {
 			cooldowns = false,
 			range = false,
 		},
+		announcements = {
+			rareAlert = false,
+			alertInChat = true,
+			alertInWild = true,
+			ignoredRares = "",
+		},
 		automation = {
 			AnnoyingBuffs = false,
 			AutoInvite = false,
+			AutoQuest = false,
 			AutoRepair = 2,
 			AutoScreenshotAchieve = false,
 			AutoSell = false,
@@ -27,7 +34,7 @@ local defaults = {
 			chatfilters = {
 				BlockStrangers = false,
 				BlockSpammer = false,
-				FilterMatches = "1",
+				FilterMatches = 1,
 				ChatItemLevel = false,
 				EnableFilter = false,
 				BlockAddonAlert = false,
@@ -61,7 +68,6 @@ local defaults = {
 			enableAFKMode = false,
 			gemsNEnchants = false,
 			missingStats = true,
-			moveableFrames = false,
 			questRewardsMostValueIcon = false,
 			questXPPercent = false,
 			itemlevels = {
@@ -107,15 +113,15 @@ local defaults = {
 			classColorHealth = false,
 		},
 		worldmap = {
-			RevealWorldMap = false,
-			RevealWorldMapGlow = true,
 			AlphaWhenMoving = 0.35,
 			Coordinates = true,
 			FadeWhenMoving = true,
+			RevealWorldMap = false,
+			RevealWorldMapGlow = true,
 			SmallWorldMap = true,
 			SmallWorldMapScale = 0.9,
+			easyWayPoints = false,
 		},
-		-- bugfixes = {},
 	},
 }
 

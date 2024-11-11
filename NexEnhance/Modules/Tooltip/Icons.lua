@@ -1,7 +1,7 @@
 local _, Module = ...
 
 local gsub, select = gsub, select
-local GetSpellTexture = C_Spell.GetSpellTexture
+local GetSpellTexture = GetSpellTexture
 local C_MountJournal_GetMountInfoByID = C_MountJournal.GetMountInfoByID
 local newString = "0:0:64:64:5:59:5:59"
 

@@ -172,9 +172,9 @@ local function HookFrame(name, moveParent)
 end
 
 local function HookFrames(list)
-	if not Module.db.profile.miscellaneous.moveableFrames then
-		return
-	end
+	-- if not C["General"].MoveBlizzardFrames then
+	-- 	return
+	-- end
 
 	for name, child in pairs(list) do
 		HookFrame(name, child)

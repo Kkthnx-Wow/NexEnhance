@@ -15,7 +15,7 @@ function addon:HookAddOn(addonName, callback)
 	end
 end
 
-addon:RegisterEvent("ADDON_LOADED", function(self, addonName)
+addon:RegisterEvent('ADDON_LOADED', function(self, addonName)
 	for _, info in next, addonCallbacks do
 		if info.addonName == addonName then
 			local successful, err = pcall(info.callback)

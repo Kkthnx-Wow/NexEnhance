@@ -2,53 +2,23 @@
 
 local _, Module = ...
 
-local gameMenuLastButtons = {
-	[_G.GAMEMENU_OPTIONS] = 1,
-	[_G.BLIZZARD_STORE] = 2,
-}
-
-function Module:PositionGameMenuButton()
-	local anchorIndex = (C_StorePublic.IsEnabled and C_StorePublic.IsEnabled() and 2) or 1
-	for button in GameMenuFrame.buttonPool:EnumerateActive() do
-		local text = button:GetText()
-		GameMenuFrame.MenuButtons[text] = button
-		local lastIndex = gameMenuLastButtons[text]
-		if lastIndex == anchorIndex and GameMenuFrame.NexEnhance then
-			GameMenuFrame.NexEnhance:SetPoint("TOPLEFT", button, "BOTTOMLEFT", 0, -10)
-		elseif not lastIndex then
-			local point, anchor, point2, x, y = button:GetPoint()
-			button:SetPoint(point, anchor, point2, x, y - 36)
-		end
-	end
-	GameMenuFrame:SetHeight(GameMenuFrame:GetHeight() + 36)
-	if GameMenuFrame.NexEnhance then
-		GameMenuFrame.NexEnhance:SetFormattedText(Module.Title)
-	end
-end
-
-function Module:ClickGameMenu()
-	if InCombatLockdown() then
-		UIErrorsFrame:AddMessage(ERR_NOT_IN_COMBAT)
-		return
-	end
-	OpenConfigWithDefaultGroup("general")
-	HideUIPanel(GameMenuFrame)
-	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
-end
-
 function Module:CreateGUIGameMenuButton()
-	if GameMenuFrame.NexEnhance then
-		return
-	end
-	local button = CreateFrame("Button", "NexEnhance_GameMenuButton", GameMenuFrame, "MainMenuFrameButtonTemplate")
-	button:SetScript("OnClick", function()
-		Module:ClickGameMenu()
+	local gui = CreateFrame("Button", "NexEnhance_GameMenuButton", GameMenuFrame, "GameMenuButtonTemplate, BackdropTemplate")
+	gui:SetText(Module.Title)
+	gui:SetPoint("TOP", GameMenuButtonAddons, "BOTTOM", 0, -21)
+	GameMenuFrame:HookScript("OnShow", function(self)
+		GameMenuButtonLogout:SetPoint("TOP", gui, "BOTTOM", 0, -21)
+		self:SetHeight(self:GetHeight() + gui:GetHeight() + 22)
 	end)
 
-	GameMenuFrame.NexEnhance = button
-	GameMenuFrame.MenuButtons = {}
-	hooksecurefunc(GameMenuFrame, "Layout", function()
-		Module:PositionGameMenuButton()
+	gui:SetScript("OnClick", function()
+		if InCombatLockdown() then
+			UIErrorsFrame:AddMessage(ERR_NOT_IN_COMBAT)
+			return
+		end
+		OpenConfigWithDefaultGroup("general")
+		HideUIPanel(GameMenuFrame)
+		PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
 	end)
 end
 

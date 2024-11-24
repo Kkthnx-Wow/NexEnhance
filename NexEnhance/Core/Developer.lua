@@ -39,3 +39,19 @@ end
 local frameUpdater = CreateFrame("Frame")
 frameUpdater:RegisterEvent("UPDATE_UI_WIDGET")
 frameUpdater:HookScript("OnEvent", modifyPowerBarFrame)
+
+function Core:ToggleSocialButton()
+	if Core.db.profile.chat.SocialButton then
+		if QuickJoinToastButton:IsShown() then
+			Core.HideObject(QuickJoinToastButton)
+		end
+	else
+		if not QuickJoinToastButton:IsShown() then
+			QuickJoinToastButton:Show()
+		end
+	end
+end
+
+function Core:PLAYER_LOGIN()
+	self:ToggleSocialButton()
+end

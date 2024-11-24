@@ -23,6 +23,7 @@ local defaults = {
 			Background = false,
 			URLCopy = false,
 			StickyChat = false,
+			SocialButton = false,
 			chatfilters = {
 				BlockStrangers = false,
 				BlockSpammer = false,

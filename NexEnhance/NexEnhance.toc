@@ -5,7 +5,7 @@
 ## Author: Josh "Kkthnx" Russell
 ## Version: 1.0.5
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64.blp
-## SavedVariables: NexEnhanceDB
+## SavedVariables: NexEnhanceDB, NexEnhanceEditMode
 ## X-Support: TWW
 ## X-Curse-Project-ID: 1090729
 ## X-Wago-ID: BNBea0Gx

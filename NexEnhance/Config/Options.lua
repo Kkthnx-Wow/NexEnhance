@@ -264,6 +264,8 @@ local function CreateOptions()
 						Config.Chat:ToggleChatBackground()
 					elseif info[#info] == "StickyChat" then
 						Config.Chat:ChatWhisperSticky()
+					elseif info[#info] == "SocialButton" then
+						Config:ToggleSocialButton()
 					end
 				end,
 				args = {
@@ -289,13 +291,20 @@ local function CreateOptions()
 					},
 					StickyChat = {
 						order = 3,
-						name = "StickyChat",
-						desc = "StickyChat.",
+						name = "Sticky Chat",
+						desc = "Keeps the last-used chat channel active when typing a new message.",
+						type = "toggle",
+						width = "double",
+					},
+					SocialButton = {
+						order = 4,
+						name = "Hide Social Button",
+						desc = "Hides the Quick Join Toast Button from the UI.",
 						type = "toggle",
 						width = "double",
 					},
 					chatfilters = {
-						order = 4,
+						order = 5,
 						name = "Chat Filters",
 						type = "group",
 						inline = true,

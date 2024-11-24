@@ -16,7 +16,7 @@ local hooksecurefunc = hooksecurefunc
 
 local foundurl = false
 local function convertLink(text, value)
-	return "|Hurl:" .. tostring(value) .. "|h" .. Module.InfoColor .. text .. "|r|h"
+	return "|Hurl:" .. tostring(value) .. "|h" .. Modules.InfoColor .. text .. "|r|h"
 end
 
 local function highlightURL(_, url)
@@ -84,7 +84,7 @@ function Module:HyperlinkShowHook(link)
 end
 
 function Module:RegisterChatURLCopy()
-	if not Modules.db.profile.chat.URL then
+	if not Modules.db.profile.chat.URLCopy then
 		return
 	end
 

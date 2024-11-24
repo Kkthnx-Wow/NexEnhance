@@ -17,6 +17,9 @@ Module:HookAddOn("Blizzard_InspectUI", function()
 		InspectPaperDollItemsFrame.InspectTalents:SetPoint("TOPRIGHT", InspectFrame, "BOTTOMRIGHT", 0, -1)
 	end
 
+	InspectModelFrame:DisableDrawLayer("BACKGROUND")
+	InspectModelFrame:DisableDrawLayer("BORDER")
+	InspectModelFrame:DisableDrawLayer("OVERLAY")
 	Module.StripTextures(InspectModelFrame, true)
 
 	local equipmentSlots = {
@@ -63,8 +66,8 @@ Module:HookAddOn("Blizzard_InspectUI", function()
 	InspectMainHandSlot:SetPoint("BOTTOMLEFT", InspectFrameInset, "BOTTOMLEFT", 176, 5)
 	InspectSecondaryHandSlot:SetPoint("BOTTOMRIGHT", InspectFrameInset, "BOTTOMRIGHT", -176, 5)
 
-	InspectModelFrame:SetPoint("TOPLEFT", InspectFrameInset, 4, -4)
-	InspectModelFrame:SetPoint("BOTTOMRIGHT", InspectFrameInset, -4, 4)
+	InspectModelFrame:SetSize(300, 360)
+	InspectModelFrame:SetPoint("TOPLEFT", InspectFrameInset, 64, -3)
 
 	local function ApplyInspectFrameLayout()
 		local InspectFrame = InspectFrame

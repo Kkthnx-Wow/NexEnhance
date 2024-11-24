@@ -42,7 +42,6 @@ local NUM_SLOTS_PER_GUILDBANK_GROUP = NUM_SLOTS_PER_GUILDBANK_GROUP or 14
 
 -- Cache UI functions
 local SetItemButtonTextureVertexColor = SetItemButtonTextureVertexColor
-local CreateFrame = CreateFrame
 
 -- Cache global variables
 local _G = _G

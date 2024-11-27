@@ -113,7 +113,7 @@ local function ReskinDetails()
 	end
 
 	-- Numberize
-	local current = Module.db.profile.general.numberPrefixStyle
+	local current = Module.db.profile.general.NumberPrefixStyle
 	if current < "FULL" then
 		Details.numerical_system = current
 		Details:SelectNumericalSystem()

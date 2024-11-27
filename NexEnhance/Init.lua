@@ -1,6 +1,8 @@
 -- NexEnhance Initialization File
 local _, Init = ...
 
+Init.LibMoreEvents = LibStub("LibMoreEvents-1.0-NexEnhance", true) or nil
+
 -- Initialize addon modules
 Init.Data = Init.Data or {}
 Init.Actionbars = Init.Actionbars or {}

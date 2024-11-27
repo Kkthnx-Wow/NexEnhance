@@ -14,20 +14,7 @@ end)
 
 local eventHandler = CreateFrame("Frame")
 local callbacks = {}
-
-local IsEventValid
-if addon:IsRetail() then
-	IsEventValid = C_EventUtils.IsEventValid
-else
-	local eventValidator = CreateFrame("Frame")
-	function IsEventValid(event)
-		local isValid = pcall(eventValidator.RegisterEvent, eventValidator, event)
-		if isValid then
-			eventValidator:UnregisterEvent(event)
-		end
-		return isValid
-	end
-end
+local IsEventValid = C_EventUtils.IsEventValid
 
 local unitEventValidator = CreateFrame("Frame")
 local function IsUnitEventValid(event, unit)

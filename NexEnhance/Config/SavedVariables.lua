@@ -46,7 +46,8 @@ local defaults = {
 		general = {
 			AutoScale = false,
 			UIScale = 0.53,
-			numberPrefixStyle = "STANDARD",
+			SuppressTutorialPrompts = false,
+			NumberPrefixStyle = "STANDARD",
 		},
 		loot = {
 			FasterLoot = false,
@@ -130,6 +131,8 @@ function Config:ADDON_LOADED(addon)
 	-- initialize database with defaults
 	Config.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults)
 	Config:SetupUIScale(true)
+
+	Config:UnregisterEvent("ADDON_LOADED", Config.ADDON_LOADED)
 
 	return true
 end

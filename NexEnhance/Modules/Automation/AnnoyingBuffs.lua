@@ -1,18 +1,15 @@
 local _, Module = ...
 
+local isProcessing = false -- Flag to prevent multiple triggers
+
 function Module:CheckAndRemoveBadBuffs()
-	if InCombatLockdown() then
-		if not Module:IsEventRegistered("PLAYER_REGEN_ENABLED", self.CheckAndRemoveBadBuffs) then
-			Module:RegisterEvent("PLAYER_REGEN_ENABLED", self.CheckAndRemoveBadBuffs)
-		end
-		return
-	else
-		if Module:IsEventRegistered("PLAYER_REGEN_ENABLED", self.CheckAndRemoveBadBuffs) then
-			Module:UnregisterEvent("PLAYER_REGEN_ENABLED", self.CheckAndRemoveBadBuffs)
-		end
+	if isProcessing then
+		return -- Prevent re-entrant calls
 	end
 
+	isProcessing = true
 	local index = 1
+
 	while true do
 		local aura = C_UnitAuras.GetBuffDataByIndex("player", index)
 
@@ -28,11 +25,19 @@ function Module:CheckAndRemoveBadBuffs()
 
 		index = index + 1
 	end
+
+	isProcessing = false
 end
 
 function Module:PLAYER_LOGIN()
 	if Module.db.profile.automation.AnnoyingBuffs then
-		Module:RegisterUnitEvent("UNIT_AURA", "player", self.CheckAndRemoveBadBuffs)
+		Module:RegisterUnitEvent("UNIT_AURA", "player", function()
+			if not InCombatLockdown() then
+				Module:CheckAndRemoveBadBuffs()
+			else
+				Module:DeferMethod(self, "CheckAndRemoveBadBuffs")
+			end
+		end)
 	else
 		Module:UnregisterUnitEvent("UNIT_AURA", "player", self.CheckAndRemoveBadBuffs)
 	end

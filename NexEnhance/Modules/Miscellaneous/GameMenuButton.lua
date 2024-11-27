@@ -31,7 +31,7 @@ function Module:ClickGameMenu()
 		UIErrorsFrame:AddMessage(ERR_NOT_IN_COMBAT)
 		return
 	end
-	OpenConfigWithDefaultGroup("general")
+	LibStub("AceConfigDialog-3.0"):Open("NexEnhance")
 	HideUIPanel(GameMenuFrame)
 	PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
 end

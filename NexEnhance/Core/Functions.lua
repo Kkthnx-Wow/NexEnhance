@@ -49,12 +49,12 @@ end
 do
 	-- Function to force update prefix style and use it immediately
 	function Core:ForceUpdatePrefixStyle()
-		return Core.db.profile.general.numberPrefixStyle
+		return Core.db.profile.general.NumberPrefixStyle
 	end
 
 	-- Function to shorten numerical values
 	function Core.ShortValue(n)
-		local prefixStyle = Core.db.profile.general.numberPrefixStyle -- Get the current prefix style
+		local prefixStyle = Core.db.profile.general.NumberPrefixStyle -- Get the current prefix style
 
 		if prefixStyle == "STANDARD" then
 			if n >= 1e12 then

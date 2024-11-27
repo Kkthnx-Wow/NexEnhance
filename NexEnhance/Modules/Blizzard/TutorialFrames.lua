@@ -11,9 +11,9 @@ local function AcknowledgeTips()
 end
 
 function Module:DisableHelpTip() -- auto complete helptips
-	-- if not E.global.general.disableTutorialButtons then
-	-- 	return
-	-- end
+	if not Module.db.profile.general.SuppressTutorialPrompts then
+		return
+	end
 
 	hooksecurefunc(_G.HelpTip, "Show", AcknowledgeTips)
 	C_Timer.After(1, AcknowledgeTips)

@@ -136,17 +136,30 @@ local function CreateOptions()
 							Config:SetupUIScale()
 						end,
 					},
-					numberPrefixStyle = {
+					SuppressTutorialPrompts = {
 						order = 3,
+						name = "Disable Tutorial Buttons",
+						desc = "Enables or disables the tutorial buttons that appear in the interface.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.general.disableTutorialButtons
+						end,
+						set = function(_, value)
+							Config.db.profile.general.disableTutorialButtons = value
+						end,
+					},
+					NumberPrefixStyle = {
+						order = 4,
 						name = "Number Abbreviation Style",
 						desc = "Select how numerical values should be abbreviated in the UI.",
 						type = "select",
 						values = { ["STANDARD"] = "Standard: b/m/k", ["ASIAN"] = "Asian: y/w", ["FULL"] = "Full digitals" },
 						get = function()
-							return Config.db.profile.general.numberPrefixStyle
+							return Config.db.profile.general.NumberPrefixStyle
 						end,
 						set = function(_, value)
-							Config.db.profile.general.numberPrefixStyle = value
+							Config.db.profile.general.NumberPrefixStyle = value
 						end,
 					},
 				},
@@ -548,7 +561,6 @@ local function CreateOptions()
 						name = "Number Format",
 						desc = "Choose the format for numbers displayed on the bar.",
 						type = "select",
-						width = "double",
 						values = { [1] = "Standard: b/m/k", [2] = "Asian: y/w", [3] = PLAYER },
 						get = function()
 							return Config.db.profile.experience.numberFormat
@@ -565,7 +577,6 @@ local function CreateOptions()
 						name = "Bar Text Format",
 						desc = "Choose the format for the text displayed on the bar.",
 						type = "select",
-						width = "double",
 						values = {
 							["PERCENT"] = "Percent",
 							["CURMAX"] = "Current - Max",
@@ -1205,7 +1216,6 @@ local function CreateOptions()
 						name = "Cursor Tooltip Position",
 						desc = "Selects the position of tooltips relative to the cursor.",
 						type = "select",
-						width = "double",
 						values = { ["DISABLE"] = "Disable", ["LEFT"] = "Left", ["TOP"] = "Top", ["RIGHT"] = "Right" },
 						get = function()
 							return Config.db.profile.tooltip.cursorPosition
@@ -1440,8 +1450,10 @@ function Config:ADDON_LOADED(addon)
 
 	CreateOptions() -- Load on demand
 	Config:SetupUIScale(true)
+
+	Config:UnregisterEvent("ADDON_LOADED", Config.ADDON_LOADED)
 end
 
 Config:RegisterSlash("/nexe", "/ne", function()
-	OpenConfigWithDefaultGroup("general")
+	LibStub("AceConfigDialog-3.0"):Open("NexEnhance")
 end)

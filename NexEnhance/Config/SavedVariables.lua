@@ -11,8 +11,10 @@ local defaults = {
 		},
 		automation = {
 			AnnoyingBuffs = false,
+			AutoBestQuestReward = false,
 			AutoGoodbye = false,
 			AutoInvite = false,
+			AutoKeystoneSlotting = false,
 			AutoRepair = 0,
 			AutoResurrect = false,
 			AutoResurrectEmote = "thank",
@@ -22,7 +24,6 @@ local defaults = {
 			CustomGoodbyeMessage = "",
 			DeclineDuels = false,
 			DeclinePetDuels = false,
-			AutoKeystoneSlotting = false,
 		},
 		chat = {
 			Background = false,

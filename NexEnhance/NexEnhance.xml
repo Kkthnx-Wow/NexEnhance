@@ -53,6 +53,7 @@
     <Script file="Modules\Automation\AutoInvite.lua" />
     <Script file="Modules\Automation\AutoRepair.lua" />
     <Script file="Modules\Automation\AutoSell.lua" />
+    <Script file="Modules\Automation\BestReward.lua" />
     <Script file="Modules\Automation\CinematicSkip.lua" />
     <Script file="Modules\Automation\DeclineDuels.lua" />
     <Script file="Modules\Automation\Goodbye.lua" />
@@ -66,6 +67,7 @@
     <Script file="Modules\Blizzard\ChatFrame.lua" />
     <Script file="Modules\Blizzard\ExpRep.lua" />
     <Script file="Modules\Blizzard\Fixes.lua" />
+    <Script file="Modules\Blizzard\OrderHall.lua" />
     <Script file="Modules\Blizzard\QuestNavigation.lua" />
     <Script file="Modules\Blizzard\TutorialFrames.lua" />
 

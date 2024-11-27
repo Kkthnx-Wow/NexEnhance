@@ -57,7 +57,9 @@ local function ShowReloadUIPopup()
 			end,
 			OnCancel = function()
 				reloadUIPending = false
-				Config:Print("We'll remind you again right away when you change another option that requires this reload! :D")
+				Config:Print(
+					"We'll remind you again right away when you change another option that requires this reload! :D"
+				)
 			end,
 			timeout = 0,
 			whileDead = true,
@@ -154,7 +156,11 @@ local function CreateOptions()
 						name = "Number Abbreviation Style",
 						desc = "Select how numerical values should be abbreviated in the UI.",
 						type = "select",
-						values = { ["STANDARD"] = "Standard: b/m/k", ["ASIAN"] = "Asian: y/w", ["FULL"] = "Full digitals" },
+						values = {
+							["STANDARD"] = "Standard: b/m/k",
+							["ASIAN"] = "Asian: y/w",
+							["FULL"] = "Full digitals",
+						},
 						get = function()
 							return Config.db.profile.general.NumberPrefixStyle
 						end,
@@ -406,6 +412,19 @@ local function CreateOptions()
 							Config.db.profile.automation.AutoKeystoneSlotting = value
 						end,
 					},
+					AutoBestQuestReward = {
+						order = 10,
+						name = "Auto Best Quest Reward",
+						desc = "Automatically selects the best quest reward based on sell value and usefulness.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoBestQuestReward
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoBestQuestReward = value
+						end,
+					},
 				},
 			},
 			chat = {
@@ -416,7 +435,8 @@ local function CreateOptions()
 				type = "group",
 				args = {
 					description = {
-						name = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior." .. "\n\n",
+						name = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior."
+							.. "\n\n",
 						type = "description",
 						order = 0,
 						width = "double",

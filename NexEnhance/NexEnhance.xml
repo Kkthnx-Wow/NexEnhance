@@ -55,6 +55,9 @@
     <Script file="Modules\Automation\AutoSell.lua" />
     <Script file="Modules\Automation\CinematicSkip.lua" />
     <Script file="Modules\Automation\DeclineDuels.lua" />
+    <Script file="Modules\Automation\Goodbye.lua" />
+    <Script file="Modules\Automation\Keystone.lua" />
+    <Script file="Modules\Automation\Resurrect.lua" />
     <Script file="Modules\Automation\ScreenShots.lua" />
 
     <!-- Blizzard -->

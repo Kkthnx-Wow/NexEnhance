@@ -267,9 +267,9 @@ local function CreateOptions()
 				type = "group",
 				args = {
 					description = {
-						name = "Customize automated actions to streamline gameplay, from removing annoying buffs to auto-repairing gear and more." .. "\n\n",
-						type = "description",
 						order = 0,
+						name = "Customize automated actions to streamline gameplay, from removing annoying buffs to auto-repairing gear and more.\n\n",
+						type = "description",
 						width = "double",
 					},
 					AnnoyingBuffs = {
@@ -322,6 +322,88 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.db.profile.automation.AutoRepair = value
+						end,
+					},
+					AutoGoodbye = {
+						order = 5,
+						name = "Auto Goodbye",
+						desc = "Enable or disable the Auto Goodbye feature.|n|nWhen enabled, a goodbye message is sent automatically after a group activity ends.|n|nYou can set a custom goodbye message in the 'Custom Goodbye Message' field.|n|nIf no custom message is set, the default random message will be used.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoGoodbye
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoGoodbye = value
+						end,
+					},
+					CustomGoodbyeMessage = {
+						order = 6,
+						name = "Custom Goodbye Message",
+						desc = "Enter a custom goodbye message to override the default random messages. If left blank, the default message ('GG, everyone!') will be used.",
+						type = "input",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.CustomGoodbyeMessage or ""
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.CustomGoodbyeMessage = value
+						end,
+						disabled = function()
+							return not Config.db.profile.automation.AutoGoodbye
+						end,
+					},
+					AutoResurrect = {
+						order = 7,
+						name = "Auto Resurrect",
+						desc = "Automatically accepts resurrection requests and performs an emote after being resurrected.|n|nYou can choose the emote in the 'Auto Resurrect Emote' setting or set a custom emote if desired.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoResurrect
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoResurrect = value
+						end,
+					},
+					AutoResurrectEmote = {
+						order = 8,
+						name = "Auto Resurrect Emote",
+						desc = "Select an emote to use automatically after being resurrected.",
+						type = "select",
+						values = {
+							["none"] = "None",
+							["cheer"] = "Cheer",
+							["thank"] = "Thank",
+							["bow"] = "Bow",
+							["salute"] = "Salute",
+							["wave"] = "Wave",
+							["clap"] = "Clap",
+							["raise"] = "Raise",
+							["apologize"] = "Apologize",
+							["flex"] = "Flex",
+						},
+						get = function()
+							return Config.db.profile.automation.AutoResurrectEmote or "thank"
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoResurrectEmote = value
+						end,
+						disabled = function()
+							return not Config.db.profile.automation.AutoResurrect
+						end,
+					},
+					AutoKeystoneSlotting = {
+						order = 9,
+						name = "Auto Keystone Slotting",
+						desc = "Automatically scans your bags and slots a Mythic Keystone into the Challenges Keystone Frame when opened.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoKeystoneSlotting
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoKeystoneSlotting = value
 						end,
 					},
 				},

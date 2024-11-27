@@ -464,24 +464,33 @@ end
 
 do
 	function Core:GetMoneyString(money, full)
+		local copperSymbol = "|cffeda55f" .. COPPER_AMOUNT_SYMBOL .. "|r"
+		local silverSymbol = "|cffc7c7cf" .. SILVER_AMOUNT_SYMBOL .. "|r"
+		local goldSymbol = "|cffffd700" .. GOLD_AMOUNT_SYMBOL .. "|r"
+
 		if money >= 1e6 and not full then
-			return BreakUpLargeNumbers(format("%d", money / 1e4)) .. GOLD_AMOUNT_SYMBOL
+			return BreakUpLargeNumbers(format("%d", money / 1e4)) .. goldSymbol
 		else
 			if money > 0 then
 				local moneyString = ""
-				local gold, silver, copper = floor(money / 1e4), floor(money / 100) % 100, money % 100
+				local gold = floor(money / 1e4)
+				local silver = floor(money / 100) % 100
+				local copper = money % 100
+
 				if gold > 0 then
-					moneyString = " " .. gold .. GOLD_AMOUNT_SYMBOL
+					moneyString = " " .. gold .. goldSymbol
 				end
+
 				if silver > 0 then
-					moneyString = moneyString .. " " .. silver .. SILVER_AMOUNT_SYMBOL
+					moneyString = moneyString .. " " .. silver .. silverSymbol
 				end
+
 				if copper > 0 then
-					moneyString = moneyString .. " " .. copper .. COPPER_AMOUNT_SYMBOL
+					moneyString = moneyString .. " " .. copper .. copperSymbol
 				end
 				return moneyString
 			else
-				return " 0" .. COPPER_AMOUNT_SYMBOL
+				return " 0" .. copperSymbol
 			end
 		end
 	end

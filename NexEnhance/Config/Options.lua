@@ -86,8 +86,6 @@ end
 
 local function CreateOptions()
 	CreateOptions = Config.Dummy -- we only want to load this once
-
-	--LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, {
 	-- Register the options table with AceConfig
 	local options = {
 		type = "group",
@@ -97,18 +95,68 @@ local function CreateOptions()
 				type = "description",
 				order = 0,
 			},
-			actionbars = {
+			general = {
 				order = 1,
+				name = "General",
+				desc = "General settings for Config.",
+				icon = "463852", -- :D
+				type = "group",
+				args = {
+					AutoScale = {
+						order = 1,
+						name = "Dynamic UI Scaling",
+						desc = "Automatically adjusts the UI scale to fit your screen.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.general.AutoScale
+						end,
+						set = function(_, value)
+							Config.db.profile.general.AutoScale = value
+							Config:SetupUIScale()
+						end,
+					},
+					UIScale = {
+						order = 2,
+						name = "Custom Interface Scale",
+						desc = "Manually set the scale of the user interface.",
+						type = "range",
+						width = "double",
+						min = 0.43,
+						max = 1.0,
+						step = 0.01,
+						disabled = function()
+							return Config.db.profile.general.AutoScale
+						end,
+						get = function()
+							return Config.db.profile.general.UIScale
+						end,
+						set = function(_, value)
+							Config.db.profile.general.UIScale = value
+							Config:SetupUIScale()
+						end,
+					},
+					numberPrefixStyle = {
+						order = 3,
+						name = "Number Abbreviation Style",
+						desc = "Select how numerical values should be abbreviated in the UI.",
+						type = "select",
+						values = { ["STANDARD"] = "Standard: b/m/k", ["ASIAN"] = "Asian: y/w", ["FULL"] = "Full digitals" },
+						get = function()
+							return Config.db.profile.general.numberPrefixStyle
+						end,
+						set = function(_, value)
+							Config.db.profile.general.numberPrefixStyle = value
+						end,
+					},
+				},
+			},
+			actionbars = {
+				order = 2,
 				name = "Actionbars",
 				desc = "Configure action bar settings, including cooldown timers, range indicators, and more to enhance your gameplay experience.",
 				icon = "4200123", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.actionbars[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.actionbars[info[#info]] = value
-				end,
 				args = {
 					description = {
 						name = "Configure action bar settings, including cooldown timers, range indicators, and more to enhance your gameplay experience.\n\n",
@@ -122,31 +170,49 @@ local function CreateOptions()
 						desc = "Enable or disable cooldown timers on action buttons.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.actionbars.cooldowns
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.cooldowns = value
+						end,
 					},
 					MmssTH = {
 						order = 2,
 						name = "MM:SS Threshold",
-						desc = "Display cooldowns in MM:SS format if below this threshold. For example, 2 minutes and 30 seconds will be shown as 2:30.",
+						desc = "Display cooldowns in MM:SS format below this threshold.",
 						type = "range",
+						width = "double",
 						min = 60,
 						max = 600,
 						step = 1,
-						width = "double",
 						disabled = function()
 							return not Config.db.profile.actionbars.cooldowns
+						end,
+						get = function()
+							return Config.db.profile.actionbars.MmssTH
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.MmssTH = value
 						end,
 					},
 					TenthTH = {
 						order = 3,
 						name = "Decimal Threshold",
-						desc = "Display cooldowns in decimal format if below this threshold. For example, 3 seconds will be shown as 3.0.",
+						desc = "Display cooldowns in decimal format below this threshold.",
 						type = "range",
+						width = "double",
 						min = 0,
 						max = 60,
 						step = 1,
-						width = "double",
 						disabled = function()
 							return not Config.db.profile.actionbars.cooldowns
+						end,
+						get = function()
+							return Config.db.profile.actionbars.TenthTH
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.TenthTH = value
 						end,
 					},
 					OverrideWA = {
@@ -158,32 +224,34 @@ local function CreateOptions()
 						disabled = function()
 							return not Config.db.profile.actionbars.cooldowns
 						end,
+						get = function()
+							return Config.db.profile.actionbars.OverrideWA
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.OverrideWA = value
+						end,
 					},
 					range = {
 						order = 5,
 						name = "Range Indicator",
-						desc = "Change the color of action buttons when they are out of range or when the player lacks the resources (e.g., energy, mana) to use them.",
+						desc = "Change the color of action buttons when out of range or lacking resources.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.actionbars.range
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.range = value
+						end,
 					},
 				},
 			},
 			automation = {
-				order = 2,
+				order = 3,
 				name = "Automation",
+				desc = "Streamline gameplay with automation.",
 				icon = "1405803", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.automation[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.automation[info[#info]] = value
-					if info[#info] == "DeclineDuels" or info[#info] == "DeclinePetDuels" then
-						Config:CreateAutoDeclineDuels()
-					elseif info[#info] == "AutoScreenshotAchieve" then
-						Config:ToggleAutoScreenshotAchieve()
-					end
-				end,
 				args = {
 					description = {
 						name = "Customize automated actions to streamline gameplay, from removing annoying buffs to auto-repairing gear and more." .. "\n\n",
@@ -194,80 +262,63 @@ local function CreateOptions()
 					AnnoyingBuffs = {
 						order = 1,
 						name = "Remove Annoying Buffs",
-						desc = "Automatically remove specified annoying buffs from your character.",
+						desc = "Automatically remove specified annoying buffs.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.automation.AnnoyingBuffs
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AnnoyingBuffs = value
+						end,
 					},
 					AutoInvite = {
 						order = 2,
 						name = "Auto Accept Party Invites",
-						desc = "Automatically accepts party invites from friends, guild members, or Battle.net friends.",
+						desc = "Automatically accepts party invites from friends or guild members.",
 						type = "toggle",
 						width = "double",
-					},
-					AutoRepair = {
-						order = 3,
-						name = "Auto Repair",
-						desc = "Automatically repairs your gear using the specified source: None, Guild Bank, or Player Funds.",
-						type = "select",
-						values = { [0] = NONE, [1] = GUILD, [2] = PLAYER },
+						get = function()
+							return Config.db.profile.automation.AutoInvite
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoInvite = value
+						end,
 					},
 					AutoSell = {
-						order = 4,
+						order = 3,
 						name = "Auto-Sell Trash",
-						desc = "Automatically sells junk items when visiting a vendor.",
+						desc = "Automatically sells junk items to vendors.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoSell
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoSell = value
+						end,
 					},
-					CinematicSkip = {
-						order = 5,
-						name = "Cinematic Skipping",
-						desc = "Skip cinematics by pressing a designated key (ESC, SPACE, or ENTER).",
-						type = "toggle",
-						width = "double",
-					},
-					DeclineDuels = {
-						order = 6,
-						name = "Auto-Decline Duels",
-						desc = "Automatically declines incoming duel requests.",
-						type = "toggle",
-						width = "double",
-					},
-					DeclinePetDuels = {
-						order = 7,
-						name = "Auto-Decline Pet Duels",
-						desc = "Automatically declines incoming battle-pet duel requests.",
-						type = "toggle",
-						width = "double",
-					},
-					AutoScreenshotAchieve = {
-						order = 8,
-						name = "Auto-Screenshot on Achievement",
-						desc = "Automatically takes a screenshot when you earn an achievement.",
-						type = "toggle",
-						width = "double",
+					AutoRepair = {
+						order = 4,
+						name = "Auto Repair",
+						desc = "Automatically repairs your gear using the specified source.",
+						type = "select",
+						values = { [0] = "None", [1] = "Guild", [2] = "Player" },
+						get = function()
+							return Config.db.profile.automation.AutoRepair
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoRepair = value
+						end,
 					},
 				},
 			},
 			chat = {
-				order = 3,
+				order = 4,
 				name = "Chat",
-				desc = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior.",
+				desc = "Enhance chat experience with custom settings.",
 				icon = "2056011", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.chat[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.chat[info[#info]] = value
-					if info[#info] == "Background" then
-						Config.Chat:ToggleChatBackground()
-					elseif info[#info] == "StickyChat" then
-						Config.Chat:ChatWhisperSticky()
-					elseif info[#info] == "SocialButton" then
-						Config:ToggleSocialButton()
-					end
-				end,
 				args = {
 					description = {
 						name = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior." .. "\n\n",
@@ -278,23 +329,43 @@ local function CreateOptions()
 					Background = {
 						order = 1,
 						name = "Chat Background",
-						desc = "Show or hide a background on the chat window.",
+						desc = "Toggle background visibility for chat windows.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.chat.Background
+						end,
+						set = function(_, value)
+							Config.db.profile.chat.Background = value
+							Config.Chat:ToggleChatBackground()
+						end,
 					},
-					URLCopy = { -- Change the name from URL to something else. This doesnt explain much!!!
+					URLCopy = {
 						order = 2,
 						name = "Copy Chat URLs",
-						desc = "Allow copying of URLs directly from the chat window.",
+						desc = "Allow copying of URLs from chat.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.chat.URLCopy
+						end,
+						set = function(_, value)
+							Config.db.profile.chat.URLCopy = value
+						end,
 					},
 					StickyChat = {
 						order = 3,
 						name = "Sticky Chat",
-						desc = "Keeps the last-used chat channel active when typing a new message.",
+						desc = "Keeps the last-used chat channel active for new messages.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.chat.StickyChat
+						end,
+						set = function(_, value)
+							Config.db.profile.chat.StickyChat = value
+							Config.Chat:ChatWhisperSticky()
+						end,
 					},
 					SocialButton = {
 						order = 4,
@@ -302,45 +373,52 @@ local function CreateOptions()
 						desc = "Hides the Quick Join Toast Button from the UI.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.chat.SocialButton
+						end,
+						set = function(_, value)
+							Config.db.profile.chat.SocialButton = value
+							Config:ToggleSocialButton()
+						end,
 					},
 					chatfilters = {
 						order = 5,
 						name = "Chat Filters",
 						type = "group",
 						inline = true,
-						get = function(info)
-							return Config.db.profile.chat.chatfilters[info[#info]]
-						end,
-						set = function(info, value)
-							Config.db.profile.chat.chatfilters[info[#info]] = value
-							if info[#info] == "ChatFilterList" then
-								Config.Chat:UpdateFilterList()
-							elseif info[#info] == "ChatFilterWhiteList" then
-								Config.Chat:UpdateFilterWhiteList()
-							end
-						end,
 						args = {
 							EnableFilter = {
 								order = 1,
-								name = HeaderTag .. "Enable Chat Filter",
+								name = "|cff00cc4cEnable Chat Filter",
 								desc = "Enables or disables the chat filtering system.",
 								type = "toggle",
-								width = "normal",
+								width = "double",
+								get = function()
+									return Config.db.profile.chat.chatfilters.EnableFilter
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.EnableFilter = value
+								end,
 							},
 							FilterMatches = {
 								order = 2,
 								name = "Filter Matches Count",
 								desc = "Enter the number of keyword matches required to filter a message.",
 								type = "input",
-								width = "normal",
-								-- validate input as a number
-								validate = function(info, value)
+								width = "double",
+								validate = function(_, value)
 									local numValue = tonumber(value)
 									if numValue and numValue > 0 then
 										return true
 									else
 										return "Please enter a valid number."
 									end
+								end,
+								get = function()
+									return Config.db.profile.chat.chatfilters.FilterMatches
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.FilterMatches = value
 								end,
 							},
 							BlockStrangers = {
@@ -349,6 +427,12 @@ local function CreateOptions()
 								desc = "Blocks messages from unknown players who are not in your friends list or guild.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.chat.chatfilters.BlockStrangers
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.BlockStrangers = value
+								end,
 							},
 							BlockSpammer = {
 								order = 4,
@@ -356,6 +440,12 @@ local function CreateOptions()
 								desc = "Filters out messages from players who are flagged as spammers or sending repetitive messages.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.chat.chatfilters.BlockSpammer
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.BlockSpammer = value
+								end,
 							},
 							ChatItemLevel = {
 								order = 5,
@@ -363,6 +453,12 @@ local function CreateOptions()
 								desc = "Displays the item level of linked gear in chat.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.chat.chatfilters.ChatItemLevel
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.ChatItemLevel = value
+								end,
 							},
 							BlockAddonAlert = {
 								order = 6,
@@ -370,201 +466,222 @@ local function CreateOptions()
 								desc = "Blocks automated messages from addons, including announcements of abilities, deaths, or interrupts.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.chat.chatfilters.BlockAddonAlert
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.BlockAddonAlert = value
+								end,
 							},
 							ChatFilterList = {
 								order = 7,
 								name = "Chat Filter List",
 								desc = "Specify a list of patterns to filter out messages in chat. Use spaces to separate multiple patterns.",
 								type = "input",
-								width = "full",
-								multiline = true, -- Allows multiple lines for ease of input
+								width = "double",
+								multiline = true,
+								get = function()
+									return Config.db.profile.chat.chatfilters.ChatFilterList
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.ChatFilterList = value
+									Config.Chat:UpdateFilterList()
+								end,
 							},
 							ChatFilterWhiteList = {
 								order = 8,
 								name = "Chat Filter Whitelist",
 								desc = "Specify a list of allowed terms or patterns that bypass the chat filter. Use spaces to separate multiple terms.",
 								type = "input",
-								width = "full",
-								multiline = true, -- Allows multiple lines for ease of input
+								width = "double",
+								multiline = true,
+								get = function()
+									return Config.db.profile.chat.chatfilters.ChatFilterWhiteList
+								end,
+								set = function(_, value)
+									Config.db.profile.chat.chatfilters.ChatFilterWhiteList = value
+									Config.Chat:UpdateFilterWhiteList()
+								end,
 							},
 						},
 					},
 				},
 			},
 			experience = {
-				order = 4,
+				order = 5,
 				name = "Experience",
+				desc = "Configure the experience and reputation bar settings.",
 				icon = "894556", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.experience[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.experience[info[#info]] = value
-					if info[#info] == "showBubbles" then
-						if Config.bar then
-							Config:ManageBarBubbles(Config.bar)
-						end
-					elseif info[#info] == "barTextFormat" or info[#info] == "numberFormat" then
-						if Config.bar then
-							Config.OnExpBarEvent(Config.bar)
-						end
-					elseif info[#info] == "barWidth" then
-						if Config.bar then
-							Config.bar:SetWidth(value)
-							Config:ManageBarBubbles(Config.bar)
-						end
-					elseif info[#info] == "barHeight" then
-						if Config.bar then
-							Config.bar:SetHeight(value)
-							Config:ManageBarBubbles(Config.bar)
-							Config:ForceTextScaling(Config.bar)
-						end
-					end
-				end,
 				args = {
 					enableExp = {
 						order = 1,
-						name = HeaderTag .. "Enable",
-						desc = "Toggle the display of NexEnhances experience bar.",
+						name = "|cff00cc4cEnable Experience Bar|r",
+						desc = "Toggle the display of NexEnhance's experience bar.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.experience.enableExp
+						end,
+						set = function(_, value)
+							Config.db.profile.experience.enableExp = value
+						end,
 					},
 					showBubbles = {
 						order = 2,
 						name = "Show Bubbles",
-						desc = "Show bubbles on experience / rep bars.",
+						desc = "Show bubbles on experience and reputation bars.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.experience.showBubbles
+						end,
+						set = function(_, value)
+							Config.db.profile.experience.showBubbles = value
+							if Config.bar then
+								Config:ManageBarBubbles(Config.bar)
+							end
+						end,
 					},
 					numberFormat = {
 						order = 3,
 						name = "Number Format",
-						desc = "Choose the format for numbers.",
+						desc = "Choose the format for numbers displayed on the bar.",
 						type = "select",
+						width = "double",
 						values = { [1] = "Standard: b/m/k", [2] = "Asian: y/w", [3] = PLAYER },
+						get = function()
+							return Config.db.profile.experience.numberFormat
+						end,
+						set = function(_, value)
+							Config.db.profile.experience.numberFormat = value
+							if Config.bar then
+								Config:OnExpBarEvent(Config.bar)
+							end
+						end,
 					},
 					barTextFormat = {
 						order = 4,
 						name = "Bar Text Format",
-						desc = "Choose the format for the text on the bar",
+						desc = "Choose the format for the text displayed on the bar.",
 						type = "select",
-						values = { ["PERCENT"] = "Percent", ["CURMAX"] = "Current - Max", ["CURPERC"] = "Current - Percent", ["CUR"] = "Current", ["REM"] = "Remaining", ["CURREM"] = "Current - Remaining", ["CURPERCREM"] = "Current - Percent (Remaining)" },
+						width = "double",
+						values = {
+							["PERCENT"] = "Percent",
+							["CURMAX"] = "Current - Max",
+							["CURPERC"] = "Current - Percent",
+							["CUR"] = "Current",
+							["REM"] = "Remaining",
+							["CURREM"] = "Current - Remaining",
+							["CURPERCREM"] = "Current - Percent (Remaining)",
+						},
+						get = function()
+							return Config.db.profile.experience.barTextFormat
+						end,
+						set = function(_, value)
+							Config.db.profile.experience.barTextFormat = value
+							if Config.bar then
+								Config:OnExpBarEvent(Config.bar)
+							end
+						end,
 					},
 					barWidth = {
 						order = 5,
 						name = "Bar Width",
 						desc = "Adjust the width of the bar. Default is 500. Minimum is 200. Maximum is the screen width.",
 						type = "range",
+						width = "double",
 						min = 200,
 						max = Config.ScreenWidth,
 						step = 1,
-						width = "double",
+						get = function()
+							return Config.db.profile.experience.barWidth
+						end,
+						set = function(_, value)
+							Config.db.profile.experience.barWidth = value
+							if Config.bar then
+								Config.bar:SetWidth(value)
+								Config:ManageBarBubbles(Config.bar)
+							end
+						end,
 					},
 					barHeight = {
 						order = 6,
 						name = "Bar Height",
 						desc = "Adjust the height of the bar. Default is 12. Minimum is 10. Maximum is 40.",
 						type = "range",
+						width = "double",
 						min = 10,
 						max = 40,
 						step = 1,
-						width = "double",
-					},
-				},
-			},
-			general = {
-				order = 5,
-				name = "General",
-				icon = "463852", -- :D
-				type = "group",
-				get = function(info)
-					return Config.db.profile.general[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.general[info[#info]] = value
-					if info[#info] == "AutoScale" or info[#info] == "UIScale" then
-						Config:SetupUIScale()
-					elseif info[#info] == "numberPrefixStyle" then
-						Config:ForceUpdatePrefixStyle()
-					end
-				end,
-				args = {
-					AutoScale = {
-						order = 1,
-						name = "Dynamic UI Scaling",
-						desc = "Automatically adjusts the user interface scale to fit your screen resolution for optimal display.",
-						type = "toggle",
-						width = "double",
-					},
-					UIScale = {
-						order = 2,
-						name = "Custom Interface Scale",
-						desc = "Manually set the scale of the user interface, ranging from 0.43 to 1.0, to suit your personal preference and display requirements.",
-						type = "range",
-						min = 0.43,
-						max = 1.0,
-						step = 0.01,
-						width = "double",
-						disabled = function()
-							return Config.db.profile.general.AutoScale
+						get = function()
+							return Config.db.profile.experience.barHeight
 						end,
-					},
-					numberPrefixStyle = {
-						order = 3,
-						name = "Number Abbreviation Style",
-						desc = "Select how numerical values should be abbreviated in the UI.",
-						type = "select",
-						values = { ["STANDARD"] = "Standard: b/m/k", ["ASIAN"] = "Asian: y/w", ["FULL"] = "Full digitals" },
+						set = function(_, value)
+							Config.db.profile.experience.barHeight = value
+							if Config.bar then
+								Config.bar:SetHeight(value)
+								Config:ManageBarBubbles(Config.bar)
+								Config:ForceTextScaling(Config.bar)
+							end
+						end,
 					},
 				},
 			},
 			loot = {
 				order = 6,
 				name = "Loot",
+				desc = "Configure loot-related settings for Config.",
 				icon = "901746", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.loot[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.loot[info[#info]] = value
-				end,
 				args = {
 					FasterLoot = {
 						order = 1,
 						name = "Quick Looting",
-						desc = "Enhances looting speed, requires auto-loot to be enabled.",
+						desc = "Enhances looting speed. Requires auto-loot to be enabled.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.loot.FasterLoot
+						end,
+						set = function(_, value)
+							Config.db.profile.loot.FasterLoot = value
+						end,
 					},
 				},
 			},
 			minimap = {
 				order = 7,
 				name = "Minimap",
+				desc = "Configure minimap-related settings for Config.",
 				icon = "1064187", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.minimap[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.minimap[info[#info]] = value
-				end,
 				args = {
 					EasyVolume = {
 						order = 1,
 						name = "Easy Volume Control",
-						desc = "Easy control of the master volume using the mouse wheel on the minimap while holding the Control key.",
+						desc = "Allows easy control of the master volume using the mouse wheel on the minimap while holding the Control key.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.minimap.EasyVolume
+						end,
+						set = function(_, value)
+							Config.db.profile.minimap.EasyVolume = value
+						end,
 					},
 					recycleBin = {
-						order = 2, -- Changed to 2 to maintain order with EasyVolume
-						name = NewFeatureAtlas .. "Minimap Button Collection",
+						order = 2,
+						name = "|A:newplayerchat-chaticon-newcomer:16:16|a Minimap Button Collection",
 						desc = "Collects minimap buttons into a single pop-up menu for easier access and cleaner minimap.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.minimap.recycleBin
+						end,
+						set = function(_, value)
+							Config.db.profile.minimap.recycleBin = value
+						end,
 						disabled = function()
 							return C_AddOns.IsAddOnLoaded("MBB")
 						end,
@@ -574,34 +691,38 @@ local function CreateOptions()
 			miscellaneous = {
 				order = 8,
 				name = "Miscellaneous",
+				desc = "Configure miscellaneous features and enhancements.",
 				icon = "134169", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.miscellaneous[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.miscellaneous[info[#info]] = value
-					if info[#info] == "enableAFKMode" then
-						Config.ToggleAFKMode()
-					end
-				end,
 				args = {
 					hideWidgetTexture = {
 						order = 1,
-						name = NewFeatureAtlas .. "Hide Vigor Wings",
+						name = "|A:newplayerchat-chaticon-newcomer:16:16|a Hide Vigor Wings",
 						desc = "Hides the wing textures on the Dragonriding Vigor bar.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.hideWidgetTexture
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.hideWidgetTexture = value
+						end,
 					},
 					widgetScale = {
 						order = 2,
-						name = NewFeatureAtlas .. "Vigor Bar Scale",
+						name = "|A:newplayerchat-chaticon-newcomer:16:16|a Vigor Bar Scale",
 						desc = "Adjusts the scale of the Dragonriding Vigor bar.",
 						type = "range",
+						width = "double",
 						min = 0.5,
 						max = 1.0,
 						step = 0.01,
-						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.widgetScale
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.widgetScale = value
+						end,
 					},
 					disableTalkingHead = {
 						order = 3,
@@ -609,20 +730,39 @@ local function CreateOptions()
 						desc = "Disables the Talking Head Frame, preventing pop-up dialogues from appearing during gameplay.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.disableTalkingHead
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.disableTalkingHead = value
+						end,
 					},
 					enableAFKMode = {
 						order = 4,
 						name = "AFK Mode",
-						desc = "AFK mode with dynamic features such as automatic guild display, random statistics updates, and a countdown timer, enhancing the AFK experience for players..",
+						desc = "Enable an AFK mode with dynamic features like automatic guild display, random statistics, and countdown timer.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.enableAFKMode
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.enableAFKMode = value
+							Config:ToggleAFKMode()
+						end,
 					},
 					missingStats = {
 						order = 5,
 						name = "Enhanced Character Statistics",
-						desc = "Enhances the default character statistics panel by organizing stats, adjusting display data for improved readability, and integrating additional functionalities for detailed stat insights.",
+						desc = "Enhances the default character statistics panel with improved readability and additional insights.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.missingStats
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.missingStats = value
+						end,
 					},
 					moveableFrames = {
 						order = 6,
@@ -630,109 +770,187 @@ local function CreateOptions()
 						desc = "Allows certain Blizzard frames to be movable, giving you the flexibility to reposition them as needed.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.moveableFrames
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.moveableFrames = value
+						end,
 					},
 					gemsNEnchants = {
 						order = 7,
 						name = "Show Gems and Enchants",
-						desc = "Displays gems and enchantments on the character frame and inspect frame, allowing quick access to view gear enhancements without additional tooltips.",
+						desc = "Displays gems and enchantments on the character and inspect frames for quick reference.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.gemsNEnchants
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.gemsNEnchants = value
+						end,
 					},
 					questXPPercent = {
 						order = 8,
 						name = "Enhanced Quest XP Display",
-						desc = "Enhances the display of quest XP rewards to show percentage of total experience gained.",
+						desc = "Enhances quest XP rewards to show the percentage of total experience gained.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.questXPPercent
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.questXPPercent = value
+						end,
 					},
 					questRewardsMostValueIcon = {
 						order = 9,
 						name = "Highlight Best Quest Reward",
-						desc = "Highlights the most valuable quest reward choice with a gold coin icon overlay based on potential sell value.",
+						desc = "Highlights the most valuable quest reward choice with a gold coin icon based on sell value.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.questRewardsMostValueIcon
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.questRewardsMostValueIcon = value
+						end,
 					},
 					alreadyKnown = {
 						order = 10,
 						name = "Highlight Already Known Items",
-						desc = "Highlights items that are already known (e.g., mounts, pets, recipes) in various UI elements like quest rewards, buyback items, and guild bank.",
+						desc = "Highlights items that are already known, such as mounts, pets, and recipes, in various UI elements.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.miscellaneous.alreadyKnown
+						end,
+						set = function(_, value)
+							Config.db.profile.miscellaneous.alreadyKnown = value
+						end,
 					},
 					itemlevels = {
 						order = 11,
-						name = "ItemLevels",
+						name = "Item Levels",
 						type = "group",
 						inline = true,
-						get = function(info)
-							return Config.db.profile.miscellaneous.itemlevels[info[#info]]
-						end,
-						set = function(info, value)
-							Config.db.profile.miscellaneous.itemlevels[info[#info]] = value
-						end,
 						args = {
 							characterFrame = {
 								order = 1,
 								name = "Show Item Level on Character Frame",
-								desc = "Shows item levels on the character frame.",
+								desc = "Displays item levels on the character frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.characterFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.characterFrame = value
+								end,
 							},
 							inspectFrame = {
 								order = 2,
 								name = "Show Item Level on Inspect Frame",
-								desc = "Shows item levels on the inspect frame.",
+								desc = "Displays item levels on the inspect frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.inspectFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.inspectFrame = value
+								end,
 							},
 							merchantFrame = {
 								order = 3,
 								name = "Show Item Level on Merchant Frame",
-								desc = "Shows item levels on the merchant frame.",
+								desc = "Displays item levels on the merchant frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.merchantFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.merchantFrame = value
+								end,
 							},
 							tradeFrame = {
 								order = 4,
 								name = "Show Item Level on Trade Frame",
-								desc = "Shows item levels on the trade frame.",
+								desc = "Displays item levels on the trade frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.tradeFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.tradeFrame = value
+								end,
 							},
 							lootFrame = {
 								order = 5,
 								name = "Show Item Level on Loot Frame",
-								desc = "Shows item levels on the loot frame.",
+								desc = "Displays item levels on the loot frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.lootFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.lootFrame = value
+								end,
 							},
 							guildBankFrame = {
 								order = 6,
 								name = "Show Item Level on Guild Bank Frame",
-								desc = "Shows item levels on the guild bank frame.",
+								desc = "Displays item levels on the guild bank frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.guildBankFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.guildBankFrame = value
+								end,
 							},
 							containers = {
 								order = 7,
 								name = "Show Item Level on Containers",
-								desc = "Shows item levels on default containers (bags).",
+								desc = "Displays item levels on container items (bags).",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.containers
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.containers = value
+								end,
 							},
 							flyout = {
 								order = 8,
 								name = "Show Item Level on Equipment Flyout",
-								desc = "Shows item levels on equipment flyout buttons.",
+								desc = "Displays item levels on equipment flyout buttons.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.flyout
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.flyout = value
+								end,
 							},
 							scrapping = {
 								order = 9,
 								name = "Show Item Level on Scrapping Machine Frame",
-								desc = "Shows item levels on the scrapping machine frame.",
+								desc = "Displays item levels on the scrapping machine frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.miscellaneous.itemlevels.scrapping
+								end,
+								set = function(_, value)
+									Config.db.profile.miscellaneous.itemlevels.scrapping = value
+								end,
 							},
 						},
 					},
@@ -741,26 +959,15 @@ local function CreateOptions()
 			skins = {
 				order = 9,
 				name = "Skins",
+				desc = "Enhance the appearance and functionality of Blizzard and addon frames.",
 				icon = "4620680", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.skins[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.skins[info[#info]] = value
-				end,
 				args = {
 					blizzskins = {
 						order = 1,
 						name = "Blizzard Frame Enhancements",
 						type = "group",
 						inline = true,
-						get = function(info)
-							return Config.db.profile.skins.blizzskins[info[#info]]
-						end,
-						set = function(info, value)
-							Config.db.profile.skins.blizzskins[info[#info]] = value
-						end,
 						args = {
 							characterFrame = {
 								order = 1,
@@ -768,13 +975,25 @@ local function CreateOptions()
 								desc = "Improves the appearance and functionality of the character frame.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.skins.blizzskins.characterFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.skins.blizzskins.characterFrame = value
+								end,
 							},
 							chatbubble = {
 								order = 2,
 								name = "Chat Bubble Enhancements",
-								desc = "Toggle the enhancements for chat bubbles, such as customized colors and textures.",
+								desc = "Toggle enhancements for chat bubbles, such as customized colors and textures.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.skins.blizzskins.chatbubble
+								end,
+								set = function(_, value)
+									Config.db.profile.skins.blizzskins.chatbubble = value
+								end,
 							},
 							inspectFrame = {
 								order = 3,
@@ -782,6 +1001,12 @@ local function CreateOptions()
 								desc = "Enhances the inspect frame for better display and usability.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.skins.blizzskins.inspectFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.skins.blizzskins.inspectFrame = value
+								end,
 							},
 							objectiveTracker = {
 								order = 4,
@@ -789,6 +1014,12 @@ local function CreateOptions()
 								desc = "Enhances the Objective Tracker for a more modern look.",
 								type = "toggle",
 								width = "double",
+								get = function()
+									return Config.db.profile.skins.blizzskins.objectiveTracker
+								end,
+								set = function(_, value)
+									Config.db.profile.skins.blizzskins.objectiveTracker = value
+								end,
 							},
 						},
 					},
@@ -797,33 +1028,33 @@ local function CreateOptions()
 						name = "Addon Frame Enhancements",
 						type = "group",
 						inline = true,
-						get = function(info)
-							return Config.db.profile.skins.addonskins[info[#info]]
-						end,
-						set = function(info, value)
-							Config.db.profile.skins.addonskins[info[#info]] = value
-						end,
 						args = {
 							details = {
 								order = 1,
 								name = "Enhanced Details! Skin",
 								desc = "Improves the appearance and functionality of the Details! addon frames.",
 								type = "toggle",
-								width = "normal",
+								width = "double",
+								get = function()
+									return Config.db.profile.skins.addonskins.details
+								end,
+								set = function(_, value)
+									Config.db.profile.skins.addonskins.details = value
+								end,
 								disabled = function()
 									return not C_AddOns.IsAddOnLoaded("Details")
 								end,
 							},
-							applyDetails = { -- Add popup one day. Too lazy to do it. I need to add a file to hold popups.
+							applyDetails = {
 								order = 2,
 								name = "Reset Details! Skin",
 								desc = "Resets the enhanced Details! skin settings.",
 								type = "execute",
+								width = "double",
 								func = function()
 									print("Resetting Details! skin settings...")
 									Config:ResetDetailsAnchor(true)
 								end,
-								width = "normal",
 								disabled = function()
 									return not C_AddOns.IsAddOnLoaded("Details")
 								end,
@@ -835,118 +1066,162 @@ local function CreateOptions()
 			tooltip = {
 				order = 10,
 				name = "Tooltip",
+				desc = "Customize tooltip settings to enhance information display.",
 				icon = "4622480", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.tooltip[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.tooltip[info[#info]] = value
-				end,
 				args = {
 					combatHide = {
 						order = 1,
 						name = "Combat Tip Hide",
-						desc = "Automatically hide tooltips during combat.",
+						desc = "Automatically hides tooltips during combat.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.combatHide
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.combatHide = value
+						end,
 					},
 					factionIcon = {
-						order = 3,
+						order = 2,
 						name = "Faction Icons",
-						desc = "Display faction icons on tooltips.",
+						desc = "Displays faction icons on tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.factionIcon
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.factionIcon = value
+						end,
 					},
 					hideJunkGuild = {
-						order = 4,
+						order = 3,
 						name = "Abbreviate Guild Names",
-						desc = "Show abbreviated guild names.",
+						desc = "Shows abbreviated guild names on tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.hideJunkGuild
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.hideJunkGuild = value
+						end,
 					},
 					hideRank = {
-						order = 5,
+						order = 4,
 						name = "Hide Guild Ranks",
-						desc = "Hide player guild ranks in tooltips.",
+						desc = "Hides player guild ranks in tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.hideRank
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.hideRank = value
+						end,
 					},
 					hideTitle = {
-						order = 6,
+						order = 5,
 						name = "Hide Player Titles",
-						desc = "Hide player titles in tooltips.",
+						desc = "Hides player titles in tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.hideTitle
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.hideTitle = value
+						end,
 					},
 					lfdRole = {
-						order = 7,
+						order = 6,
 						name = "LFD Role Icons",
-						desc = "Display role icons for tank, healer, and damage.",
+						desc = "Displays role icons (tank, healer, damage) in tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.lfdRole
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.lfdRole = value
+						end,
 					},
 					mdScore = {
-						order = 8,
+						order = 7,
 						name = "Mythic Dungeon Score",
-						desc = "Display the player's Mythic Dungeon score.",
+						desc = "Displays the player's Mythic Dungeon score in tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.mdScore
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.mdScore = value
+						end,
 					},
 					qualityColor = {
-						order = 9,
+						order = 8,
 						name = "Item Quality Colors",
-						desc = "Color item borders by their quality.",
+						desc = "Colors item borders by their quality in tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.qualityColor
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.qualityColor = value
+						end,
 					},
 					ShowID = {
-						order = 10,
+						order = 9,
 						name = "Show Tooltip IDs",
-						desc = "Display spell, item, quest, and other IDs in tooltips.",
+						desc = "Displays spell, item, quest, and other IDs in tooltips.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.ShowID
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.ShowID = value
+						end,
 					},
 					SpecLevelByShift = {
-						order = 11,
+						order = 10,
 						name = "Shift+Spec Level",
-						desc = "Show item level when holding SHIFT.",
+						desc = "Shows item level when holding the SHIFT key.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.tooltip.SpecLevelByShift
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.SpecLevelByShift = value
+						end,
 					},
 					cursorPosition = {
-						order = 12,
+						order = 11,
 						name = "Cursor Tooltip Position",
-						desc = "Choose the position of tooltips in relation to the cursor.",
+						desc = "Selects the position of tooltips relative to the cursor.",
 						type = "select",
+						width = "double",
 						values = { ["DISABLE"] = "Disable", ["LEFT"] = "Left", ["TOP"] = "Top", ["RIGHT"] = "Right" },
+						get = function()
+							return Config.db.profile.tooltip.cursorPosition
+						end,
+						set = function(_, value)
+							Config.db.profile.tooltip.cursorPosition = value
+						end,
 					},
 				},
 			},
 			unitframes = {
 				order = 11,
 				name = "Unit Frames",
+				desc = "Customize unit frames settings for Config.",
 				icon = "648207", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.unitframes[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.unitframes[info[#info]] = value
-					if info[#info] == "classColorHealth" then
-						local function UpdateCVar()
-							if not InCombatLockdown() then
-								SetCVar("raidFramesDisplayClassColor", 1)
-							else
-								C_Timer.After(1, function()
-									UpdateCVar()
-								end)
-							end
-						end
-						UpdateCVar()
-						Config.UpdateFrames()
-					end
-				end,
 				args = {
 					classColorHealth = {
 						order = 1,
@@ -954,6 +1229,21 @@ local function CreateOptions()
 						desc = "Use class colors for health bars in unit frames.\n\nNOTE: This feature will be disabled if '|A:gmchat-icon-blizz:16:16|aBetter|cff00c0ffBlizz|rFrames' is enabled.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.unitframes.classColorHealth
+						end,
+						set = function(_, value)
+							Config.db.profile.unitframes.classColorHealth = value
+							local function UpdateCVar()
+								if not InCombatLockdown() then
+									SetCVar("raidFramesDisplayClassColor", 1)
+								else
+									C_Timer.After(1, UpdateCVar)
+								end
+							end
+							UpdateCVar()
+							Config:UpdateFrames()
+						end,
 						disabled = function()
 							return C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
 						end,
@@ -963,24 +1253,25 @@ local function CreateOptions()
 			worldmap = {
 				order = 12,
 				name = "WorldMap",
+				desc = "Customize WorldMap settings for Config.",
 				icon = "134269", -- :D
 				type = "group",
-				get = function(info)
-					return Config.db.profile.worldmap[info[#info]]
-				end,
-				set = function(info, value)
-					Config.db.profile.worldmap[info[#info]] = value
-				end,
 				args = {
 					AlphaWhenMoving = {
 						order = 1,
 						name = "Map Transparency When Moving",
 						desc = "Adjust the transparency level of the world map when you are moving.",
 						type = "range",
+						width = "double",
 						min = 0.1,
 						max = 1.0,
 						step = 0.1,
-						width = "double",
+						get = function()
+							return Config.db.profile.worldmap.AlphaWhenMoving
+						end,
+						set = function(_, value)
+							Config.db.profile.worldmap.AlphaWhenMoving = value
+						end,
 						disabled = function()
 							return not Config.db.profile.worldmap.FadeWhenMoving
 						end,
@@ -991,6 +1282,12 @@ local function CreateOptions()
 						desc = "Toggle to display coordinates on the world map.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.worldmap.Coordinates
+						end,
+						set = function(_, value)
+							Config.db.profile.worldmap.Coordinates = value
+						end,
 					},
 					FadeWhenMoving = {
 						order = 3,
@@ -998,6 +1295,12 @@ local function CreateOptions()
 						desc = "Toggle to make the world map fade out when you are moving.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.worldmap.FadeWhenMoving
+						end,
+						set = function(_, value)
+							Config.db.profile.worldmap.FadeWhenMoving = value
+						end,
 					},
 					SmallWorldMap = {
 						order = 4,
@@ -1005,53 +1308,50 @@ local function CreateOptions()
 						desc = "Toggle to use a smaller version of the world map.",
 						type = "toggle",
 						width = "double",
+						get = function()
+							return Config.db.profile.worldmap.SmallWorldMap
+						end,
+						set = function(_, value)
+							Config.db.profile.worldmap.SmallWorldMap = value
+						end,
 					},
 					SmallWorldMapScale = {
 						order = 5,
 						name = "Compact Map Scale",
 						desc = "Adjust the scale of the smaller world map.",
 						type = "range",
+						width = "double",
 						min = 0.5,
 						max = 1.0,
 						step = 0.1,
-						width = "double",
+						get = function()
+							return Config.db.profile.worldmap.SmallWorldMapScale
+						end,
+						set = function(_, value)
+							Config.db.profile.worldmap.SmallWorldMapScale = value
+						end,
 						disabled = function()
 							return not Config.db.profile.worldmap.SmallWorldMap
 						end,
 					},
 				},
 			},
-			-- bugfixes = {
-			-- 	order = 13,
-			-- 	name = "BugFixes",
-			-- 	icon = "134520", -- :D
-			-- 	type = "group",
-			-- 	get = function(info)
-			-- 		return Config.db.profile.bugfixes[info[#info]]
-			-- 	end,
-			-- 	set = function(info, value)
-			-- 		Config.db.profile.bugfixes[info[#info]] = value
-			-- 		if info[#info] == "DruidFormFix" then
-			-- 			Config:EnableModule(value)
-			-- 		end
-			-- 	end,
-			-- },
 			discordlink = {
-				name = "|CFF82A8C9Discord|r",
-				desc = "Open the Discord link for Nexenhance",
 				order = 98,
+				name = "|CFF82A8C9Discord|r",
+				desc = "Open the Discord link for Config.",
 				type = "execute",
 				func = function()
 					StaticPopupDialogs["NE_DISCORD_POPUP"] = {
-						text = "|T236688:36|t\n\n" .. "Copy the link below and thank you for using NexEnhance!",
+						text = "|T236688:36|t\n\nCopy the link below and thank you for using NexEnhance!",
 						button1 = "OK",
-						OnShow = function(self, data)
+						OnShow = function(self)
 							self.editBox:SetText("https://discord.com/invite/Rc9wcK9cAB")
 							self.editBox:HighlightText()
 						end,
 						OnCancel = function(_, _, reason)
 							if reason == "timeout" then
-								Config:Print("Your Discord link edit box timed out. If this was a mistake, please try again. Thank you.")
+								Config:Print("Your Discord link edit box timed out. Please try again. Thank you!")
 							end
 						end,
 						timeout = 20,
@@ -1059,28 +1359,29 @@ local function CreateOptions()
 						hideOnEscape = true,
 						enterClicksFirstButton = true,
 						hasEditBox = true,
-						editBoxWidth = 350, -- Adjust the width as needed
+						editBoxWidth = 350,
 						preferredIndex = 3,
 					}
 					StaticPopup_Show("NE_DISCORD_POPUP")
 				end,
 			},
+
 			githublink = {
-				name = "|CFFf5f5f5GitHub|r",
-				desc = "Open the GitHub repository for Nexenhance",
 				order = 99,
+				name = "|CFFf5f5f5GitHub|r",
+				desc = "Open the GitHub repository for Config.",
 				type = "execute",
 				func = function()
 					StaticPopupDialogs["NE_GITHUB_POPUP"] = {
-						text = "|T236688:36|t\n\n" .. "Copy the link below and thank you for using NexEnhance!",
+						text = "|T236688:36|t\n\nCopy the link below and thank you for using NexEnhance!",
 						button1 = "OK",
-						OnShow = function(self, data)
+						OnShow = function(self)
 							self.editBox:SetText("https://github.com/Kkthnx-Wow/NexEnhance")
 							self.editBox:HighlightText()
 						end,
 						OnCancel = function(_, _, reason)
 							if reason == "timeout" then
-								Config:Print("Your GitHub link edit box timed out. If this was a mistake, please try again. Thank you.")
+								Config:Print("Your GitHub link edit box timed out. Please try again. Thank you!")
 							end
 						end,
 						timeout = 20,
@@ -1088,20 +1389,21 @@ local function CreateOptions()
 						hideOnEscape = true,
 						enterClicksFirstButton = true,
 						hasEditBox = true,
-						editBoxWidth = 350, -- Adjust the width as needed
+						editBoxWidth = 350,
 						preferredIndex = 3,
 					}
 					StaticPopup_Show("NE_GITHUB_POPUP")
 				end,
 			},
+
 			kkthnxprofile = {
-				name = "|cff83adb5Kkthnx Profile|r",
-				desc = "Brace yourself for Kkthnx's epic setup! Unleash the power...or just enjoy a better UI.",
 				order = 100,
+				name = "|cff83adb5Kkthnx Profile|r",
+				desc = "Load Kkthnx's personal profile for Config.",
 				type = "execute",
 				func = function()
 					StaticPopupDialogs["KK_PROFILE_POPUP"] = {
-						text = "Are you sure you would like to load |cff83adb5Kkthnx's|r personal profile for |cff5bc0beNexEnhance|r?",
+						text = "Are you sure you want to load |cff83adb5Kkthnx's|r personal profile for |cff5bc0beNexEnhance|r?",
 						button1 = "Yes, bring it on!",
 						button2 = "No, maybe later...",
 						OnAccept = function()

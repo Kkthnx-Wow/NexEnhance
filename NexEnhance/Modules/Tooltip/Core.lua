@@ -286,7 +286,7 @@ function Module:OnTooltipSetUnit()
 	end
 
 	if not isPlayer and isShiftKeyDown then
-		local npcID = Module:ExtractIDFromGUID(guid)
+		local npcID = Module.GetNPCID(guid)
 		if npcID then
 			self:AddLine(format(npcIDstring, "NpcID:", npcID))
 		end

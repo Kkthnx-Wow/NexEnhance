@@ -279,10 +279,6 @@ function Module.TargetReputationColor()
 	end
 end
 
-function Module:VARIABLES_LOADED()
-	Module.variablesLoaded = true
-end
-
 function Module:PLAYER_LOGIN()
 	Module.UpdateFrames()
 	Module.PlayerReputationColor()

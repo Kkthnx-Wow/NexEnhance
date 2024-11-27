@@ -399,6 +399,12 @@ do
 		return name
 	end
 
+	-- GUID to npcID
+	function Core.GetNPCID(guid)
+		local id = tonumber(strmatch((guid or ""), "%-(%d-)%-%x-$"))
+		return id
+	end
+
 	function Core.IsUnknownTransmog(bagID, slotID)
 		local data = C_TooltipInfo.GetBagItem(bagID, slotID)
 		local lineData = data and data.lines

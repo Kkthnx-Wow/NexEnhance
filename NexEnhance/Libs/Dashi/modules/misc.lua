@@ -8,41 +8,6 @@ local _, namespace = ...
 ```
 --]]
 
--- game version API
-local _, buildVersion, _, interfaceVersion = GetBuildInfo()
---[[ namespace:IsRetail()
-Checks if the current client is running the "retail" version.
---]]
-function addon:IsRetail()
-	return interfaceVersion > 100000
-end
-
---[[ namespace:IsClassicEra()
-Checks if the current client is running the "classic era" version (e.g. vanilla).
---]]
-function addon:IsClassicEra()
-	return interfaceVersion < 20000
-end
-
---[[ namespace:IsClassic()
-Checks if the current client is running the "classic" version.
---]]
-function addon:IsClassic()
-	return not addon:IsRetail() and not addon:IsClassicEra()
-end
-
---[[ namespace:HasBuild(_buildNumber_[, _interfaceVersion_])
-Checks if the current client is running a build equal to or newer than the specified.  
-Optionally also check against the interface version.
---]]
-function addon:HasBuild(build, interface)
-	if interface and interfaceVersion < interface then
-		return
-	end
-
-	return tonumber(buildVersion) >= build
-end
-
 --[[ namespace:ArgCheck(arg, argIndex, type[, type...])
 Checks if the argument `arg` at position `argIndex` is of type(s).
 --]]
@@ -60,54 +25,29 @@ function addon:ArgCheck(arg, argIndex, ...)
 	error(string.format('Bad argument #%d to \'%s\' (%s expected, got %s)', argIndex, name, types, type(arg)), 3)
 end
 
--- easy frame "removal"
-local hidden = CreateFrame('Frame')
-hidden:Hide()
-
---[[ namespace:Hide(_object_[, _child_,...])
-Forcefully hide an `object`, or its `child`.  
-It will recurse down to the last child if provided.
---]]
-function addon:Hide(object, ...)
-	if type(object) == 'string' then
-		object = _G[object]
-	end
-
-	if ... then
-		-- iterate through arguments, they're children referenced by key
-		for index = 1, select('#', ...) do
-			object = object[select(index, ...)]
-		end
-	end
-
-	if object then
-		object:SetParent(hidden)
-		object.SetParent = nop
-
-		if object.UnregisterAllEvents then
-			object:UnregisterAllEvents()
-		end
-	end
-end
-
--- random utilities
 do
-	local GUID_PATTERN = '%w+%-.-%-.-%-.-%-.-%-(.-)%-'
-	--[[ namespace:ExtractIDFromGUID(_guid_)
-	Returns the integer `id` from the given [`guid`](https://warcraft.wiki.gg/wiki/GUID).
+	-- UnitType-0-ServerID-InstanceID-ZoneUID-ID-SpawnUID
+	local GUID_PATTERN = '(%w+)%-0%-(%d+)%-(%d+)%-(%d+)%-(%d+)%-(.+)'
+	--[[ namespace:ExtractFieldsFromUnitGUID(_guid_)
+	Returns the individual fields from the given [`guid`](https://warcraft.wiki.gg/wiki/GUID), typecast to their correct types.
 	--]]
-	function addon:ExtractIDFromGUID(guid)
-		return guid and tonumber(guid:match(GUID_PATTERN))
+	function addon:ExtractFieldsFromUnitGUID(guid)
+		if guid then
+			local unitType, serverID, instanceID, zoneUID, id, spawnUID = guid:match(GUID_PATTERN)
+			if unitType then
+				return unitType, tonumber(serverID), tonumber(instanceID), tonumber(zoneUID), tonumber(id), spawnUID
+			end
+		end
 	end
 end
 
---[[ namespace:GetNPCID(_unit_)
+--[[ namespace:GetUnitID(_unit_)
 Returns the integer `id` of the given [`unit`](https://warcraft.wiki.gg/wiki/UnitId).
 --]]
-function addon:GetNPCID(unit)
+function addon:GetUnitID(unit)
 	if unit and UnitExists(unit) then
-		local npcGUID = UnitGUID(unit)
-		return npcGUID and addon:ExtractIDFromGUID(npcGUID), npcGUID
+		local _, _, _, _, unitID = addon:ExtractFieldsFromUnitGUID(UnitGUID(unit))
+		return unitID
 	end
 end
 
@@ -201,35 +141,22 @@ function addon:CreateColor(r, g, b, a)
 		b = b / 255
 	end
 
-	return CreateColor(r, g, b, a)
+	local color = CreateColor(r, g, b, a)
+	-- oUF compat; TODO: do something with this in oUF?
+	color[1] = r
+	color[2] = g
+	color[3] = b
+	return color
 end
 
---[[ namespace:IsAddOnEnabled(addonName)
-Checks whether the addon exists and is enabled.
---]]
-function addon:IsAddOnEnabled(name)
-	local _, _, _, loadable = C_AddOns.GetAddOnInfo(name)
-	return not not loadable -- will be false if the addon is missing or disabled
-end
-
---[[ namespace:tsize(_table_)
-Returns the number of entries in the `table`.  
-Works for associative tables as opposed to `#table`.
---]]
-function addon:tsize(tbl)
-	-- would really like Lua 5.2 for this
-	local size = 0
-	if tbl then
-		for _ in next, tbl do
-			size = size + 1
-		end
+do
+	local timeFormatter = CreateFromMixins(SecondsFormatterMixin)
+	timeFormatter:Init(1, SecondsFormatter.Abbreviation.OneLetter)
+	timeFormatter:SetStripIntervalWhitespace(true)
+	--[[ namespace:FormatTime(_timeInSeconds_)
+	Formats the given `timeInSeconds` to a readable, but abbreviated format.
+	--]]
+	function addon:FormatTime(timeInSeconds)
+		return timeFormatter:Format(tonumber(timeInSeconds))
 	end
-	return size
-end
-
---[[ namespace:startswith(_str_, _contents_)
-Checks if the first string starts with the 2nd string.
---]]
-function addon:startswith(str, contents)
-	return str:sub(1, contents:len()) == contents
 end

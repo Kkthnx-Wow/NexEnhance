@@ -19,12 +19,10 @@ function Module:PLAYER_LOGIN()
 	local statPanel = CreateFrame("Frame", nil, CharacterFrameInsetRight)
 	statPanel:SetSize(200, 350)
 	statPanel:SetPoint("TOP", 0, -5)
-
 	local scrollFrame = CreateFrame("ScrollFrame", nil, statPanel, "UIPanelScrollFrameTemplate")
 	scrollFrame:SetAllPoints()
 	scrollFrame.ScrollBar:Hide()
-	scrollFrame.ScrollBar.Show = nop
-
+	scrollFrame.ScrollBar.Show = Module.Noop
 	local stat = CreateFrame("Frame", nil, scrollFrame)
 	stat:SetSize(200, 1)
 	scrollFrame:SetScrollChild(stat)
@@ -45,13 +43,13 @@ function Module:PLAYER_LOGIN()
 				[3] = { stat = "INTELLECT", primary = LE_UNIT_STAT_INTELLECT },
 				[4] = { stat = "STAMINA" },
 				[5] = { stat = "ARMOR" },
-				[6] = { stat = "STAGGER", hideAt = 0, roles = { "TANK" } },
-				[7] = { stat = "ATTACK_DAMAGE", primary = LE_UNIT_STAT_STRENGTH, roles = { "TANK", "DAMAGER" } },
-				[8] = { stat = "ATTACK_AP", hideAt = 0, primary = LE_UNIT_STAT_STRENGTH, roles = { "TANK", "DAMAGER" } },
-				[9] = { stat = "ATTACK_ATTACKSPEED", primary = LE_UNIT_STAT_STRENGTH, roles = { "TANK", "DAMAGER" } },
-				[10] = { stat = "ATTACK_DAMAGE", primary = LE_UNIT_STAT_AGILITY, roles = { "TANK", "DAMAGER" } },
-				[11] = { stat = "ATTACK_AP", hideAt = 0, primary = LE_UNIT_STAT_AGILITY, roles = { "TANK", "DAMAGER" } },
-				[12] = { stat = "ATTACK_ATTACKSPEED", primary = LE_UNIT_STAT_AGILITY, roles = { "TANK", "DAMAGER" } },
+				[6] = { stat = "STAGGER", hideAt = 0, roles = { Enum.LFGRole.Tank } },
+				[7] = { stat = "ATTACK_DAMAGE", primary = LE_UNIT_STAT_STRENGTH, roles = { Enum.LFGRole.Tank, Enum.LFGRole.Damage } },
+				[8] = { stat = "ATTACK_AP", hideAt = 0, primary = LE_UNIT_STAT_STRENGTH, roles = { Enum.LFGRole.Tank, Enum.LFGRole.Damage } },
+				[9] = { stat = "ATTACK_ATTACKSPEED", primary = LE_UNIT_STAT_STRENGTH, roles = { Enum.LFGRole.Tank, Enum.LFGRole.Damage } },
+				[10] = { stat = "ATTACK_DAMAGE", primary = LE_UNIT_STAT_AGILITY, roles = { Enum.LFGRole.Tank, Enum.LFGRole.Damage } },
+				[11] = { stat = "ATTACK_AP", hideAt = 0, primary = LE_UNIT_STAT_AGILITY, roles = { Enum.LFGRole.Tank, Enum.LFGRole.Damage } },
+				[12] = { stat = "ATTACK_ATTACKSPEED", primary = LE_UNIT_STAT_AGILITY, roles = { Enum.LFGRole.Tank, Enum.LFGRole.Damage } },
 				[13] = { stat = "SPELLPOWER", hideAt = 0, primary = LE_UNIT_STAT_INTELLECT },
 				[14] = { stat = "MANAREGEN", hideAt = 0, primary = LE_UNIT_STAT_INTELLECT },
 				[15] = { stat = "ENERGY_REGEN", hideAt = 0, primary = LE_UNIT_STAT_AGILITY },
@@ -70,8 +68,8 @@ function Module:PLAYER_LOGIN()
 				{ stat = "LIFESTEAL", hideAt = 0 },
 				{ stat = "AVOIDANCE", hideAt = 0 },
 				{ stat = "SPEED", hideAt = 0 },
-				{ stat = "DODGE", roles = { "TANK" } },
-				{ stat = "PARRY", hideAt = 0, roles = { "TANK" } },
+				{ stat = "DODGE", roles = { Enum.LFGRole.Tank } },
+				{ stat = "PARRY", hideAt = 0, roles = { Enum.LFGRole.Tank } },
 				{ stat = "BLOCK", hideAt = 0, showFunc = C_PaperDollInfo.OffhandHasShield },
 			},
 		},
@@ -131,6 +129,17 @@ function Module:PLAYER_LOGIN()
 	hooksecurefunc("PaperDollFrame_SetLabelAndText", function(statFrame, label, _, isPercentage)
 		if isPercentage or label == STAT_HASTE then
 			statFrame.Value:SetFormattedText("%.2f%%", statFrame.numericValue)
+		end
+	end)
+
+	hooksecurefunc("PaperDollFrame_UpdateStats", function()
+		for statFrame in CharacterStatsPane.statsFramePool:EnumerateActive() do
+			if not statFrame.styled then
+				statFrame.Label:SetFontObject(Game11Font)
+				statFrame.Value:SetFontObject(Game11Font)
+
+				statFrame.styled = true
+			end
 		end
 	end)
 end

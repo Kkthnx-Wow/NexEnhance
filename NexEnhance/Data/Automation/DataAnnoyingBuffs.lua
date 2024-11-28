@@ -22,6 +22,7 @@ Modules.Data.AnnoyingBuffsInfo = {
 	[61716] = true, -- Rabbit Costume
 	[61734] = true, -- Iron Boot Flask
 	[61781] = true, -- Headless Horseman Costume
+	[399502] = true, -- Atomically Recalibrated
 
-	[279997] = true, -- Testing with Heartsbane Curse
+	-- [279997] = true, -- Testing with Heartsbane Curse
 }

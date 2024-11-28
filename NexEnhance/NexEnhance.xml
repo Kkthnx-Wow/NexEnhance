@@ -59,7 +59,7 @@
     <Script file="Modules\Automation\Goodbye.lua" />
     <Script file="Modules\Automation\Keystone.lua" />
     <Script file="Modules\Automation\Resurrect.lua" />
-    <Script file="Modules\Automation\ScreenShots.lua" />
+    <Script file="Modules\Automation\Screenshots.lua" />
 
     <!-- Blizzard -->
     <Script file="Modules\Blizzard\AlertFrames.lua" />
@@ -124,6 +124,7 @@
     <!-- Skins Blizz -->
     <Script file="Modules\Skins\Blizzard\CharacterFrame.lua" />
     <Script file="Modules\Skins\Blizzard\ChatBubble.lua" />
+    <Script file="Modules\Skins\Blizzard\Collections.lua" />
     <Script file="Modules\Skins\Blizzard\InspectFrame.lua" />
     <Script file="Modules\Skins\Blizzard\ObjectiveTracker.lua" />
 

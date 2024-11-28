@@ -8,6 +8,12 @@ local defaults = {
 			TenthTH = 3,
 			cooldowns = false,
 			range = false,
+			nameSize = 12,
+			countSize = 14,
+			hotkeySize = 12,
+			showName = true,
+			showCount = true,
+			showHotkey = true,
 		},
 		automation = {
 			AnnoyingBuffs = false,
@@ -20,10 +26,10 @@ local defaults = {
 			AutoResurrectEmote = "thank",
 			AutoScreenshotAchieve = false,
 			AutoSell = false,
-			CinematicSkip = false,
 			CustomGoodbyeMessage = "",
 			DeclineDuels = false,
 			DeclinePetDuels = false,
+			SkipCinematics = false,
 		},
 		chat = {
 			Background = false,
@@ -60,6 +66,7 @@ local defaults = {
 		},
 		minimap = {
 			EasyVolume = false,
+			PingNotifier = false,
 			recycleBin = false,
 		},
 		miscellaneous = {
@@ -90,8 +97,9 @@ local defaults = {
 		skins = {
 			blizzskins = {
 				characterFrame = false,
-				inspectFrame = false,
 				chatbubble = false,
+				collectionsFrame = false,
+				inspectFrame = false,
 				objectiveTracker = false,
 			},
 			addonskins = {

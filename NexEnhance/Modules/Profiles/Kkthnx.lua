@@ -5,9 +5,17 @@ function Module:ForceLoadKkthnxProfile()
 
 	-- General Settings
 	db.general.AutoScale = true
+	db.general.disableTutorialButtons = true
 
-	-- Loot Settings
-	db.loot.FasterLoot = true
+	-- Chat Settings
+	db.chat.SocialButton = true
+	db.chat.StickyChat = true
+	db.chat.URLCopy = true
+	db.chat.Background = true
+	db.chat.chatfilters.BlockAddonAlert = true
+	db.chat.chatfilters.BlockSpammer = true
+	db.chat.chatfilters.ChatItemLevel = true
+	db.chat.chatfilters.EnableFilter = true
 
 	-- Tooltip Settings
 	db.tooltip.factionIcon = true
@@ -19,36 +27,13 @@ function Module:ForceLoadKkthnxProfile()
 	db.tooltip.ShowID = true
 	db.tooltip.mdScore = true
 
-	-- Minimap Settings
-	db.minimap.EasyVolume = true
-	db.minimap.recycleBin = true
+	-- Action Bar Settings
+	db.actionbars.hotkeySize = 13
+	db.actionbars.range = true
+	db.actionbars.cooldowns = true
 
-	-- Chat Settings
-	db.chat.StickyChat = true
-	db.chat.URLCopy = true
-	db.chat.Background = true
-	db.chat.chatfilters.BlockAddonAlert = true
-	db.chat.chatfilters.ChatItemLevel = true
-	db.chat.chatfilters.BlockSpammer = true
-	db.chat.chatfilters.EnableFilter = true
-
-	-- Miscellaneous Settings
-	db.miscellaneous.itemlevels.merchantFrame = true
-	db.miscellaneous.itemlevels.inspectFrame = true
-	db.miscellaneous.itemlevels.guildBankFrame = true
-	db.miscellaneous.itemlevels.characterFrame = true
-	db.miscellaneous.itemlevels.flyout = true
-	db.miscellaneous.itemlevels.lootFrame = true
-	db.miscellaneous.itemlevels.scrapping = true
-	db.miscellaneous.itemlevels.containers = true
-	db.miscellaneous.itemlevels.tradeFrame = true
-	db.miscellaneous.gemsNEnchants = true
-	db.miscellaneous.moveableFrames = true
-	db.miscellaneous.questXPPercent = true
-	db.miscellaneous.disableTalkingHead = true
-	db.miscellaneous.enableAFKMode = true
-	db.miscellaneous.questRewardsMostValueIcon = true
-	db.miscellaneous.alreadyKnown = true
+	-- World Map Settings
+	db.worldmap.RevealWorldMap = true
 
 	-- Experience Settings
 	db.experience.enableExp = true
@@ -56,27 +41,55 @@ function Module:ForceLoadKkthnxProfile()
 	-- Settings Applied
 	db.settingsApplied = true
 
+	-- Loot Settings
+	db.loot.FasterLoot = true
+
 	-- Automation Settings
-	db.automation.DeclinePetDuels = true
+	db.automation.DeclineDuels = true
 	db.automation.AutoSell = true
 	db.automation.AutoInvite = true
-	db.automation.DeclineDuels = true
-	db.automation.AnnoyingBuffs = true
 	db.automation.AutoScreenshotAchieve = true
-	db.automation.AutoRepair = true
+	db.automation.AnnoyingBuffs = true
 	db.automation.CinematicSkip = true
+	db.automation.DeclinePetDuels = true
+	db.automation.SkipCinematics = true
+	db.automation.AutoRepair = 1
+	db.automation.AutoResurrect = true
+	db.automation.AutoGoodbye = true
+	db.automation.AutoKeystoneSlotting = true
+	db.automation.AutoBestQuestReward = true
 
 	-- Skin Settings
 	db.skins.blizzskins.characterFrame = true
 	db.skins.blizzskins.objectiveTracker = true
-	db.skins.blizzskins.inspectFrame = true
 	db.skins.blizzskins.chatbubble = true
+	db.skins.blizzskins.inspectFrame = true
+	db.skins.blizzskins.collectionsFrame = true
 	db.skins.addonskins.details = true
 
-	-- Action Bar Settings
-	db.actionbars.cooldowns = true
-	db.actionbars.range = true
+	-- Miscellaneous Settings
+	db.miscellaneous.itemlevels.merchantFrame = true
+	db.miscellaneous.itemlevels.inspectFrame = true
+	db.miscellaneous.itemlevels.guildBankFrame = true
+	db.miscellaneous.itemlevels.characterFrame = true
+	db.miscellaneous.itemlevels.lootFrame = true
+	db.miscellaneous.itemlevels.containers = true
+	db.miscellaneous.itemlevels.flyout = true
+	db.miscellaneous.itemlevels.tradeFrame = true
+	db.miscellaneous.itemlevels.scrapping = true
+	db.miscellaneous.gemsNEnchants = true
+	db.miscellaneous.moveableFrames = true
+	db.miscellaneous.questXPPercent = true
+	db.miscellaneous.questRewardsMostValueIcon = true
+	db.miscellaneous.disableTalkingHead = true
+	db.miscellaneous.enableAFKMode = true
+	db.miscellaneous.alreadyKnown = true
 
 	-- Unit Frames Settings
 	db.unitframes.classColorHealth = true
+
+	-- Minimap Settings
+	db.minimap.PingNotifier = true
+	db.minimap.recycleBin = true
+	db.minimap.EasyVolume = true
 end

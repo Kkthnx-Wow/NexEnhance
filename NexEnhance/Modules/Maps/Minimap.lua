@@ -2,17 +2,30 @@ local _, Module = ...
 Module.LibEasyMenu = LibStub("LibEasyMenu-1.0")
 
 local function UpdateMinimapButton(button, icon)
+	if not icon then
+		return
+	end
+
 	button:ClearAllPoints()
 	button:SetPoint("TOPLEFT", MinimapBackdrop, "TOPLEFT", 10, -150)
 
 	button:SetNormalTexture(icon)
-	button:GetNormalTexture():SetAtlas(icon)
+	local normalTexture = button:GetNormalTexture()
+	if normalTexture then
+		normalTexture:SetAtlas(icon)
+	end
 
 	button:SetPushedTexture(icon)
-	button:GetPushedTexture():SetAtlas(icon)
+	local pushedTexture = button:GetPushedTexture()
+	if pushedTexture then
+		pushedTexture:SetAtlas(icon)
+	end
 
 	button:SetHighlightTexture(icon, "BLEND")
-	button:GetHighlightTexture():SetAtlas("dragonflight-landingbutton-circlehighlight")
+	local highlightTexture = button:GetHighlightTexture()
+	if highlightTexture then
+		highlightTexture:SetAtlas("dragonflight-landingbutton-circlehighlight")
+	end
 
 	button.LoopingGlow:SetAtlas(icon)
 	button.LoopingGlow:SetSize(29, 29)
@@ -27,18 +40,6 @@ local function ToggleLandingPage(_, ...)
 		return
 	end
 
-	local covenantID = C_Covenants.GetActiveCovenantID()
-	if covenantID and covenantID > 0 then
-		local covenantData = C_Covenants.GetCovenantData(covenantID)
-		if covenantData then
-			print("Covenant Name:", covenantData.name)
-		else
-			UIErrorsFrame:AddMessage(Module.InfoColor .. "No covenant data available.")
-		end
-	else
-		UIErrorsFrame:AddMessage(Module.InfoColor .. "No active covenant selected.")
-	end
-
 	ShowGarrisonLandingPage(...)
 end
 
@@ -48,16 +49,12 @@ local function SetupGarrisonMinimapButton()
 		local buttonTextureIcon = "groupfinder-icon-class-" .. Module.MyClass
 		UpdateMinimapButton(garrMinimapButton, buttonTextureIcon)
 
-		garrMinimapButton:HookScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-			GameTooltip:SetText(self.title, 1, 1, 1)
-			GameTooltip:AddLine(self.description, nil, nil, nil, true)
-			GameTooltip:AddLine(Module.L["Right click to switch garrisons"], nil, nil, nil, true)
-			GameTooltip:Show()
+		garrMinimapButton:HookScript("OnShow", function(self)
+			UpdateMinimapButton(self, buttonTextureIcon)
 		end)
 
-		garrMinimapButton:HookScript("OnLeave", function(self)
-			GameTooltip:Hide()
+		hooksecurefunc(garrMinimapButton, "UpdateIcon", function(self)
+			UpdateMinimapButton(self, buttonTextureIcon)
 		end)
 
 		local menuList = {
@@ -96,6 +93,7 @@ local function SetupGarrisonMinimapButton()
 				if _G.GarrisonLandingPage and _G.GarrisonLandingPage:IsShown() then
 					HideUIPanel(_G.GarrisonLandingPage)
 				end
+
 				if _G.ExpansionLandingPage and _G.ExpansionLandingPage:IsShown() then
 					HideUIPanel(_G.ExpansionLandingPage)
 				end
@@ -109,13 +107,13 @@ local function SetupGarrisonMinimapButton()
 			self:SetPoint("TOPLEFT", MinimapBackdrop, "TOPLEFT", 10, -150)
 		end)
 
-		-- Dynamic updating of the button
-		garrMinimapButton:HookScript("OnShow", function(self)
-			UpdateMinimapButton(self, buttonTextureIcon)
-		end)
-
-		hooksecurefunc(garrMinimapButton, "UpdateIcon", function(self)
-			UpdateMinimapButton(self, buttonTextureIcon)
+		garrMinimapButton:SetScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+			GameTooltip:SetText(self.title, 1, 1, 1)
+			GameTooltip:AddLine(self.description, nil, nil, nil, true)
+			GameTooltip:AddLine(" ")
+			GameTooltip:AddLine(Module.L["Right click to switch garrisons"], nil, nil, nil, true)
+			GameTooltip:Show()
 		end)
 	end
 end
@@ -148,6 +146,49 @@ function Module:ReskinMinimapElements()
 	SetupInstanceDifficulty()
 end
 
+function Module:TrackMinimapPing()
+	if not Module.db.profile.minimap.PingNotifier then
+		return
+	end
+
+	local pingNotifierFrame = CreateFrame("Frame", nil, Minimap)
+	pingNotifierFrame:SetAllPoints()
+
+	pingNotifierFrame.text = Module.CreateFontString(pingNotifierFrame, 13, "", false, "OUTLINE", "TOP", 0, -20)
+
+	local fadeAnimationGroup = pingNotifierFrame:CreateAnimationGroup()
+	fadeAnimationGroup:SetScript("OnPlay", function()
+		pingNotifierFrame:SetAlpha(1)
+	end)
+
+	fadeAnimationGroup:SetScript("OnFinished", function()
+		pingNotifierFrame:SetAlpha(0)
+	end)
+
+	local fadeOutAnimation = fadeAnimationGroup:CreateAnimation("Alpha")
+	fadeOutAnimation:SetFromAlpha(1)
+	fadeOutAnimation:SetToAlpha(0)
+	fadeOutAnimation:SetDuration(3)
+	fadeOutAnimation:SetSmoothing("OUT")
+	fadeOutAnimation:SetStartDelay(3)
+
+	Module:RegisterEvent("MINIMAP_PING", function(_, unit)
+		if UnitIsUnit(unit, "player") then
+			return
+		end
+
+		local classToken = select(2, UnitClass(unit))
+		local r, g, b = Module.ClassColor(classToken)
+
+		local unitName = GetUnitName(unit)
+
+		fadeAnimationGroup:Stop()
+		pingNotifierFrame.text:SetText(unitName)
+		pingNotifierFrame.text:SetTextColor(r, g, b)
+		fadeAnimationGroup:Play()
+	end)
+end
+
 function Module:PLAYER_LOGIN()
 	DropDownList1:SetClampedToScreen(true)
 	MinimapCluster:EnableMouse(false)
@@ -158,4 +199,5 @@ function Module:PLAYER_LOGIN()
 	Module.HideObject(Minimap.ZoomOut)
 
 	self:ReskinMinimapElements()
+	self:TrackMinimapPing()
 end

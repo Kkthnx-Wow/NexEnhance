@@ -57,9 +57,7 @@ local function ShowReloadUIPopup()
 			end,
 			OnCancel = function()
 				reloadUIPending = false
-				Config:Print(
-					"We'll remind you again right away when you change another option that requires this reload! :D"
-				)
+				Config:Print("We'll remind you again right away when you change another option that requires this reload! :D")
 			end,
 			timeout = 0,
 			whileDead = true,
@@ -183,8 +181,110 @@ local function CreateOptions()
 						order = 0,
 						width = "double",
 					},
-					cooldowns = {
+					nameSize = {
 						order = 1,
+						name = "Name Font Size",
+						desc = "Adjust the font size of action button names.",
+						type = "range",
+						width = "double",
+						min = 8,
+						max = 20,
+						step = 1,
+						get = function()
+							return Config.db.profile.actionbars.nameSize
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.nameSize = value
+							Config:UpdateStylingConfig()
+						end,
+						disabled = function()
+							return not Config.db.profile.actionbars.showName
+						end,
+					},
+					countSize = {
+						order = 2,
+						name = "Count Font Size",
+						desc = "Adjust the font size of the item count.",
+						type = "range",
+						width = "double",
+						min = 8,
+						max = 20,
+						step = 1,
+						get = function()
+							return Config.db.profile.actionbars.countSize
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.countSize = value
+							Config:UpdateStylingConfig()
+						end,
+						disabled = function()
+							return not Config.db.profile.actionbars.showCount
+						end,
+					},
+					hotkeySize = {
+						order = 3,
+						name = "Hotkey Font Size",
+						desc = "Adjust the font size of the hotkey text.",
+						type = "range",
+						width = "double",
+						min = 8,
+						max = 20,
+						step = 1,
+						get = function()
+							return Config.db.profile.actionbars.hotkeySize
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.hotkeySize = value
+							Config:UpdateStylingConfig()
+						end,
+						disabled = function()
+							return not Config.db.profile.actionbars.showHotkey
+						end,
+					},
+					showName = {
+						order = 4,
+						name = "Show Name",
+						desc = "Enable or disable the name display.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.actionbars.showName
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.showName = value
+							Config:UpdateStylingConfig()
+						end,
+					},
+					showCount = {
+						order = 5,
+						name = "Show Count",
+						desc = "Enable or disable the item count display.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.actionbars.showCount
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.showCount = value
+							Config:UpdateStylingConfig()
+						end,
+					},
+					showHotkey = {
+						order = 6,
+						name = "Show Hotkey",
+						desc = "Enable or disable the hotkey display.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.actionbars.showHotkey
+						end,
+						set = function(_, value)
+							Config.db.profile.actionbars.showHotkey = value
+							Config:UpdateStylingConfig()
+						end,
+					},
+					cooldowns = {
+						order = 7,
 						name = "Show Cooldown Timers",
 						desc = "Enable or disable cooldown timers on action buttons.",
 						type = "toggle",
@@ -197,7 +297,7 @@ local function CreateOptions()
 						end,
 					},
 					MmssTH = {
-						order = 2,
+						order = 8,
 						name = "MM:SS Threshold",
 						desc = "Display cooldowns in MM:SS format below this threshold.",
 						type = "range",
@@ -216,7 +316,7 @@ local function CreateOptions()
 						end,
 					},
 					TenthTH = {
-						order = 3,
+						order = 9,
 						name = "Decimal Threshold",
 						desc = "Display cooldowns in decimal format below this threshold.",
 						type = "range",
@@ -235,7 +335,7 @@ local function CreateOptions()
 						end,
 					},
 					OverrideWA = {
-						order = 4,
+						order = 10,
 						name = "Override WeakAuras",
 						desc = "Hide cooldown timers on WeakAuras.",
 						type = "toggle",
@@ -251,7 +351,7 @@ local function CreateOptions()
 						end,
 					},
 					range = {
-						order = 5,
+						order = 11,
 						name = "Range Indicator",
 						desc = "Change the color of action buttons when out of range or lacking resources.",
 						type = "toggle",
@@ -304,36 +404,10 @@ local function CreateOptions()
 							Config.db.profile.automation.AutoInvite = value
 						end,
 					},
-					AutoSell = {
-						order = 3,
-						name = "Auto-Sell Trash",
-						desc = "Automatically sells junk items to vendors.",
-						type = "toggle",
-						width = "double",
-						get = function()
-							return Config.db.profile.automation.AutoSell
-						end,
-						set = function(_, value)
-							Config.db.profile.automation.AutoSell = value
-						end,
-					},
-					AutoRepair = {
-						order = 4,
-						name = "Auto Repair",
-						desc = "Automatically repairs your gear using the specified source.",
-						type = "select",
-						values = { [0] = "None", [1] = "Guild", [2] = "Player" },
-						get = function()
-							return Config.db.profile.automation.AutoRepair
-						end,
-						set = function(_, value)
-							Config.db.profile.automation.AutoRepair = value
-						end,
-					},
 					AutoGoodbye = {
-						order = 5,
+						order = 3,
 						name = "Auto Goodbye",
-						desc = "Enable or disable the Auto Goodbye feature.|n|nWhen enabled, a goodbye message is sent automatically after a group activity ends.|n|nYou can set a custom goodbye message in the 'Custom Goodbye Message' field.|n|nIf no custom message is set, the default random message will be used.",
+						desc = "Enable or disable the Auto Goodbye feature. Sends a goodbye message automatically after group activities. You can set a custom goodbye message below.",
 						type = "toggle",
 						width = "double",
 						get = function()
@@ -344,9 +418,9 @@ local function CreateOptions()
 						end,
 					},
 					CustomGoodbyeMessage = {
-						order = 6,
+						order = 4,
 						name = "Custom Goodbye Message",
-						desc = "Enter a custom goodbye message to override the default random messages. If left blank, the default message ('GG, everyone!') will be used.",
+						desc = "Enter a custom goodbye message to override the default random messages. Leave blank to use the default ('GG, everyone!').",
 						type = "input",
 						width = "double",
 						get = function()
@@ -359,10 +433,89 @@ local function CreateOptions()
 							return not Config.db.profile.automation.AutoGoodbye
 						end,
 					},
-					AutoResurrect = {
+					SkipCinematics = {
+						order = 5,
+						name = "Auto-Skip Cinematics",
+						desc = "Automatically skip cinematics when specific keys (ESCAPE, SPACE, ENTER) are pressed.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.SkipCinematics
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.SkipCinematics = value
+						end,
+					},
+					AutoKeystoneSlotting = {
+						order = 6,
+						name = "Auto Keystone Slotting",
+						desc = "Automatically scans your bags and slots a Mythic Keystone into the Keystone Frame when opened.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoKeystoneSlotting
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoKeystoneSlotting = value
+						end,
+					},
+					AutoBestQuestReward = {
 						order = 7,
+						name = "Auto Best Quest Reward",
+						desc = "Automatically selects the best quest reward based on sell value and usefulness.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoBestQuestReward
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoBestQuestReward = value
+						end,
+					},
+					AutoScreenshotAchieve = {
+						order = 8,
+						name = "Achievement Screenshot",
+						desc = "Automatically take a screenshot when an achievement is earned.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoScreenshotAchieve
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoScreenshotAchieve = value
+							Config:ToggleAutoScreenshotAchieve()
+						end,
+					},
+					AutoSell = {
+						order = 9,
+						name = "Auto-Sell Trash",
+						desc = "Automatically sells junk items to vendors.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.automation.AutoSell
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoSell = value
+						end,
+					},
+					AutoRepair = {
+						order = 10,
+						name = "Auto Repair",
+						desc = "Automatically repairs your gear. Choose between using Guild funds or Player gold.",
+						type = "select",
+						values = { [0] = "None", [1] = "Guild", [2] = "Player" },
+						get = function()
+							return Config.db.profile.automation.AutoRepair
+						end,
+						set = function(_, value)
+							Config.db.profile.automation.AutoRepair = value
+						end,
+					},
+					AutoResurrect = {
+						order = 11,
 						name = "Auto Resurrect",
-						desc = "Automatically accepts resurrection requests and performs an emote after being resurrected.|n|nYou can choose the emote in the 'Auto Resurrect Emote' setting or set a custom emote if desired.",
+						desc = "Automatically accepts resurrection requests and performs an emote after being resurrected. Choose the emote below.",
 						type = "toggle",
 						width = "double",
 						get = function()
@@ -373,9 +526,9 @@ local function CreateOptions()
 						end,
 					},
 					AutoResurrectEmote = {
-						order = 8,
+						order = 12,
 						name = "Auto Resurrect Emote",
-						desc = "Select an emote to use automatically after being resurrected.",
+						desc = "Select or set a custom emote to perform automatically after resurrection.",
 						type = "select",
 						values = {
 							["none"] = "None",
@@ -399,32 +552,6 @@ local function CreateOptions()
 							return not Config.db.profile.automation.AutoResurrect
 						end,
 					},
-					AutoKeystoneSlotting = {
-						order = 9,
-						name = "Auto Keystone Slotting",
-						desc = "Automatically scans your bags and slots a Mythic Keystone into the Challenges Keystone Frame when opened.",
-						type = "toggle",
-						width = "double",
-						get = function()
-							return Config.db.profile.automation.AutoKeystoneSlotting
-						end,
-						set = function(_, value)
-							Config.db.profile.automation.AutoKeystoneSlotting = value
-						end,
-					},
-					AutoBestQuestReward = {
-						order = 10,
-						name = "Auto Best Quest Reward",
-						desc = "Automatically selects the best quest reward based on sell value and usefulness.",
-						type = "toggle",
-						width = "double",
-						get = function()
-							return Config.db.profile.automation.AutoBestQuestReward
-						end,
-						set = function(_, value)
-							Config.db.profile.automation.AutoBestQuestReward = value
-						end,
-					},
 				},
 			},
 			chat = {
@@ -435,8 +562,7 @@ local function CreateOptions()
 				type = "group",
 				args = {
 					description = {
-						name = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior."
-							.. "\n\n",
+						name = "Customize chat settings to enhance your communication experience, including background visibility, URL copying, and sticky chat behavior." .. "\n\n",
 						type = "description",
 						order = 0,
 						width = "double",
@@ -799,6 +925,19 @@ local function CreateOptions()
 							return C_AddOns.IsAddOnLoaded("MBB")
 						end,
 					},
+					PingNotifier = {
+						order = 2,
+						name = "Ping Notifier",
+						desc = "Displays the name and class color of players who ping the minimap.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.minimap.PingNotifier
+						end,
+						set = function(_, value)
+							Config.db.profile.minimap.PingNotifier = value
+						end,
+					},
 				},
 			},
 			miscellaneous = {
@@ -1108,6 +1247,19 @@ local function CreateOptions()
 									Config.db.profile.skins.blizzskins.chatbubble = value
 								end,
 							},
+							collectionsFrame = {
+								order = 1,
+								name = "Enhanced Transmog Frame",
+								desc = "Upgrades the transmog interface with improved visuals and functionality.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.db.profile.skins.blizzskins.collectionsFrame
+								end,
+								set = function(_, value)
+									Config.db.profile.skins.blizzskins.collectionsFrame = value
+								end,
+							},
 							inspectFrame = {
 								order = 3,
 								name = "Enhanced Inspect Frame",
@@ -1147,7 +1299,6 @@ local function CreateOptions()
 								name = "Enhanced Details! Skin",
 								desc = "Improves the appearance and functionality of the Details! addon frames.",
 								type = "toggle",
-								width = "double",
 								get = function()
 									return Config.db.profile.skins.addonskins.details
 								end,
@@ -1163,7 +1314,6 @@ local function CreateOptions()
 								name = "Reset Details! Skin",
 								desc = "Resets the enhanced Details! skin settings.",
 								type = "execute",
-								width = "double",
 								func = function()
 									print("Resetting Details! skin settings...")
 									Config:ResetDetailsAnchor(true)

@@ -158,61 +158,45 @@ function Module:PLAYER_LOGIN()
 		return
 	end
 
-	-- Recycle bin toggle button
 	local bu = CreateFrame("Button", "RecycleBinToggleButton", Minimap)
 	bu:SetFrameLevel(Minimap:GetFrameLevel() + 2)
 	bu:SetSize(30, 30)
-	bu:SetPoint("BOTTOMLEFT", 26, 7)
+	bu:SetPoint("BOTTOMLEFT", 27, 7)
 
-	-- Tooltip
 	bu:SetScript("OnEnter", function(self)
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:SetText("RecycleBin", 1, 1, 1)
 		GameTooltip:AddLine("Collects minimap buttons and provides access to them through a pop-up menu.", nil, nil, nil, true)
 		GameTooltip:Show()
-
-		-- Enlarge button slightly on hover
-		-- self:SetScale(1.1)
-		self.Icon:SetVertexColor(0.8, 0.8, 0.8) -- Slightly brighten the icon
 	end)
 
 	bu:SetScript("OnLeave", function(self)
 		GameTooltip:Hide()
-
-		-- Reset button scale on leave
-		-- self:SetScale(1.0)
-		self.Icon:SetVertexColor(1, 1, 1) -- Reset icon color
 	end)
 
-	-- Icon setup
 	local recycleBinIcon = (Module.MyFaction == "Alliance") and "ShipMissionIcon-SiegeA-MapBadge" or (Module.MyFaction == "Horde") and "ShipMissionIcon-SiegeH-MapBadge" or "ShipMissionIcon-Combat-MapBadge"
 
 	bu.Icon = bu:CreateTexture(nil, "ARTWORK")
 	bu.Icon:SetAllPoints()
 	bu.Icon:SetAtlas(recycleBinIcon)
 
-	-- Set textures for button states
 	bu:SetNormalTexture(recycleBinIcon)
 	bu:SetPushedTexture(recycleBinIcon)
 	bu:SetHighlightTexture(recycleBinIcon, "BLEND")
 	bu:GetHighlightTexture():SetAtlas("dragonflight-landingbutton-circlehighlight")
 
-	-- Recycle bin frame
 	local width, height = 220, 30
 	local bin = CreateFrame("Frame", "RecycleBinFrame", UIParent)
 	bin:SetPoint("RIGHT", bu, "LEFT", 0, 0)
 	bin:SetSize(width, height)
 	bin:Hide()
 
-	-- Click functionality
 	bu:SetScript("OnMouseDown", function(self)
-		-- Slightly move button to mimic a pressed effect
-		self:SetPoint("BOTTOMLEFT", 27, 6)
+		self:SetPoint("BOTTOMLEFT", 27, 5)
 	end)
 
 	bu:SetScript("OnMouseUp", function(self)
-		-- Reset button position on release
-		self:SetPoint("BOTTOMLEFT", 26, 7)
+		self:SetPoint("BOTTOMLEFT", 27, 7)
 
 		if bin:IsShown() then
 			clickFunc(1)
@@ -223,6 +207,5 @@ function Module:PLAYER_LOGIN()
 		end
 	end)
 
-	-- Collect minimap buttons
 	CollectRubbish()
 end

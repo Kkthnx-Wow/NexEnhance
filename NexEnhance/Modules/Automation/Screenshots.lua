@@ -1,31 +1,40 @@
 local _, Module = ...
 
-function Module:TakeScreenshotOnEvent()
-	Module.screenshotFrame.delay = 1
-	Module.screenshotFrame:Show()
+-- Cache global references locally
+local CreateFrame = CreateFrame
+local Screenshot = Screenshot
+
+-- Achievement screenshot
+local ScreenShotFrame
+
+local function ScreenShotOnEvent(_, _, alreadyEarned)
+	if alreadyEarned then
+		return
+	end
+
+	ScreenShotFrame.delay = 1
+	ScreenShotFrame:Show()
 end
 
-function Module:InitializeScreenshotFrame()
-	if not Module.screenshotFrame then
-		Module.screenshotFrame = CreateFrame("Frame")
-		Module.screenshotFrame:Hide()
-		Module.screenshotFrame:SetScript("OnUpdate", function(self, elapsed)
-			self.delay = self.delay - elapsed
-			if self.delay < 0 then
-				Screenshot()
-				self:Hide()
-			end
-		end)
+local function OnUpdate(self, elapsed)
+	self.delay = self.delay - elapsed
+	if self.delay < 0 then
+		Screenshot()
+		self:Hide()
 	end
 end
 
 function Module:ToggleAutoScreenshotAchieve()
-	self:InitializeScreenshotFrame()
+	if not ScreenShotFrame then
+		ScreenShotFrame = CreateFrame("Frame")
+		ScreenShotFrame:Hide()
+		ScreenShotFrame:SetScript("OnUpdate", OnUpdate)
+	end
 
 	if Module.db.profile.automation.AutoScreenshotAchieve then
-		self:RegisterEvent("ACHIEVEMENT_EARNED", self.TakeScreenshotOnEvent)
-	elseif self:IsEventRegistered("ACHIEVEMENT_EARNED", self.TakeScreenshotOnEvent) then
-		Module.screenshotFrame:Hide()
-		self:UnregisterEvent("ACHIEVEMENT_EARNED", self.TakeScreenshotOnEvent)
+		self:RegisterEvent("ACHIEVEMENT_EARNED", ScreenShotOnEvent)
+	else
+		ScreenShotFrame:Hide()
+		self:UnregisterEvent("ACHIEVEMENT_EARNED", ScreenShotOnEvent)
 	end
 end

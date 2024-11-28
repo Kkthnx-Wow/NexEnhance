@@ -1,10 +1,8 @@
 local _, Module = ...
 
--- Importing required functions and constants
 local gsub = string.gsub
 local KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR = KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR
 
--- Processing key strings
 local keyButton = gsub(KEY_BUTTON4, "%d", "")
 local keyNumpad = gsub(KEY_NUMPAD1, "%d", "")
 
@@ -47,20 +45,20 @@ function Module:UpdateHotKey()
 end
 
 local function StyleActionButton(button)
-	if not button or button.__styled then
+	if not button then
 		return
 	end
 
-	local count = button.Count
-	local hotkey = button.HotKey
-	local name = button.Name
-	local slotbg = button.SlotBackground
+	local count, hotkey, name, slotbg = button.Count, button.HotKey, button.Name, button.SlotBackground
 
 	if name then
+		name:SetShown(Module.db.profile.actionbars.showName)
+		if Module.db.profile.actionbars.showName then
+			name:SetFont("Fonts\\FRIZQT__.TTF", Module.db.profile.actionbars.nameSize, "OUTLINE")
+		end
 		name:ClearAllPoints()
 		name:SetPoint("BOTTOMLEFT", 0, 0)
 		name:SetPoint("BOTTOMRIGHT", 0, 0)
-		name:SetFont("Fonts\\FRIZQT__.TTF", Module.Font[2] - 2, Module.Font[3]) -- 10 size
 	end
 
 	if slotbg then
@@ -68,16 +66,22 @@ local function StyleActionButton(button)
 	end
 
 	if count then
+		count:SetShown(Module.db.profile.actionbars.showCount)
+		if Module.db.profile.actionbars.showCount then
+			count:SetFont("Fonts\\ARIALN.TTF", Module.db.profile.actionbars.countSize, "OUTLINE")
+		end
 		count:ClearAllPoints()
 		count:SetPoint("BOTTOMRIGHT", 2, 0)
-		count:SetFont("Fonts\\ARIALN.TTF", Module.Font[2] + 2, Module.Font[3]) -- 14 size
 	end
 
 	if hotkey then
+		hotkey:SetShown(Module.db.profile.actionbars.showHotkey)
+		if Module.db.profile.actionbars.showHotkey then
+			hotkey:SetFont("Fonts\\FRIZQT__.TTF", Module.db.profile.actionbars.hotkeySize, "OUTLINE")
+		end
 		hotkey:ClearAllPoints()
 		hotkey:SetPoint("TOPRIGHT", 0, -3)
 		hotkey:SetPoint("TOPLEFT", 0, -3)
-		hotkey:SetFont("Fonts\\FRIZQT__.TTF", Module.Font[2], Module.Font[3]) -- 12 size and one has a 14 size?
 
 		Module.UpdateHotKey(hotkey)
 		hooksecurefunc(hotkey, "SetText", Module.UpdateHotKey)
@@ -86,11 +90,7 @@ local function StyleActionButton(button)
 	button.__styled = true
 end
 
-function Module:PLAYER_LOGIN()
-	if C_AddOns.IsAddOnLoaded("Masque") and C_AddOns.IsAddOnLoaded("MasqueBlizzBars") then
-		return
-	end
-
+function Module:RefreshActionBarStyling()
 	local actionButtons = {
 		"ActionButton",
 		"MultiBarBottomLeftButton",
@@ -111,4 +111,12 @@ function Module:PLAYER_LOGIN()
 	end
 
 	StyleActionButton(ExtraActionButton1)
+end
+
+function Module:UpdateStylingConfig()
+	self:RefreshActionBarStyling()
+end
+
+function Module:PLAYER_LOGIN()
+	self:RefreshActionBarStyling()
 end

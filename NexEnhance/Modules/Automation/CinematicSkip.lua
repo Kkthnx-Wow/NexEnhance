@@ -1,7 +1,7 @@
 local _, Module = ...
 
-local function skipOnKeyDown(self, key)
-	if not Module.db.profile.automation.CinematicSkip then
+local function HandleKeyDown(self, key)
+	if not Module.db.profile.automation.SkipCinematics then
 		return
 	end
 
@@ -12,8 +12,8 @@ local function skipOnKeyDown(self, key)
 	end
 end
 
-local function skipOnKeyUp(self, key)
-	if not Module.db.profile.automation.CinematicSkip then
+local function HandleKeyUp(self, key)
+	if not Module.db.profile.automation.SkipCinematics then
 		return
 	end
 
@@ -29,8 +29,8 @@ function Module:PLAYER_LOGIN()
 	MovieFrame.closeDialog.confirmButton = MovieFrame.CloseDialog.ConfirmButton
 	CinematicFrame.closeDialog.confirmButton = CinematicFrameCloseDialogConfirmButton
 
-	MovieFrame:HookScript("OnKeyDown", skipOnKeyDown)
-	MovieFrame:HookScript("OnKeyUp", skipOnKeyUp)
-	CinematicFrame:HookScript("OnKeyDown", skipOnKeyDown)
-	CinematicFrame:HookScript("OnKeyUp", skipOnKeyUp)
+	MovieFrame:HookScript("OnKeyDown", HandleKeyDown)
+	MovieFrame:HookScript("OnKeyUp", HandleKeyUp)
+	CinematicFrame:HookScript("OnKeyDown", HandleKeyDown)
+	CinematicFrame:HookScript("OnKeyUp", HandleKeyUp)
 end

@@ -4,7 +4,6 @@ local AddOnName, Module = ...
 local string_format = string.format
 local math_floor = math.floor
 local day, hour, minute = 86400, 3600, 60
-local DebuffTypeColor = DebuffTypeColor -- Ensure DebuffTypeColor is defined
 
 -- Function to get formatted time
 local function GetFormattedTime(s)
@@ -40,15 +39,11 @@ local function ApplySkin(aura)
 		local durationFont, durationSize = aura.Duration:GetFont()
 		aura.Duration:SetFont(durationFont, durationSize + 1, "OUTLINE")
 		aura.Duration:SetShadowOffset(0, 0)
-		aura.Duration:ClearAllPoints()
-		aura.Duration:SetPoint("BOTTOM", 0, 4)
 
 		if aura.Count then
 			local countFont, countSize = aura.Count:GetFont()
 			aura.Count:SetFont(countFont, countSize, "OUTLINE")
 			aura.Count:SetShadowOffset(0, 0)
-			aura.Count:ClearAllPoints()
-			aura.Count:SetPoint("TOPRIGHT", -2, -2)
 		end
 
 		if not aura.hook then

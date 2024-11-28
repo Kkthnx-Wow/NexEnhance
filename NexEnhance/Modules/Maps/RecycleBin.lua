@@ -170,6 +170,18 @@ function Module:PLAYER_LOGIN()
 		GameTooltip:SetText("RecycleBin", 1, 1, 1)
 		GameTooltip:AddLine("Collects minimap buttons and provides access to them through a pop-up menu.", nil, nil, nil, true)
 		GameTooltip:Show()
+
+		-- Enlarge button slightly on hover
+		-- self:SetScale(1.1)
+		self.Icon:SetVertexColor(0.8, 0.8, 0.8) -- Slightly brighten the icon
+	end)
+
+	bu:SetScript("OnLeave", function(self)
+		GameTooltip:Hide()
+
+		-- Reset button scale on leave
+		-- self:SetScale(1.0)
+		self.Icon:SetVertexColor(1, 1, 1) -- Reset icon color
 	end)
 
 	-- Icon setup
@@ -179,6 +191,12 @@ function Module:PLAYER_LOGIN()
 	bu.Icon:SetAllPoints()
 	bu.Icon:SetAtlas(recycleBinIcon)
 
+	-- Set textures for button states
+	bu:SetNormalTexture(recycleBinIcon)
+	bu:SetPushedTexture(recycleBinIcon)
+	bu:SetHighlightTexture(recycleBinIcon, "BLEND")
+	bu:GetHighlightTexture():SetAtlas("dragonflight-landingbutton-circlehighlight")
+
 	-- Recycle bin frame
 	local width, height = 220, 30
 	local bin = CreateFrame("Frame", "RecycleBinFrame", UIParent)
@@ -187,7 +205,15 @@ function Module:PLAYER_LOGIN()
 	bin:Hide()
 
 	-- Click functionality
-	bu:SetScript("OnClick", function()
+	bu:SetScript("OnMouseDown", function(self)
+		-- Slightly move button to mimic a pressed effect
+		self:SetPoint("BOTTOMLEFT", 27, 6)
+	end)
+
+	bu:SetScript("OnMouseUp", function(self)
+		-- Reset button position on release
+		self:SetPoint("BOTTOMLEFT", 26, 7)
+
 		if bin:IsShown() then
 			clickFunc(1)
 		else
@@ -197,5 +223,6 @@ function Module:PLAYER_LOGIN()
 		end
 	end)
 
+	-- Collect minimap buttons
 	CollectRubbish()
 end

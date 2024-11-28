@@ -4,9 +4,15 @@ Module.LibEasyMenu = LibStub("LibEasyMenu-1.0")
 local function UpdateMinimapButton(button, icon)
 	button:ClearAllPoints()
 	button:SetPoint("TOPLEFT", MinimapBackdrop, "TOPLEFT", 10, -150)
+
+	button:SetNormalTexture(icon)
 	button:GetNormalTexture():SetAtlas(icon)
+
+	button:SetPushedTexture(icon)
 	button:GetPushedTexture():SetAtlas(icon)
-	button:GetHighlightTexture():SetAtlas(icon)
+
+	button:SetHighlightTexture(icon, "BLEND")
+	button:GetHighlightTexture():SetAtlas("dragonflight-landingbutton-circlehighlight")
 
 	button.LoopingGlow:SetAtlas(icon)
 	button.LoopingGlow:SetSize(29, 29)
@@ -20,6 +26,19 @@ local function ToggleLandingPage(_, ...)
 		UIErrorsFrame:AddMessage(Module.InfoColor .. CONTRIBUTION_TOOLTIP_UNLOCKED_WHEN_ACTIVE)
 		return
 	end
+
+	local covenantID = C_Covenants.GetActiveCovenantID()
+	if covenantID and covenantID > 0 then
+		local covenantData = C_Covenants.GetCovenantData(covenantID)
+		if covenantData then
+			print("Covenant Name:", covenantData.name)
+		else
+			UIErrorsFrame:AddMessage(Module.InfoColor .. "No covenant data available.")
+		end
+	else
+		UIErrorsFrame:AddMessage(Module.InfoColor .. "No active covenant selected.")
+	end
+
 	ShowGarrisonLandingPage(...)
 end
 
@@ -28,18 +47,48 @@ local function SetupGarrisonMinimapButton()
 	if garrMinimapButton then
 		local buttonTextureIcon = "groupfinder-icon-class-" .. Module.MyClass
 		UpdateMinimapButton(garrMinimapButton, buttonTextureIcon)
-		garrMinimapButton:HookScript("OnShow", function(self)
-			UpdateMinimapButton(self, buttonTextureIcon)
+
+		garrMinimapButton:HookScript("OnEnter", function(self)
+			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+			GameTooltip:SetText(self.title, 1, 1, 1)
+			GameTooltip:AddLine(self.description, nil, nil, nil, true)
+			GameTooltip:AddLine(Module.L["Right click to switch garrisons"], nil, nil, nil, true)
+			GameTooltip:Show()
 		end)
-		hooksecurefunc(garrMinimapButton, "UpdateIcon", function(self)
-			UpdateMinimapButton(self, buttonTextureIcon)
+
+		garrMinimapButton:HookScript("OnLeave", function(self)
+			GameTooltip:Hide()
 		end)
 
 		local menuList = {
-			{ text = _G.GARRISON_TYPE_9_0_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_9_0_Garrison, notCheckable = true },
-			{ text = _G.WAR_CAMPAIGN, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_8_0_Garrison, notCheckable = true },
-			{ text = _G.ORDER_HALL_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_7_0_Garrison, notCheckable = true },
-			{ text = _G.GARRISON_LANDING_PAGE_TITLE, func = ToggleLandingPage, arg1 = Enum.GarrisonType.Type_6_0_Garrison, notCheckable = true },
+			{
+				text = _G.GARRISON_TYPE_9_0_LANDING_PAGE_TITLE,
+				func = ToggleLandingPage,
+				arg1 = Enum.GarrisonType.Type_9_0_Garrison,
+				notCheckable = true,
+				icon = 1046795,
+			},
+			{
+				text = _G.WAR_CAMPAIGN,
+				func = ToggleLandingPage,
+				arg1 = Enum.GarrisonType.Type_8_0_Garrison,
+				notCheckable = true,
+				icon = 237387,
+			},
+			{
+				text = _G.ORDER_HALL_LANDING_PAGE_TITLE,
+				func = ToggleLandingPage,
+				arg1 = Enum.GarrisonType.Type_7_0_Garrison,
+				notCheckable = true,
+				icon = 1397630,
+			},
+			{
+				text = _G.GARRISON_LANDING_PAGE_TITLE,
+				func = ToggleLandingPage,
+				arg1 = Enum.GarrisonType.Type_6_0_Garrison,
+				notCheckable = true,
+				icon = 1005027,
+			},
 		}
 
 		garrMinimapButton:HookScript("OnMouseDown", function(self, btn)
@@ -51,15 +100,22 @@ local function SetupGarrisonMinimapButton()
 					HideUIPanel(_G.ExpansionLandingPage)
 				end
 				Module.LibEasyMenu.Create(menuList, Module.EasyMenu, self, -80, 0, "MENU", 1)
+			else
+				self:SetPoint("TOPLEFT", MinimapBackdrop, "TOPLEFT", 10, -152)
 			end
 		end)
 
-		garrMinimapButton:SetScript("OnEnter", function(self)
-			GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-			GameTooltip:SetText(self.title, 1, 1, 1)
-			GameTooltip:AddLine(self.description, nil, nil, nil, true)
-			GameTooltip:AddLine(Module.L["Right click to switch garrisons"], nil, nil, nil, true)
-			GameTooltip:Show()
+		garrMinimapButton:HookScript("OnMouseUp", function(self)
+			self:SetPoint("TOPLEFT", MinimapBackdrop, "TOPLEFT", 10, -150)
+		end)
+
+		-- Dynamic updating of the button
+		garrMinimapButton:HookScript("OnShow", function(self)
+			UpdateMinimapButton(self, buttonTextureIcon)
+		end)
+
+		hooksecurefunc(garrMinimapButton, "UpdateIcon", function(self)
+			UpdateMinimapButton(self, buttonTextureIcon)
 		end)
 	end
 end

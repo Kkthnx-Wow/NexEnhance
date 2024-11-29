@@ -569,7 +569,7 @@ function Module:PLAYER_LOGIN()
 	local rest = CreateFrame("StatusBar", nil, bar)
 	rest:SetAllPoints()
 	rest:SetStatusBarTexture(Module.NexEnhance)
-	rest:SetStatusBarColor(1, 0, 1, 0.8)
+	rest:SetStatusBarColor(1, 0, 1, 0.4)
 	rest:SetFrameLevel(bar:GetFrameLevel())
 
 	local reward = bar:CreateTexture(nil, "OVERLAY")

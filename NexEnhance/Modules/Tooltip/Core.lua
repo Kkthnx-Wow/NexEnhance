@@ -319,6 +319,7 @@ function Module:ReskinStatusBar()
 	self.StatusBar:SetPoint("BOTTOMLEFT", self, "TOPLEFT", 4, 4)
 	self.StatusBar:SetPoint("BOTTOMRIGHT", self, "TOPRIGHT", -4, 4)
 	self.StatusBar:SetHeight(11)
+	self.StatusBar:SetStatusBarTexture(Module.NexEnhance)
 
 	Module.CreateBackdropFrame(self.StatusBar, 4, 4, 4, 4)
 end

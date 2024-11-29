@@ -447,21 +447,21 @@ end
 
 function Module:SetupExpRepScript(bar)
 	bar.eventList = {
-		"PLAYER_XP_UPDATE",
-		"PLAYER_LEVEL_UP",
-		"UPDATE_EXHAUSTION",
-		"PLAYER_ENTERING_WORLD",
-		"UPDATE_FACTION",
 		"ARTIFACT_XP_UPDATE",
-		"PLAYER_EQUIPMENT_CHANGED",
-		"ENABLE_XP_GAIN",
-		"DISABLE_XP_GAIN",
 		"AZERITE_ITEM_EXPERIENCE_CHANGED",
-		"HONOR_XP_UPDATE",
-		"PLAYER_UPDATE_RESTING",
+		"DISABLE_XP_GAIN",
+		"ENABLE_XP_GAIN",
 		"HONOR_LEVEL_UPDATE",
+		"HONOR_XP_UPDATE",
 		"MAJOR_FACTION_RENOWN_LEVEL_CHANGED",
 		"MAJOR_FACTION_UNLOCKED",
+		"PLAYER_ENTERING_WORLD",
+		"PLAYER_EQUIPMENT_CHANGED",
+		"PLAYER_LEVEL_UP",
+		"PLAYER_UPDATE_RESTING",
+		"PLAYER_XP_UPDATE",
+		"UPDATE_EXHAUSTION",
+		"UPDATE_FACTION",
 		-- "UNIT_INVENTORY_CHANGED",
 	}
 
@@ -529,7 +529,7 @@ function Module:PLAYER_LOGIN()
 	bar:SetPoint("TOP", UIParent, "TOP", 0, -6)
 	bar:SetSize(Module.db.profile.experience.barWidth, Module.db.profile.experience.barHeight)
 	bar:SetHitRectInsets(0, 0, 0, -10)
-	bar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+	bar:SetStatusBarTexture(Module.NexEnhance)
 
 	Module.CreateMoverFrame(bar, nil, true)
 	Module.RestoreMoverFrame(bar)
@@ -548,7 +548,7 @@ function Module:PLAYER_LOGIN()
 
 	local rest = CreateFrame("StatusBar", nil, bar)
 	rest:SetAllPoints()
-	rest:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+	rest:SetStatusBarTexture(Module.NexEnhance)
 	rest:SetStatusBarColor(1, 0, 1, 0.4)
 	rest:SetFrameLevel(bar:GetFrameLevel() - 1)
 

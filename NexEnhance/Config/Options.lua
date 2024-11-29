@@ -5,10 +5,6 @@ local DEFAULT_ICON = "Interface\\Icons\\INV_Misc_QuestionMark"
 local DEFAULT_ICON_SIZE = 16
 local DEFAULT_ATLAS_ICON = "SmallQuestBang"
 local DEFAULT_ATLAS_SIZE = 32
-local HeaderTag = "|cff00cc4c"
-
--- Variables
-local reloadUIPending = false -- Flag to track if a UI reload popup is already shown or pending
 
 -- Functions
 
@@ -34,43 +30,6 @@ local function GetAtlasMarkup(atlas, height, width)
 	width = width or DEFAULT_ATLAS_SIZE
 	return string.format("|A:%s:%d:%d|a", atlas, width, height)
 end
-
--- Retrieves icon string; validation check included
-local function GetIconString(iconMarkup)
-	if not iconMarkup then
-		error("Invalid input parameter for GetIconString")
-	end
-	return iconMarkup
-end
-
--- Helper function to show a reload UI confirmation popup
-local function ShowReloadUIPopup()
-	if not reloadUIPending then
-		reloadUIPending = true
-		StaticPopupDialogs["RELOAD_UI_CONFIRM"] = {
-			text = "Reloading " .. AddonName .. " is necessary to apply this setting.\nDo you want to reload now?",
-			button1 = "Reload UI",
-			button2 = "Remind Me Later",
-			OnAccept = function()
-				reloadUIPending = false
-				ReloadUI()
-			end,
-			OnCancel = function()
-				reloadUIPending = false
-				Config:Print("We'll remind you again right away when you change another option that requires this reload! :D")
-			end,
-			timeout = 0,
-			whileDead = true,
-			hideOnEscape = true,
-			preferredIndex = 3,
-		}
-		StaticPopup_Show("RELOAD_UI_CONFIRM")
-	end
-end
-
--- Tooltip notice for reload requirement
--- Only to be placed on settings we need to have a reload to take effect
-local AddReloadNotice = "|n|n|cff5bc0beChanging this option requires a UI reload.|r"
 
 -- Lets users know this is a new feature
 local NewFeatureIcon = GetTextureMarkup(DEFAULT_ICON, DEFAULT_ICON_SIZE, DEFAULT_ICON_SIZE)
@@ -1598,66 +1557,6 @@ local function CreateOptions()
 					},
 				},
 			},
-			discordlink = {
-				order = 98,
-				name = "|CFF82A8C9Discord|r",
-				desc = "Open the Discord link for Config.",
-				type = "execute",
-				func = function()
-					StaticPopupDialogs["NE_DISCORD_POPUP"] = {
-						text = "|T236688:36|t\n\nCopy the link below and thank you for using NexEnhance!",
-						button1 = "OK",
-						OnShow = function(self)
-							self.editBox:SetText("https://discord.com/invite/Rc9wcK9cAB")
-							self.editBox:HighlightText()
-						end,
-						OnCancel = function(_, _, reason)
-							if reason == "timeout" then
-								Config:Print("Your Discord link edit box timed out. Please try again. Thank you!")
-							end
-						end,
-						timeout = 20,
-						whileDead = false,
-						hideOnEscape = true,
-						enterClicksFirstButton = true,
-						hasEditBox = true,
-						editBoxWidth = 350,
-						preferredIndex = 3,
-					}
-					StaticPopup_Show("NE_DISCORD_POPUP")
-				end,
-			},
-
-			githublink = {
-				order = 99,
-				name = "|CFFf5f5f5GitHub|r",
-				desc = "Open the GitHub repository for Config.",
-				type = "execute",
-				func = function()
-					StaticPopupDialogs["NE_GITHUB_POPUP"] = {
-						text = "|T236688:36|t\n\nCopy the link below and thank you for using NexEnhance!",
-						button1 = "OK",
-						OnShow = function(self)
-							self.editBox:SetText("https://github.com/Kkthnx-Wow/NexEnhance")
-							self.editBox:HighlightText()
-						end,
-						OnCancel = function(_, _, reason)
-							if reason == "timeout" then
-								Config:Print("Your GitHub link edit box timed out. Please try again. Thank you!")
-							end
-						end,
-						timeout = 20,
-						whileDead = false,
-						hideOnEscape = true,
-						enterClicksFirstButton = true,
-						hasEditBox = true,
-						editBoxWidth = 350,
-						preferredIndex = 3,
-					}
-					StaticPopup_Show("NE_GITHUB_POPUP")
-				end,
-			},
-
 			kkthnxprofile = {
 				order = 100,
 				name = "|cff83adb5Kkthnx Profile|r",
@@ -1685,8 +1584,105 @@ local function CreateOptions()
 		},
 	}
 
+	local aboutOptions = {
+		type = "group",
+		name = "About",
+		desc = "Information about NexEnhance.",
+		args = {
+			description = {
+				order = 1,
+				name = "|cff5bc0beNexEnhance|r\n\nCreated by [Josh 'Kkthnx' Russell]\n\nVersion: 1.0.6\n\nThank you for using NexEnhance! Your support makes this possible.",
+				type = "description",
+				width = "full",
+			},
+			logo = {
+				order = 2, -- Ensures the logo is displayed at the top
+				type = "description",
+				name = "",
+				image = function()
+					-- Replace the path below with the actual logo path in your addon
+					return Config.Logo256 -- Adjust to your logo's file location
+				end,
+				imageWidth = 256, -- Adjust size to fit nicely
+				imageHeight = 256,
+			},
+			discordButton = {
+				order = 3,
+				name = "Discord",
+				desc = "Join our Discord community.",
+				type = "execute",
+				func = function()
+					StaticPopupDialogs["NE_DISCORD_POPUP"] = {
+						text = "|T236688:36|t\n\nCopy the link below to join our Discord community:",
+						button1 = "OK",
+						OnShow = function(self)
+							self.editBox:SetText("https://discord.com/invite/Rc9wcK9cAB")
+							self.editBox:HighlightText()
+						end,
+						timeout = 0,
+						whileDead = true,
+						hideOnEscape = true,
+						hasEditBox = true,
+						editBoxWidth = 350,
+						preferredIndex = 3,
+					}
+					StaticPopup_Show("NE_DISCORD_POPUP")
+				end,
+			},
+			githubButton = {
+				order = 4,
+				name = "GitHub",
+				desc = "Visit our GitHub repository.",
+				type = "execute",
+				func = function()
+					StaticPopupDialogs["NE_GITHUB_POPUP"] = {
+						text = "|T236688:36|t\n\nCopy the link below to visit our GitHub repository:",
+						button1 = "OK",
+						OnShow = function(self)
+							self.editBox:SetText("https://github.com/Kkthnx-Wow/NexEnhance")
+							self.editBox:HighlightText()
+						end,
+						timeout = 0,
+						whileDead = true,
+						hideOnEscape = true,
+						hasEditBox = true,
+						editBoxWidth = 350,
+						preferredIndex = 3,
+					}
+					StaticPopup_Show("NE_GITHUB_POPUP")
+				end,
+			},
+			paypalButton = {
+				order = 5,
+				name = "Donate via PayPal",
+				desc = "Support our work with a donation.",
+				type = "execute",
+				func = function()
+					StaticPopupDialogs["NE_PAYPAL_POPUP"] = {
+						text = "|T236688:36|t\n\nCopy the link below to donate via PayPal:",
+						button1 = "OK",
+						OnShow = function(self)
+							self.editBox:SetText("https://paypal.me/KkthnxTV")
+							self.editBox:HighlightText()
+						end,
+						timeout = 0,
+						whileDead = true,
+						hideOnEscape = true,
+						hasEditBox = true,
+						editBoxWidth = 350,
+						preferredIndex = 3,
+					}
+					StaticPopup_Show("NE_PAYPAL_POPUP")
+				end,
+			},
+		},
+	}
+
 	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName, options)
 	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName, "|cff5bc0be" .. AddonName .. "|r")
+
+	LibStub("AceConfig-3.0"):RegisterOptionsTable(AddonName .. "_About", aboutOptions)
+	LibStub("AceConfigDialog-3.0"):AddToBlizOptions(AddonName .. "_About", "About", "|cff5bc0be" .. AddonName .. "|r")
 
 	-- handle combat updates
 	local EventHandler = CreateFrame("Frame", nil, SettingsPanel)

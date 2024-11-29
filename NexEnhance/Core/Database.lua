@@ -25,6 +25,8 @@ Core.SystemColor = "|CFFFFCC66"
 
 Core.Media = "Interface\\AddOns\\NexEnhance\\Media\\"
 
+Core.NexEnhance = Core.Media .. "NexEnhance.tga"
+
 Core.Logo256 = Core.Media .. "Logos\\Logo256.blp"
 Core.Logo128 = Core.Media .. "Logos\\Logo128.blp"
 Core.Logo64 = Core.Media .. "Logos\\Logo64.blp"
@@ -76,3 +78,9 @@ end
 Core.QualityColors[-1] = { r = 1, g = 1, b = 1 }
 Core.QualityColors[Enum.ItemQuality.Poor] = { r = 0.61, g = 0.61, b = 0.61 }
 Core.QualityColors[Enum.ItemQuality.Common] = { r = 1, g = 1, b = 1 } -- Default color
+
+-- Register NexEnhance statusbar
+local media = LibStub and LibStub("LibSharedMedia-3.0", true)
+if media then
+	media:Register("statusbar", "NexEnhance", Core.NexEnhance)
+end

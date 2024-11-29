@@ -48,11 +48,12 @@ local defaults = {
 			},
 		},
 		experience = {
-			enableExp = false,
-			numberFormat = 1,
+			barHeight = 12,
 			barTextFormat = "CURPERC",
 			barWidth = 570,
-			barHeight = 12,
+			classColorBar = false,
+			enableExp = false,
+			numberFormat = 1,
 			showBubbles = true,
 		},
 		general = {

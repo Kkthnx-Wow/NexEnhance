@@ -824,6 +824,22 @@ local function CreateOptions()
 							end
 						end,
 					},
+					classColorBar = {
+						order = 7,
+						name = "Class-colored XP Bar",
+						desc = "Toggle to color the XP bar based on your class.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.experience.classColorBar
+						end,
+						set = function(_, value)
+							Config.db.profile.experience.classColorBar = value
+							if Config.bar then
+								Config:UpdateExpBarColor(Config.bar)
+							end
+						end,
+					},
 				},
 			},
 			loot = {

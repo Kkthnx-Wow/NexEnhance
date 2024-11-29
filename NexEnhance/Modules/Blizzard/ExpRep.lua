@@ -37,6 +37,12 @@ local function XPIsLevelMax()
 	return IsLevelAtEffectiveMaxLevel(Module.MyLevel) or XPIsUserDisabled() or XPIsTrialMax()
 end
 
+local function GetClassColor()
+	local _, classFileName = UnitClass("player")
+	local color = RAID_CLASS_COLORS[classFileName]
+	return color.r, color.g, color.b, 0.8 -- Use alpha for transparency
+end
+
 -- Reputation
 local function RepGetValues(curValue, minValue, maxValue)
 	local maximum = maxValue - minValue
@@ -83,8 +89,13 @@ function Module:OnExpBarEvent()
 		RemainTotal, RemainBars = remainPercent * 100, remainPercent * 20
 		PercentXP, RemainXP = (CurrentXP / XPToLevel) * 100, Module.ShortValue(remainXP)
 
-		-- Set status bar colors
-		self:SetStatusBarColor(0, 0.4, 1, 0.8)
+		-- Set status bar colors based on toggle
+		if Module.db.profile.experience.classColorBar then
+			local r, g, b, a = GetClassColor()
+			self:SetStatusBarColor(r, g, b, a)
+		else
+			self:SetStatusBarColor(0, 0.4, 1, 0.8) -- Default blue color
+		end
 		self.restBar:SetStatusBarColor(1, 0, 1, 0.4)
 
 		-- Set up main XP bar
@@ -513,6 +524,15 @@ function Module:ForceTextScaling(bar)
 	end
 end
 
+function Module:UpdateExpBarColor(bar)
+	if Module.db.profile.experience.classColorBar then
+		local r, g, b, a = GetClassColor()
+		bar:SetStatusBarColor(r, g, b, a)
+	else
+		bar:SetStatusBarColor(0, 0.4, 1, 0.8) -- Default blue color
+	end
+end
+
 function Module:PLAYER_LOGIN()
 	if not Module.db.profile.experience.enableExp then
 		return
@@ -549,8 +569,8 @@ function Module:PLAYER_LOGIN()
 	local rest = CreateFrame("StatusBar", nil, bar)
 	rest:SetAllPoints()
 	rest:SetStatusBarTexture(Module.NexEnhance)
-	rest:SetStatusBarColor(1, 0, 1, 0.4)
-	rest:SetFrameLevel(bar:GetFrameLevel() - 1)
+	rest:SetStatusBarColor(1, 0, 1, 0.8)
+	rest:SetFrameLevel(bar:GetFrameLevel())
 
 	local reward = bar:CreateTexture(nil, "OVERLAY")
 	reward:SetAtlas("ParagonReputation_Bag")
@@ -573,6 +593,7 @@ function Module:PLAYER_LOGIN()
 	Module:SetupExpRepScript(bar)
 	Module:ManageBarBubbles(bar)
 	Module:ForceTextScaling(bar)
+	Module:UpdateExpBarColor(bar)
 
 	-- UIWidget reanchor
 	if not UIWidgetTopCenterContainerFrame:IsMovable() then -- can be movable for some addons, eg BattleInfo

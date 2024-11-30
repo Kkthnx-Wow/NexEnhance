@@ -36,6 +36,8 @@ local defaults = {
 			URLCopy = false,
 			StickyChat = false,
 			SocialButton = false,
+			MenuButton = false,
+			ChannelButton = false,
 			chatfilters = {
 				BlockStrangers = false,
 				BlockSpammer = false,
@@ -123,7 +125,16 @@ local defaults = {
 			qualityColor = false,
 		},
 		unitframes = {
-			classColorHealth = false,
+			playerFrameEnhancements = {
+				classColorFramesSkipPlayer = false,
+				colorPetAfterOwner = false,
+				playerReputationColor = false,
+				playerReputationClassColor = false,
+				playerHitIndicatorHide = false,
+			},
+			targetFrameEnhancements = {
+				targetReputationColorHide = false,
+			},
 		},
 		worldmap = {
 			RevealWorldMap = false,

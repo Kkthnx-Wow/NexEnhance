@@ -120,6 +120,7 @@
 
     <!-- Unitframes -->
     <Script file="Modules\Unitframes\ClassColor.lua" />
+    <Script file="Modules\Unitframes\HitIndacator.lua" />
 
     <!-- Skins Blizz -->
     <Script file="Modules\Skins\Blizzard\CharacterFrame.lua" />

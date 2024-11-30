@@ -581,8 +581,36 @@ local function CreateOptions()
 							Config:ToggleSocialButton()
 						end,
 					},
-					chatfilters = {
+					MenuButton = {
 						order = 5,
+						name = "Hide Menu Button",
+						desc = "Hide Menu Button.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.chat.MenuButton
+						end,
+						set = function(_, value)
+							Config.db.profile.chat.MenuButton = value
+							Config:ToggleMenuButton()
+						end,
+					},
+					ChannelButton = {
+						order = 6,
+						name = "Hide Channel Button",
+						desc = "Hide Channel Button.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.db.profile.chat.ChannelButton
+						end,
+						set = function(_, value)
+							Config.db.profile.chat.ChannelButton = value
+							Config:ToggleChannelButton()
+						end,
+					},
+					chatfilters = {
+						order = 7,
 						name = "Chat Filters",
 						type = "group",
 						inline = true,
@@ -1460,30 +1488,158 @@ local function CreateOptions()
 				icon = "648207", -- :D
 				type = "group",
 				args = {
-					classColorHealth = {
+					classColorFrames = {
 						order = 1,
-						name = "Class-colored Health Bars",
-						desc = "Use class colors for health bars in unit frames.\n\nNOTE: This feature will be disabled if '|A:gmchat-icon-blizz:16:16|aBetter|cff00c0ffBlizz|rFrames' is enabled.",
+						name = "Enable Class-colored Health Bars",
+						desc = "Enable or disable class-colored health bars for all unit frames. Class colors represent the unit's class visually in the health bar.",
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.unitframes.classColorHealth
+							return Config.db.profile.unitframes.classColorFrames
 						end,
 						set = function(_, value)
-							Config.db.profile.unitframes.classColorHealth = value
+							Config.db.profile.unitframes.classColorFrames = value
 							local function UpdateCVar()
 								if not InCombatLockdown() then
 									SetCVar("raidFramesDisplayClassColor", 1)
 								else
-									C_Timer.After(1, UpdateCVar)
+									C_Timer.After(1, function()
+										UpdateCVar()
+									end)
 								end
 							end
 							UpdateCVar()
-							Config:UpdateFrames()
+							Config.UpdateFrames()
 						end,
 						disabled = function()
 							return C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
 						end,
+					},
+					playerFrameEnhancements = {
+						order = 2,
+						name = "Player Frame Enhancements",
+						type = "group",
+						inline = true,
+						args = {
+							classColorFramesSkipPlayer = {
+								order = 1,
+								name = "Exclude Player Frame from Class Colors",
+								desc = "Disable class-colored health bars specifically for the player's unit frame. This setting overrides the global class color health bar option for the player frame.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.db.profile.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer
+								end,
+								set = function(_, value)
+									Config.db.profile.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer = value
+									if value then
+										PlayerFrame.healthbar:SetStatusBarDesaturated(false)
+										PlayerFrame.healthbar:SetStatusBarColor(1, 1, 1)
+									else
+										Config.updateFrameColorToggleVer(PlayerFrame.healthbar, "player")
+										if CfPlayerFrameHealthBar then
+											Config.updateFrameColorToggleVer(CfPlayerFrameHealthBar, "player")
+										end
+									end
+								end,
+								disabled = function()
+									return not Config.db.profile.unitframes.classColorFrames or C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+								end,
+							},
+							colorPetAfterOwner = {
+								order = 2,
+								name = "Color Pets After Owner",
+								desc = "Apply the owner's class color to the health bars of pets. This setting ensures pets are visually linked to their owner's class in unit frames.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.db.profile.unitframes.playerFrameEnhancements.colorPetAfterOwner
+								end,
+								set = function(_, value)
+									Config.db.profile.unitframes.playerFrameEnhancements.colorPetAfterOwner = value
+									Config.UpdateFrames()
+								end,
+								disabled = function()
+									return C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+								end,
+							},
+							playerReputationColor = {
+								order = 3,
+								name = "Enable Player Reputation Overlay",
+								desc = "Show a reputation overlay on the player's frame. The color represents the player's current standing with the selected faction.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.db.profile.unitframes.playerFrameEnhancements.playerReputationColor
+								end,
+								set = function(_, value)
+									Config.db.profile.unitframes.playerFrameEnhancements.playerReputationColor = value
+									Config.PlayerReputationColor()
+								end,
+								disabled = function()
+									return C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+								end,
+							},
+							playerReputationClassColor = {
+								order = 4,
+								name = "Use Class Color for Reputation Overlay",
+								desc = "Instead of using faction reputation colors, apply the player's class color to the reputation overlay on the player's frame.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.db.profile.unitframes.playerFrameEnhancements.playerReputationClassColor
+								end,
+								set = function(_, value)
+									Config.db.profile.unitframes.playerFrameEnhancements.playerReputationClassColor = value
+									Config.PlayerReputationColor()
+								end,
+								disabled = function()
+									return not Config.db.profile.unitframes.playerFrameEnhancements.playerReputationColor or C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+								end,
+							},
+							playerHitIndicatorHide = {
+								order = 5,
+								name = "Hide Player Hit Indicator",
+								desc = "Hide or show the player's hit indicator dynamically during combat.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.db.profile.unitframes.playerFrameEnhancements.playerHitIndicatorHide
+								end,
+								set = function(_, value)
+									Config.db.profile.unitframes.playerFrameEnhancements.playerHitIndicatorHide = value
+									Config.TogglePlayerHitIndicator()
+								end,
+								disabled = function()
+									return C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+								end,
+							},
+						},
+					},
+					targetFrameEnhancements = {
+						order = 3,
+						name = "Target Frame Enhancements",
+						type = "group",
+						inline = true,
+						args = {
+							targetReputationColorHide = {
+								order = 1,
+								name = "Disable Target Reputation Overlay",
+								desc = "Hide the reputation overlay on the target's frame. The overlay color represents the target's reputation standing with the player.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.db.profile.unitframes.targetFrameEnhancements.targetReputationColorHide
+								end,
+								set = function(_, value)
+									Config.db.profile.unitframes.targetFrameEnhancements.targetReputationColorHide = value
+									Config.TargetReputationColor()
+								end,
+								disabled = function()
+									return C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+								end,
+							},
+						},
 					},
 				},
 			},

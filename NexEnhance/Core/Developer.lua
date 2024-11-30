@@ -43,19 +43,41 @@ frameUpdater:RegisterEvent("UPDATE_UI_WIDGET")
 frameUpdater:HookScript("OnEvent", modifyPowerBarFrame)
 
 function Core:ToggleSocialButton()
-	if Core.db.profile.chat.SocialButton then
-		if QuickJoinToastButton:IsShown() then
-			Core.HideObject(QuickJoinToastButton)
-		end
-	else
-		if not QuickJoinToastButton:IsShown() then
+	if QuickJoinToastButton then
+		if Core.db.profile.chat.SocialButton then
+			QuickJoinToastButton:Hide()
+		else
 			QuickJoinToastButton:Show()
+		end
+	end
+end
+
+function Core:ToggleMenuButton()
+	if ChatFrameMenuButton then
+		if Core.db.profile.chat.MenuButton then
+			ChatFrameMenuButton:SetScript("OnShow", nil)
+			ChatFrameMenuButton:Hide()
+		else
+			ChatFrameMenuButton:Show()
+		end
+	end
+end
+
+function Core:ToggleChannelButton()
+	if ChatFrameChannelButton then
+		if Core.db.profile.chat.ChannelButton then
+			ChatFrameChannelButton:SetScript("OnShow", nil)
+			ChatFrameChannelButton:Hide()
+		else
+			ChatFrameChannelButton:Show()
 		end
 	end
 end
 
 function Core:PLAYER_LOGIN()
 	self:ToggleSocialButton()
+	self:ToggleMenuButton()
+	self:ToggleChannelButton()
 end
 
 local _, namespace = ...
@@ -65,8 +87,8 @@ local function CreateQueueTimerFrame(parentDialog, duration, event)
 	local frame = namespace:CreateFrame("Frame", nil, parentDialog, "BackdropTemplate")
 	frame.backdropInfo = BACKDROP_DIALOG_32_32
 	frame:ApplyBackdrop()
-	frame:SetPoint("TOP", parentDialog, "BOTTOM", 0, 8)
-	frame:SetSize(300, 64)
+	frame:SetPoint("TOP", parentDialog, "BOTTOM", 0, 6)
+	frame:SetSize(304, 64)
 
 	-- Create the timer text
 	frame.text = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
@@ -134,3 +156,87 @@ function namespace:OnLogin()
 	InitLFGDungeonReadyDialogTimer()
 	InitPVPReadyDialogTimer()
 end
+
+-- Configuration table
+local db = {
+	highlightPlayer = true, -- Enable player name highlighting
+	useBrackets = true, -- Enable or disable wrapping with brackets
+	highlightColor = "00ff00", -- Default highlight color (green)
+	highlightGuild = true, -- Enable guild name highlighting
+	playSound = true, -- Enable sound notification
+	soundFile = 182876, -- Path to the sound file
+	soundCooldown = 5, -- Cooldown in seconds between sound notifications
+}
+
+-- Timestamp for the last sound played
+local lastSoundTime = 0
+
+-- Function to wrap the name with optional brackets
+local function wrapName(match)
+	local color = db.highlightColor or "00ff00" -- Default to green if no color is set
+	if db.useBrackets then
+		return "|cff" .. color .. "[" .. match .. "]|r"
+	else
+		return "|cff" .. color .. match .. "|r"
+	end
+end
+
+-- Function to handle guild tag highlighting
+local function HighlightGuildTag(tag)
+	local color = db.highlightColor or "00ff00" -- Use the same color for guilds
+	return "|cff" .. color .. "<" .. tag .. ">|r"
+end
+
+-- Function to play sound with cooldown
+local function PlayHighlightSound()
+	if db.playSound then
+		local currentTime = GetTime()
+		if currentTime - lastSoundTime >= db.soundCooldown then
+			local success = PlaySound(db.soundFile, "Master")
+			if not success then
+				print("Error: Failed to play sound. Check the file path.")
+			else
+				lastSoundTime = currentTime -- Update the timestamp
+			end
+		end
+	end
+end
+
+-- Chat filter function
+local function ChatFilter(_, _, message, ...)
+	local playerName = UnitName("player")
+	local nameHighlighted = false
+	if db.highlightPlayer then
+		-- Case-insensitive pattern matching for the player's name
+		local playerNamePattern = playerName:gsub("%a", function(c)
+			return "[" .. c:upper() .. c:lower() .. "]"
+		end)
+		-- Apply the wrapping logic and check if the name is found
+		local newMessage = message:gsub(playerNamePattern, function(match)
+			nameHighlighted = true
+			return wrapName(match)
+		end)
+		message = newMessage
+	end
+	if db.highlightGuild then
+		message = message:gsub("<(.-)>", HighlightGuildTag)
+	end
+	-- Play sound if the player's name was highlighted
+	if nameHighlighted then
+		PlayHighlightSound()
+	end
+	return false, message, ...
+end
+
+-- Event listener for player login
+local frame = CreateFrame("Frame")
+frame:RegisterEvent("PLAYER_LOGIN")
+frame:SetScript("OnEvent", function()
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_SAY", ChatFilter)
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_YELL", ChatFilter)
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_PARTY", ChatFilter)
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_RAID", ChatFilter)
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_GUILD", ChatFilter)
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", ChatFilter)
+	ChatFrame_AddMessageEventFilter("CHAT_MSG_CHANNEL", ChatFilter)
+end)

@@ -1,5 +1,8 @@
 -- NexEnhance Initialization File
-local _, Init = ...
+local Addon, Init = ...
+
+-- Create a global table named NexEnhance if it doesn't already exist
+_G.NexEnhance = _G.NexEnhance or {}
 
 Init.LibMoreEvents = LibStub("LibMoreEvents-1.0-NexEnhance", true) or nil
 
@@ -23,3 +26,7 @@ function Init:OnLogin()
 	-- Set default CVars
 	SetCVar("ActionButtonUseKeyDown", 1)
 end
+
+-- Expose Addon and Init as fields of the global NexEnhance table
+_G.NexEnhance.Addon = Addon
+_G.NexEnhance.Init = Init

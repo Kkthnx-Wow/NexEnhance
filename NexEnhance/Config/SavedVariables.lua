@@ -16,11 +16,13 @@ local defaults = {
 			showHotkey = true,
 		},
 		automation = {
+			IgnoreQuestNPC = {},
 			AnnoyingBuffs = false,
 			AutoBestQuestReward = false,
 			AutoGoodbye = false,
 			AutoInvite = false,
 			AutoKeystoneSlotting = false,
+			AutoQuest = false,
 			AutoRepair = 0,
 			AutoResurrect = false,
 			AutoResurrectEmote = "thank",

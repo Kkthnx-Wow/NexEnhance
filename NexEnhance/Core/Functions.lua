@@ -222,6 +222,7 @@ do
 		"ScrollUpBorder",
 		"ScrollDownBorder",
 	}
+
 	function Core:StripTextures(kill)
 		local frameName = self.GetName and self:GetName()
 		for _, texture in pairs(blizzTextures) do
@@ -493,6 +494,62 @@ do
 				return " 0" .. copperSymbol
 			end
 		end
+	end
+end
+
+do
+	local function Tooltip_OnEnter(self)
+		if GameTooltip:IsForbidden() then
+			return
+		end -- Check if the tooltip is forbidden
+
+		GameTooltip:SetOwner(self, self.anchor or "ANCHOR_RIGHT")
+		GameTooltip:ClearLines()
+
+		-- Add the title if present
+		if self.title then
+			GameTooltip:AddLine(self.title)
+		end
+
+		-- Add the text or spell details
+		if tonumber(self.text) then
+			GameTooltip:SetSpellByID(self.text)
+		elseif self.text then
+			local coloredText = self.text
+			if self.color == "class" then
+				-- Example for class color (replace cr/cg/cb as needed)
+				coloredText = string.format("|cff%02x%02x%02x%s|r", cr * 255, cg * 255, cb * 255, self.text)
+			elseif self.color == "system" then
+				coloredText = "|CFFFFCC66" .. self.text .. "|r" -- System color
+			elseif self.color == "info" then
+				coloredText = "|CFF5bc0be" .. self.text .. "|r" -- Info color
+			end
+			GameTooltip:AddLine(coloredText, nil, nil, nil, true) -- No need for RGB here; color handled in string
+		end
+
+		GameTooltip:Show()
+	end
+
+	local function Tooltip_OnLeave()
+		if GameTooltip:IsForbidden() then
+			return
+		end
+		GameTooltip:Hide()
+	end
+
+	function Core:AddTooltip(anchor, text, color, title, showTips)
+		self.anchor = anchor -- Assign anchor position
+		self.text = text -- Tooltip body text or spell ID
+		self.color = color -- Text color category
+		self.title = title or (showTips and "Tips") -- Tooltip title or default to "Tips"
+
+		-- Hook enter and leave events to the tooltip handlers
+		self:SetScript("OnEnter", function(self)
+			Tooltip_OnEnter(self)
+		end)
+		self:SetScript("OnLeave", function()
+			Tooltip_OnLeave()
+		end)
 	end
 end
 

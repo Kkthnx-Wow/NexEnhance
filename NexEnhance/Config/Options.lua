@@ -511,6 +511,33 @@ local function CreateOptions()
 							return not Config.db.profile.automation.AutoResurrect
 						end,
 					},
+					IgnoreQuestNPC = {
+						order = 13,
+						name = "Ignore NPC IDs",
+						desc = "Enter NPC IDs to exclude from automatic quest acceptance and completion. Separate multiple IDs with commas.",
+						type = "input",
+						width = "double",
+						multiline = true,
+						get = function()
+							local ids = {}
+							for npcID, value in pairs(Config.db.profile.automation.IgnoreQuestNPC) do
+								if value then
+									table.insert(ids, tostring(npcID))
+								end
+							end
+							return table.concat(ids, ", ")
+						end,
+						set = function(_, value)
+							wipe(Config.db.profile.automation.IgnoreQuestNPC)
+							for npcID in value:gmatch("%d+") do
+								Config.db.profile.automation.IgnoreQuestNPC[tonumber(npcID)] = true
+							end
+							Config:UpdateIgnoreList()
+						end,
+						disabled = function()
+							return not Config.db.profile.automation.AutoQuest
+						end,
+					},
 				},
 			},
 			chat = {

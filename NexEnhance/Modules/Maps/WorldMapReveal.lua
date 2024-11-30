@@ -147,53 +147,16 @@ function Module:PLAYER_LOGIN()
 
 	local bu = CreateFrame("CheckButton", nil, WorldMapFrame.BorderFrame.TitleContainer, "OptionsBaseCheckButtonTemplate")
 	bu:SetHitRectInsets(-5, -5, -5, -5)
-	bu:SetPoint("TOPRIGHT", -160, 0)
+	bu:SetPoint("TOPRIGHT", -140, 0)
 	bu:SetSize(24, 24)
 	bu:SetChecked(Module.db.profile.worldmap.RevealWorldMap)
 	bu.text = Module.CreateFontString(bu, 12, "Map Reveal", "system", "", "LEFT", 24, 0)
+	Module.AddTooltip(bu, "ANCHOR_BOTTOMLEFT", "|nEnable this option to reveal unexplored areas of the world map.|n|n" .. "When enabled, unexplored areas will appear with a slight glow effect.", "info", "Map Reveal", true)
 
 	for pin in WorldMapFrame:EnumeratePinsByTemplate("MapExplorationPinTemplate") do
 		hooksecurefunc(pin, "RefreshOverlays", Module.MapData_RefreshOverlays)
 		pin.overlayTexturePool.resetterFunc = Module.MapData_ResetTexturePool
 	end
-
-	function bu.UpdateTooltip(self)
-		if GameTooltip:IsForbidden() then
-			return
-		end
-
-		GameTooltip:SetOwner(self, "ANCHOR_TOP", 0, 10)
-
-		local r, g, b = 0.2, 1.0, 0.2
-
-		if Module.db.profile.worldmap.RevealWorldMap == true then
-			GameTooltip:AddLine(Module.L["Reveal Enabled"])
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(Module.L["Reveal Enabled Desc"], r, g, b)
-		else
-			GameTooltip:AddLine(Module.L["Reveal Disabled"])
-			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(Module.L["Reveal Disabled Desc"], r, g, b)
-		end
-
-		GameTooltip:Show()
-	end
-
-	bu:HookScript("OnEnter", function(self)
-		if GameTooltip:IsForbidden() then
-			return
-		end
-
-		self:UpdateTooltip()
-	end)
-
-	bu:HookScript("OnLeave", function()
-		if GameTooltip:IsForbidden() then
-			return
-		end
-
-		GameTooltip:Hide()
-	end)
 
 	bu:SetScript("OnClick", function(self)
 		Module.db.profile.worldmap.RevealWorldMap = self:GetChecked()

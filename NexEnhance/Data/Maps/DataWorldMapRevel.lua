@@ -1,7 +1,7 @@
 local _, Modules = ...
+local Module = Modules.Data
 
--- https://github.com/fang2hou/WindToolsScripts/blob/master/MapOverlay
-Modules.Data.WorldMapRevelInfo = {
+Module.WorldMapRevelInfo = {
 	[2] = {
 		["W162H157X399Y440"] = "440583",
 		["W192H184X457Y406"] = "271426",

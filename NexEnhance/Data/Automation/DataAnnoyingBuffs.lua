@@ -1,6 +1,7 @@
 local _, Modules = ...
+local Module = Modules.Data
 
-Modules.Data.AnnoyingBuffsInfo = {
+Module.AnnoyingBuffsInfo = {
 	[172003] = true, -- Red Ogre Costume
 	[172008] = true, -- Blue Ogre Costume
 	[172010] = true, -- Ogre Pinata

@@ -114,11 +114,12 @@ function Module:MapData_RefreshOverlays(fullUpdate)
 					texture:SetTexture(fileDataIDs[((j - 1) * numTexturesWide) + k], nil, nil, "TRILINEAR")
 
 					if Module.NexConfig.worldmap.RevealWorldMap then
-						if Module.NexConfig.worldmap.MapRevealGlow then
-							texture:SetVertexColor(0.7, 0.7, 0.7)
-						else
-							texture:SetVertexColor(1, 1, 1)
-						end
+						-- if Module.NexConfig.worldmap.MapRevealGlow then -- Add color config and option for this. Maybe we do like a right click on the map config?
+						-- 	texture:SetVertexColor(0.7, 0.7, 0.7)
+						-- else
+						-- 	texture:SetVertexColor(0.5, 0.5, 0.5)
+						-- end
+						texture:SetVertexColor(0.5, 0.5, 0.5)
 						texture:SetDrawLayer("ARTWORK", -2)
 						texture:Show()
 						if fullUpdate then

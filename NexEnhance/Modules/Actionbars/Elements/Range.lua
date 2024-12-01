@@ -1,4 +1,5 @@
-local _, Module = ...
+local _, Modules = ...
+local Module = Modules.Actionbars
 
 function Module:UpdateRangeIndicator(checksRange, inRange)
 	if not self.setHooksecurefunc and self.UpdateUsable then
@@ -29,8 +30,8 @@ function Module:UpdateRangeIndicator(checksRange, inRange)
 	end
 end
 
-function Module:PLAYER_LOGIN()
-	if not Module.NexConfig.actionbars.range then
+function Module:RegisterRangeIndicator()
+	if not Modules.NexConfig.actionbars.range then
 		return
 	end
 

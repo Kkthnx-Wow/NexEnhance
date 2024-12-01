@@ -1,4 +1,5 @@
-local _, Module = ...
+local _, Modules = ...
+local Module = Modules.Actionbars
 
 local gsub = string.gsub
 local KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR = KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR
@@ -52,9 +53,9 @@ local function StyleActionButton(button)
 	local count, hotkey, name, slotbg = button.Count, button.HotKey, button.Name, button.SlotBackground
 
 	if name then
-		name:SetShown(Module.NexConfig.actionbars.showName)
-		if Module.NexConfig.actionbars.showName then
-			name:SetFont("Fonts\\FRIZQT__.TTF", Module.NexConfig.actionbars.nameSize, "OUTLINE")
+		name:SetShown(Modules.NexConfig.actionbars.showName)
+		if Modules.NexConfig.actionbars.showName then
+			name:SetFont("Fonts\\FRIZQT__.TTF", Modules.NexConfig.actionbars.nameSize, "OUTLINE")
 		end
 		name:ClearAllPoints()
 		name:SetPoint("BOTTOMLEFT", 0, 0)
@@ -66,18 +67,18 @@ local function StyleActionButton(button)
 	end
 
 	if count then
-		count:SetShown(Module.NexConfig.actionbars.showCount)
-		if Module.NexConfig.actionbars.showCount then
-			count:SetFont("Fonts\\ARIALN.TTF", Module.NexConfig.actionbars.countSize, "OUTLINE")
+		count:SetShown(Modules.NexConfig.actionbars.showCount)
+		if Modules.NexConfig.actionbars.showCount then
+			count:SetFont("Fonts\\ARIALN.TTF", Modules.NexConfig.actionbars.countSize, "OUTLINE")
 		end
 		count:ClearAllPoints()
 		count:SetPoint("BOTTOMRIGHT", 2, 0)
 	end
 
 	if hotkey then
-		hotkey:SetShown(Module.NexConfig.actionbars.showHotkey)
-		if Module.NexConfig.actionbars.showHotkey then
-			hotkey:SetFont("Fonts\\FRIZQT__.TTF", Module.NexConfig.actionbars.hotkeySize, "OUTLINE")
+		hotkey:SetShown(Modules.NexConfig.actionbars.showHotkey)
+		if Modules.NexConfig.actionbars.showHotkey then
+			hotkey:SetFont("Fonts\\FRIZQT__.TTF", Modules.NexConfig.actionbars.hotkeySize, "OUTLINE")
 		end
 		hotkey:ClearAllPoints()
 		hotkey:SetPoint("TOPRIGHT", 0, -3)
@@ -117,6 +118,6 @@ function Module:UpdateStylingConfig()
 	self:RefreshActionBarStyling()
 end
 
-function Module:PLAYER_LOGIN()
+function Module:RegisterActionbarStyle()
 	self:RefreshActionBarStyling()
 end

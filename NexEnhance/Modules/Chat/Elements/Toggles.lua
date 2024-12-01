@@ -33,3 +33,9 @@ function Module:ToggleChannelButton()
 		end
 	end
 end
+
+function Module:RegisterChatToggles()
+	self:ToggleSocialButton()
+	self:ToggleMenuButton()
+	self:ToggleChannelButton()
+end

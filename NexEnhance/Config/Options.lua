@@ -154,7 +154,7 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.actionbars.nameSize = value
-							Config:UpdateStylingConfig()
+							Config.Actionbars:UpdateStylingConfig()
 						end,
 						disabled = function()
 							return not Config.NexConfig.actionbars.showName
@@ -174,7 +174,7 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.actionbars.countSize = value
-							Config:UpdateStylingConfig()
+							Config.Actionbars:UpdateStylingConfig()
 						end,
 						disabled = function()
 							return not Config.NexConfig.actionbars.showCount
@@ -194,7 +194,7 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.actionbars.hotkeySize = value
-							Config:UpdateStylingConfig()
+							Config.Actionbars:UpdateStylingConfig()
 						end,
 						disabled = function()
 							return not Config.NexConfig.actionbars.showHotkey
@@ -211,7 +211,7 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.actionbars.showName = value
-							Config:UpdateStylingConfig()
+							Config.Actionbars:UpdateStylingConfig()
 						end,
 					},
 					showCount = {
@@ -225,7 +225,7 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.actionbars.showCount = value
-							Config:UpdateStylingConfig()
+							Config.Actionbars:UpdateStylingConfig()
 						end,
 					},
 					showHotkey = {
@@ -239,7 +239,7 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.actionbars.showHotkey = value
-							Config:UpdateStylingConfig()
+							Config.Actionbars:UpdateStylingConfig()
 						end,
 					},
 					cooldowns = {

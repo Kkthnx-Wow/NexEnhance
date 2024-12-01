@@ -44,9 +44,10 @@
     <Script file="Data\Maps\DataWorldMapRevel.lua" />
 
     <!-- Actionbars -->
-    <Script file="Modules\Actionbars\Cooldowns.lua" />
-    <Script file="Modules\Actionbars\Range.lua" />
-    <Script file="Modules\Actionbars\Style.lua" />
+    <Script file="Modules\Actionbars\Elements\Cooldowns.lua" />
+    <Script file="Modules\Actionbars\Elements\Range.lua" />
+    <Script file="Modules\Actionbars\Elements\Style.lua" />
+    <Script file="Modules\Actionbars\Core.lua" />
 
     <!-- Automation -->
     <Script file="Modules\Automation\AnnoyingBuffs.lua" />

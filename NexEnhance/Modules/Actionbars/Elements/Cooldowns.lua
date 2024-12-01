@@ -1,4 +1,5 @@
-local _, Module = ...
+local _, Modules = ...
+local Module = Modules.Actionbars
 
 -- Importing required functions
 local pairs, format, floor, strfind = pairs, format, floor, strfind
@@ -20,18 +21,18 @@ local hooked = {} -- Hooked cooldowns
 
 function Module.FormattedTimer(s, modRate)
 	if s >= day then
-		return format("%d" .. Module.MyClassColor .. "d", s / day + 0.5), s % day
+		return format("%d" .. Modules.MyClassColor .. "d", s / day + 0.5), s % day
 	elseif s > hour then
-		return format("%d" .. Module.MyClassColor .. "h", s / hour + 0.5), s % hour
+		return format("%d" .. Modules.MyClassColor .. "h", s / hour + 0.5), s % hour
 	elseif s >= minute then
-		if s < Module.NexConfig.actionbars.MmssTH then
+		if s < Modules.NexConfig.actionbars.MmssTH then
 			return format("%d:%.2d", s / minute, s % minute), s - floor(s)
 		else
-			return format("%d" .. Module.MyClassColor .. "m", s / minute + 0.5), s % minute
+			return format("%d" .. Modules.MyClassColor .. "m", s / minute + 0.5), s % minute
 		end
 	else
 		local colorStr = (s < 3 and "|cffff0000") or (s < 10 and "|cffffff00") or "|cffcccc33"
-		if s < Module.NexConfig.actionbars.TenthTH then
+		if s < Modules.NexConfig.actionbars.TenthTH then
 			return format(colorStr .. "%.1f|r", s), (s - format("%.1f", s)) / modRate
 		else
 			return format(colorStr .. "%d|r", s + 0.5), (s - floor(s)) / modRate
@@ -50,7 +51,7 @@ function Module:ForceUpdate()
 end
 
 function Module:OnSizeChanged(width, height)
-	local fontScale = Module:Round((width + height) / 2) / ICON_SIZE
+	local fontScale = Modules:Round((width + height) / 2) / ICON_SIZE
 	if fontScale == self.fontScale then
 		return
 	end
@@ -59,7 +60,7 @@ function Module:OnSizeChanged(width, height)
 	if fontScale < MIN_SCALE then
 		self:Hide()
 	else
-		self.text:SetFont(Module.Font[1], fontScale * FONT_SIZE, Module.Font[3])
+		self.text:SetFont(Modules.Font[1], fontScale * FONT_SIZE, Modules.Font[3])
 		self.text:SetShadowColor(0, 0, 0, 0)
 
 		if self.enabled then
@@ -119,7 +120,7 @@ function Module:StartTimer(start, duration, modRate)
 	end
 
 	local frameName = self.GetName and self:GetName()
-	if Module.NexConfig.actionbars.OverrideWA and frameName and strfind(frameName, "WeakAuras") then
+	if Modules.NexConfig.actionbars.OverrideWA and frameName and strfind(frameName, "WeakAuras") then
 		self.noCooldownCount = true
 		return
 	end
@@ -209,8 +210,8 @@ function Module:RegisterActionButton()
 	end
 end
 
-function Module:PLAYER_LOGIN()
-	if not Module.NexConfig.actionbars.cooldowns then
+function Module:RegisterCooldowns()
+	if not Modules.NexConfig.actionbars.cooldowns then
 		return
 	end
 
@@ -221,7 +222,7 @@ function Module:PLAYER_LOGIN()
 	hooksecurefunc("CooldownFrame_SetDisplayAsPercentage", Module.HideCooldownNumbers)
 
 	-- -- Register for action bar cooldown updates
-	Module:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN", Module.ActionbarUpateCooldown)
+	Modules:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN", Module.ActionbarUpateCooldown)
 
 	-- Register action button frames
 	if _G["ActionBarButtonEventsFrame"].frames then

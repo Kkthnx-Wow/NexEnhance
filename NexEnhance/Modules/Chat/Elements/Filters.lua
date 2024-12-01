@@ -17,12 +17,12 @@ local msgSymbols = { "`", "～", "＠", "＃", "^", "＊", "！", "？", "。", 
 
 local FilterList = {}
 function Module:UpdateFilterList()
-	Modules.SplitList(FilterList, Modules.db.profile.chat.chatfilters.ChatFilterList, true)
+	Modules.SplitList(FilterList, Modules.NexConfig.chat.chatfilters.ChatFilterList, true)
 end
 
 local WhiteFilterList = {}
 function Module:UpdateFilterWhiteList()
-	Modules.SplitList(WhiteFilterList, Modules.db.profile.chat.chatfilters.ChatFilterWhiteList, true)
+	Modules.SplitList(WhiteFilterList, Modules.NexConfig.chat.chatfilters.ChatFilterWhiteList, true)
 end
 
 -- ECF strings compare
@@ -54,12 +54,12 @@ function Module:GetFilterResult(event, msg, name, flag, guid)
 		return
 	end
 
-	if Modules.db.profile.chat.chatfilters.BlockStrangers and event == "CHAT_MSG_WHISPER" then -- Block strangers
+	if Modules.NexConfig.chat.chatfilters.BlockStrangers and event == "CHAT_MSG_WHISPER" then -- Block strangers
 		Module.MuteCache[name] = GetTime()
 		return true
 	end
 
-	if Modules.db.profile.chat.chatfilters.BlockSpammer and Module.BadBoys[name] and Module.BadBoys[name] >= 5 then
+	if Modules.NexConfig.chat.chatfilters.BlockSpammer and Module.BadBoys[name] and Module.BadBoys[name] >= 5 then
 		return true
 	end
 
@@ -100,7 +100,7 @@ function Module:GetFilterResult(event, msg, name, flag, guid)
 	end
 
 	-- Ensure the comparison is valid
-	if matches >= tonumber(Modules.db.profile.chat.chatfilters.FilterMatches) then
+	if matches >= tonumber(Modules.NexConfig.chat.chatfilters.FilterMatches) then
 		return true
 	end
 
@@ -293,7 +293,7 @@ local function isPlayerOnIslands()
 end
 
 function Module:RegisterChatFilters()
-	if Modules.db.profile.chat.chatfilters.ChatItemLevel then
+	if Modules.NexConfig.chat.chatfilters.ChatItemLevel then
 		GetDungeonScoreInColor = Modules and Modules.GetDungeonScore
 
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_LOOT", self.UpdateChatItemLevel)
@@ -317,7 +317,7 @@ function Module:RegisterChatFilters()
 		return
 	end
 
-	if Modules.db.profile.chat.chatfilters.EnableFilter then
+	if Modules.NexConfig.chat.chatfilters.EnableFilter then
 		self:UpdateFilterList()
 		self:UpdateFilterWhiteList()
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_CHANNEL", self.UpdateChatFilter)
@@ -328,7 +328,7 @@ function Module:RegisterChatFilters()
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_TEXT_EMOTE", self.UpdateChatFilter)
 	end
 
-	if Modules.db.profile.chat.chatfilters.BlockAddonAlert then
+	if Modules.NexConfig.chat.chatfilters.BlockAddonAlert then
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_SAY", self.UpdateAddOnBlocker)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", self.UpdateAddOnBlocker)
 		ChatFrame_AddMessageEventFilter("CHAT_MSG_EMOTE", self.UpdateAddOnBlocker)

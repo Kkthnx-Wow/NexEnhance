@@ -150,7 +150,7 @@ function Module:PLAYER_LOGIN()
 		return
 	end
 
-	if not Module.db.profile.minimap.recycleBin then
+	if not Module.NexConfig.minimap.recycleBin then
 		return
 	end
 
@@ -180,7 +180,7 @@ function Module:PLAYER_LOGIN()
 
 	toggleButton:SetScript("OnClick", function(_, btn)
 		if btn == "RightButton" then
-			Module.db.profile.minimap.recycleBinAuto = not Module.db.profile.minimap.recycleBinAuto
+			Module.NexConfig.minimap.recycleBinAuto = not Module.NexConfig.minimap.recycleBinAuto
 			toggleButton:GetScript("OnEnter")(toggleButton)
 		else
 			if recycleBin:IsShown() then

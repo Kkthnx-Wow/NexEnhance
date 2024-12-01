@@ -110,7 +110,7 @@ end
 
 function Module:MapShouldFade()
 	-- normally we would check GetCVarBool('mapFade') here instead of the setting
-	return Module.db.profile.worldmap.FadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
+	return Module.NexConfig.worldmap.FadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
 end
 
 function Module:MapFadeOnUpdate(elapsed)
@@ -161,7 +161,7 @@ function Module:EnableMapFading(frame)
 	local settings = fadeFrame.FadeObject.FadeSettings
 	settings.fadePredicate = Module.MapShouldFade
 	settings.durationSec = 0.2
-	settings.minAlpha = Module.db.profile.worldmap.AlphaWhenMoving
+	settings.minAlpha = Module.NexConfig.worldmap.AlphaWhenMoving
 	settings.maxAlpha = 1
 
 	fadeFrame:Show()
@@ -173,7 +173,7 @@ function Module:UpdateMapFade(minAlpha, maxAlpha, durationSec, fadePredicate) --
 		PlayerMovementFrameFader.RemoveFrame(self)
 
 		-- replacement function which is complete :3
-		if Module.db.profile.worldmap.FadeWhenMoving then
+		if Module.NexConfig.worldmap.FadeWhenMoving then
 			Module:EnableMapFading(self)
 		end
 	end
@@ -198,7 +198,7 @@ function Module:WorldMap_OnShow()
 	end
 
 	-- Set the appropriate map size
-	if Module.db.profile.worldmap.SmallWorldMap then
+	if Module.NexConfig.worldmap.SmallWorldMap then
 		if maxed then
 			Module:SetLargeWorldMap()
 		else
@@ -218,7 +218,7 @@ end
 
 function Module:PLAYER_LOGIN()
 	local WorldMapFrame = _G.WorldMapFrame
-	if Module.db.profile.worldmap.Coordinates then
+	if Module.NexConfig.worldmap.Coordinates then
 		-- Define the desired color (#F0C500 or RGB values 240/255, 197/255, 0)
 		local textColor = { r = 240 / 255, g = 197 / 255, b = 0 }
 
@@ -263,8 +263,8 @@ function Module:PLAYER_LOGIN()
 		self.CoordsUpdater:SetScript("OnUpdate", self.UpdateCoords)
 	end
 
-	if Module.db.profile.worldmap.SmallWorldMap then
-		smallerMapScale = Module.db.profile.worldmap.SmallWorldMapScale or 0.9
+	if Module.NexConfig.worldmap.SmallWorldMap then
+		smallerMapScale = Module.NexConfig.worldmap.SmallWorldMapScale or 0.9
 
 		self.CreateMoverFrame(WorldMapFrame, nil, true)
 

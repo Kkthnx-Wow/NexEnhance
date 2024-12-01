@@ -141,7 +141,7 @@ function Module:ReskinMinimapElements()
 end
 
 function Module:TrackMinimapPing()
-	if not Module.db.profile.minimap.PingNotifier then
+	if not Module.NexConfig.minimap.PingNotifier then
 		return
 	end
 

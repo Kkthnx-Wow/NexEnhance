@@ -58,10 +58,10 @@ local function HandleAutoResurrect(_, arg1)
 	if not UnitAffectingCombat("player") then
 		AcceptResurrect()
 		StaticPopup_Hide("RESURRECT_NO_TIMER")
-		if Module.db.profile.automation.AutoResurrectEmote and Module.db.profile.automation.AutoResurrectEmote ~= "none" then
+		if Module.NexConfig.automation.AutoResurrectEmote and Module.NexConfig.automation.AutoResurrectEmote ~= "none" then
 			C_Timer.After(3, function()
 				if not UnitIsDeadOrGhost("player") then
-					local emote = Module.db.profile.automation.AutoResurrectEmote
+					local emote = Module.NexConfig.automation.AutoResurrectEmote
 					if validEmotes[emote] then
 						DoEmote(emote, arg1)
 					else
@@ -75,7 +75,7 @@ local function HandleAutoResurrect(_, arg1)
 end
 
 function Module:PLAYER_LOGIN()
-	if Module.db.profile.automation.AutoResurrect then
+	if Module.NexConfig.automation.AutoResurrect then
 		Module:RegisterEvent("RESURRECT_REQUEST", HandleAutoResurrect)
 	else
 		Module:UnregisterEvent("RESURRECT_REQUEST", HandleAutoResurrect)

@@ -37,9 +37,9 @@ local function setupCheckButton()
 	mono:SetSize(24, 24)
 	mono:SetFrameLevel(999)
 	mono.text = Module.CreateFontString(mono, 12, "Auto Quest", "system", "", "LEFT", 25, 0)
-	mono:SetChecked(Module.db.profile.automation.AutoQuest)
+	mono:SetChecked(Module.NexConfig.automation.AutoQuest)
 	mono:SetScript("OnClick", function(self)
-		Module.db.profile.automation.AutoQuest = self:GetChecked()
+		Module.NexConfig.automation.AutoQuest = self:GetChecked()
 	end)
 	Module.AddTooltip(mono, "ANCHOR_BOTTOMLEFT", "|nWhen enabled, quests and dialogs will be interacted with automatically.|n|nIf a gossip window has only one option, it will be automatically selected.|n|nHold the SHIFT key to temporarily pause automation.|n|nTo block an NPC from being auto-interacted with, hold the ALT key and click their name on the Gossip or Quest frame.", "info", "Auto Quest", true)
 
@@ -56,7 +56,7 @@ end)
 function QuickQuest:Register(event, func)
 	self:RegisterEvent(event)
 	self[event] = function(...)
-		if Module.db.profile.automation.AutoQuest and not IsShiftKeyDown() then
+		if Module.NexConfig.automation.AutoQuest and not IsShiftKeyDown() then
 			func(...)
 		end
 	end
@@ -472,9 +472,9 @@ function Module:UpdateIgnoreList()
 		Module.IgnoreQuestNPC[npcID] = value
 	end
 
-	for npcID, value in pairs(Module.db.profile.automation.IgnoreQuestNPC) do
+	for npcID, value in pairs(Module.NexConfig.automation.IgnoreQuestNPC) do
 		if value and ignoreQuestNPC[npcID] then
-			Module.db.profile.automation.IgnoreQuestNPC[npcID] = nil
+			Module.NexConfig.automation.IgnoreQuestNPC[npcID] = nil
 		else
 			Module.IgnoreQuestNPC[npcID] = value
 		end
@@ -495,7 +495,7 @@ local function UnitQuickQuestStatus(self)
 	end
 
 	local npcID = GetNPCID()
-	local isIgnored = Module.db.profile.automation.AutoQuest and npcID and Module.IgnoreQuestNPC[npcID]
+	local isIgnored = Module.NexConfig.automation.AutoQuest and npcID and Module.IgnoreQuestNPC[npcID]
 	self.__ignore:SetShown(isIgnored)
 end
 
@@ -504,7 +504,7 @@ local function ToggleQuickQuestStatus(self)
 		return
 	end
 
-	if not Module.db.profile.automation.AutoQuest then
+	if not Module.NexConfig.automation.AutoQuest then
 		return
 	end
 
@@ -516,15 +516,15 @@ local function ToggleQuickQuestStatus(self)
 	local npcID = GetNPCID()
 	if self.__ignore:IsShown() then
 		if ignoreQuestNPC[npcID] then
-			Module.db.profile.automation.IgnoreQuestNPC[npcID] = nil
+			Module.NexConfig.automation.IgnoreQuestNPC[npcID] = nil
 		else
-			Module.db.profile.automation.IgnoreQuestNPC[npcID] = true
+			Module.NexConfig.automation.IgnoreQuestNPC[npcID] = true
 		end
 	else
 		if ignoreQuestNPC[npcID] then
-			Module.db.profile.automation.IgnoreQuestNPC[npcID] = false
+			Module.NexConfig.automation.IgnoreQuestNPC[npcID] = false
 		else
-			Module.db.profile.automation.IgnoreQuestNPC[npcID] = nil
+			Module.NexConfig.automation.IgnoreQuestNPC[npcID] = nil
 		end
 	end
 

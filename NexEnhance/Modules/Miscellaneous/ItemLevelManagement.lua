@@ -279,7 +279,7 @@ end
 function Module:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
 	C_Timer.After(0.1, function()
 		local quality = select(3, GetItemInfo(link))
-		local info = Module.GetItemLevel(link, unit, index, Module.db.profile.miscellaneous.gemsNEnchants) -- GemEnchantInfo
+		local info = Module.GetItemLevel(link, unit, index, Module.NexConfig.miscellaneous.gemsNEnchants) -- GemEnchantInfo
 		if info == "tooSoon" then
 			return
 		end
@@ -308,7 +308,7 @@ function Module:ItemLevel_SetupLevel(frame, strType, unit)
 			local link = GetInventoryItemLink(unit, index)
 			if link then
 				local quality = select(3, GetItemInfo(link))
-				local info = Module.GetItemLevel(link, unit, index, Module.db.profile.miscellaneous.gemsNEnchants) -- GemEnchantInfo
+				local info = Module.GetItemLevel(link, unit, index, Module.NexConfig.miscellaneous.gemsNEnchants) -- GemEnchantInfo
 				if info == "tooSoon" then
 					Module:ItemLevel_RefreshInfo(link, unit, index, slotFrame)
 				else
@@ -324,7 +324,7 @@ function Module:ItemLevel_SetupLevel(frame, strType, unit)
 end
 
 function Module:PLAYER_EQUIPMENT_CHANGED()
-	if not Module.db.profile.miscellaneous.itemlevels.characterFrame then
+	if not Module.NexConfig.miscellaneous.itemlevels.characterFrame then
 		return
 	end
 
@@ -405,7 +405,7 @@ end
 
 -- Update the inspect frame with item level and average item level
 function Module:INSPECT_READY(...)
-	if not Module.db.profile.miscellaneous.itemlevels.inspectFrame then
+	if not Module.NexConfig.miscellaneous.itemlevels.inspectFrame then
 		return
 	end
 
@@ -446,7 +446,7 @@ function Module:ItemLevel_FlyoutUpdate(bag, slot, quality)
 end
 
 function Module:ItemLevel_FlyoutSetup()
-	if not Module.db.profile.miscellaneous.itemlevels.flyout then
+	if not Module.NexConfig.miscellaneous.itemlevels.flyout then
 		return
 	end
 
@@ -507,7 +507,7 @@ function Module:ItemLevel_ScrappingUpdate()
 end
 
 Module:HookAddOn("Blizzard_ScrappingMachineUI", function(self)
-	if not Module.db.profile.miscellaneous.itemlevels.scrapping then
+	if not Module.NexConfig.miscellaneous.itemlevels.scrapping then
 		return
 	end
 
@@ -517,7 +517,7 @@ Module:HookAddOn("Blizzard_ScrappingMachineUI", function(self)
 end)
 
 function Module:ItemLevel_UpdateMerchant(link)
-	if not Module.db.profile.miscellaneous.itemlevels.merchantFrame then
+	if not Module.NexConfig.miscellaneous.itemlevels.merchantFrame then
 		return
 	end
 
@@ -536,7 +536,7 @@ function Module:ItemLevel_UpdateMerchant(link)
 end
 
 function Module.ItemLevel_UpdateTradePlayer(index)
-	if not Module.db.profile.miscellaneous.itemlevels.tradeFrame then
+	if not Module.NexConfig.miscellaneous.itemlevels.tradeFrame then
 		return
 	end
 
@@ -546,7 +546,7 @@ function Module.ItemLevel_UpdateTradePlayer(index)
 end
 
 function Module.ItemLevel_UpdateTradeTarget(index)
-	if not Module.db.profile.miscellaneous.itemlevels.tradeFrame then
+	if not Module.NexConfig.miscellaneous.itemlevels.tradeFrame then
 		return
 	end
 
@@ -586,7 +586,7 @@ end
 -- end
 
 function Module:ItemLevel_UpdateLoot()
-	if not Module.db.profile.miscellaneous.itemlevels.lootFrame then
+	if not Module.NexConfig.miscellaneous.itemlevels.lootFrame then
 		return
 	end
 
@@ -642,7 +642,7 @@ function Module:ItemLevel_HandleSlots()
 end
 
 function Module:ItemLevel_Containers()
-	if not Module.db.profile.miscellaneous.itemlevels.containers then
+	if not Module.NexConfig.miscellaneous.itemlevels.containers then
 		return
 	end
 
@@ -660,7 +660,7 @@ local NUM_SLOTS_PER_GUILDBANK_GROUP = 14
 local PET_CAGE = 82800
 
 Module:HookAddOn("Blizzard_GuildBankUI", function(self)
-	if not Module.db.profile.miscellaneous.itemlevels.guildBankFrame then
+	if not Module.NexConfig.miscellaneous.itemlevels.guildBankFrame then
 		return
 	end
 

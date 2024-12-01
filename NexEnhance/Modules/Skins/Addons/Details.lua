@@ -77,7 +77,7 @@ local function ReskinDetails()
 		return
 	end
 
-	if not Module.db.profile.skins.addonskins.details then
+	if not Module.NexConfig.skins.addonskins.details then
 		return
 	end
 
@@ -107,7 +107,7 @@ local function ReskinDetails()
 		end
 	end
 
-	local current = Module.db.profile.general.NumberPrefixStyle
+	local current = Module.NexConfig.general.NumberPrefixStyle
 	if current < "FULL" then
 		Details.numerical_system = current
 		Details:SelectNumericalSystem()

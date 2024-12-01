@@ -29,7 +29,7 @@ function autoRepair(override)
 	repairAllCost, canRepair = GetRepairAllCost()
 
 	if canRepair and repairAllCost > 0 then
-		if (not override) and Module.db.profile.automation.AutoRepair == 1 and IsInGuild() and CanGuildBankRepair() and GetGuildBankWithdrawMoney() >= repairAllCost then
+		if (not override) and Module.NexConfig.automation.AutoRepair == 1 and IsInGuild() and CanGuildBankRepair() and GetGuildBankWithdrawMoney() >= repairAllCost then
 			RepairAllItems(true)
 		else
 			if myMoney > repairAllCost then
@@ -59,7 +59,7 @@ local function merchantClose()
 end
 
 local function merchantShow()
-	if IsShiftKeyDown() or Module.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
+	if IsShiftKeyDown() or Module.NexConfig.automation.AutoRepair == 0 or not CanMerchantRepair() then
 		return
 	end
 	autoRepair()
@@ -74,7 +74,7 @@ local repairGossipIDs = {
 }
 
 function Module:GOSSIP_SHOW()
-	if IsShiftKeyDown() or Module.db.profile.automation.AutoRepair == 0 or not CanMerchantRepair() then
+	if IsShiftKeyDown() or Module.NexConfig.automation.AutoRepair == 0 or not CanMerchantRepair() then
 		return
 	end
 

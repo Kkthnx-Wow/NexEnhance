@@ -10,4 +10,7 @@ function Modules:PLAYER_LOGIN()
 	Modules.Chat:RegisterChatRename()
 	Modules.Chat:RegisterChatURLCopy()
 	Modules.Chat:RegisterChatFilters()
+	Modules.Chat:ToggleSocialButton()
+	Modules.Chat:ToggleMenuButton()
+	Modules.Chat:ToggleChannelButton()
 end

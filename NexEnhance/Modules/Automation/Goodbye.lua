@@ -14,8 +14,8 @@ local AutoThanksList = {
 -- Send a goodbye message
 local function SendAutoGoodbyeMessage()
 	local message
-	if Module.db.profile.automation.CustomGoodbyeMessage and Module.db.profile.automation.CustomGoodbyeMessage ~= "" then
-		message = Module.db.profile.automation.CustomGoodbyeMessage
+	if Module.NexConfig.automation.CustomGoodbyeMessage and Module.NexConfig.automation.CustomGoodbyeMessage ~= "" then
+		message = Module.NexConfig.automation.CustomGoodbyeMessage
 	else
 		message = AutoThanksList[math_random(#AutoThanksList)]
 	end
@@ -43,7 +43,7 @@ end
 
 -- Create or disable Auto Goodbye feature
 function Module:PLAYER_LOGIN()
-	if Module.db.profile.automation.AutoGoodbye then
+	if Module.NexConfig.automation.AutoGoodbye then
 		Module:RegisterEvent("LFG_COMPLETION_REWARD", SetupAutoGoodbye)
 		Module:RegisterEvent("CHALLENGE_MODE_COMPLETED", SetupAutoGoodbye)
 	else

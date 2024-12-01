@@ -1,7 +1,7 @@
 local _, Module = ...
 
 local function HandleKeyDown(self, key)
-	if not Module.db.profile.automation.SkipCinematics then
+	if not Module.NexConfig.automation.SkipCinematics then
 		return
 	end
 
@@ -13,7 +13,7 @@ local function HandleKeyDown(self, key)
 end
 
 local function HandleKeyUp(self, key)
-	if not Module.db.profile.automation.SkipCinematics then
+	if not Module.NexConfig.automation.SkipCinematics then
 		return
 	end
 

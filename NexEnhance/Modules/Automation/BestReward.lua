@@ -88,7 +88,7 @@ end
 
 -- Initialization function
 function Module:OnLogin()
-	if Module.db.profile.automation.AutoBestQuestReward then
+	if Module.NexConfig.automation.AutoBestQuestReward then
 		InitializeRewardIconFrame()
 		self:RegisterEvent("QUEST_COMPLETE", HandleQuestCompleteEvent)
 	else

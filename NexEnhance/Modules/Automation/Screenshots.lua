@@ -31,7 +31,7 @@ function Module:ToggleAutoScreenshotAchieve()
 		ScreenShotFrame:SetScript("OnUpdate", OnUpdate)
 	end
 
-	if Module.db.profile.automation.AutoScreenshotAchieve then
+	if Module.NexConfig.automation.AutoScreenshotAchieve then
 		self:RegisterEvent("ACHIEVEMENT_EARNED", ScreenShotOnEvent)
 	else
 		ScreenShotFrame:Hide()

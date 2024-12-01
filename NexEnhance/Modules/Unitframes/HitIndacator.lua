@@ -2,7 +2,7 @@ local _, Module = ...
 Module.originalPetHitIndicatorParent = nil
 
 function Module:TogglePlayerHitIndicator()
-	if Module.db.profile.unitframes.playerFrameEnhancements.playerHitIndicatorHide then
+	if Module.NexConfig.unitframes.playerFrameEnhancements.playerHitIndicatorHide then
 		PlayerFrame.PlayerFrameContent.PlayerFrameContentMain.HitIndicator:SetAlpha(0)
 		PetHitIndicator:SetParent(Module.HiddenFrame)
 	else

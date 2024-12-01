@@ -39,13 +39,13 @@ local function AdjustWardrobeFrame()
 end
 
 local function HideTutorialButton()
-	if Module.db.profile.general.SuppressTutorialPrompts then
+	if Module.NexConfig.general.SuppressTutorialPrompts then
 		Module.HideObject(PetJournalTutorialButton)
 	end
 end
 
 Module:HookAddOn("Blizzard_Collections", function()
-	if not Module.db.profile.skins.blizzskins.collectionsFrame then
+	if not Module.NexConfig.skins.blizzskins.collectionsFrame then
 		return
 	end
 

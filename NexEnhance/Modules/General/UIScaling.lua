@@ -7,7 +7,7 @@ local function GetBestScale()
 end
 
 function Module:SetupUIScale(init)
-	local generalDB = Module.db.profile.general
+	local generalDB = Module.NexConfig.general
 	if generalDB["AutoScale"] then
 		generalDB["UIScale"] = GetBestScale()
 	end

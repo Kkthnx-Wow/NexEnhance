@@ -113,8 +113,8 @@ function Module:MapData_RefreshOverlays(fullUpdate)
 					texture:SetPoint("TOPLEFT", offsetX + (TILE_SIZE_WIDTH * (k - 1)), -(offsetY + (TILE_SIZE_HEIGHT * (j - 1))))
 					texture:SetTexture(fileDataIDs[((j - 1) * numTexturesWide) + k], nil, nil, "TRILINEAR")
 
-					if Module.db.profile.worldmap.RevealWorldMap then
-						if Module.db.profile.worldmap.MapRevealGlow then
+					if Module.NexConfig.worldmap.RevealWorldMap then
+						if Module.NexConfig.worldmap.MapRevealGlow then
 							texture:SetVertexColor(0.7, 0.7, 0.7)
 						else
 							texture:SetVertexColor(1, 1, 1)
@@ -149,7 +149,7 @@ function Module:PLAYER_LOGIN()
 	bu:SetHitRectInsets(-5, -5, -5, -5)
 	bu:SetPoint("TOPRIGHT", -140, 0)
 	bu:SetSize(24, 24)
-	bu:SetChecked(Module.db.profile.worldmap.RevealWorldMap)
+	bu:SetChecked(Module.NexConfig.worldmap.RevealWorldMap)
 	bu.text = Module.CreateFontString(bu, 12, "Map Reveal", "system", "", "LEFT", 24, 0)
 	Module.AddTooltip(bu, "ANCHOR_BOTTOMLEFT", "|nEnable this option to reveal unexplored areas of the world map.|n|n" .. "When enabled, unexplored areas will appear with a slight glow effect.", "info", "Map Reveal", true)
 
@@ -159,10 +159,10 @@ function Module:PLAYER_LOGIN()
 	end
 
 	bu:SetScript("OnClick", function(self)
-		Module.db.profile.worldmap.RevealWorldMap = self:GetChecked()
+		Module.NexConfig.worldmap.RevealWorldMap = self:GetChecked()
 
 		for i = 1, #shownMapCache do
-			shownMapCache[i]:SetShown(Module.db.profile.worldmap.RevealWorldMap)
+			shownMapCache[i]:SetShown(Module.NexConfig.worldmap.RevealWorldMap)
 		end
 	end)
 end

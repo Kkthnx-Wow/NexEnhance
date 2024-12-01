@@ -24,14 +24,14 @@ function Module.FormattedTimer(s, modRate)
 	elseif s > hour then
 		return format("%d" .. Module.MyClassColor .. "h", s / hour + 0.5), s % hour
 	elseif s >= minute then
-		if s < Module.db.profile.actionbars.MmssTH then
+		if s < Module.NexConfig.actionbars.MmssTH then
 			return format("%d:%.2d", s / minute, s % minute), s - floor(s)
 		else
 			return format("%d" .. Module.MyClassColor .. "m", s / minute + 0.5), s % minute
 		end
 	else
 		local colorStr = (s < 3 and "|cffff0000") or (s < 10 and "|cffffff00") or "|cffcccc33"
-		if s < Module.db.profile.actionbars.TenthTH then
+		if s < Module.NexConfig.actionbars.TenthTH then
 			return format(colorStr .. "%.1f|r", s), (s - format("%.1f", s)) / modRate
 		else
 			return format(colorStr .. "%d|r", s + 0.5), (s - floor(s)) / modRate
@@ -119,7 +119,7 @@ function Module:StartTimer(start, duration, modRate)
 	end
 
 	local frameName = self.GetName and self:GetName()
-	if Module.db.profile.actionbars.OverrideWA and frameName and strfind(frameName, "WeakAuras") then
+	if Module.NexConfig.actionbars.OverrideWA and frameName and strfind(frameName, "WeakAuras") then
 		self.noCooldownCount = true
 		return
 	end
@@ -210,7 +210,7 @@ function Module:RegisterActionButton()
 end
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.actionbars.cooldowns then
+	if not Module.NexConfig.actionbars.cooldowns then
 		return
 	end
 

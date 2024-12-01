@@ -456,7 +456,7 @@ local function LoopAnimations(self)
 end
 
 local function ToggleAFKMode()
-	if Module.db.profile.miscellaneous.enableAFKMode then
+	if Module.NexConfig.miscellaneous.enableAFKMode then
 		AFKMode:RegisterEvent("PLAYER_FLAGS_CHANGED")
 		AFKMode:RegisterEvent("PLAYER_REGEN_DISABLED")
 		AFKMode:RegisterEvent("LFG_PROPOSAL_SHOW")

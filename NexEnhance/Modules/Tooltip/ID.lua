@@ -86,7 +86,7 @@ function Module:SetHyperLinkID(link)
 end
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.tooltip.ShowID then
+	if not Module.NexConfig.tooltip.ShowID then
 		return
 	end
 

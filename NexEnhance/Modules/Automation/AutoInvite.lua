@@ -13,7 +13,7 @@ local hideStatic
 
 -- Function to handle PARTY_INVITE_REQUEST
 function Module:PARTY_INVITE_REQUEST(_, _, _, _, _, _, _, inviterGUID)
-	if not Module.db.profile.automation.AutoInvite then
+	if not Module.NexConfig.automation.AutoInvite then
 		return
 	end
 
@@ -34,7 +34,7 @@ end
 
 -- Function to handle GROUP_ROSTER_UPDATE
 function Module:GROUP_ROSTER_UPDATE()
-	if not Module.db.profile.automation.AutoInvite then
+	if not Module.NexConfig.automation.AutoInvite then
 		return
 	end
 

@@ -385,7 +385,7 @@ function Module:InspectUnit(unit, forced)
 		level = currentDB.level
 		Module:SetupItemLevel(level)
 
-		if not Module.db.profile.tooltip.SpecLevelByShift and IsShiftKeyDown() then
+		if not Module.NexConfig.tooltip.SpecLevelByShift and IsShiftKeyDown() then
 			forced = true
 		end
 		if level and not forced and (GetTime() - currentDB.getTime < resetTime) then
@@ -405,7 +405,7 @@ function Module:InspectUnit(unit, forced)
 end
 
 function Module:InspectUnitItemLevel(unit)
-	if Module.db.profile.tooltip.SpecLevelByShift and not IsShiftKeyDown() then
+	if Module.NexConfig.tooltip.SpecLevelByShift and not IsShiftKeyDown() then
 		return
 	end
 

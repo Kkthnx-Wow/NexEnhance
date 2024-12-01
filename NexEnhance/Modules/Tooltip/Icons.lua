@@ -51,7 +51,7 @@ local GetTooltipTextureByType = {
 }
 
 function Module:PLAYER_LOGIN()
-	if Module.db.profile.tooltip.TipIcons then
+	if Module.NexConfig.tooltip.TipIcons then
 		return
 	end
 

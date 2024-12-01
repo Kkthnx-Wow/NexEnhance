@@ -24,22 +24,22 @@ do
 
 			local orig, _, tar, x, y = frame:GetPoint()
 			x, y = Core:Round(x), Core:Round(y)
-			Core.db.profile["tempanchor"][frame:GetName()] = { orig, "UIParent", tar, x, y }
+			Core.NexConfig["tempanchor"][frame:GetName()] = { orig, "UIParent", tar, x, y }
 		end)
 	end
 
 	function Core:RestoreMoverFrame()
 		local name = self:GetName()
-		if name and Core.db.profile["tempanchor"][name] then
+		if name and Core.NexConfig["tempanchor"][name] then
 			self:ClearAllPoints()
-			self:SetPoint(unpack(Core.db.profile["tempanchor"][name]))
+			self:SetPoint(unpack(Core.NexConfig["tempanchor"][name]))
 		end
 	end
 
 	function Core:ResetMoverFrame(defaultPoint, ...)
 		local name = self:GetName()
-		if name and Core.db.profile["tempanchor"][name] then
-			Core.db.profile["tempanchor"][name] = nil
+		if name and Core.NexConfig["tempanchor"][name] then
+			Core.NexConfig["tempanchor"][name] = nil
 		end
 		self:ClearAllPoints()
 		self:SetPoint(defaultPoint, ...)
@@ -49,12 +49,12 @@ end
 do
 	-- Function to force update prefix style and use it immediately
 	function Core:ForceUpdatePrefixStyle()
-		return Core.db.profile.general.NumberPrefixStyle
+		return Core.NexConfig.general.NumberPrefixStyle
 	end
 
 	-- Function to shorten numerical values
 	function Core.ShortValue(n)
-		local prefixStyle = Core.db.profile.general.NumberPrefixStyle -- Get the current prefix style
+		local prefixStyle = Core.NexConfig.general.NumberPrefixStyle -- Get the current prefix style
 
 		if prefixStyle == "STANDARD" then
 			if n >= 1e12 then

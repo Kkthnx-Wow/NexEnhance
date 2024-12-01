@@ -26,7 +26,7 @@ end
 
 -- Function to enable or disable faster loot based on the configuration
 function Module:PLAYER_LOGIN()
-	if Module.db.profile.loot.FasterLoot then
+	if Module.NexConfig.loot.FasterLoot then
 		Module:RegisterEvent("LOOT_READY", HandleFasterLoot)
 	else
 		Module:UnregisterEvent("LOOT_READY", HandleFasterLoot)

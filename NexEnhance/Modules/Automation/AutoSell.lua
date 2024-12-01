@@ -36,7 +36,7 @@ local function startSelling()
 end
 
 local function uiErrorMessage(_, message)
-	if not Module.db.profile.automation.AutoSell then
+	if not Module.NexConfig.automation.AutoSell then
 		return
 	end
 
@@ -46,7 +46,7 @@ local function uiErrorMessage(_, message)
 end
 
 local function merchantShow()
-	if not Module.db.profile.automation.AutoSell then
+	if not Module.NexConfig.automation.AutoSell then
 		return
 	end
 
@@ -61,7 +61,7 @@ local function merchantShow()
 end
 
 local function merchantClosed()
-	if not Module.db.profile.automation.AutoSell then
+	if not Module.NexConfig.automation.AutoSell then
 		return
 	end
 

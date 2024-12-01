@@ -8,7 +8,7 @@ local STAT_HASTE = STAT_HASTE
 local HIGHLIGHT_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE = HIGHLIGHT_FONT_COLOR_CODE, FONT_COLOR_CODE_CLOSE
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.miscellaneous.missingStats then
+	if not Module.NexConfig.miscellaneous.missingStats then
 		return
 	end
 

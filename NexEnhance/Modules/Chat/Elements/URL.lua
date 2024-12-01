@@ -84,7 +84,7 @@ function Module:HyperlinkShowHook(link)
 end
 
 function Module:RegisterChatURLCopy()
-	if not Modules.db.profile.chat.URLCopy then
+	if not Modules.NexConfig.chat.URLCopy then
 		return
 	end
 

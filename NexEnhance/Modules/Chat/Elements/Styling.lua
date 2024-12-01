@@ -163,7 +163,7 @@ local function CreateBackground(self)
 	frame:SetPoint("TOPLEFT", self.Background, "TOPLEFT", -4, 4)
 	frame:SetPoint("BOTTOMRIGHT", self.Background, "BOTTOMRIGHT", 4, -4)
 	frame:SetFrameLevel(0)
-	frame:SetShown(Modules.db.profile.chat.Background)
+	frame:SetShown(Modules.NexConfig.chat.Background)
 
 	return frame
 end
@@ -233,7 +233,7 @@ function Module:SkinChat()
 end
 
 function Module:ToggleChatFrameTextures(frame)
-	if Modules.db.profile.chat.Background then
+	if Modules.NexConfig.chat.Background then
 		frame:DisableDrawLayer("BORDER")
 		frame:DisableDrawLayer("BACKGROUND")
 	else
@@ -246,7 +246,7 @@ function Module:ToggleChatBackground()
 	for _, chatFrameName in ipairs(CHAT_FRAMES) do
 		local frame = _G[chatFrameName]
 		if frame.__background then
-			frame.__background:SetShown(Modules.db.profile.chat.Background)
+			frame.__background:SetShown(Modules.NexConfig.chat.Background)
 		end
 		Module:ToggleChatFrameTextures(frame)
 	end
@@ -399,7 +399,7 @@ end
 
 -- Sticky whisper
 function Module:ChatWhisperSticky()
-	if Modules.db.profile.chat.StickyChat then
+	if Modules.NexConfig.chat.StickyChat then
 		ChatTypeInfo["WHISPER"].sticky = 1
 		ChatTypeInfo["BN_WHISPER"].sticky = 1
 	else
@@ -443,7 +443,7 @@ local whisperEvents = {
 	["CHAT_MSG_BN_WHISPER"] = true,
 }
 function Module:PlayWhisperSound(event, _, author)
-	if not Modules.db.profile.chat.WhisperSound then
+	if not Modules.NexConfig.chat.WhisperSound then
 		return
 	end
 

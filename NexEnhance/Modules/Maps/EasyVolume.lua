@@ -61,7 +61,7 @@ end
 
 -- Event handler for player login
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.minimap.EasyVolume then
+	if not Module.NexConfig.minimap.EasyVolume then
 		return
 	end
 

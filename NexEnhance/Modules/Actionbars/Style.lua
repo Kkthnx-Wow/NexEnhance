@@ -52,9 +52,9 @@ local function StyleActionButton(button)
 	local count, hotkey, name, slotbg = button.Count, button.HotKey, button.Name, button.SlotBackground
 
 	if name then
-		name:SetShown(Module.db.profile.actionbars.showName)
-		if Module.db.profile.actionbars.showName then
-			name:SetFont("Fonts\\FRIZQT__.TTF", Module.db.profile.actionbars.nameSize, "OUTLINE")
+		name:SetShown(Module.NexConfig.actionbars.showName)
+		if Module.NexConfig.actionbars.showName then
+			name:SetFont("Fonts\\FRIZQT__.TTF", Module.NexConfig.actionbars.nameSize, "OUTLINE")
 		end
 		name:ClearAllPoints()
 		name:SetPoint("BOTTOMLEFT", 0, 0)
@@ -66,18 +66,18 @@ local function StyleActionButton(button)
 	end
 
 	if count then
-		count:SetShown(Module.db.profile.actionbars.showCount)
-		if Module.db.profile.actionbars.showCount then
-			count:SetFont("Fonts\\ARIALN.TTF", Module.db.profile.actionbars.countSize, "OUTLINE")
+		count:SetShown(Module.NexConfig.actionbars.showCount)
+		if Module.NexConfig.actionbars.showCount then
+			count:SetFont("Fonts\\ARIALN.TTF", Module.NexConfig.actionbars.countSize, "OUTLINE")
 		end
 		count:ClearAllPoints()
 		count:SetPoint("BOTTOMRIGHT", 2, 0)
 	end
 
 	if hotkey then
-		hotkey:SetShown(Module.db.profile.actionbars.showHotkey)
-		if Module.db.profile.actionbars.showHotkey then
-			hotkey:SetFont("Fonts\\FRIZQT__.TTF", Module.db.profile.actionbars.hotkeySize, "OUTLINE")
+		hotkey:SetShown(Module.NexConfig.actionbars.showHotkey)
+		if Module.NexConfig.actionbars.showHotkey then
+			hotkey:SetFont("Fonts\\FRIZQT__.TTF", Module.NexConfig.actionbars.hotkeySize, "OUTLINE")
 		end
 		hotkey:ClearAllPoints()
 		hotkey:SetPoint("TOPRIGHT", 0, -3)

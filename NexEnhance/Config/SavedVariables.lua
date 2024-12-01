@@ -73,19 +73,24 @@ local defaults = {
 			EasyVolume = false,
 			PingNotifier = false,
 			recycleBin = false,
+			recycleBinAuto = true,
 		},
 		miscellaneous = {
-			widgetScale = 0.8,
-			hideWidgetTexture = true,
-
 			alreadyKnown = false,
 			diableTalkingHead = false,
 			enableAFKMode = false,
 			gemsNEnchants = false,
+			hideWidgetTexture = true,
 			missingStats = true,
 			moveableFrames = false,
 			questRewardsMostValueIcon = false,
 			questXPPercent = false,
+			widgetScale = 0.8,
+			QuestTrackerAlerts = {
+				OnlyCompleteRing = false,
+				QuestNotification = false,
+				QuestProgress = false,
+			},
 			itemlevels = {
 				characterFrame = false,
 				containers = false,
@@ -156,11 +161,13 @@ function Config:ADDON_LOADED(addon)
 		return
 	end
 
-	-- initialize database with defaults
+	-- Initialize database with defaults
 	Config.db = LibStub("AceDB-3.0"):New("NexEnhanceDB", defaults)
+
+	-- Attach to namespace
+	Config.NexConfig = Config.db.profile
+
 	Config:SetupUIScale(true)
 
 	Config:UnregisterEvent("ADDON_LOADED", Config.ADDON_LOADED)
-
-	return true
 end

@@ -133,7 +133,7 @@ local function UpdateHealthColor(frame, unit)
 end
 
 local function UpdateHealthColorCF(frame, unit)
-	if unit == "player" and Module.db.profile.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer then
+	if unit == "player" and Module.NexConfig.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer then
 		return
 	end
 	local color, isFriendly = getUnitColor(unit)
@@ -148,9 +148,9 @@ function Module.UpdateToTColor()
 end
 
 function Module.UpdateFrames()
-	classColorsOn = Module.db.profile.unitframes.classColorFrames
-	colorPetAfterOwner = Module.db.profile.unitframes.playerFrameEnhancements.colorPetAfterOwner
-	skipPlayer = Module.db.profile.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer
+	classColorsOn = Module.NexConfig.unitframes.classColorFrames
+	colorPetAfterOwner = Module.NexConfig.unitframes.playerFrameEnhancements.colorPetAfterOwner
+	skipPlayer = Module.NexConfig.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer
 
 	if classColorsOn then
 		Module.HookHealthbarColors()
@@ -228,7 +228,7 @@ function Module.UpdateFrames()
 		end
 	end
 
-	if Module.db.profile.unitframes.playerFrameEnhancements.colorPetAfterOwner then
+	if Module.NexConfig.unitframes.playerFrameEnhancements.colorPetAfterOwner then
 	end
 
 	if UnitExists("pet") then
@@ -296,7 +296,7 @@ function Module.HookHealthbarColors()
 			end)
 
 			if CfPlayerFrameHealthBar then
-				if not Module.db.profile.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer then
+				if not Module.NexConfig.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer then
 					HookCfSetStatusBarColor(CfPlayerFrameHealthBar, "player")
 				end
 				HookCfSetStatusBarColor(CfTargetFrameHealthBar, "target")
@@ -320,7 +320,7 @@ end
 
 function Module.PlayerReputationColor()
 	local frame = PlayerFrame.PlayerFrameContent.PlayerFrameContentMain
-	if Module.db.profile.unitframes.playerFrameEnhancements.playerReputationColor then
+	if Module.NexConfig.unitframes.playerFrameEnhancements.playerReputationColor then
 		if not frame.ReputationColor then
 			frame.ReputationColor = frame:CreateTexture(nil, "OVERLAY")
 			if C_AddOns.IsAddOnLoaded("ClassicFrames") then
@@ -338,7 +338,7 @@ function Module.PlayerReputationColor()
 			frame.ReputationColor:Show()
 		end
 
-		if Module.db.profile.unitframes.playerFrameEnhancements.playerReputationClassColor then
+		if Module.NexConfig.unitframes.playerFrameEnhancements.playerReputationClassColor then
 			local color = getUnitColor("player")
 			if color then
 				frame.ReputationColor:SetDesaturated(true)
@@ -357,7 +357,7 @@ end
 
 function Module.TargetReputationColor()
 	local frame = TargetFrame.TargetFrameContent.TargetFrameContentMain
-	if Module.db.profile.unitframes.targetFrameEnhancements.targetReputationColorHide then
+	if Module.NexConfig.unitframes.targetFrameEnhancements.targetReputationColorHide then
 		if frame.ReputationColor then
 			frame.ReputationColor:Hide()
 		end
@@ -371,7 +371,7 @@ function Module:OnLogin()
 	local function LoginVariablesLoaded()
 		if Module.variablesLoaded then
 			C_Timer.After(1, function()
-				if Module.db.profile.unitframes.classColorFrames then
+				if Module.NexConfig.unitframes.classColorFrames then
 					Module.UpdateFrames()
 				end
 				Module.PlayerReputationColor()

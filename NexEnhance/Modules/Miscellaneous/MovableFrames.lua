@@ -172,7 +172,7 @@ local function HookFrame(name, moveParent)
 end
 
 local function HookFrames(list)
-	if not Module.db.profile.miscellaneous.moveableFrames then
+	if not Module.NexConfig.miscellaneous.moveableFrames then
 		return
 	end
 

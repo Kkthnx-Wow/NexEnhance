@@ -40,7 +40,7 @@ end
 
 -- Hook the ChallengesKeystoneFrame for auto keystone slotting and dragging
 local function HookKeystoneFrame()
-	if not Module.db.profile.automation.AutoKeystoneSlotting then
+	if not Module.NexConfig.automation.AutoKeystoneSlotting then
 		return
 	end
 

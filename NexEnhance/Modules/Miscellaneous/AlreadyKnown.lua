@@ -68,7 +68,7 @@ end
 
 local function IsAlreadyKnown(link, index)
 	-- Check if the feature is enabled in config
-	if not Module.db.profile.miscellaneous.alreadyKnown or not link then
+	if not Module.NexConfig.miscellaneous.alreadyKnown or not link then
 		return
 	end
 
@@ -119,7 +119,7 @@ end
 -- Mail frame
 local function OpenMailFrame_UpdateButtonPositions()
 	-- Check if the feature is enabled in config
-	if not Module.db.profile.miscellaneous.alreadyKnown then
+	if not Module.NexConfig.miscellaneous.alreadyKnown then
 		return
 	end
 
@@ -138,7 +138,7 @@ hooksecurefunc("OpenMailFrame_UpdateButtonPositions", OpenMailFrame_UpdateButton
 -- Loot frame
 local function LootFrame_UpdateButton(self)
 	-- Check if the feature is enabled in config
-	if not Module.db.profile.miscellaneous.alreadyKnown then
+	if not Module.NexConfig.miscellaneous.alreadyKnown then
 		return
 	end
 
@@ -153,7 +153,7 @@ hooksecurefunc(LootFrameElementMixin, "Init", LootFrame_UpdateButton)
 -- Merchant frame
 local function Hook_UpdateMerchantInfo()
 	-- Check if the feature is enabled in config
-	if not Module.db.profile.miscellaneous.alreadyKnown then
+	if not Module.NexConfig.miscellaneous.alreadyKnown then
 		return
 	end
 
@@ -182,7 +182,7 @@ hooksecurefunc("MerchantFrame_UpdateMerchantInfo", Hook_UpdateMerchantInfo)
 
 -- Quest frame
 local function QuestInfo_ShowRewards()
-	if not Module.db.profile.miscellaneous.alreadyKnown then
+	if not Module.NexConfig.miscellaneous.alreadyKnown then
 		return
 	end
 
@@ -248,7 +248,7 @@ else
 end
 
 local function Hook_UpdateBuybackInfo()
-	if not Module.db.profile.miscellaneous.alreadyKnown then
+	if not Module.NexConfig.miscellaneous.alreadyKnown then
 		return
 	end
 
@@ -271,7 +271,7 @@ end
 hooksecurefunc("MerchantFrame_UpdateBuybackInfo", Hook_UpdateBuybackInfo)
 
 local function Hook_UpdateAuctionItems(self)
-	if not Module.db.profile.miscellaneous.alreadyKnown then
+	if not Module.NexConfig.miscellaneous.alreadyKnown then
 		return
 	end
 
@@ -309,7 +309,7 @@ local function Hook_UpdateAuctionItems(self)
 end
 
 local function GuildBankFrame_Update(self)
-	if not Module.db.profile.miscellaneous.alreadyKnown or self.mode ~= "bank" then
+	if not Module.NexConfig.miscellaneous.alreadyKnown or self.mode ~= "bank" then
 		return
 	end
 

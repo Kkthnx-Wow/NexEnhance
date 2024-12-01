@@ -68,10 +68,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.general.AutoScale
+							return Config.NexConfig.general.AutoScale
 						end,
 						set = function(_, value)
-							Config.db.profile.general.AutoScale = value
+							Config.NexConfig.general.AutoScale = value
 							Config:SetupUIScale()
 						end,
 					},
@@ -85,13 +85,13 @@ local function CreateOptions()
 						max = 1.0,
 						step = 0.01,
 						disabled = function()
-							return Config.db.profile.general.AutoScale
+							return Config.NexConfig.general.AutoScale
 						end,
 						get = function()
-							return Config.db.profile.general.UIScale
+							return Config.NexConfig.general.UIScale
 						end,
 						set = function(_, value)
-							Config.db.profile.general.UIScale = value
+							Config.NexConfig.general.UIScale = value
 							Config:SetupUIScale()
 						end,
 					},
@@ -102,10 +102,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.general.disableTutorialButtons
+							return Config.NexConfig.general.disableTutorialButtons
 						end,
 						set = function(_, value)
-							Config.db.profile.general.disableTutorialButtons = value
+							Config.NexConfig.general.disableTutorialButtons = value
 						end,
 					},
 					NumberPrefixStyle = {
@@ -119,10 +119,10 @@ local function CreateOptions()
 							["FULL"] = "Full digitals",
 						},
 						get = function()
-							return Config.db.profile.general.NumberPrefixStyle
+							return Config.NexConfig.general.NumberPrefixStyle
 						end,
 						set = function(_, value)
-							Config.db.profile.general.NumberPrefixStyle = value
+							Config.NexConfig.general.NumberPrefixStyle = value
 						end,
 					},
 				},
@@ -150,14 +150,14 @@ local function CreateOptions()
 						max = 20,
 						step = 1,
 						get = function()
-							return Config.db.profile.actionbars.nameSize
+							return Config.NexConfig.actionbars.nameSize
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.nameSize = value
+							Config.NexConfig.actionbars.nameSize = value
 							Config:UpdateStylingConfig()
 						end,
 						disabled = function()
-							return not Config.db.profile.actionbars.showName
+							return not Config.NexConfig.actionbars.showName
 						end,
 					},
 					countSize = {
@@ -170,14 +170,14 @@ local function CreateOptions()
 						max = 20,
 						step = 1,
 						get = function()
-							return Config.db.profile.actionbars.countSize
+							return Config.NexConfig.actionbars.countSize
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.countSize = value
+							Config.NexConfig.actionbars.countSize = value
 							Config:UpdateStylingConfig()
 						end,
 						disabled = function()
-							return not Config.db.profile.actionbars.showCount
+							return not Config.NexConfig.actionbars.showCount
 						end,
 					},
 					hotkeySize = {
@@ -190,14 +190,14 @@ local function CreateOptions()
 						max = 20,
 						step = 1,
 						get = function()
-							return Config.db.profile.actionbars.hotkeySize
+							return Config.NexConfig.actionbars.hotkeySize
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.hotkeySize = value
+							Config.NexConfig.actionbars.hotkeySize = value
 							Config:UpdateStylingConfig()
 						end,
 						disabled = function()
-							return not Config.db.profile.actionbars.showHotkey
+							return not Config.NexConfig.actionbars.showHotkey
 						end,
 					},
 					showName = {
@@ -207,10 +207,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.actionbars.showName
+							return Config.NexConfig.actionbars.showName
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.showName = value
+							Config.NexConfig.actionbars.showName = value
 							Config:UpdateStylingConfig()
 						end,
 					},
@@ -221,10 +221,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.actionbars.showCount
+							return Config.NexConfig.actionbars.showCount
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.showCount = value
+							Config.NexConfig.actionbars.showCount = value
 							Config:UpdateStylingConfig()
 						end,
 					},
@@ -235,10 +235,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.actionbars.showHotkey
+							return Config.NexConfig.actionbars.showHotkey
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.showHotkey = value
+							Config.NexConfig.actionbars.showHotkey = value
 							Config:UpdateStylingConfig()
 						end,
 					},
@@ -249,10 +249,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.actionbars.cooldowns
+							return Config.NexConfig.actionbars.cooldowns
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.cooldowns = value
+							Config.NexConfig.actionbars.cooldowns = value
 						end,
 					},
 					MmssTH = {
@@ -265,13 +265,13 @@ local function CreateOptions()
 						max = 600,
 						step = 1,
 						disabled = function()
-							return not Config.db.profile.actionbars.cooldowns
+							return not Config.NexConfig.actionbars.cooldowns
 						end,
 						get = function()
-							return Config.db.profile.actionbars.MmssTH
+							return Config.NexConfig.actionbars.MmssTH
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.MmssTH = value
+							Config.NexConfig.actionbars.MmssTH = value
 						end,
 					},
 					TenthTH = {
@@ -284,13 +284,13 @@ local function CreateOptions()
 						max = 60,
 						step = 1,
 						disabled = function()
-							return not Config.db.profile.actionbars.cooldowns
+							return not Config.NexConfig.actionbars.cooldowns
 						end,
 						get = function()
-							return Config.db.profile.actionbars.TenthTH
+							return Config.NexConfig.actionbars.TenthTH
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.TenthTH = value
+							Config.NexConfig.actionbars.TenthTH = value
 						end,
 					},
 					OverrideWA = {
@@ -300,13 +300,13 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						disabled = function()
-							return not Config.db.profile.actionbars.cooldowns
+							return not Config.NexConfig.actionbars.cooldowns
 						end,
 						get = function()
-							return Config.db.profile.actionbars.OverrideWA
+							return Config.NexConfig.actionbars.OverrideWA
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.OverrideWA = value
+							Config.NexConfig.actionbars.OverrideWA = value
 						end,
 					},
 					range = {
@@ -316,10 +316,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.actionbars.range
+							return Config.NexConfig.actionbars.range
 						end,
 						set = function(_, value)
-							Config.db.profile.actionbars.range = value
+							Config.NexConfig.actionbars.range = value
 						end,
 					},
 				},
@@ -344,10 +344,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AnnoyingBuffs
+							return Config.NexConfig.automation.AnnoyingBuffs
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AnnoyingBuffs = value
+							Config.NexConfig.automation.AnnoyingBuffs = value
 						end,
 					},
 					AutoInvite = {
@@ -357,10 +357,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AutoInvite
+							return Config.NexConfig.automation.AutoInvite
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoInvite = value
+							Config.NexConfig.automation.AutoInvite = value
 						end,
 					},
 					AutoGoodbye = {
@@ -370,10 +370,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AutoGoodbye
+							return Config.NexConfig.automation.AutoGoodbye
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoGoodbye = value
+							Config.NexConfig.automation.AutoGoodbye = value
 						end,
 					},
 					CustomGoodbyeMessage = {
@@ -383,13 +383,13 @@ local function CreateOptions()
 						type = "input",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.CustomGoodbyeMessage or ""
+							return Config.NexConfig.automation.CustomGoodbyeMessage or ""
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.CustomGoodbyeMessage = value
+							Config.NexConfig.automation.CustomGoodbyeMessage = value
 						end,
 						disabled = function()
-							return not Config.db.profile.automation.AutoGoodbye
+							return not Config.NexConfig.automation.AutoGoodbye
 						end,
 					},
 					SkipCinematics = {
@@ -399,10 +399,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.SkipCinematics
+							return Config.NexConfig.automation.SkipCinematics
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.SkipCinematics = value
+							Config.NexConfig.automation.SkipCinematics = value
 						end,
 					},
 					AutoKeystoneSlotting = {
@@ -412,10 +412,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AutoKeystoneSlotting
+							return Config.NexConfig.automation.AutoKeystoneSlotting
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoKeystoneSlotting = value
+							Config.NexConfig.automation.AutoKeystoneSlotting = value
 						end,
 					},
 					AutoBestQuestReward = {
@@ -425,10 +425,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AutoBestQuestReward
+							return Config.NexConfig.automation.AutoBestQuestReward
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoBestQuestReward = value
+							Config.NexConfig.automation.AutoBestQuestReward = value
 						end,
 					},
 					AutoScreenshotAchieve = {
@@ -438,10 +438,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AutoScreenshotAchieve
+							return Config.NexConfig.automation.AutoScreenshotAchieve
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoScreenshotAchieve = value
+							Config.NexConfig.automation.AutoScreenshotAchieve = value
 							Config:ToggleAutoScreenshotAchieve()
 						end,
 					},
@@ -452,10 +452,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AutoSell
+							return Config.NexConfig.automation.AutoSell
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoSell = value
+							Config.NexConfig.automation.AutoSell = value
 						end,
 					},
 					AutoRepair = {
@@ -465,10 +465,10 @@ local function CreateOptions()
 						type = "select",
 						values = { [0] = "None", [1] = "Guild", [2] = "Player" },
 						get = function()
-							return Config.db.profile.automation.AutoRepair
+							return Config.NexConfig.automation.AutoRepair
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoRepair = value
+							Config.NexConfig.automation.AutoRepair = value
 						end,
 					},
 					AutoResurrect = {
@@ -478,10 +478,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.automation.AutoResurrect
+							return Config.NexConfig.automation.AutoResurrect
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoResurrect = value
+							Config.NexConfig.automation.AutoResurrect = value
 						end,
 					},
 					AutoResurrectEmote = {
@@ -502,13 +502,13 @@ local function CreateOptions()
 							["flex"] = "Flex",
 						},
 						get = function()
-							return Config.db.profile.automation.AutoResurrectEmote or "thank"
+							return Config.NexConfig.automation.AutoResurrectEmote or "thank"
 						end,
 						set = function(_, value)
-							Config.db.profile.automation.AutoResurrectEmote = value
+							Config.NexConfig.automation.AutoResurrectEmote = value
 						end,
 						disabled = function()
-							return not Config.db.profile.automation.AutoResurrect
+							return not Config.NexConfig.automation.AutoResurrect
 						end,
 					},
 					IgnoreQuestNPC = {
@@ -520,7 +520,7 @@ local function CreateOptions()
 						multiline = true,
 						get = function()
 							local ids = {}
-							for npcID, value in pairs(Config.db.profile.automation.IgnoreQuestNPC) do
+							for npcID, value in pairs(Config.NexConfig.automation.IgnoreQuestNPC) do
 								if value then
 									table.insert(ids, tostring(npcID))
 								end
@@ -528,14 +528,14 @@ local function CreateOptions()
 							return table.concat(ids, ", ")
 						end,
 						set = function(_, value)
-							wipe(Config.db.profile.automation.IgnoreQuestNPC)
+							wipe(Config.NexConfig.automation.IgnoreQuestNPC)
 							for npcID in value:gmatch("%d+") do
-								Config.db.profile.automation.IgnoreQuestNPC[tonumber(npcID)] = true
+								Config.NexConfig.automation.IgnoreQuestNPC[tonumber(npcID)] = true
 							end
 							Config:UpdateIgnoreList()
 						end,
 						disabled = function()
-							return not Config.db.profile.automation.AutoQuest
+							return not Config.NexConfig.automation.AutoQuest
 						end,
 					},
 				},
@@ -560,10 +560,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.chat.Background
+							return Config.NexConfig.chat.Background
 						end,
 						set = function(_, value)
-							Config.db.profile.chat.Background = value
+							Config.NexConfig.chat.Background = value
 							Config.Chat:ToggleChatBackground()
 						end,
 					},
@@ -574,10 +574,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.chat.URLCopy
+							return Config.NexConfig.chat.URLCopy
 						end,
 						set = function(_, value)
-							Config.db.profile.chat.URLCopy = value
+							Config.NexConfig.chat.URLCopy = value
 						end,
 					},
 					StickyChat = {
@@ -587,10 +587,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.chat.StickyChat
+							return Config.NexConfig.chat.StickyChat
 						end,
 						set = function(_, value)
-							Config.db.profile.chat.StickyChat = value
+							Config.NexConfig.chat.StickyChat = value
 							Config.Chat:ChatWhisperSticky()
 						end,
 					},
@@ -601,10 +601,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.chat.SocialButton
+							return Config.NexConfig.chat.SocialButton
 						end,
 						set = function(_, value)
-							Config.db.profile.chat.SocialButton = value
+							Config.NexConfig.chat.SocialButton = value
 							Config:ToggleSocialButton()
 						end,
 					},
@@ -615,10 +615,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.chat.MenuButton
+							return Config.NexConfig.chat.MenuButton
 						end,
 						set = function(_, value)
-							Config.db.profile.chat.MenuButton = value
+							Config.NexConfig.chat.MenuButton = value
 							Config:ToggleMenuButton()
 						end,
 					},
@@ -629,10 +629,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.chat.ChannelButton
+							return Config.NexConfig.chat.ChannelButton
 						end,
 						set = function(_, value)
-							Config.db.profile.chat.ChannelButton = value
+							Config.NexConfig.chat.ChannelButton = value
 							Config:ToggleChannelButton()
 						end,
 					},
@@ -649,10 +649,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.chat.chatfilters.EnableFilter
+									return Config.NexConfig.chat.chatfilters.EnableFilter
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.EnableFilter = value
+									Config.NexConfig.chat.chatfilters.EnableFilter = value
 								end,
 							},
 							FilterMatches = {
@@ -670,10 +670,10 @@ local function CreateOptions()
 									end
 								end,
 								get = function()
-									return Config.db.profile.chat.chatfilters.FilterMatches
+									return Config.NexConfig.chat.chatfilters.FilterMatches
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.FilterMatches = value
+									Config.NexConfig.chat.chatfilters.FilterMatches = value
 								end,
 							},
 							BlockStrangers = {
@@ -683,10 +683,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.chat.chatfilters.BlockStrangers
+									return Config.NexConfig.chat.chatfilters.BlockStrangers
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.BlockStrangers = value
+									Config.NexConfig.chat.chatfilters.BlockStrangers = value
 								end,
 							},
 							BlockSpammer = {
@@ -696,10 +696,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.chat.chatfilters.BlockSpammer
+									return Config.NexConfig.chat.chatfilters.BlockSpammer
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.BlockSpammer = value
+									Config.NexConfig.chat.chatfilters.BlockSpammer = value
 								end,
 							},
 							ChatItemLevel = {
@@ -709,10 +709,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.chat.chatfilters.ChatItemLevel
+									return Config.NexConfig.chat.chatfilters.ChatItemLevel
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.ChatItemLevel = value
+									Config.NexConfig.chat.chatfilters.ChatItemLevel = value
 								end,
 							},
 							BlockAddonAlert = {
@@ -722,10 +722,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.chat.chatfilters.BlockAddonAlert
+									return Config.NexConfig.chat.chatfilters.BlockAddonAlert
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.BlockAddonAlert = value
+									Config.NexConfig.chat.chatfilters.BlockAddonAlert = value
 								end,
 							},
 							ChatFilterList = {
@@ -736,10 +736,10 @@ local function CreateOptions()
 								width = "double",
 								multiline = true,
 								get = function()
-									return Config.db.profile.chat.chatfilters.ChatFilterList
+									return Config.NexConfig.chat.chatfilters.ChatFilterList
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.ChatFilterList = value
+									Config.NexConfig.chat.chatfilters.ChatFilterList = value
 									Config.Chat:UpdateFilterList()
 								end,
 							},
@@ -751,10 +751,10 @@ local function CreateOptions()
 								width = "double",
 								multiline = true,
 								get = function()
-									return Config.db.profile.chat.chatfilters.ChatFilterWhiteList
+									return Config.NexConfig.chat.chatfilters.ChatFilterWhiteList
 								end,
 								set = function(_, value)
-									Config.db.profile.chat.chatfilters.ChatFilterWhiteList = value
+									Config.NexConfig.chat.chatfilters.ChatFilterWhiteList = value
 									Config.Chat:UpdateFilterWhiteList()
 								end,
 							},
@@ -776,10 +776,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.experience.enableExp
+							return Config.NexConfig.experience.enableExp
 						end,
 						set = function(_, value)
-							Config.db.profile.experience.enableExp = value
+							Config.NexConfig.experience.enableExp = value
 						end,
 					},
 					showBubbles = {
@@ -789,10 +789,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.experience.showBubbles
+							return Config.NexConfig.experience.showBubbles
 						end,
 						set = function(_, value)
-							Config.db.profile.experience.showBubbles = value
+							Config.NexConfig.experience.showBubbles = value
 							if Config.bar then
 								Config:ManageBarBubbles(Config.bar)
 							end
@@ -805,10 +805,10 @@ local function CreateOptions()
 						type = "select",
 						values = { [1] = "Standard: b/m/k", [2] = "Asian: y/w", [3] = PLAYER },
 						get = function()
-							return Config.db.profile.experience.numberFormat
+							return Config.NexConfig.experience.numberFormat
 						end,
 						set = function(_, value)
-							Config.db.profile.experience.numberFormat = value
+							Config.NexConfig.experience.numberFormat = value
 							if Config.bar then
 								Config:OnExpBarEvent(Config.bar)
 							end
@@ -829,10 +829,10 @@ local function CreateOptions()
 							["CURPERCREM"] = "Current - Percent (Remaining)",
 						},
 						get = function()
-							return Config.db.profile.experience.barTextFormat
+							return Config.NexConfig.experience.barTextFormat
 						end,
 						set = function(_, value)
-							Config.db.profile.experience.barTextFormat = value
+							Config.NexConfig.experience.barTextFormat = value
 							if Config.bar then
 								Config:OnExpBarEvent(Config.bar)
 							end
@@ -848,10 +848,10 @@ local function CreateOptions()
 						max = Config.ScreenWidth,
 						step = 1,
 						get = function()
-							return Config.db.profile.experience.barWidth
+							return Config.NexConfig.experience.barWidth
 						end,
 						set = function(_, value)
-							Config.db.profile.experience.barWidth = value
+							Config.NexConfig.experience.barWidth = value
 							if Config.bar then
 								Config.bar:SetWidth(value)
 								Config:ManageBarBubbles(Config.bar)
@@ -868,10 +868,10 @@ local function CreateOptions()
 						max = 40,
 						step = 1,
 						get = function()
-							return Config.db.profile.experience.barHeight
+							return Config.NexConfig.experience.barHeight
 						end,
 						set = function(_, value)
-							Config.db.profile.experience.barHeight = value
+							Config.NexConfig.experience.barHeight = value
 							if Config.bar then
 								Config.bar:SetHeight(value)
 								Config:ManageBarBubbles(Config.bar)
@@ -886,10 +886,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.experience.classColorBar
+							return Config.NexConfig.experience.classColorBar
 						end,
 						set = function(_, value)
-							Config.db.profile.experience.classColorBar = value
+							Config.NexConfig.experience.classColorBar = value
 							if Config.bar then
 								Config:UpdateExpBarColor(Config.bar)
 							end
@@ -911,10 +911,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.loot.FasterLoot
+							return Config.NexConfig.loot.FasterLoot
 						end,
 						set = function(_, value)
-							Config.db.profile.loot.FasterLoot = value
+							Config.NexConfig.loot.FasterLoot = value
 						end,
 					},
 				},
@@ -933,10 +933,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.minimap.EasyVolume
+							return Config.NexConfig.minimap.EasyVolume
 						end,
 						set = function(_, value)
-							Config.db.profile.minimap.EasyVolume = value
+							Config.NexConfig.minimap.EasyVolume = value
 						end,
 					},
 					recycleBin = {
@@ -946,10 +946,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.minimap.recycleBin
+							return Config.NexConfig.minimap.recycleBin
 						end,
 						set = function(_, value)
-							Config.db.profile.minimap.recycleBin = value
+							Config.NexConfig.minimap.recycleBin = value
 						end,
 						disabled = function()
 							return C_AddOns.IsAddOnLoaded("MBB")
@@ -962,10 +962,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.minimap.PingNotifier
+							return Config.NexConfig.minimap.PingNotifier
 						end,
 						set = function(_, value)
-							Config.db.profile.minimap.PingNotifier = value
+							Config.NexConfig.minimap.PingNotifier = value
 						end,
 					},
 				},
@@ -984,10 +984,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.hideWidgetTexture
+							return Config.NexConfig.miscellaneous.hideWidgetTexture
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.hideWidgetTexture = value
+							Config.NexConfig.miscellaneous.hideWidgetTexture = value
 						end,
 					},
 					widgetScale = {
@@ -1000,10 +1000,10 @@ local function CreateOptions()
 						max = 1.0,
 						step = 0.01,
 						get = function()
-							return Config.db.profile.miscellaneous.widgetScale
+							return Config.NexConfig.miscellaneous.widgetScale
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.widgetScale = value
+							Config.NexConfig.miscellaneous.widgetScale = value
 						end,
 					},
 					disableTalkingHead = {
@@ -1013,10 +1013,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.disableTalkingHead
+							return Config.NexConfig.miscellaneous.disableTalkingHead
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.disableTalkingHead = value
+							Config.NexConfig.miscellaneous.disableTalkingHead = value
 						end,
 					},
 					enableAFKMode = {
@@ -1026,10 +1026,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.enableAFKMode
+							return Config.NexConfig.miscellaneous.enableAFKMode
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.enableAFKMode = value
+							Config.NexConfig.miscellaneous.enableAFKMode = value
 							Config:ToggleAFKMode()
 						end,
 					},
@@ -1040,10 +1040,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.missingStats
+							return Config.NexConfig.miscellaneous.missingStats
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.missingStats = value
+							Config.NexConfig.miscellaneous.missingStats = value
 						end,
 					},
 					moveableFrames = {
@@ -1053,10 +1053,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.moveableFrames
+							return Config.NexConfig.miscellaneous.moveableFrames
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.moveableFrames = value
+							Config.NexConfig.miscellaneous.moveableFrames = value
 						end,
 					},
 					gemsNEnchants = {
@@ -1066,10 +1066,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.gemsNEnchants
+							return Config.NexConfig.miscellaneous.gemsNEnchants
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.gemsNEnchants = value
+							Config.NexConfig.miscellaneous.gemsNEnchants = value
 						end,
 					},
 					questXPPercent = {
@@ -1079,10 +1079,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.questXPPercent
+							return Config.NexConfig.miscellaneous.questXPPercent
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.questXPPercent = value
+							Config.NexConfig.miscellaneous.questXPPercent = value
 						end,
 					},
 					questRewardsMostValueIcon = {
@@ -1092,10 +1092,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.questRewardsMostValueIcon
+							return Config.NexConfig.miscellaneous.questRewardsMostValueIcon
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.questRewardsMostValueIcon = value
+							Config.NexConfig.miscellaneous.questRewardsMostValueIcon = value
 						end,
 					},
 					alreadyKnown = {
@@ -1105,14 +1105,69 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.miscellaneous.alreadyKnown
+							return Config.NexConfig.miscellaneous.alreadyKnown
 						end,
 						set = function(_, value)
-							Config.db.profile.miscellaneous.alreadyKnown = value
+							Config.NexConfig.miscellaneous.alreadyKnown = value
 						end,
 					},
-					itemlevels = {
+					QuestTrackerAlerts = {
 						order = 11,
+						name = "Quest Tracker Alerts",
+						desc = "Receive alerts for quest acceptance, progress milestones, completion, and other quest-related updates.",
+						type = "group",
+						inline = true,
+						args = {
+							QuestNotification = {
+								order = 1,
+								name = "Enable Quest Notifications",
+								desc = "Toggle notifications for quest progress, acceptance, completion, and other related events.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.NexConfig.miscellaneous.QuestTrackerAlerts.QuestNotification
+								end,
+								set = function(_, value)
+									Config.NexConfig.miscellaneous.QuestTrackerAlerts.QuestNotification = value
+									Config:QuestNotification()
+								end,
+							},
+							QuestProgress = {
+								order = 2,
+								name = "Notify on Quest Progress Updates",
+								desc = "Enable notifications when significant quest progress milestones are achieved.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.NexConfig.miscellaneous.QuestTrackerAlerts.QuestProgress
+								end,
+								set = function(_, value)
+									Config.NexConfig.miscellaneous.QuestTrackerAlerts.QuestProgress = value
+								end,
+								disabled = function()
+									return not Config.NexConfig.miscellaneous.QuestTrackerAlerts.QuestNotification
+								end,
+							},
+							OnlyCompleteRing = {
+								order = 3,
+								name = "Play Sound for Completed Quests Only",
+								desc = "Enable this option to silence all notifications and only play a sound when a quest is fully completed.",
+								type = "toggle",
+								width = "double",
+								get = function()
+									return Config.NexConfig.miscellaneous.QuestTrackerAlerts.OnlyCompleteRing
+								end,
+								set = function(_, value)
+									Config.NexConfig.miscellaneous.QuestTrackerAlerts.OnlyCompleteRing = value
+								end,
+								disabled = function()
+									return not Config.NexConfig.miscellaneous.QuestTrackerAlerts.QuestNotification
+								end,
+							},
+						},
+					},
+					itemlevels = {
+						order = 12,
 						name = "Item Levels",
 						type = "group",
 						inline = true,
@@ -1124,10 +1179,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.characterFrame
+									return Config.NexConfig.miscellaneous.itemlevels.characterFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.characterFrame = value
+									Config.NexConfig.miscellaneous.itemlevels.characterFrame = value
 								end,
 							},
 							inspectFrame = {
@@ -1137,10 +1192,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.inspectFrame
+									return Config.NexConfig.miscellaneous.itemlevels.inspectFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.inspectFrame = value
+									Config.NexConfig.miscellaneous.itemlevels.inspectFrame = value
 								end,
 							},
 							merchantFrame = {
@@ -1150,10 +1205,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.merchantFrame
+									return Config.NexConfig.miscellaneous.itemlevels.merchantFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.merchantFrame = value
+									Config.NexConfig.miscellaneous.itemlevels.merchantFrame = value
 								end,
 							},
 							tradeFrame = {
@@ -1163,10 +1218,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.tradeFrame
+									return Config.NexConfig.miscellaneous.itemlevels.tradeFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.tradeFrame = value
+									Config.NexConfig.miscellaneous.itemlevels.tradeFrame = value
 								end,
 							},
 							lootFrame = {
@@ -1176,10 +1231,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.lootFrame
+									return Config.NexConfig.miscellaneous.itemlevels.lootFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.lootFrame = value
+									Config.NexConfig.miscellaneous.itemlevels.lootFrame = value
 								end,
 							},
 							guildBankFrame = {
@@ -1189,10 +1244,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.guildBankFrame
+									return Config.NexConfig.miscellaneous.itemlevels.guildBankFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.guildBankFrame = value
+									Config.NexConfig.miscellaneous.itemlevels.guildBankFrame = value
 								end,
 							},
 							containers = {
@@ -1202,10 +1257,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.containers
+									return Config.NexConfig.miscellaneous.itemlevels.containers
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.containers = value
+									Config.NexConfig.miscellaneous.itemlevels.containers = value
 								end,
 							},
 							flyout = {
@@ -1215,10 +1270,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.flyout
+									return Config.NexConfig.miscellaneous.itemlevels.flyout
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.flyout = value
+									Config.NexConfig.miscellaneous.itemlevels.flyout = value
 								end,
 							},
 							scrapping = {
@@ -1228,10 +1283,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.miscellaneous.itemlevels.scrapping
+									return Config.NexConfig.miscellaneous.itemlevels.scrapping
 								end,
 								set = function(_, value)
-									Config.db.profile.miscellaneous.itemlevels.scrapping = value
+									Config.NexConfig.miscellaneous.itemlevels.scrapping = value
 								end,
 							},
 						},
@@ -1258,10 +1313,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.skins.blizzskins.characterFrame
+									return Config.NexConfig.skins.blizzskins.characterFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.skins.blizzskins.characterFrame = value
+									Config.NexConfig.skins.blizzskins.characterFrame = value
 								end,
 							},
 							chatbubble = {
@@ -1271,10 +1326,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.skins.blizzskins.chatbubble
+									return Config.NexConfig.skins.blizzskins.chatbubble
 								end,
 								set = function(_, value)
-									Config.db.profile.skins.blizzskins.chatbubble = value
+									Config.NexConfig.skins.blizzskins.chatbubble = value
 								end,
 							},
 							collectionsFrame = {
@@ -1284,10 +1339,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.skins.blizzskins.collectionsFrame
+									return Config.NexConfig.skins.blizzskins.collectionsFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.skins.blizzskins.collectionsFrame = value
+									Config.NexConfig.skins.blizzskins.collectionsFrame = value
 								end,
 							},
 							inspectFrame = {
@@ -1297,10 +1352,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.skins.blizzskins.inspectFrame
+									return Config.NexConfig.skins.blizzskins.inspectFrame
 								end,
 								set = function(_, value)
-									Config.db.profile.skins.blizzskins.inspectFrame = value
+									Config.NexConfig.skins.blizzskins.inspectFrame = value
 								end,
 							},
 							objectiveTracker = {
@@ -1310,10 +1365,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.skins.blizzskins.objectiveTracker
+									return Config.NexConfig.skins.blizzskins.objectiveTracker
 								end,
 								set = function(_, value)
-									Config.db.profile.skins.blizzskins.objectiveTracker = value
+									Config.NexConfig.skins.blizzskins.objectiveTracker = value
 								end,
 							},
 						},
@@ -1330,10 +1385,10 @@ local function CreateOptions()
 								desc = "Improves the appearance and functionality of the Details! addon frames.",
 								type = "toggle",
 								get = function()
-									return Config.db.profile.skins.addonskins.details
+									return Config.NexConfig.skins.addonskins.details
 								end,
 								set = function(_, value)
-									Config.db.profile.skins.addonskins.details = value
+									Config.NexConfig.skins.addonskins.details = value
 								end,
 								disabled = function()
 									return not C_AddOns.IsAddOnLoaded("Details")
@@ -1370,10 +1425,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.combatHide
+							return Config.NexConfig.tooltip.combatHide
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.combatHide = value
+							Config.NexConfig.tooltip.combatHide = value
 						end,
 					},
 					factionIcon = {
@@ -1383,10 +1438,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.factionIcon
+							return Config.NexConfig.tooltip.factionIcon
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.factionIcon = value
+							Config.NexConfig.tooltip.factionIcon = value
 						end,
 					},
 					hideJunkGuild = {
@@ -1396,10 +1451,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.hideJunkGuild
+							return Config.NexConfig.tooltip.hideJunkGuild
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.hideJunkGuild = value
+							Config.NexConfig.tooltip.hideJunkGuild = value
 						end,
 					},
 					hideRank = {
@@ -1409,10 +1464,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.hideRank
+							return Config.NexConfig.tooltip.hideRank
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.hideRank = value
+							Config.NexConfig.tooltip.hideRank = value
 						end,
 					},
 					hideTitle = {
@@ -1422,10 +1477,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.hideTitle
+							return Config.NexConfig.tooltip.hideTitle
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.hideTitle = value
+							Config.NexConfig.tooltip.hideTitle = value
 						end,
 					},
 					lfdRole = {
@@ -1435,10 +1490,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.lfdRole
+							return Config.NexConfig.tooltip.lfdRole
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.lfdRole = value
+							Config.NexConfig.tooltip.lfdRole = value
 						end,
 					},
 					mdScore = {
@@ -1448,10 +1503,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.mdScore
+							return Config.NexConfig.tooltip.mdScore
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.mdScore = value
+							Config.NexConfig.tooltip.mdScore = value
 						end,
 					},
 					qualityColor = {
@@ -1461,10 +1516,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.qualityColor
+							return Config.NexConfig.tooltip.qualityColor
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.qualityColor = value
+							Config.NexConfig.tooltip.qualityColor = value
 						end,
 					},
 					ShowID = {
@@ -1474,10 +1529,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.ShowID
+							return Config.NexConfig.tooltip.ShowID
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.ShowID = value
+							Config.NexConfig.tooltip.ShowID = value
 						end,
 					},
 					SpecLevelByShift = {
@@ -1487,10 +1542,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.tooltip.SpecLevelByShift
+							return Config.NexConfig.tooltip.SpecLevelByShift
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.SpecLevelByShift = value
+							Config.NexConfig.tooltip.SpecLevelByShift = value
 						end,
 					},
 					cursorPosition = {
@@ -1500,10 +1555,10 @@ local function CreateOptions()
 						type = "select",
 						values = { ["DISABLE"] = "Disable", ["LEFT"] = "Left", ["TOP"] = "Top", ["RIGHT"] = "Right" },
 						get = function()
-							return Config.db.profile.tooltip.cursorPosition
+							return Config.NexConfig.tooltip.cursorPosition
 						end,
 						set = function(_, value)
-							Config.db.profile.tooltip.cursorPosition = value
+							Config.NexConfig.tooltip.cursorPosition = value
 						end,
 					},
 				},
@@ -1522,10 +1577,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.unitframes.classColorFrames
+							return Config.NexConfig.unitframes.classColorFrames
 						end,
 						set = function(_, value)
-							Config.db.profile.unitframes.classColorFrames = value
+							Config.NexConfig.unitframes.classColorFrames = value
 							local function UpdateCVar()
 								if not InCombatLockdown() then
 									SetCVar("raidFramesDisplayClassColor", 1)
@@ -1555,10 +1610,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer
+									return Config.NexConfig.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer
 								end,
 								set = function(_, value)
-									Config.db.profile.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer = value
+									Config.NexConfig.unitframes.playerFrameEnhancements.classColorFramesSkipPlayer = value
 									if value then
 										PlayerFrame.healthbar:SetStatusBarDesaturated(false)
 										PlayerFrame.healthbar:SetStatusBarColor(1, 1, 1)
@@ -1570,7 +1625,7 @@ local function CreateOptions()
 									end
 								end,
 								disabled = function()
-									return not Config.db.profile.unitframes.classColorFrames or C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+									return not Config.NexConfig.unitframes.classColorFrames or C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
 								end,
 							},
 							colorPetAfterOwner = {
@@ -1580,10 +1635,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.unitframes.playerFrameEnhancements.colorPetAfterOwner
+									return Config.NexConfig.unitframes.playerFrameEnhancements.colorPetAfterOwner
 								end,
 								set = function(_, value)
-									Config.db.profile.unitframes.playerFrameEnhancements.colorPetAfterOwner = value
+									Config.NexConfig.unitframes.playerFrameEnhancements.colorPetAfterOwner = value
 									Config.UpdateFrames()
 								end,
 								disabled = function()
@@ -1597,10 +1652,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.unitframes.playerFrameEnhancements.playerReputationColor
+									return Config.NexConfig.unitframes.playerFrameEnhancements.playerReputationColor
 								end,
 								set = function(_, value)
-									Config.db.profile.unitframes.playerFrameEnhancements.playerReputationColor = value
+									Config.NexConfig.unitframes.playerFrameEnhancements.playerReputationColor = value
 									Config.PlayerReputationColor()
 								end,
 								disabled = function()
@@ -1614,14 +1669,14 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.unitframes.playerFrameEnhancements.playerReputationClassColor
+									return Config.NexConfig.unitframes.playerFrameEnhancements.playerReputationClassColor
 								end,
 								set = function(_, value)
-									Config.db.profile.unitframes.playerFrameEnhancements.playerReputationClassColor = value
+									Config.NexConfig.unitframes.playerFrameEnhancements.playerReputationClassColor = value
 									Config.PlayerReputationColor()
 								end,
 								disabled = function()
-									return not Config.db.profile.unitframes.playerFrameEnhancements.playerReputationColor or C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
+									return not Config.NexConfig.unitframes.playerFrameEnhancements.playerReputationColor or C_AddOns.IsAddOnLoaded("BetterBlizzFrames")
 								end,
 							},
 							playerHitIndicatorHide = {
@@ -1631,10 +1686,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.unitframes.playerFrameEnhancements.playerHitIndicatorHide
+									return Config.NexConfig.unitframes.playerFrameEnhancements.playerHitIndicatorHide
 								end,
 								set = function(_, value)
-									Config.db.profile.unitframes.playerFrameEnhancements.playerHitIndicatorHide = value
+									Config.NexConfig.unitframes.playerFrameEnhancements.playerHitIndicatorHide = value
 									Config.TogglePlayerHitIndicator()
 								end,
 								disabled = function()
@@ -1656,10 +1711,10 @@ local function CreateOptions()
 								type = "toggle",
 								width = "double",
 								get = function()
-									return Config.db.profile.unitframes.targetFrameEnhancements.targetReputationColorHide
+									return Config.NexConfig.unitframes.targetFrameEnhancements.targetReputationColorHide
 								end,
 								set = function(_, value)
-									Config.db.profile.unitframes.targetFrameEnhancements.targetReputationColorHide = value
+									Config.NexConfig.unitframes.targetFrameEnhancements.targetReputationColorHide = value
 									Config.TargetReputationColor()
 								end,
 								disabled = function()
@@ -1687,13 +1742,13 @@ local function CreateOptions()
 						max = 1.0,
 						step = 0.1,
 						get = function()
-							return Config.db.profile.worldmap.AlphaWhenMoving
+							return Config.NexConfig.worldmap.AlphaWhenMoving
 						end,
 						set = function(_, value)
-							Config.db.profile.worldmap.AlphaWhenMoving = value
+							Config.NexConfig.worldmap.AlphaWhenMoving = value
 						end,
 						disabled = function()
-							return not Config.db.profile.worldmap.FadeWhenMoving
+							return not Config.NexConfig.worldmap.FadeWhenMoving
 						end,
 					},
 					Coordinates = {
@@ -1703,10 +1758,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.worldmap.Coordinates
+							return Config.NexConfig.worldmap.Coordinates
 						end,
 						set = function(_, value)
-							Config.db.profile.worldmap.Coordinates = value
+							Config.NexConfig.worldmap.Coordinates = value
 						end,
 					},
 					FadeWhenMoving = {
@@ -1716,10 +1771,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.worldmap.FadeWhenMoving
+							return Config.NexConfig.worldmap.FadeWhenMoving
 						end,
 						set = function(_, value)
-							Config.db.profile.worldmap.FadeWhenMoving = value
+							Config.NexConfig.worldmap.FadeWhenMoving = value
 						end,
 					},
 					SmallWorldMap = {
@@ -1729,10 +1784,10 @@ local function CreateOptions()
 						type = "toggle",
 						width = "double",
 						get = function()
-							return Config.db.profile.worldmap.SmallWorldMap
+							return Config.NexConfig.worldmap.SmallWorldMap
 						end,
 						set = function(_, value)
-							Config.db.profile.worldmap.SmallWorldMap = value
+							Config.NexConfig.worldmap.SmallWorldMap = value
 						end,
 					},
 					SmallWorldMapScale = {
@@ -1745,13 +1800,13 @@ local function CreateOptions()
 						max = 1.0,
 						step = 0.1,
 						get = function()
-							return Config.db.profile.worldmap.SmallWorldMapScale
+							return Config.NexConfig.worldmap.SmallWorldMapScale
 						end,
 						set = function(_, value)
-							Config.db.profile.worldmap.SmallWorldMapScale = value
+							Config.NexConfig.worldmap.SmallWorldMapScale = value
 						end,
 						disabled = function()
-							return not Config.db.profile.worldmap.SmallWorldMap
+							return not Config.NexConfig.worldmap.SmallWorldMap
 						end,
 					},
 				},

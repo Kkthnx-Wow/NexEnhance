@@ -28,11 +28,11 @@ SLASH_RELOADUI1 = "/rl"
 -- Section: Power Bar Frame Modification
 local function modifyPowerBarFrame()
 	if UIWidgetPowerBarContainerFrame then
-		if UIWidgetPowerBarContainerFrame:GetScale() ~= Core.db.profile.miscellaneous.widgetScale then
-			UIWidgetPowerBarContainerFrame:SetScale(Core.db.profile.miscellaneous.widgetScale)
+		if UIWidgetPowerBarContainerFrame:GetScale() ~= Core.NexConfig.miscellaneous.widgetScale then
+			UIWidgetPowerBarContainerFrame:SetScale(Core.NexConfig.miscellaneous.widgetScale)
 		end
 
-		if Core.db.profile.miscellaneous.hideWidgetTexture then
+		if Core.NexConfig.miscellaneous.hideWidgetTexture then
 			for _, child in ipairs({ UIWidgetPowerBarContainerFrame:GetChildren() }) do
 				for _, region in ipairs({ child:GetRegions() }) do
 					if region:GetObjectType() == "Texture" and region:IsShown() then
@@ -47,46 +47,6 @@ end
 local frameUpdater = CreateFrame("Frame")
 frameUpdater:RegisterEvent("UPDATE_UI_WIDGET")
 frameUpdater:HookScript("OnEvent", modifyPowerBarFrame)
-
--- Section: Chat Frame Toggle Functions
-function Core:ToggleSocialButton()
-	if QuickJoinToastButton then
-		if Core.db.profile.chat.SocialButton then
-			QuickJoinToastButton:Hide()
-		else
-			QuickJoinToastButton:Show()
-		end
-	end
-end
-
-function Core:ToggleMenuButton()
-	if ChatFrameMenuButton then
-		if Core.db.profile.chat.MenuButton then
-			ChatFrameMenuButton:SetScript("OnShow", nil)
-			ChatFrameMenuButton:Hide()
-		else
-			ChatFrameMenuButton:Show()
-		end
-	end
-end
-
-function Core:ToggleChannelButton()
-	if ChatFrameChannelButton then
-		if Core.db.profile.chat.ChannelButton then
-			ChatFrameChannelButton:SetScript("OnShow", nil)
-			ChatFrameChannelButton:Hide()
-		else
-			ChatFrameChannelButton:Show()
-		end
-	end
-end
-
--- Initialize Toggles on Login
-function Core:PLAYER_LOGIN()
-	self:ToggleSocialButton()
-	self:ToggleMenuButton()
-	self:ToggleChannelButton()
-end
 
 -- Section: Chat Filter and Highlighting
 local db = {

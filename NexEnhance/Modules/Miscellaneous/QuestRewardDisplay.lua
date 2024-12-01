@@ -1,7 +1,7 @@
 local _, Module = ...
 
 local function QuestXPPercent()
-	if not Module.db.profile.miscellaneous.questXPPercent then
+	if not Module.NexConfig.miscellaneous.questXPPercent then
 		return
 	end
 
@@ -38,7 +38,7 @@ local function ResetQuestRewardMostValueIcon()
 end
 
 function Module:QUEST_COMPLETE()
-	if not Module.db.profile.miscellaneous.questRewardsMostValueIcon then
+	if not Module.NexConfig.miscellaneous.questRewardsMostValueIcon then
 		return
 	end
 

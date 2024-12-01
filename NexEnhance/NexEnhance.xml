@@ -79,6 +79,7 @@
     <Script file="Modules\Chat\Elements\Filters.lua" />
     <Script file="Modules\Chat\Elements\Formatting.lua" />
     <Script file="Modules\Chat\Elements\Styling.lua" />
+    <Script file="Modules\Chat\Elements\Toggles.lua" />
     <Script file="Modules\Chat\Elements\URL.lua" />
     <Script file="Modules\Chat\Core.lua" />
 
@@ -102,6 +103,7 @@
     <Script file="Modules\Miscellaneous\ItemLevelManagement.lua" />
     <Script file="Modules\Miscellaneous\MailManager.lua" />
     <Script file="Modules\Miscellaneous\MovableFrames.lua" />
+    <Script file="Modules\Miscellaneous\QuestNotification.lua" />
     <Script file="Modules\Miscellaneous\QuestRewardDisplay.lua" />
     <Script file="Modules\Miscellaneous\Waypoints.lua" />
 
@@ -120,7 +122,10 @@
     <Script file="Modules\Tooltip\Hover.lua" />
     <Script file="Modules\Tooltip\ID.lua" />
     <Script file="Modules\Tooltip\Icons.lua" />
+    <Script file="Modules\Tooltip\MountSource.lua" />
+    <Script file="Modules\Tooltip\Pet.lua" />
     <Script file="Modules\Tooltip\SpecLevel.lua" />
+    <Script file="Modules\Tooltip\Targeted.lua" />
 
     <!-- Unitframes -->
     <Script file="Modules\Unitframes\ClassColor.lua" />

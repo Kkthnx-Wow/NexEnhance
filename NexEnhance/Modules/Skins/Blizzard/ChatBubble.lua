@@ -34,7 +34,7 @@ end
 local BUBBLE_SCAN_THROTTLE = 0.1
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.skins.blizzskins.chatbubble then
+	if not Module.NexConfig.skins.blizzskins.chatbubble then
 		return
 	end
 

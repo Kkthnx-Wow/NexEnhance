@@ -1,7 +1,7 @@
 local _, Module = ...
 
 local function DisableTalkingHead()
-	if Module.db.profile.miscellaneous.disableTalkingHead then
+	if Module.NexConfig.miscellaneous.disableTalkingHead then
 		_G.TalkingHeadFrame:UnregisterAllEvents()
 		hooksecurefunc(_G.TalkingHeadFrame, "Show", _G.TalkingHeadFrame.Hide)
 	end

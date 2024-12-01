@@ -30,7 +30,7 @@ function Module:UpdateRangeIndicator(checksRange, inRange)
 end
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.actionbars.range then
+	if not Module.NexConfig.actionbars.range then
 		return
 	end
 

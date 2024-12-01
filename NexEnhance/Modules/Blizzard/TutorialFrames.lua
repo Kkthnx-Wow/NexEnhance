@@ -11,7 +11,7 @@ local function AcknowledgeTips()
 end
 
 function Module:DisableHelpTip() -- auto complete helptips
-	if not Module.db.profile.general.SuppressTutorialPrompts then
+	if not Module.NexConfig.general.SuppressTutorialPrompts then
 		return
 	end
 

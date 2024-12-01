@@ -59,7 +59,7 @@ function Module:UpdateFactionLine(lineData)
 	if linetext == PVP then
 		return true
 	elseif FACTION_COLORS[linetext] then
-		if Module.db.profile.tooltip.factionIcon then
+		if Module.NexConfig.tooltip.factionIcon then
 			return true
 		else
 			lineData.leftText = format(FACTION_COLORS[linetext], linetext)
@@ -129,7 +129,7 @@ function Module.GetDungeonScore(score)
 end
 
 function Module:ShowUnitMythicPlusScore(unit)
-	if not Module.db.profile.tooltip.mdScore then
+	if not Module.NexConfig.tooltip.mdScore then
 		return
 	end
 
@@ -144,7 +144,7 @@ function Module:OnTooltipSetUnit()
 	if self:IsForbidden() or self ~= GameTooltip then
 		return
 	end
-	if Module.db.profile.tooltip.combatHide and InCombatLockdown() then
+	if Module.NexConfig.tooltip.combatHide and InCombatLockdown() then
 		self:Hide()
 		return
 	end
@@ -160,12 +160,12 @@ function Module:OnTooltipSetUnit()
 		local name, realm = UnitName(unit)
 		local pvpName = UnitPVPName(unit)
 		local relationship = UnitRealmRelationship(unit)
-		if not Module.db.profile.tooltip.hideTitle and pvpName then
+		if not Module.NexConfig.tooltip.hideTitle and pvpName then
 			name = pvpName
 		end
 
 		if realm and realm ~= "" then
-			if isShiftKeyDown or not Module.db.profile.tooltip.hideRealm then
+			if isShiftKeyDown or not Module.NexConfig.tooltip.hideRealm then
 				name = name .. "-" .. realm
 			elseif relationship == LE_REALM_RELATION_COALESCED then
 				name = name .. FOREIGN_SERVER_LABEL
@@ -180,14 +180,14 @@ function Module:OnTooltipSetUnit()
 		end
 		GameTooltipTextLeft1:SetFormattedText("%s", name .. (status or ""))
 
-		if Module.db.profile.tooltip.factionIcon then
+		if Module.NexConfig.tooltip.factionIcon then
 			local faction = UnitFactionGroup(unit)
 			if faction and faction ~= "Neutral" then
 				Module.InsertFactionFrame(self, faction)
 			end
 		end
 
-		if Module.db.profile.tooltip.lfdRole then
+		if Module.NexConfig.tooltip.lfdRole then
 			local unitColor
 			local unitRole = UnitGroupRolesAssigned(unit)
 			if IsInGroup() and (UnitInParty(unit) or UnitInRaid(unit)) and (unitRole ~= "NONE") then
@@ -217,7 +217,7 @@ function Module:OnTooltipSetUnit()
 			end
 
 			rankIndex = rankIndex + 1
-			if Module.db.profile.tooltip.hideRank then
+			if Module.NexConfig.tooltip.hideRank then
 				rank = ""
 			end
 
@@ -225,7 +225,7 @@ function Module:OnTooltipSetUnit()
 				guildName = guildName .. "-" .. guildRealm
 			end
 
-			if Module.db.profile.tooltip.hideJunkGuild and not isShiftKeyDown then
+			if Module.NexConfig.tooltip.hideJunkGuild and not isShiftKeyDown then
 				if strlen(guildName) > 31 then
 					guildName = "..."
 				end
@@ -297,7 +297,7 @@ function Module:OnTooltipSetUnit()
 		Module.ShowUnitMythicPlusScore(self, unit)
 	end
 	-- Module.ScanTargets(self, unit)
-	-- Module.CreatePetInfo(self, unit)
+	Module.PetInfo(self, unit)
 end
 
 function Module:RefreshStatusBar(value)
@@ -361,7 +361,7 @@ function Module:GameTooltip_SetDefaultAnchor(parent)
 		return
 	end
 
-	local mode = Module.db.profile.tooltip.cursorPosition
+	local mode = Module.NexConfig.tooltip.cursorPosition
 	self:SetOwner(parent, cursorIndex[mode])
 end
 
@@ -396,7 +396,7 @@ function Module:ReskinTooltip()
 		if link then
 			local quality = select(3, GetItemInfo(link))
 			local color = Module.QualityColors[quality or 1]
-			if color and Module.db.profile.tooltip.qualityColor then
+			if color and Module.NexConfig.tooltip.qualityColor then
 				Module:SetTooltipBorderColor(self, color.r, color.g, color.b, 1)
 			end
 		end

@@ -30,7 +30,7 @@ function Module:CheckAndRemoveBadBuffs()
 end
 
 function Module:PLAYER_LOGIN()
-	if Module.db.profile.automation.AnnoyingBuffs then
+	if Module.NexConfig.automation.AnnoyingBuffs then
 		Module:RegisterUnitEvent("UNIT_AURA", "player", function()
 			if not InCombatLockdown() then
 				Module:CheckAndRemoveBadBuffs()

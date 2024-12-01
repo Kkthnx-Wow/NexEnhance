@@ -1,7 +1,7 @@
 local _, Module = ...
 
 function Module:ForceLoadKkthnxProfile()
-	local db = Module.db.profile
+	local db = Module.NexConfig
 
 	-- General Settings
 	db.general.AutoScale = true

@@ -73,7 +73,7 @@ end
 local barDisplayString = ""
 
 function Module:OnExpBarEvent()
-	local barTextFormat = Module.db.profile.experience.barTextFormat
+	local barTextFormat = Module.NexConfig.experience.barTextFormat
 
 	if not XPIsLevelMax() then
 		CurrentXP, XPToLevel, RestedXP = UnitXP("player"), UnitXPMax("player"), (GetXPExhaustion() or 0)
@@ -90,7 +90,7 @@ function Module:OnExpBarEvent()
 		PercentXP, RemainXP = (CurrentXP / XPToLevel) * 100, Module.ShortValue(remainXP)
 
 		-- Set status bar colors based on toggle
-		if Module.db.profile.experience.classColorBar then
+		if Module.NexConfig.experience.classColorBar then
 			local r, g, b, a = GetClassColor()
 			self:SetStatusBarColor(r, g, b, a)
 		else
@@ -500,13 +500,13 @@ function Module:ManageBarBubbles(bar)
 		end
 	end
 
-	local width, height = Module.db.profile.experience.barWidth, Module.db.profile.experience.barHeight
+	local width, height = Module.NexConfig.experience.barWidth, Module.NexConfig.experience.barHeight
 	local bubbleWidth, bubbleHeight = 1, height - 0
 	local offset = width * 0.1
 
 	for i, bubble in ipairs(bar.bubbles) do
 		bubble:ClearAllPoints()
-		bubble:SetShown(Module.db.profile.experience.showBubbles)
+		bubble:SetShown(Module.NexConfig.experience.showBubbles)
 		bubble:SetSize(bubbleWidth, bubbleHeight)
 		bubble:SetPoint("RIGHT", bar, "LEFT", offset * i, 0)
 	end
@@ -516,16 +516,16 @@ function Module:ForceTextScaling(bar)
 	local minHeightForScaling = 15
 	local defaultFontSize = 11
 
-	if Module.db.profile.experience.barHeight <= minHeightForScaling then
+	if Module.NexConfig.experience.barHeight <= minHeightForScaling then
 		bar.text:SetFont(select(1, bar.text:GetFont()), defaultFontSize, select(3, bar.text:GetFont()))
 	else
-		local fontSize = math.max(defaultFontSize, Module.db.profile.experience.barHeight * 0.5)
+		local fontSize = math.max(defaultFontSize, Module.NexConfig.experience.barHeight * 0.5)
 		bar.text:SetFont(select(1, bar.text:GetFont()), fontSize, select(3, bar.text:GetFont()))
 	end
 end
 
 function Module:UpdateExpBarColor(bar)
-	if Module.db.profile.experience.classColorBar then
+	if Module.NexConfig.experience.classColorBar then
 		local r, g, b, a = GetClassColor()
 		bar:SetStatusBarColor(r, g, b, a)
 	else
@@ -534,7 +534,7 @@ function Module:UpdateExpBarColor(bar)
 end
 
 function Module:PLAYER_LOGIN()
-	if not Module.db.profile.experience.enableExp then
+	if not Module.NexConfig.experience.enableExp then
 		return
 	end
 
@@ -547,7 +547,7 @@ function Module:PLAYER_LOGIN()
 	local bar = CreateFrame("StatusBar", "EP_ExpRepBar", UIParent)
 	bar:ClearAllPoints()
 	bar:SetPoint("TOP", UIParent, "TOP", 0, -6)
-	bar:SetSize(Module.db.profile.experience.barWidth, Module.db.profile.experience.barHeight)
+	bar:SetSize(Module.NexConfig.experience.barWidth, Module.NexConfig.experience.barHeight)
 	bar:SetHitRectInsets(0, 0, 0, -10)
 	bar:SetStatusBarTexture(Module.NexEnhance)
 

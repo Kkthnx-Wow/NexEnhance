@@ -1,3 +1,31 @@
+--[[
+Provides two custom slash commands `/way` and `/go` for setting waypoints in World of Warcraft.
+
+Usage:
+/way [#<mapID>] <x>,<y> [description]
+/go [#<mapID>] <x>,<y> [description]
+
+Examples:
+1. /way #84 52.45, 67.89 The Bank
+   - Sets a waypoint in Stormwind City using the Map ID `84`.
+2. /way 42.15, 65.32
+   - Sets a waypoint in the player's current zone (e.g., Elwynn Forest) at the specified coordinates.
+3. /go 52.15 42.89 My Custom Point
+   - Alias for `/way`.
+
+Notes:
+- If the map ID is omitted, the current map will be used.
+- Coordinates must be between 0 and 100.
+- Descriptions are optional and appear alongside the waypoint.
+
+Debugging:
+- Use `/waydebug` to enable debug mode for troubleshooting.
+- Debug logs provide detailed parsing and validation information.
+
+Dependencies:
+- Uses Blizzard's internal APIs for map and waypoint handling (no external libraries).
+--]]
+
 local _, Module = ...
 
 function Module:PLAYER_LOGIN()

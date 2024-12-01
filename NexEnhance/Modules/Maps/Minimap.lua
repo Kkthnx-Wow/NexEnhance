@@ -98,13 +98,7 @@ local function SetupGarrisonMinimapButton()
 					HideUIPanel(_G.ExpansionLandingPage)
 				end
 				Module.LibEasyMenu.Create(menuList, Module.EasyMenu, self, -80, 0, "MENU", 1)
-			else
-				self:SetPoint("TOPLEFT", MinimapBackdrop, "TOPLEFT", 10, -152)
 			end
-		end)
-
-		garrMinimapButton:HookScript("OnMouseUp", function(self)
-			self:SetPoint("TOPLEFT", MinimapBackdrop, "TOPLEFT", 10, -150)
 		end)
 
 		garrMinimapButton:SetScript("OnEnter", function(self)
@@ -112,7 +106,7 @@ local function SetupGarrisonMinimapButton()
 			GameTooltip:SetText(self.title, 1, 1, 1)
 			GameTooltip:AddLine(self.description, nil, nil, nil, true)
 			GameTooltip:AddLine(" ")
-			GameTooltip:AddLine(Module.L["Right click to switch garrisons"], nil, nil, nil, true)
+			GameTooltip:AddLine(Module.L["|cff5bc0beRight-click to toggle between garrisons.|r"], nil, nil, nil, true)
 			GameTooltip:Show()
 		end)
 	end

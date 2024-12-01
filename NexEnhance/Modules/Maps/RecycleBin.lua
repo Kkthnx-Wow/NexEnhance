@@ -1,8 +1,5 @@
 local _, Module = ...
 
--- Sourced: NDui (Siweia)
--- Edited: KkthnxUI (Kkthnx)
-
 -- Cache global references
 local string_match = string.match
 local string_upper = string.upper
@@ -29,19 +26,22 @@ local blackList = {
 	["TimeManagerClockButton"] = true,
 }
 
--- Ignored buttons pattern
+-- Ignored button patterns
 local ignoredButtons = {
 	["GatherMatePin"] = true,
 	["HandyNotes.-Pin"] = true,
 	["TTMinimapButton"] = true,
 }
 
+-- Variables
+local recycleBin
 local buttons, shownButtons = {}, {}
 local iconsPerRow = 6
 local rowMult = iconsPerRow / 2 - 1
 local currentIndex, pendingTime, timeThreshold = 0, 5, 12
 local numMinimapChildren = 0
 
+-- Helper functions
 local function isButtonIgnored(name)
 	for addonName in pairs(ignoredButtons) do
 		if string_match(name, addonName) then
@@ -57,19 +57,14 @@ end
 local function KillMinimapButtons()
 	for _, child in pairs(buttons) do
 		if not child.styled then
-			child:SetParent(RecycleBinFrame)
-			if child:HasScript("OnDragStop") then
-				child:SetScript("OnDragStop", nil)
-			end
-			if child:HasScript("OnDragStart") then
-				child:SetScript("OnDragStart", nil)
-			end
+			child:SetParent(recycleBin)
+			child:SetScript("OnDragStop", nil)
+			child:SetScript("OnDragStart", nil)
 			if child:HasScript("OnClick") then
 				child:HookScript("OnClick", function()
 					PlaySound(825)
 				end)
 			end
-			-- Handle special cases
 			local name = child:GetName()
 			if name == "DBMMinimapButton" then
 				child:SetScript("OnMouseDown", nil)
@@ -91,7 +86,6 @@ end
 local function CollectRubbish()
 	local numChildren = Minimap:GetNumChildren()
 	if numChildren ~= numMinimapChildren then
-		-- examine new children
 		for i = 1, numChildren do
 			local child = select(i, Minimap:GetChildren())
 			local name = child and child.GetName and child:GetName()
@@ -115,20 +109,22 @@ local function SortRubbish()
 	if #buttons == 0 then
 		return
 	end
+
 	wipe(shownButtons)
 	for _, button in pairs(buttons) do
 		if button:IsShown() then
 			table_insert(shownButtons, button)
 		end
 	end
+
 	local numShown = #shownButtons
 	local row = numShown == 0 and 1 or Module:Round((numShown + rowMult) / iconsPerRow)
-	local newHeight = row * 36 + 3
-	RecycleBinFrame:SetHeight(newHeight)
+	recycleBin:SetHeight(row * 36 + 3)
+
 	for index, button in pairs(shownButtons) do
 		button:ClearAllPoints()
 		if index == 1 then
-			button:SetPoint("BOTTOMRIGHT", RecycleBinFrame, 0, 3)
+			button:SetPoint("BOTTOMRIGHT", recycleBin, 0, 3)
 		elseif mod(index, row) == 1 or row == 1 then
 			button:SetPoint("RIGHT", shownButtons[index - row], "LEFT", 0, 0)
 		else
@@ -138,17 +134,17 @@ local function SortRubbish()
 end
 
 local function hideBinButton()
-	RecycleBinFrame:Hide()
+	recycleBin:Hide()
 end
 
 local function clickFunc(force)
 	if force == 1 then
-		PlaySound(825)
-		UIFrameFadeOut(RecycleBinFrame, 0.5, 1, 0)
+		UIFrameFadeOut(recycleBin, 0.5, 1, 0)
 		C_Timer_After(0.5, hideBinButton)
 	end
 end
 
+-- Main function
 function Module:PLAYER_LOGIN()
 	if C_AddOns.IsAddOnLoaded("MBB") then
 		return
@@ -158,52 +154,41 @@ function Module:PLAYER_LOGIN()
 		return
 	end
 
-	local bu = CreateFrame("Button", "RecycleBinToggleButton", Minimap)
-	bu:SetFrameLevel(Minimap:GetFrameLevel() + 2)
-	bu:SetSize(30, 30)
-	bu:SetPoint("BOTTOMLEFT", 27, 7)
+	local toggleButton = CreateFrame("Button", "RecycleBinToggleButton", Minimap)
+	toggleButton:SetSize(30, 30)
+	toggleButton:SetPoint("BOTTOMLEFT", 27, 7)
+	toggleButton:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+	toggleButton:SetFrameLevel(999)
+	Module.AddTooltip(toggleButton, "ANCHOR_LEFT", "|nStores minimap buttons to reduce clutter.", "info", "Recycle Bin", true)
 
-	bu:SetScript("OnEnter", function(self)
-		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
-		GameTooltip:SetText("RecycleBin", 1, 1, 1)
-		GameTooltip:AddLine("Collects minimap buttons and provides access to them through a pop-up menu.", nil, nil, nil, true)
-		GameTooltip:Show()
-	end)
+	local recycleBinIcon = (Module.MyFaction == "Alliance" and "ShipMissionIcon-SiegeA-MapBadge") or (Module.MyFaction == "Horde" and "ShipMissionIcon-SiegeH-MapBadge") or "ShipMissionIcon-Combat-MapBadge"
 
-	bu:SetScript("OnLeave", function(self)
-		GameTooltip:Hide()
-	end)
+	toggleButton:SetHighlightTexture(recycleBinIcon, "BLEND")
+	local highlightTexture = toggleButton:GetHighlightTexture()
+	if highlightTexture then
+		highlightTexture:SetAtlas("dragonflight-landingbutton-circlehighlight")
+	end
 
-	local recycleBinIcon = (Module.MyFaction == "Alliance") and "ShipMissionIcon-SiegeA-MapBadge" or (Module.MyFaction == "Horde") and "ShipMissionIcon-SiegeH-MapBadge" or "ShipMissionIcon-Combat-MapBadge"
+	toggleButton.Icon = toggleButton:CreateTexture(nil, "ARTWORK")
+	toggleButton.Icon:SetAllPoints()
+	toggleButton.Icon:SetAtlas(recycleBinIcon)
 
-	bu.Icon = bu:CreateTexture(nil, "ARTWORK")
-	bu.Icon:SetAllPoints()
-	bu.Icon:SetAtlas(recycleBinIcon)
+	recycleBin = CreateFrame("Frame", "RecycleBinFrame", UIParent)
+	recycleBin:SetPoint("RIGHT", toggleButton, "LEFT", 0, 0)
+	recycleBin:SetSize(220, 30)
+	recycleBin:Hide()
 
-	bu:SetNormalTexture(recycleBinIcon)
-	bu:SetPushedTexture(recycleBinIcon)
-	bu:SetHighlightTexture(recycleBinIcon, "BLEND")
-	bu:GetHighlightTexture():SetAtlas("dragonflight-landingbutton-circlehighlight")
-
-	local width, height = 220, 30
-	local bin = CreateFrame("Frame", "RecycleBinFrame", UIParent)
-	bin:SetPoint("RIGHT", bu, "LEFT", 0, 0)
-	bin:SetSize(width, height)
-	bin:Hide()
-
-	bu:SetScript("OnMouseDown", function(self)
-		self:SetPoint("BOTTOMLEFT", 27, 5)
-	end)
-
-	bu:SetScript("OnMouseUp", function(self)
-		self:SetPoint("BOTTOMLEFT", 27, 7)
-
-		if bin:IsShown() then
-			clickFunc(1)
+	toggleButton:SetScript("OnClick", function(_, btn)
+		if btn == "RightButton" then
+			Module.db.profile.minimap.recycleBinAuto = not Module.db.profile.minimap.recycleBinAuto
+			toggleButton:GetScript("OnEnter")(toggleButton)
 		else
-			PlaySound(825)
-			SortRubbish()
-			UIFrameFadeIn(bin, 0.5, 0, 1)
+			if recycleBin:IsShown() then
+				clickFunc(1)
+			else
+				SortRubbish()
+				UIFrameFadeIn(recycleBin, 0.5, 0, 1)
+			end
 		end
 	end)
 

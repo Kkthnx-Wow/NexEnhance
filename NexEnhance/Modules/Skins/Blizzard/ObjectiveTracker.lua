@@ -1,6 +1,9 @@
 local _, Module = ...
 
 local pairs = pairs
+local IsAddOnLoaded = C_AddOns.IsAddOnLoaded
+local hooksecurefunc = hooksecurefunc
+local ObjectiveTrackerFrame = _G.ObjectiveTrackerFrame
 
 local trackers = {
 	_G.ScenarioObjectiveTracker,
@@ -15,71 +18,82 @@ local trackers = {
 	_G.WorldQuestObjectiveTracker,
 }
 
-local function SkinOjectiveTrackerHeaders(header)
+local function SkinObjectiveTrackerHeaders(header)
 	if header and header.Background then
 		header.Background:SetAtlas(nil)
 	end
 end
 
 local function SetCollapsed(header, collapsed)
+	if not header or not header.MinimizeButton then
+		return
+	end
+
 	local MinimizeButton = header.MinimizeButton
 	local normalTexture = MinimizeButton:GetNormalTexture()
 	local pushedTexture = MinimizeButton:GetPushedTexture()
 
-	if collapsed then
-		normalTexture:SetAtlas("UI-QuestTrackerButton-Secondary-Expand", true)
-		pushedTexture:SetAtlas("UI-QuestTrackerButton-Secondary-Expand-Pressed", true)
-	else
-		normalTexture:SetAtlas("UI-QuestTrackerButton-Secondary-Collapse", true)
-		pushedTexture:SetAtlas("UI-QuestTrackerButton-Secondary-Collapse-Pressed", true)
+	if normalTexture and pushedTexture then
+		local expandAtlas = "UI-QuestTrackerButton-Secondary-Expand"
+		local collapseAtlas = "UI-QuestTrackerButton-Secondary-Collapse"
+
+		normalTexture:SetAtlas(collapsed and expandAtlas or collapseAtlas, true)
+		pushedTexture:SetAtlas(collapsed and expandAtlas .. "-Pressed" or collapseAtlas .. "-Pressed", true)
 	end
 end
 
 local function ReskinBarTemplate(bar)
-	bar:SetStatusBarColor(Module.r, Module.g, Module.b)
+	if bar and Module.r and Module.g and Module.b then
+		bar:SetStatusBarColor(Module.r, Module.g, Module.b)
+	end
 end
 
 local function HandleProgressBar(tracker, key)
-	local progressBar = tracker.usedProgressBars[key]
-	local bar = progressBar and progressBar.Bar
-
-	if bar then
-		ReskinBarTemplate(bar)
+	if tracker and tracker.usedProgressBars then
+		local progressBar = tracker.usedProgressBars[key]
+		local bar = progressBar and progressBar.Bar
+		if bar then
+			ReskinBarTemplate(bar)
+		end
 	end
 end
 
 local function HandleTimers(tracker, key)
-	local timerBar = tracker.usedTimerBars[key]
-	local bar = timerBar and timerBar.Bar
-
-	if bar then
-		ReskinBarTemplate(bar)
+	if tracker and tracker.usedTimerBars then
+		local timerBar = tracker.usedTimerBars[key]
+		local bar = timerBar and timerBar.Bar
+		if bar then
+			ReskinBarTemplate(bar)
+		end
 	end
 end
 
 function Module:PLAYER_LOGIN()
-	if C_AddOns.IsAddOnLoaded("!KalielsTracker") then
+	if IsAddOnLoaded("!KalielsTracker") then
 		return
 	end
 
-	local TrackerFrame = _G.ObjectiveTrackerFrame
-	local TrackerHeader = TrackerFrame and TrackerFrame.Header
-	if TrackerHeader then
-		SkinOjectiveTrackerHeaders(TrackerHeader)
+	if ObjectiveTrackerFrame then
+		local TrackerHeader = ObjectiveTrackerFrame.Header
+		if TrackerHeader then
+			SkinObjectiveTrackerHeaders(TrackerHeader)
 
-		local MinimizeButton = TrackerHeader.MinimizeButton
-		if MinimizeButton then
-			MinimizeButton:SetSize(16, 16)
-			MinimizeButton:SetHighlightAtlas("UI-QuestTrackerButton-Yellow-Highlight", "ADD")
+			local MinimizeButton = TrackerHeader.MinimizeButton
+			if MinimizeButton then
+				MinimizeButton:SetSize(16, 16)
+				MinimizeButton:SetHighlightAtlas("UI-QuestTrackerButton-Yellow-Highlight", "ADD")
 
-			SetCollapsed(TrackerHeader, TrackerFrame.isCollapsed)
-			hooksecurefunc(TrackerHeader, "SetCollapsed", SetCollapsed)
+				SetCollapsed(TrackerHeader, ObjectiveTrackerFrame.isCollapsed)
+				hooksecurefunc(TrackerHeader, "SetCollapsed", SetCollapsed)
+			end
 		end
 	end
 
 	for _, tracker in pairs(trackers) do
-		SkinOjectiveTrackerHeaders(tracker.Header)
-		hooksecurefunc(tracker, "GetProgressBar", HandleProgressBar)
-		hooksecurefunc(tracker, "GetTimerBar", HandleTimers)
+		if tracker and tracker.Header then
+			SkinObjectiveTrackerHeaders(tracker.Header)
+			hooksecurefunc(tracker, "GetProgressBar", HandleProgressBar)
+			hooksecurefunc(tracker, "GetTimerBar", HandleTimers)
+		end
 	end
 end

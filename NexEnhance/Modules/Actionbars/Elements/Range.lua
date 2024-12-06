@@ -1,9 +1,9 @@
 local _, Modules = ...
 local Module = Modules.Actionbars
 
-function Module:UpdateRangeIndicator(checksRange, inRange)
+local function UpdateRangeIndicator(self, checksRange, inRange)
 	if not self.setHooksecurefunc and self.UpdateUsable then
-		hooksecurefunc(self, "UpdateUsable", function(self, _, isUsable)
+		hooksecurefunc(self, "UpdateUsable", function(self)
 			if IsUsableAction(self.action) and ActionHasRange(self.action) and IsActionInRange(self.action) == false then
 				self.icon:SetVertexColor(1, 0, 0)
 			end
@@ -35,5 +35,5 @@ function Module:RegisterRangeIndicator()
 		return
 	end
 
-	hooksecurefunc("ActionButton_UpdateRangeIndicator", Module.UpdateRangeIndicator)
+	hooksecurefunc("ActionButton_UpdateRangeIndicator", UpdateRangeIndicator)
 end

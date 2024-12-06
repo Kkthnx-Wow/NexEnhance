@@ -567,8 +567,27 @@ local function CreateOptions()
 							Config.Chat:ToggleChatBackground()
 						end,
 					},
-					URLCopy = {
+					TimestampFormat = {
 						order = 2,
+						name = "Timestamp Format",
+						desc = "Choose the format for timestamps displayed in chat.",
+						type = "select",
+						values = {
+							["DISABLE"] = "Disable",
+							["HH_MM_AMPM"] = "03:27 PM",
+							["HH_MM_SS_AMPM"] = "03:27:32 PM",
+							["HH_MM_24"] = "15:27",
+							["HH_MM_SS_24"] = "15:27:32",
+						},
+						get = function()
+							return Config.NexConfig.chat.TimestampFormat
+						end,
+						set = function(_, value)
+							Config.NexConfig.chat.TimestampFormat = value
+						end,
+					},
+					URLCopy = {
+						order = 3,
 						name = "Copy Chat URLs",
 						desc = "Allow copying of URLs from chat.",
 						type = "toggle",
@@ -581,7 +600,7 @@ local function CreateOptions()
 						end,
 					},
 					StickyChat = {
-						order = 3,
+						order = 4,
 						name = "Sticky Chat",
 						desc = "Keeps the last-used chat channel active for new messages.",
 						type = "toggle",
@@ -594,10 +613,36 @@ local function CreateOptions()
 							Config.Chat:ChatWhisperSticky()
 						end,
 					},
+					DefaultChannelNames = {
+						order = 5,
+						name = "Simplify Channel Names",
+						desc = "Shorten the names of default chat channels (e.g., 'General - Zone Name' to 'General') for cleaner chat display.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.NexConfig.chat.DefaultChannelNames
+						end,
+						set = function(_, value)
+							Config.NexConfig.chat.DefaultChannelNames = value
+						end,
+					},
+					WhisperColor = {
+						order = 6,
+						name = "Custom Whisper Colors",
+						desc = "Apply a unique color to whisper messages to make them more distinguishable in chat.",
+						type = "toggle",
+						width = "double",
+						get = function()
+							return Config.NexConfig.chat.WhisperColor
+						end,
+						set = function(_, value)
+							Config.NexConfig.chat.WhisperColor = value
+						end,
+					},
 					SocialButton = {
-						order = 4,
-						name = "Hide Social Button",
-						desc = "Hides the Quick Join Toast Button from the UI.",
+						order = 7,
+						name = "Social Button Visibility",
+						desc = "Toggle the visibility of the Social button, which provides quick access to your Friends List, Quick Join, and other social features.",
 						type = "toggle",
 						width = "double",
 						get = function()
@@ -605,13 +650,13 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.chat.SocialButton = value
-							Config:ToggleSocialButton()
+							Config.Chat:ToggleSocialButton()
 						end,
 					},
 					MenuButton = {
-						order = 5,
-						name = "Hide Menu Button",
-						desc = "Hide Menu Button.",
+						order = 8,
+						name = "Chat Menu Button",
+						desc = "Toggle the visibility of the chat menu button, which provides quick access to chat commands like Say, Party, Raid, and others.",
 						type = "toggle",
 						width = "double",
 						get = function()
@@ -619,13 +664,13 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.chat.MenuButton = value
-							Config:ToggleMenuButton()
+							Config.Chat:ToggleMenuButton()
 						end,
 					},
 					ChannelButton = {
-						order = 6,
-						name = "Hide Channel Button",
-						desc = "Hide Channel Button.",
+						order = 9,
+						name = "Chat Channels Button",
+						desc = "Toggle the visibility of the Chat Channels button, which opens the interface to manage and join chat channels.",
 						type = "toggle",
 						width = "double",
 						get = function()
@@ -633,11 +678,11 @@ local function CreateOptions()
 						end,
 						set = function(_, value)
 							Config.NexConfig.chat.ChannelButton = value
-							Config:ToggleChannelButton()
+							Config.Chat:ToggleChannelButton()
 						end,
 					},
 					chatfilters = {
-						order = 7,
+						order = 10,
 						name = "Chat Filters",
 						type = "group",
 						inline = true,

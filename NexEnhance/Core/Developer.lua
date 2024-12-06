@@ -6,37 +6,57 @@
 
 local _, Core = ...
 
--- Developer List
-local Developers = {
+--[[ ============================================================
+    SECTION: Developer Utilities
+    This section includes developer-related logic, such as checking
+    if the current player is a developer and managing developer tools.
+=============================================================== ]]
+
+Core.Developers = {
 	["Kkthnx-Area 52"] = true,
 	["Kkthnxx-Area 52"] = true,
 	["Kkthnxbye-Area 52"] = true,
 }
 
--- Utility: Check if the player is a developer
 local function isDeveloper()
 	local playerName = gsub(Core.MyFullName, "%s", "")
-	return Developers[playerName]
+	return Core.Developers[playerName]
 end
 
 Core.isDeveloper = isDeveloper()
 
--- Slash Commands
+--[[ ============================================================
+    SECTION: Slash Command Utilities
+    Provides convenient slash commands for developers, such as 
+    quickly reloading the UI (/rl).
+=============================================================== ]]
+
 SlashCmdList["RELOADUI"] = ReloadUI
 SLASH_RELOADUI1 = "/rl"
+SLASH_RELOADUI2 = "/reload"
+SLASH_RELOADUI3 = "/reloadui"
+SLASH_RELOADUI4 = "/rui"
+SLASH_RELOADUI5 = "/re"
+SLASH_RELOADUI6 = "///"
 
--- Section: Power Bar Frame Modification
-local function modifyPowerBarFrame()
+--[[ ============================================================
+    SECTION: Power Bar Frame Modification
+    Modifies the UI widget power bar frame, including scaling 
+    and hiding textures as specified in the configuration.
+=============================================================== ]]
+
+local function UpdatePowerBarAppearance()
 	if UIWidgetPowerBarContainerFrame then
-		if UIWidgetPowerBarContainerFrame:GetScale() ~= Core.NexConfig.miscellaneous.widgetScale then
-			UIWidgetPowerBarContainerFrame:SetScale(Core.NexConfig.miscellaneous.widgetScale)
+		local configuredScale = Core.NexConfig.miscellaneous.widgetScale
+		if UIWidgetPowerBarContainerFrame:GetScale() ~= configuredScale then
+			UIWidgetPowerBarContainerFrame:SetScale(configuredScale)
 		end
 
 		if Core.NexConfig.miscellaneous.hideWidgetTexture then
-			for _, child in ipairs({ UIWidgetPowerBarContainerFrame:GetChildren() }) do
-				for _, region in ipairs({ child:GetRegions() }) do
-					if region:GetObjectType() == "Texture" and region:IsShown() then
-						region:Hide()
+			for _, childFrame in ipairs({ UIWidgetPowerBarContainerFrame:GetChildren() }) do
+				for _, textureRegion in ipairs({ childFrame:GetRegions() }) do
+					if textureRegion:GetObjectType() == "Texture" and textureRegion:IsShown() then
+						textureRegion:Hide()
 					end
 				end
 			end
@@ -44,12 +64,17 @@ local function modifyPowerBarFrame()
 	end
 end
 
-local frameUpdater = CreateFrame("Frame")
-frameUpdater:RegisterEvent("UPDATE_UI_WIDGET")
-frameUpdater:HookScript("OnEvent", modifyPowerBarFrame)
+local PowerBarUpdaterFrame = CreateFrame("Frame")
+PowerBarUpdaterFrame:RegisterEvent("UPDATE_UI_WIDGET")
+PowerBarUpdaterFrame:HookScript("OnEvent", UpdatePowerBarAppearance)
 
--- Section: Chat Filter and Highlighting
-local db = {
+--[[ ============================================================
+    SECTION: Chat Highlight and Sound Alerts
+    Handles highlighting the player's name and guild tags in chat, 
+    and optionally plays a sound when the player's name is mentioned.
+=============================================================== ]]
+
+local chatHighlightConfig = {
 	highlightPlayer = true,
 	useBrackets = true,
 	highlightColor = "00ff00",
@@ -62,24 +87,24 @@ local db = {
 local lastSoundTime = 0
 
 local function wrapName(match)
-	local color = db.highlightColor or "00ff00"
-	if db.useBrackets then
+	local color = chatHighlightConfig.highlightColor or "00ff00"
+	if chatHighlightConfig.useBrackets then
 		return "|cff" .. color .. "[" .. match .. "]|r"
 	else
 		return "|cff" .. color .. match .. "|r"
 	end
 end
 
-local function HighlightGuildTag(tag)
-	local color = db.highlightColor or "00ff00"
+local function highlightGuildTag(tag)
+	local color = chatHighlightConfig.highlightColor or "00ff00"
 	return "|cff" .. color .. "<" .. tag .. ">|r"
 end
 
-local function PlayHighlightSound()
-	if db.playSound then
+local function playHighlightSound()
+	if chatHighlightConfig.playSound then
 		local currentTime = GetTime()
-		if currentTime - lastSoundTime >= db.soundCooldown then
-			local success = PlaySound(db.soundFile, "Master")
+		if currentTime - lastSoundTime >= chatHighlightConfig.soundCooldown then
+			local success = PlaySound(chatHighlightConfig.soundFile, "Master")
 			if success then
 				lastSoundTime = currentTime
 			end
@@ -91,7 +116,7 @@ local function ChatFilter(_, _, message, ...)
 	local playerName = UnitName("player")
 	local nameHighlighted = false
 
-	if db.highlightPlayer then
+	if chatHighlightConfig.highlightPlayer then
 		local playerNamePattern = playerName:gsub("%a", function(c)
 			return "[" .. c:upper() .. c:lower() .. "]"
 		end)
@@ -101,30 +126,40 @@ local function ChatFilter(_, _, message, ...)
 		end)
 	end
 
-	if db.highlightGuild then
-		message = message:gsub("<(.-)>", HighlightGuildTag)
+	if chatHighlightConfig.highlightGuild then
+		message = message:gsub("<(.-)>", highlightGuildTag)
 	end
 
 	if nameHighlighted then
-		PlayHighlightSound()
+		playHighlightSound()
 	end
 
 	return false, message, ...
 end
 
-local frame = CreateFrame("Frame")
-frame:RegisterEvent("PLAYER_LOGIN")
-frame:SetScript("OnEvent", function()
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_SAY", ChatFilter)
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_YELL", ChatFilter)
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_PARTY", ChatFilter)
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_RAID", ChatFilter)
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_GUILD", ChatFilter)
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_WHISPER", ChatFilter)
-	ChatFrame_AddMessageEventFilter("CHAT_MSG_CHANNEL", ChatFilter)
+local chatFrame = CreateFrame("Frame")
+chatFrame:RegisterEvent("PLAYER_LOGIN")
+chatFrame:SetScript("OnEvent", function()
+	local filters = {
+		"CHAT_MSG_SAY",
+		"CHAT_MSG_YELL",
+		"CHAT_MSG_PARTY",
+		"CHAT_MSG_RAID",
+		"CHAT_MSG_GUILD",
+		"CHAT_MSG_WHISPER",
+		"CHAT_MSG_CHANNEL",
+	}
+	for _, event in ipairs(filters) do
+		ChatFrame_AddMessageEventFilter(event, ChatFilter)
+	end
 end)
 
--- Section: Error Toggle for Combat
+--[[ ============================================================
+    SECTION: Error Toggle for Combat
+    Temporarily disables UI error messages during combat and 
+    re-enables them afterward to reduce distraction.
+=============================================================== ]]
+
 local ErrorToggleEventFrame = CreateFrame("Frame")
 ErrorToggleEventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
 ErrorToggleEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -135,3 +170,44 @@ ErrorToggleEventFrame:SetScript("OnEvent", function(_, event)
 		_G.UIErrorsFrame:RegisterEvent("UI_ERROR_MESSAGE")
 	end
 end)
+
+--[[ ============================================================
+    SECTION: Chat Message Blocker
+    Filters out specific phrases or patterns in chat messages 
+    (e.g., monster emotes) based on a configurable list of patterns.
+=============================================================== ]]
+
+local ChatFilter = {}
+ChatFilter.blockedPatterns = {
+	"^%s goes into a frenzy!$",
+	"^%s attempts to run away in fear!$",
+}
+
+function ChatFilter:IsBlockedMessage(message)
+	for _, pattern in ipairs(self.blockedPatterns) do
+		if string.match(message, pattern:gsub("%%s", ".+")) then
+			return true
+		end
+	end
+	return false
+end
+
+function ChatFilter:OnChatMessage(_, _, msg, sender, ...)
+	if self:IsBlockedMessage(msg) then
+		DEFAULT_CHAT_FRAME:AddMessage("|cffFF0000[ChatFilter] Blocked message from: " .. sender .. "|r", 1.0, 0.0, 0.0)
+		return true
+	end
+	return false
+end
+
+function ChatFilter:Initialize()
+	local frame = CreateFrame("Frame")
+	frame:RegisterEvent("CHAT_MSG_MONSTER_EMOTE")
+	frame:SetScript("OnEvent", function(_, event, ...)
+		if event == "CHAT_MSG_MONSTER_EMOTE" then
+			self:OnChatMessage(nil, event, ...)
+		end
+	end)
+end
+
+ChatFilter:Initialize()

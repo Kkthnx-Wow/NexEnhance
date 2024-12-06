@@ -1,26 +1,18 @@
 local _, Module = ...
 
 Module:HookAddOn("Blizzard_InspectUI", function()
-	if not Module.NexConfig.skins.blizzskins.inspectFrame then
+	if not (Module.NexConfig and Module.NexConfig.skins and Module.NexConfig.skins.blizzskins and Module.NexConfig.skins.blizzskins.inspectFrame) then
 		return
 	end
 
-	local PanelTemplates_GetSelectedTab = PanelTemplates_GetSelectedTab
-	local UnitClass = UnitClass
-	local hooksecurefunc = hooksecurefunc
-
-	local InspectPaperDollItemsFrame = InspectPaperDollItemsFrame
-	local InspectModelFrame = InspectModelFrame
-
-	if InspectPaperDollItemsFrame.InspectTalents then
-		InspectPaperDollItemsFrame.InspectTalents:ClearAllPoints()
-		InspectPaperDollItemsFrame.InspectTalents:SetPoint("TOPRIGHT", InspectFrame, "BOTTOMRIGHT", 0, -1)
+	local function styleInspectSlot(slotName)
+		local slot = _G[slotName]
+		if slot then
+			Module.StripTextures(slot)
+		else
+			print("Error: Slot not found:", slotName)
+		end
 	end
-
-	InspectModelFrame:DisableDrawLayer("BACKGROUND")
-	InspectModelFrame:DisableDrawLayer("BORDER")
-	InspectModelFrame:DisableDrawLayer("OVERLAY")
-	Module.StripTextures(InspectModelFrame, true)
 
 	local equipmentSlots = {
 		"InspectHeadSlot",
@@ -43,38 +35,53 @@ Module:HookAddOn("Blizzard_InspectUI", function()
 		"InspectTabardSlot",
 	}
 
-	local numEquipmentSlots = #equipmentSlots
-
-	for i = 1, numEquipmentSlots do
-		local slot = _G[equipmentSlots[i]]
-		Module.StripTextures(slot)
+	for _, slotName in ipairs(equipmentSlots) do
+		styleInspectSlot(slotName)
 	end
 
-	local InspectHeadSlot = InspectHeadSlot
-	local InspectHandsSlot = InspectHandsSlot
-	local InspectMainHandSlot = InspectMainHandSlot
-	local InspectSecondaryHandSlot = InspectSecondaryHandSlot
+	if InspectModelFrame then
+		InspectModelFrame:DisableDrawLayer("BACKGROUND")
+		InspectModelFrame:DisableDrawLayer("BORDER")
+		InspectModelFrame:DisableDrawLayer("OVERLAY")
+		Module.StripTextures(InspectModelFrame, true)
 
-	InspectHeadSlot:ClearAllPoints()
-	InspectHandsSlot:ClearAllPoints()
-	InspectMainHandSlot:ClearAllPoints()
-	InspectSecondaryHandSlot:ClearAllPoints()
-	InspectModelFrame:ClearAllPoints()
+		InspectModelFrame:ClearAllPoints()
+		InspectModelFrame:SetSize(300, 360)
+		InspectModelFrame:SetPoint("TOPLEFT", InspectFrameInset, 64, -3)
+	end
 
-	InspectHeadSlot:SetPoint("TOPLEFT", InspectFrameInset, "TOPLEFT", 6, -6)
-	InspectHandsSlot:SetPoint("TOPRIGHT", InspectFrameInset, "TOPRIGHT", -6, -6)
-	InspectMainHandSlot:SetPoint("BOTTOMLEFT", InspectFrameInset, "BOTTOMLEFT", 176, 5)
-	InspectSecondaryHandSlot:SetPoint("BOTTOMRIGHT", InspectFrameInset, "BOTTOMRIGHT", -176, 5)
+	local function repositionInspectSlots()
+		if InspectHeadSlot then
+			InspectHeadSlot:ClearAllPoints()
+			InspectHeadSlot:SetPoint("TOPLEFT", InspectFrameInset, "TOPLEFT", 6, -6)
+		end
 
-	InspectModelFrame:SetSize(300, 360)
-	InspectModelFrame:SetPoint("TOPLEFT", InspectFrameInset, 64, -3)
+		if InspectHandsSlot then
+			InspectHandsSlot:ClearAllPoints()
+			InspectHandsSlot:SetPoint("TOPRIGHT", InspectFrameInset, "TOPRIGHT", -6, -6)
+		end
+
+		if InspectMainHandSlot then
+			InspectMainHandSlot:ClearAllPoints()
+			InspectMainHandSlot:SetPoint("BOTTOMLEFT", InspectFrameInset, "BOTTOMLEFT", 176, 5)
+		end
+
+		if InspectSecondaryHandSlot then
+			InspectSecondaryHandSlot:ClearAllPoints()
+			InspectSecondaryHandSlot:SetPoint("BOTTOMRIGHT", InspectFrameInset, "BOTTOMRIGHT", -176, 5)
+		end
+	end
 
 	local function ApplyInspectFrameLayout()
 		local InspectFrame = InspectFrame
-		local InspectFrameInset = InspectFrame.Inset
+		local InspectFrameInset = InspectFrame and InspectFrame.Inset
+
+		if not InspectFrame or not InspectFrameInset then
+			return
+		end
 
 		if PanelTemplates_GetSelectedTab(InspectFrame) == 1 then
-			InspectFrame:SetSize(438, 431) -- 338 + 100, 424 + 7
+			InspectFrame:SetSize(438, 431)
 			InspectFrameInset:SetPoint("BOTTOMRIGHT", InspectFrame, "BOTTOMLEFT", 432, 4)
 
 			local _, targetClass = UnitClass("target")
@@ -95,14 +102,19 @@ Module:HookAddOn("Blizzard_InspectUI", function()
 		end
 	end
 
-	-- Adjust the inset based on tabs
 	local function OnInspectSwitchTabs(newID)
 		local tabID = newID or PanelTemplates_GetSelectedTab(InspectFrame)
 		ApplyInspectFrameLayout(tabID == 1)
 	end
 
-	-- Hook it to tab switches
 	hooksecurefunc("InspectSwitchTabs", OnInspectSwitchTabs)
-	-- Call it once to apply it from the start
+
 	OnInspectSwitchTabs(1)
+
+	repositionInspectSlots()
+
+	if InspectPaperDollItemsFrame and InspectPaperDollItemsFrame.InspectTalents then
+		InspectPaperDollItemsFrame.InspectTalents:ClearAllPoints()
+		InspectPaperDollItemsFrame.InspectTalents:SetPoint("TOPRIGHT", InspectFrame, "BOTTOMRIGHT", 0, -1)
+	end
 end)

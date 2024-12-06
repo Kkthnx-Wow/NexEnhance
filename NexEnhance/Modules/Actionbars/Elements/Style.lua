@@ -4,8 +4,9 @@ local Module = Modules.Actionbars
 local gsub = string.gsub
 local KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR = KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR
 
-local keyButton = gsub(KEY_BUTTON4, "%d", "")
-local keyNumpad = gsub(KEY_NUMPAD1, "%d", "")
+-- Dynamically handle key replacements
+local keyButton = gsub(KEY_BUTTON4 or "", "%d", "")
+local keyNumpad = gsub(KEY_NUMPAD1 or "", "%d", "")
 
 local replaces = {
 	{ "(" .. keyButton .. ")", "M" },
@@ -13,10 +14,10 @@ local replaces = {
 	{ "(a%-)", "a" },
 	{ "(c%-)", "c" },
 	{ "(s%-)", "s" },
-	{ KEY_BUTTON3, "M3" },
-	{ KEY_MOUSEWHEELUP, "MU" },
-	{ KEY_MOUSEWHEELDOWN, "MD" },
-	{ KEY_SPACE, "Sp" },
+	{ KEY_BUTTON3 or "", "M3" },
+	{ KEY_MOUSEWHEELUP or "", "MU" },
+	{ KEY_MOUSEWHEELDOWN or "", "MD" },
+	{ KEY_SPACE or "", "Sp" },
 	{ "CAPSLOCK", "CL" },
 	{ "Capslock", "CL" },
 	{ "BUTTON", "M" },
@@ -29,9 +30,21 @@ local replaces = {
 	{ "SPACE", "Sp" },
 }
 
-function Module:UpdateHotKey()
-	local text = self:GetText()
-	if not text then
+local function safeGetText(object)
+	return object and object:GetText() or nil
+end
+
+local function IsButtonValid(button)
+	return button ~= nil
+end
+
+function Module:UpdateHotKey(hotkey)
+	if not hotkey then
+		return
+	end
+
+	local text = safeGetText(hotkey)
+	if not text or text == "" then
 		return
 	end
 
@@ -42,20 +55,24 @@ function Module:UpdateHotKey()
 			text = gsub(text, value[1], value[2])
 		end
 	end
-	self:SetFormattedText("%s", text)
+
+	hotkey:SetFormattedText("%s", text)
 end
 
-local function StyleActionButton(button)
+local function StyleActionButton(button, config)
 	if not button then
 		return
 	end
 
-	local count, hotkey, name, slotbg = button.Count, button.HotKey, button.Name, button.SlotBackground
+	local count = button.Count
+	local hotkey = button.HotKey
+	local name = button.Name
+	local slotbg = button.SlotBackground
 
 	if name then
-		name:SetShown(Modules.NexConfig.actionbars.showName)
-		if Modules.NexConfig.actionbars.showName then
-			name:SetFont("Fonts\\FRIZQT__.TTF", Modules.NexConfig.actionbars.nameSize, "OUTLINE")
+		name:SetShown(config.showName)
+		if config.showName then
+			name:SetFont("Fonts\\FRIZQT__.TTF", config.nameSize, "OUTLINE")
 		end
 		name:ClearAllPoints()
 		name:SetPoint("BOTTOMLEFT", 0, 0)
@@ -67,51 +84,60 @@ local function StyleActionButton(button)
 	end
 
 	if count then
-		count:SetShown(Modules.NexConfig.actionbars.showCount)
-		if Modules.NexConfig.actionbars.showCount then
-			count:SetFont("Fonts\\ARIALN.TTF", Modules.NexConfig.actionbars.countSize, "OUTLINE")
+		count:SetShown(config.showCount)
+		if config.showCount then
+			count:SetFont("Fonts\\ARIALN.TTF", config.countSize, "OUTLINE")
 		end
 		count:ClearAllPoints()
 		count:SetPoint("BOTTOMRIGHT", 2, 0)
 	end
 
 	if hotkey then
-		hotkey:SetShown(Modules.NexConfig.actionbars.showHotkey)
-		if Modules.NexConfig.actionbars.showHotkey then
-			hotkey:SetFont("Fonts\\FRIZQT__.TTF", Modules.NexConfig.actionbars.hotkeySize, "OUTLINE")
+		hotkey:SetShown(config.showHotkey)
+		if config.showHotkey then
+			hotkey:SetFont("Fonts\\FRIZQT__.TTF", config.hotkeySize, "OUTLINE")
 		end
 		hotkey:ClearAllPoints()
 		hotkey:SetPoint("TOPRIGHT", 0, -3)
 		hotkey:SetPoint("TOPLEFT", 0, -3)
 
-		Module.UpdateHotKey(hotkey)
-		hooksecurefunc(hotkey, "SetText", Module.UpdateHotKey)
-	end
+		Module:UpdateHotKey(hotkey)
 
-	button.__styled = true
+		hooksecurefunc(hotkey, "SetText", function()
+			Module:UpdateHotKey(hotkey)
+		end)
+	end
 end
 
 function Module:RefreshActionBarStyling()
+	local actionbarConfig = Modules.NexConfig.actionbars
+
 	local actionButtons = {
-		"ActionButton",
-		"MultiBarBottomLeftButton",
-		"MultiBarLeftButton",
-		"MultiBarRightButton",
-		"MultiBarBottomRightButton",
-		"MultiBar5Button",
-		"MultiBar6Button",
-		"MultiBar7Button",
-		"StanceButton",
-		"PetActionButton",
+		{ prefix = "ActionButton", count = 12 },
+		{ prefix = "MultiBarBottomLeftButton", count = 12 },
+		{ prefix = "MultiBarLeftButton", count = 12 },
+		{ prefix = "MultiBarRightButton", count = 12 },
+		{ prefix = "MultiBarBottomRightButton", count = 12 },
+		{ prefix = "MultiBar5Button", count = 12 },
+		{ prefix = "MultiBar6Button", count = 12 },
+		{ prefix = "MultiBar7Button", count = 12 },
+		{ prefix = "StanceButton", count = 10 },
+		{ prefix = "PetActionButton", count = 10 },
 	}
 
-	for _, button in ipairs(actionButtons) do
-		for i = 1, 12 do
-			StyleActionButton(_G[button .. i])
+	for _, buttonSet in ipairs(actionButtons) do
+		for i = 1, buttonSet.count do
+			local buttonName = buttonSet.prefix .. i
+			local button = _G[buttonName]
+			if IsButtonValid(button) then
+				StyleActionButton(button, actionbarConfig)
+			end
 		end
 	end
 
-	StyleActionButton(ExtraActionButton1)
+	if IsButtonValid(ExtraActionButton1) then
+		StyleActionButton(ExtraActionButton1, actionbarConfig)
+	end
 end
 
 function Module:UpdateStylingConfig()

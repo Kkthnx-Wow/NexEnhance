@@ -1,5 +1,6 @@
 local _, Module = ...
 
+-- Cache commonly used WoW API functions
 local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet.GetGameAccountInfoByGUID
 local C_FriendList_IsFriend = C_FriendList.IsFriend
 local IsGuildMember = IsGuildMember
@@ -12,8 +13,8 @@ local LFGInvitePopup = LFGInvitePopup
 local hideStatic
 
 -- Function to handle PARTY_INVITE_REQUEST
-function Module:PARTY_INVITE_REQUEST(_, _, _, _, _, _, _, inviterGUID)
-	if not Module.NexConfig.automation.AutoInvite then
+function Module:PARTY_INVITE_REQUEST(_, _, _, _, _, _, inviterGUID)
+	if not Module.NexConfig or not Module.NexConfig.automation.AutoInvite then
 		return
 	end
 
@@ -21,8 +22,7 @@ function Module:PARTY_INVITE_REQUEST(_, _, _, _, _, _, _, inviterGUID)
 		return
 	end
 
-	local queueButton = QueueStatusButton -- don't auto accept during a queue
-	if queueButton and queueButton:IsShown() then
+	if QueueStatusButton and QueueStatusButton:IsShown() then
 		return
 	end
 
@@ -34,12 +34,12 @@ end
 
 -- Function to handle GROUP_ROSTER_UPDATE
 function Module:GROUP_ROSTER_UPDATE()
-	if not Module.NexConfig.automation.AutoInvite then
+	if not Module.NexConfig or not Module.NexConfig.automation.AutoInvite then
 		return
 	end
 
 	if hideStatic then
-		if LFGInvitePopup then -- invited in custom created group
+		if LFGInvitePopup and LFGInvitePopup:IsShown() then
 			StaticPopupSpecial_Hide(LFGInvitePopup)
 		end
 

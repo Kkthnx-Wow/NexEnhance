@@ -141,6 +141,7 @@
 
     <!-- Skins Addons -->
     <Script file="Modules\Skins\Addons\Details.lua" />
+    <Script file="Modules\Skins\Addons\DeadlyBossMods.lua" />
 
     <!-- Config -->
     <Script file="Config\SavedVariables.lua" />

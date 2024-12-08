@@ -587,7 +587,7 @@ do
 		backdropFrame:SetPoint("TOPLEFT", targetFrame, "TOPLEFT", -offsetA, offsetB)
 		backdropFrame:SetPoint("BOTTOMRIGHT", targetFrame, "BOTTOMRIGHT", offsetC, -offsetD)
 		backdropFrame:SetFrameLevel(backdropFrameLevel)
-		backdropFrame:SetFrameStrata(targetFrame:GetFrameStrata())
+		--backdropFrame:SetFrameStrata(targetFrame:GetFrameStrata())
 
 		-- Store reference to the backdrop frame
 		targetFrame.backdropFrame = backdropFrame

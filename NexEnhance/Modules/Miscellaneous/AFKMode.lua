@@ -505,11 +505,18 @@ function Module:PLAYER_LOGIN()
 
 	AFKMode.chat:SetPoint("TOPLEFT", AFKMode.top, "BOTTOMLEFT", 10, -6)
 
+	-- AFKMode.bottom = CreateFrame("Frame", nil, AFKMode, "TooltipBackdropTemplate")
+	-- AFKMode.bottom:SetFrameLevel(0)
+	-- AFKMode.bottom:SetPoint("BOTTOM", AFKMode, "BOTTOM", 0, -2)
+	-- AFKMode.bottom:SetWidth(GetScreenWidth() + (((1 / UIParent:GetScale()) - ((1 - (768 / Module.ScreenHeight)) / UIParent:GetScale())) * 2 * 2))
+	-- AFKMode.bottom:SetHeight(GetScreenHeight() * (0.9 / 10))
+
+	-- Create the bottom frame for AFKMode
 	AFKMode.bottom = CreateFrame("Frame", nil, AFKMode, "TooltipBackdropTemplate")
 	AFKMode.bottom:SetFrameLevel(0)
-	AFKMode.bottom:SetPoint("BOTTOM", AFKMode, "BOTTOM", 0, -2)
-	AFKMode.bottom:SetWidth(GetScreenWidth() + (((1 / UIParent:GetScale()) - ((1 - (768 / Module.ScreenHeight)) / UIParent:GetScale())) * 2 * 2))
-	AFKMode.bottom:SetHeight(GetScreenHeight() * (0.9 / 10))
+	AFKMode.bottom:SetPoint("BOTTOM", AFKMode, "BOTTOM", 0, 0)
+	AFKMode.bottom:SetWidth(GetScreenWidth() / UIParent:GetEffectiveScale() * 0.53)
+	AFKMode.bottom:SetHeight(GetScreenHeight() / UIParent:GetEffectiveScale() * 0.046)
 
 	AFKMode.bottom.logo = AFKMode:CreateTexture(nil, "OVERLAY")
 	AFKMode.bottom.logo:SetSize(256 / 1.6, 256 / 1.6)

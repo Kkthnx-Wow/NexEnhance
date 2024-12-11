@@ -40,7 +40,7 @@ end
 local function GetClassColor()
 	local _, classFileName = UnitClass("player")
 	local color = RAID_CLASS_COLORS[classFileName]
-	return color.r, color.g, color.b, 0.8 -- Use alpha for transparency
+	return color.r, color.g, color.b, 1
 end
 
 -- Reputation
@@ -58,6 +58,7 @@ local function RepGetValues(curValue, minValue, maxValue)
 		return current, maximum, current / diff * 100
 	end
 end
+
 -- Honor
 local CurrentHonor, MaxHonor, CurrentLevel, PercentHonor, RemainingHonor
 
@@ -91,12 +92,12 @@ function Module:OnExpBarEvent()
 
 		-- Set status bar colors based on toggle
 		if Module.NexConfig.experience.classColorBar then
-			local r, g, b, a = GetClassColor()
-			self:SetStatusBarColor(r, g, b, a)
+			local r, g, b = GetClassColor()
+			self:SetStatusBarColor(r, g, b, 0.8)
 		else
-			self:SetStatusBarColor(0, 0.4, 1, 0.8) -- Default blue color
+			self:SetStatusBarColor(0.2, 0.5, 0.8, 0.8) -- Default blue color
 		end
-		self.restBar:SetStatusBarColor(1, 0, 1, 0.4)
+		self.restBar:SetStatusBarColor(0.7, 0.4, 0.9, 0.75)
 
 		-- Set up main XP bar
 		self:SetMinMaxValues(0, XPToLevel)
@@ -182,7 +183,7 @@ function Module:OnExpBarEvent()
 		local color = FACTION_BAR_COLORS[reaction] or { r = 0, g = 0.74, b = 0.95 }
 		local total = nextReactionThreshold == math.huge and 1 or nextReactionThreshold -- we need to correct the min/max of friendship factions to display the bar at 100%
 
-		self:SetStatusBarColor(color.r or 1, color.g or 1, color.b or 1, 1)
+		self:SetStatusBarColor(color.r or 1, color.g or 1, color.b or 1)
 		self:SetMinMaxValues((nextReactionThreshold == math.huge or currentReactionThreshold == nextReactionThreshold) and 0 or currentReactionThreshold, total) -- we force min to 0 because the min will match max when a rep is maxed and cause the bar to be 0%
 		self:SetValue(currentStanding)
 
@@ -260,9 +261,9 @@ function Module:OnExpBarEvent()
 		local item = C_AzeriteItem_FindActiveAzeriteItem()
 		local cur, max = C_AzeriteItem_GetAzeriteItemXPInfo(item)
 		local currentLevel = C_AzeriteItem_GetPowerLevel(item)
-		local color = { 0.901, 0.8, 0.601, 1 }
+		local color = { 0.901, 0.8, 0.601 }
 
-		self:SetStatusBarColor(color.r, color.g, color.b, color.a)
+		self:SetStatusBarColor(color.r, color.g, color.b)
 		self:SetMinMaxValues(0, max)
 		self:SetValue(cur)
 
@@ -526,10 +527,10 @@ end
 
 function Module:UpdateExpBarColor(bar)
 	if Module.NexConfig.experience.classColorBar then
-		local r, g, b, a = GetClassColor()
-		bar:SetStatusBarColor(r, g, b, a)
+		local r, g, b = GetClassColor()
+		bar:SetStatusBarColor(r, g, b, 0.8)
 	else
-		bar:SetStatusBarColor(0, 0.4, 1, 0.8) -- Default blue color
+		bar:SetStatusBarColor(0.2, 0.5, 0.8, 0.8)
 	end
 end
 
@@ -569,7 +570,7 @@ function Module:PLAYER_LOGIN()
 	local rest = CreateFrame("StatusBar", nil, bar)
 	rest:SetAllPoints()
 	rest:SetStatusBarTexture(Module.NexEnhance)
-	rest:SetStatusBarColor(1, 0, 1, 0.4)
+	rest:SetStatusBarColor(0.7, 0.4, 0.9, 0.75)
 	rest:SetFrameLevel(bar:GetFrameLevel())
 
 	local reward = bar:CreateTexture(nil, "OVERLAY")

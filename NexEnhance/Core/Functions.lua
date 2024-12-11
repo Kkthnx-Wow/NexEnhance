@@ -1,5 +1,6 @@
 -- Functions management for NexEnhance addon
 local _, Core = ...
+local LibShowUIPanel = LibStub("LibShowUIPanel-1.0")
 local cr, cg, cb = Core.r, Core.g, Core.b
 
 -- Movable Frame
@@ -99,6 +100,18 @@ do
 				local numberValue = tonumber(word) -- Attempt to convert to a number
 				list[numberValue or word] = true -- Use the number if it exists, otherwise use the word
 			end
+		end
+	end
+
+	function Core:TogglePanel(frame)
+		if not frame then
+			return -- Safeguard against nil frame
+		end
+
+		if frame:IsShown() then
+			LibShowUIPanel:Hide(frame)
+		else
+			LibShowUIPanel:Show(frame)
 		end
 	end
 end
@@ -587,7 +600,7 @@ do
 		backdropFrame:SetPoint("TOPLEFT", targetFrame, "TOPLEFT", -offsetA, offsetB)
 		backdropFrame:SetPoint("BOTTOMRIGHT", targetFrame, "BOTTOMRIGHT", offsetC, -offsetD)
 		backdropFrame:SetFrameLevel(backdropFrameLevel)
-		--backdropFrame:SetFrameStrata(targetFrame:GetFrameStrata())
+		backdropFrame:SetFrameStrata(targetFrame:GetFrameStrata())
 
 		-- Store reference to the backdrop frame
 		targetFrame.backdropFrame = backdropFrame

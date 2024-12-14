@@ -5,19 +5,6 @@ local IsAddOnLoaded = C_AddOns.IsAddOnLoaded
 local hooksecurefunc = hooksecurefunc
 local ObjectiveTrackerFrame = _G.ObjectiveTrackerFrame
 
-local trackers = {
-	_G.ScenarioObjectiveTracker,
-	_G.UIWidgetObjectiveTracker,
-	_G.CampaignQuestObjectiveTracker,
-	_G.QuestObjectiveTracker,
-	_G.AdventureObjectiveTracker,
-	_G.AchievementObjectiveTracker,
-	_G.MonthlyActivitiesObjectiveTracker,
-	_G.ProfessionsRecipeTracker,
-	_G.BonusObjectiveTracker,
-	_G.WorldQuestObjectiveTracker,
-}
-
 local function SkinObjectiveTrackerHeaders(header)
 	if header and header.Background then
 		header.Background:SetAtlas(nil)
@@ -68,7 +55,7 @@ local function HandleTimers(tracker, key)
 	end
 end
 
-function Module:PLAYER_LOGIN()
+Module:HookAddOn("Blizzard_ObjectiveTracker", function()
 	if IsAddOnLoaded("!KalielsTracker") then
 		return
 	end
@@ -89,6 +76,19 @@ function Module:PLAYER_LOGIN()
 		end
 	end
 
+	local trackers = {
+		_G.ScenarioObjectiveTracker,
+		_G.UIWidgetObjectiveTracker,
+		_G.CampaignQuestObjectiveTracker,
+		_G.QuestObjectiveTracker,
+		_G.AdventureObjectiveTracker,
+		_G.AchievementObjectiveTracker,
+		_G.MonthlyActivitiesObjectiveTracker,
+		_G.ProfessionsRecipeTracker,
+		_G.BonusObjectiveTracker,
+		_G.WorldQuestObjectiveTracker,
+	}
+
 	for _, tracker in pairs(trackers) do
 		if tracker and tracker.Header then
 			SkinObjectiveTrackerHeaders(tracker.Header)
@@ -96,4 +96,4 @@ function Module:PLAYER_LOGIN()
 			hooksecurefunc(tracker, "GetTimerBar", HandleTimers)
 		end
 	end
-end
+end)

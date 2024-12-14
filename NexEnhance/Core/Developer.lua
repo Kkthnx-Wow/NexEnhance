@@ -273,3 +273,137 @@ do
 	-- Add the filter for specific chat message events
 	ChatFrame_AddMessageEventFilter("CHAT_MSG_MONSTER_EMOTE", MyChatFilter)
 end
+
+--[[ ============================================================
+    SECTION: Delete Confirmation Dialog Enhancement
+    Enhances the delete confirmation dialog for items and quests.
+    This modification adds item links and details, such as pet levels, 
+    to the confirmation dialog for better clarity.
+=============================================================== ]]
+do
+	-- Modify Delete Dialog
+	local function modifyDeleteDialog()
+		local confirmationText = DELETE_GOOD_ITEM:gsub("[\r\n]", "@")
+		local _, confirmationType = strsplit("@", confirmationText, 2)
+
+		local function setHyperlinkHandlers(dialog)
+			dialog.OnHyperlinkEnter = StaticPopupDialogs["DELETE_GOOD_ITEM"].OnHyperlinkEnter
+			dialog.OnHyperlinkLeave = StaticPopupDialogs["DELETE_GOOD_ITEM"].OnHyperlinkLeave
+		end
+
+		setHyperlinkHandlers(StaticPopupDialogs["DELETE_ITEM"])
+		setHyperlinkHandlers(StaticPopupDialogs["DELETE_QUEST_ITEM"])
+		setHyperlinkHandlers(StaticPopupDialogs["DELETE_GOOD_QUEST_ITEM"])
+
+		local deleteConfirmationFrame = CreateFrame("FRAME")
+		deleteConfirmationFrame:RegisterEvent("DELETE_ITEM_CONFIRM")
+		deleteConfirmationFrame:SetScript("OnEvent", function()
+			local staticPopup = StaticPopup1
+			local editBox = StaticPopup1EditBox
+			local button = StaticPopup1Button1
+			local popupText = StaticPopup1Text
+
+			if editBox:IsShown() then
+				staticPopup:SetHeight(staticPopup:GetHeight() - 14)
+				editBox:Hide()
+				button:Enable()
+				local link = select(3, GetCursorInfo())
+
+				if link then
+					local linkType, linkOptions, name = LinkUtil.ExtractLink(link)
+					if linkType == "battlepet" then
+						local _, level, breedQuality = strsplit(":", linkOptions)
+						local qualityColor = BAG_ITEM_QUALITY_COLORS[tonumber(breedQuality)]
+						link = qualityColor:WrapTextInColorCode(name .. " |n" .. "Level" .. " " .. level .. " Battle Pet")
+					end
+					popupText:SetText(popupText:GetText():gsub(confirmationType, "") .. "|n|n" .. link)
+				end
+			else
+				staticPopup:SetHeight(staticPopup:GetHeight() + 40)
+				editBox:Hide()
+				button:Enable()
+				local link = select(3, GetCursorInfo())
+
+				if link then
+					local linkType, linkOptions, name = LinkUtil.ExtractLink(link)
+					if linkType == "battlepet" then
+						local _, level, breedQuality = strsplit(":", linkOptions)
+						local qualityColor = BAG_ITEM_QUALITY_COLORS[tonumber(breedQuality)]
+						link = qualityColor:WrapTextInColorCode(name .. " |n" .. "Level" .. " " .. level .. " Battle Pet")
+					end
+					popupText:SetText(popupText:GetText():gsub(confirmationType, "") .. "|n|n" .. link)
+				end
+			end
+		end)
+	end
+
+	modifyDeleteDialog()
+end
+
+--[[ ============================================================
+    SECTION: ALT + Right Click Stack Purchase
+    Allows players to purchase a full stack of an item from a merchant 
+    using ALT + Right Click. A confirmation popup is shown before purchase 
+    if the item has not been previously purchased.
+=============================================================== ]]
+
+do
+	-- Cache for items that have been purchased
+	local itemPurchaseCache = {}
+
+	-- Variables for item link and item ID
+	local currentItemLink, currentItemId
+
+	-- Popup dialog for confirming stack purchase
+	StaticPopupDialogs["CONFIRM_BUY_STACK"] = {
+		text = Core.L["Are you sure you want to buy |cffff0000a stack|r of these?"],
+		button1 = YES,
+		button2 = NO,
+		OnAccept = function()
+			if not currentItemLink then
+				return
+			end
+			BuyMerchantItem(currentItemId, GetMerchantItemMaxStack(currentItemId))
+			itemPurchaseCache[currentItemLink] = true
+			currentItemLink = nil
+		end,
+		hideOnEscape = true,
+		hasItemFrame = true,
+	}
+
+	-- Cache the original MerchantItemButton_OnModifiedClick function
+	local OriginalMerchantItemButton_OnModifiedClick = MerchantItemButton_OnModifiedClick
+
+	-- Override MerchantItemButton_OnModifiedClick to handle ALT + Right Click for stack purchase
+	function MerchantItemButton_OnModifiedClick(self, ...)
+		if IsAltKeyDown() then
+			currentItemId = self:GetID()
+			currentItemLink = GetMerchantItemLink(currentItemId)
+
+			if not currentItemLink then
+				return
+			end
+
+			local itemName, _, itemQuality, _, _, _, _, maxStack, _, itemTexture = C_Item.GetItemInfo(currentItemLink)
+
+			if maxStack and maxStack > 1 then
+				if not itemPurchaseCache[currentItemLink] then
+					local qualityR, qualityG, qualityB = C_Item.GetItemQualityColor(itemQuality or 1)
+					StaticPopup_Show("CONFIRM_BUY_STACK", " ", " ", {
+						["texture"] = itemTexture,
+						["name"] = itemName,
+						["color"] = { qualityR, qualityG, qualityB, 1 },
+						["link"] = currentItemLink,
+						["index"] = currentItemId,
+						["count"] = maxStack,
+					})
+				else
+					BuyMerchantItem(currentItemId, GetMerchantItemMaxStack(currentItemId))
+				end
+			end
+		end
+
+		-- Call the original function to maintain default behavior
+		OriginalMerchantItemButton_OnModifiedClick(self, ...)
+	end
+end

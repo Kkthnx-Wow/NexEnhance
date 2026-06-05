@@ -8,6 +8,16 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.2] — 2026-06-05
+
+Distribution metadata update for CurseForge and Wago.
+
+### Changed
+- **Packaging:** added `X-Curse-Project-ID` and `X-Wago-ID` to the addon manifest
+  so CurseForge and Wago can track updates correctly.
+
+---
+
 ## [1.2.1] — 2026-06-05
 
 A polish-and-extras update: colour your default frames, a Details! skin and a
@@ -242,6 +252,7 @@ the default UI and gets out of your way.
 
 ---
 
+[1.2.2]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.2
 [1.2.1]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.1.0

@@ -45,6 +45,16 @@ local BACKDROP = {
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.2.2",
+		date = "2026-06-05",
+		intro = "A small packaging update so CurseForge and Wago can track releases correctly.",
+		sections = {
+			{ "Packaging", {
+				"Added X-Curse-Project-ID and X-Wago-ID to the addon manifest.",
+			} },
+		},
+	},
+	{
 		version = "1.2.1",
 		date = "2026-06-05",
 		intro = "A polish-and-extras update: colour your default frames, a Details! skin and a mount-source tooltip, plus an easier-to-read Settings panel - still improve, never reskin.",

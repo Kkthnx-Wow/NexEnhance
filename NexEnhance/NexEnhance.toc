@@ -120,6 +120,7 @@ Modules\Miscellaneous\QuickDelete.lua
 Modules\Miscellaneous\DragEmAll.lua
 Modules\Miscellaneous\AlertFrames.lua
 Modules\Miscellaneous\Animation.lua
+Modules\Miscellaneous\AFKCam.lua
 Modules\Miscellaneous\ReloadUI.lua
 Modules\Miscellaneous\Changelog.lua
 Modules\Miscellaneous\Credits.lua

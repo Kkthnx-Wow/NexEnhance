@@ -47,12 +47,18 @@ local CHANGELOG = {
 	{
 		version = "1.2.3",
 		date = "2026-06-05",
-		intro = "Inventory clarity and a proper thank-you page: bind labels on bag icons plus a class-coloured credits panel for the authors whose work helped build NexEnhance.",
+		intro = "Inventory clarity, an immersive AFK camera, and a proper thank-you page: bind labels on bag icons plus a class-coloured credits panel for the authors whose work helped build NexEnhance.",
 		sections = {
 			{ "Inventory", {
 				"Bind Status: show BoE, BoA and WuE on unbound bag and bank items (top-right of the icon; item level stays bottom-left).",
 				"Toggle under Item Level → Show Bind Status.",
 				"Idea borrowed from Lars Norberg's BlizzardBags_BoE (GoldpawsStuff) — thank you, friend.",
+			} },
+			{ "Miscellaneous", {
+				"AFK Camera: immersive overlay with spinning camera, character and pet models, Blizzard letterbox bars, clock, logout countdown, random stats and whisper chat.",
+				"Wave, dance and sleep animation cycle on the character model. Exits on combat, LFG/battlefield popups or any key press.",
+				"Toggle under Miscellaneous → AFK Camera.",
+				"Based on ElvUI's AFK module; animation cycle and holder offsets from GW2 UI by Mortalknight.",
 			} },
 			{ "Credits", {
 				"A scrollable thank-you panel with class-coloured contributor cards, feature lists and library acknowledgements.",

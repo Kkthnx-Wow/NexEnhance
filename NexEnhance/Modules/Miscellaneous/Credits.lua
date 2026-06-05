@@ -60,6 +60,36 @@ local CONTRIBUTORS = {
 		},
 	},
 	{
+		name = "Elv & the Tukui team",
+		class = "PALADIN",
+		project = "ElvUI",
+		url = "github.com/tukui-org/ElvUI",
+		thanks = "For ElvUI's AFK module — the foundation NexEnhance's AFK Camera builds on: bottom bar layout, faction crest, chat log and camera spin.",
+		features = {
+			"Misc — AFK Camera",
+		},
+	},
+	{
+		name = "Mortalknight",
+		class = "DEATHKNIGHT",
+		project = "GW2 UI",
+		url = "github.com/Mortalknight/GW2_UI",
+		thanks = "For GW2 UI's afk.lua — the wave/dance/sleep animation cycle and per-animation model holder offsets carried into NexEnhance's AFK Camera.",
+		features = {
+			"Misc — AFK Camera (model animations)",
+		},
+	},
+	{
+		name = "Shestak",
+		class = "WARRIOR",
+		project = "ShestakUI",
+		url = "github.com/Shestak/ShestakUI",
+		thanks = "For ShestakUI — the edit-box UpdateHeader hook for reliable channel colouring that NexEnhance's chat module borrowed.",
+		features = {
+			"Chat — Edit box channel colouring",
+		},
+	},
+	{
 		name = "Siweia",
 		class = "MAGE",
 		project = "NDui",
@@ -125,6 +155,17 @@ local CONTRIBUTORS = {
 		thanks = "For Cloudy Unit Info — the inspect item-level approach carried forward through NDui and into NexEnhance's tooltip item level.",
 		features = {
 			"Tooltip — average item level on unit tooltips",
+		},
+	},
+	{
+		name = "Alteredcross",
+		class = "PALADIN",
+		project = "Chief Break-It Officer & Amateur Theorist",
+		thanks = "Our good friend and forever PTR buddy — the paladin who logs in, clicks everything twice, /reloads on principle, and reports bugs before we finish typing the commit message. Half QA legend, half conspiracy theorist; fully convinced Blizzard nerfs our AFK bar when the moon is in retrograde. NexEnhance would ship with twice as many \"wait, what?\" moments without you.",
+		features = {
+			"Testing — if it can break, he will find it (lovingly)",
+			"Bug hunting — \"bro watch this\" followed by a perfect repro",
+			"Morale — unsolicited theories about who really moved the crest 6 pixels",
 		},
 	},
 }

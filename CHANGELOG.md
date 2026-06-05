@@ -10,8 +10,9 @@ All notable changes to this project are documented here. This project follows
 
 ## [1.2.3] — 2026-06-05
 
-Inventory clarity and a proper thank-you page: bind labels on bag icons plus a
-class-coloured credits panel for the authors whose work helped build NexEnhance.
+Inventory clarity, an immersive AFK camera, and a proper thank-you page: bind labels on
+bag icons plus a class-coloured credits panel for the authors whose work helped build
+NexEnhance.
 
 ### Added
 - **Inventory — Bind Status:** show **BoE**, **BoA**, and **WuE** on unbound bag
@@ -22,6 +23,14 @@ class-coloured credits panel for the authors whose work helped build NexEnhance.
 - **Credits:** a scrollable thank-you panel with class-coloured contributor
   cards, feature lists, and library acknowledgements. Open with **`/nex credits`**
   or from **Settings → NexEnhance → Credits**.
+- **AFK Camera:** immersive AFK overlay with a spinning camera, character (and
+  pet) model with wave/dance/sleep animation cycle, live clock and calendar date,
+  30-minute logout countdown, rotating account statistics, and a whisper chat log.
+  Blizzard tooltip-style top and bottom letterbox bars. Exits on combat, LFG/battlefield
+  popups, or any key press. Toggle under **Miscellaneous → AFK Camera**.
+  Based on [ElvUI's AFK module](https://github.com/tukui-org/ElvUI/blob/main/ElvUI/Game/Shared/Modules/Misc/AFK.lua);
+  model animation cycle and holder offsets from [GW2 UI](https://github.com/Mortalknight/GW2_UI/blob/main/Games/Shared/Misc/afk.lua)
+  by Mortalknight.
 
 ### Changed
 - **`/nex help`** and the options landing page now list the credits command.

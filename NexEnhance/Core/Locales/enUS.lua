@@ -370,6 +370,13 @@ L["Play a logo flyby the first time you move after logging in. Replay it with /n
 L["Combat Text"] = "Combat Text"
 L["Show an animated Entering/Leaving Combat banner (reload to disable)."] = "Show an animated Entering/Leaving Combat banner (reload to disable)."
 
+-- AFK Camera
+L["AFK Camera"] = "AFK Camera"
+L["Enable AFK Camera"] = "Enable AFK Camera"
+L["Immersive AFK overlay with camera spin, character model, clock and random stats."] = "Immersive AFK overlay with camera spin, character model, clock and random stats."
+L["AFK Random Stats"] = "Random Stats"
+L["AFK Logout Timer"] = "Logout Timer:"
+
 -- QuestNotification
 L["Quest Notification"] = "Quest Notification"
 L["Announce accepted quests and completions to your group."] = "Announce accepted quests and completions to your group."

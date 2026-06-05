@@ -8,6 +8,39 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.0] — 2026-06-05
+
+A chat-focused update: a cleaner, smarter edit box, a movable Battle.net pop-up,
+and a new Mythic+ keystone autoslotter — plus an easier-to-navigate Settings panel.
+Still "improve, don't reskin," all toggleable from the Settings panel.
+
+### Added
+- **Automation — Auto Keystone:** automatically slots your Mythic+ keystone when
+  the Challenge Mode UI opens. Uses an instant item-type check (no item-cache
+  dependency) and bows out entirely if AngryKeystones is installed.
+- **Chat — Hide Edit Box When Inactive:** keeps the input box hidden until you
+  focus it, instead of leaving a faded bar lingering over the chat (and tabs).
+- **Chat — Hide Scroll Bar:** removes the chat scroll bar and jump-to-bottom
+  button for a cleaner window.
+- **Chat — Battle.net pop-up mover:** the friend/online toast is re-anchored to
+  the chat window's top-right corner and is now movable in Edit Mode.
+
+### Changed
+- **Settings panel:** the subcategory sidebar is now listed alphabetically
+  (by localised title) instead of a hand-curated order.
+- **Settings panel:** dependent (child) options now grey out when their parent
+  toggle is off across many more modules (Tooltip, DataText, Auto Vendor, Chat,
+  Queue Timer, Decline Duels and more), and their labels are bumped up a point
+  for legibility.
+
+### Fixed
+- **Chat — channel colouring:** the edit box border now recolours reliably for
+  the active channel by hooking each edit box's own `UpdateHeader` (modern client
+  paths bypassed the old global hook), and resets to a neutral border when a
+  channel has no colour so a previous tint doesn't linger.
+
+---
+
 ## [1.1.0] — 2026-06-05
 
 A feature update that fills out the Automation suite, adds inventory and tooltip
@@ -174,5 +207,6 @@ the default UI and gets out of your way.
 
 ---
 
+[1.2.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.0.0

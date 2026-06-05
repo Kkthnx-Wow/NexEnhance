@@ -180,6 +180,8 @@ function AlertFrames:OnSettingChanged()
 end
 
 function AlertFrames:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Alert Frames"], L["Move achievement/loot/reward alert popups to the top of the screen (reload to disable)."])
-	builder:Checkbox(category, self, "hideTalkingHead", L["Hide Talking Head"], L["Suppress the Talking Head dialog frame (reload to re-enable it)."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Alert Frames"], L["Move achievement/loot/reward alert popups to the top of the screen (reload to disable)."])
+	local _, headInit = builder:Checkbox(category, self, "hideTalkingHead", L["Hide Talking Head"], L["Suppress the Talking Head dialog frame (reload to re-enable it)."])
+
+	builder:DependsOn(headInit, enableInit)
 end

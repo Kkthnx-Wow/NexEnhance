@@ -114,6 +114,8 @@ function AutoResurrect:OnEnable()
 end
 
 function AutoResurrect:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Auto Resurrect"], L["Automatically accept resurrection requests while you are out of combat (ignores item-cast soul stones like the encounter pylon and brazier)."])
-	builder:Checkbox(category, self, "thankYou", L["Thank the Resurrecter"], L["Send a /thank emote to whoever resurrected you, a few seconds after you are back up."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Auto Resurrect"], L["Automatically accept resurrection requests while you are out of combat (ignores item-cast soul stones like the encounter pylon and brazier)."])
+	local _, thankInit = builder:Checkbox(category, self, "thankYou", L["Thank the Resurrecter"], L["Send a /thank emote to whoever resurrected you, a few seconds after you are back up."])
+
+	builder:DependsOn(thankInit, enableInit)
 end

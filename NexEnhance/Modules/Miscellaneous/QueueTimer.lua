@@ -299,7 +299,10 @@ function QueueTimer:OnSettingChanged(key, value)
 end
 
 function QueueTimer:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Queue Timer"], L["Replace the small LFG/PvP ready countdown with a larger, colour-coded timer (reload to disable)."])
-	builder:Checkbox(category, self, "warning", L["Queue Warning Sound"], L["Play a triple beep when the queue is about to expire."])
-	builder:Checkbox(category, self, "hideOtherTimers", L["Hide Default Timers"], L["Hide Blizzard's default queue status bars while the custom timer is shown."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Queue Timer"], L["Replace the small LFG/PvP ready countdown with a larger, colour-coded timer (reload to disable)."])
+	local _, warnInit = builder:Checkbox(category, self, "warning", L["Queue Warning Sound"], L["Play a triple beep when the queue is about to expire."])
+	local _, hideInit = builder:Checkbox(category, self, "hideOtherTimers", L["Hide Default Timers"], L["Hide Blizzard's default queue status bars while the custom timer is shown."])
+
+	builder:DependsOn(warnInit, enableInit)
+	builder:DependsOn(hideInit, enableInit)
 end

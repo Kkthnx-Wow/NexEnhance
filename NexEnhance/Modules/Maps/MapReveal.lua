@@ -201,6 +201,8 @@ function MapReveal:OnSettingChanged(key, value)
 end
 
 function MapReveal:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Map Reveal"], L["Reveal unexplored areas on the world map by removing fog of war."])
-	builder:Checkbox(category, self, "glow", L["Dim Revealed Areas"], L["Slightly darken the revealed tiles so explored areas still stand out."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Map Reveal"], L["Reveal unexplored areas on the world map by removing fog of war."])
+	local _, glowInit = builder:Checkbox(category, self, "glow", L["Dim Revealed Areas"], L["Slightly darken the revealed tiles so explored areas still stand out."])
+
+	builder:DependsOn(glowInit, enableInit)
 end

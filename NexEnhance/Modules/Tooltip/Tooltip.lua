@@ -548,20 +548,35 @@ function Tooltip:OnSettingChanged(key)
 end
 
 function Tooltip:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Tooltip"], L["Enhance the game tooltips with extra info (reload to fully disable)."])
-	builder:Dropdown(category, self, "statusBarPosition", L["Health Bar Position"], L["Place the unit health bar at the top or bottom of the tooltip."], {
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Tooltip"], L["Enhance the game tooltips with extra info (reload to fully disable)."])
+	local _, barPosInit = builder:Dropdown(category, self, "statusBarPosition", L["Health Bar Position"], L["Place the unit health bar at the top or bottom of the tooltip."], {
 		{ value = "bottom", label = L["Bottom"] },
 		{ value = "top", label = L["Top"] },
 	})
-	builder:Checkbox(category, self, "factionIcon", L["Show Faction Icon"], L["Show an Alliance/Horde icon on player tooltips."])
-	builder:Checkbox(category, self, "lfdRole", L["Show Role Icon"], L["Show the group role (tank/healer/dps) icon on player tooltips."])
-	builder:Checkbox(category, self, "hideRealm", L["Hide Realm Name"], L["Hide the realm name on players from other realms (hold Shift to reveal)."])
-	builder:Checkbox(category, self, "hideTitle", L["Hide Player Title"], L["Hide PvP/guild titles on player names."])
-	builder:Checkbox(category, self, "mythicScore", L["Show Mythic+ Score"], L["Show the player's current-season Mythic+ rating."])
-	builder:Checkbox(category, self, "qualityBorder", L["Quality-Coloured Border"], L["Tint Blizzard's default tooltip border by item quality."])
-	builder:Checkbox(category, self, "showItemLevel", L["Show Item Level"], L["Show the inspected player's item level on their tooltip."])
-	builder:Checkbox(category, self, "itemLevelByShift", L["Item Level on Shift"], L["Only show the inspected item level while holding Shift."])
-	builder:Checkbox(category, self, "showIDs", L["Show IDs"], L["Append spell, item, quest and other IDs to tooltips."])
-	builder:Checkbox(category, self, "showIcons", L["Show Icons"], L["Show an icon next to the tooltip title for spells, items and more."])
-	builder:Checkbox(category, self, "hoverTips", L["Hyperlink Hover Tips"], L["Show a tooltip when hovering item/spell links in chat."])
+	local _, factionInit = builder:Checkbox(category, self, "factionIcon", L["Show Faction Icon"], L["Show an Alliance/Horde icon on player tooltips."])
+	local _, roleInit = builder:Checkbox(category, self, "lfdRole", L["Show Role Icon"], L["Show the group role (tank/healer/dps) icon on player tooltips."])
+	local _, realmInit = builder:Checkbox(category, self, "hideRealm", L["Hide Realm Name"], L["Hide the realm name on players from other realms (hold Shift to reveal)."])
+	local _, titleInit = builder:Checkbox(category, self, "hideTitle", L["Hide Player Title"], L["Hide PvP/guild titles on player names."])
+	local _, scoreInit = builder:Checkbox(category, self, "mythicScore", L["Show Mythic+ Score"], L["Show the player's current-season Mythic+ rating."])
+	local _, borderInit = builder:Checkbox(category, self, "qualityBorder", L["Quality-Coloured Border"], L["Tint Blizzard's default tooltip border by item quality."])
+	local _, ilvlInit = builder:Checkbox(category, self, "showItemLevel", L["Show Item Level"], L["Show the inspected player's item level on their tooltip."])
+	local _, ilvlShiftInit = builder:Checkbox(category, self, "itemLevelByShift", L["Item Level on Shift"], L["Only show the inspected item level while holding Shift."])
+	local _, idsInit = builder:Checkbox(category, self, "showIDs", L["Show IDs"], L["Append spell, item, quest and other IDs to tooltips."])
+	local _, iconsInit = builder:Checkbox(category, self, "showIcons", L["Show Icons"], L["Show an icon next to the tooltip title for spells, items and more."])
+	local _, hoverInit = builder:Checkbox(category, self, "hoverTips", L["Hyperlink Hover Tips"], L["Show a tooltip when hovering item/spell links in chat."])
+
+	-- Every tooltip extra is meaningless while the module is off.
+	builder:DependsOn(barPosInit, enableInit)
+	builder:DependsOn(factionInit, enableInit)
+	builder:DependsOn(roleInit, enableInit)
+	builder:DependsOn(realmInit, enableInit)
+	builder:DependsOn(titleInit, enableInit)
+	builder:DependsOn(scoreInit, enableInit)
+	builder:DependsOn(borderInit, enableInit)
+	builder:DependsOn(ilvlInit, enableInit)
+	builder:DependsOn(idsInit, enableInit)
+	builder:DependsOn(iconsInit, enableInit)
+	builder:DependsOn(hoverInit, enableInit)
+	-- "Item Level on Shift" only applies when item level is shown at all.
+	builder:DependsOn(ilvlShiftInit, ilvlInit)
 end

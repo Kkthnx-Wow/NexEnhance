@@ -175,6 +175,12 @@ L["Automatically accept resurrection requests while you are out of combat (ignor
 L["Thank the Resurrecter"] = "Thank the Resurrecter"
 L["Send a /thank emote to whoever resurrected you, a few seconds after you are back up."] = "Send a /thank emote to whoever resurrected you, a few seconds after you are back up."
 
+-- Auto Keystone
+L["Auto Keystone"] = "Auto Keystone"
+L["Enable Auto Keystone"] = "Enable Auto Keystone"
+L["Automatically slot your Mythic+ keystone when the Challenge Mode UI opens."] = "Automatically slot your Mythic+ keystone when the Challenge Mode UI opens."
+L["Keystone automatically placed."] = "Keystone automatically placed."
+
 -- ActionBars
 L["Enable Action Bars"] = "Enable Action Bars"
 L["Style Blizzard action buttons and abbreviate hotkeys."] = "Style Blizzard action buttons and abbreviate hotkeys."
@@ -440,8 +446,13 @@ L["Edit Box on Top"] = "Edit Box on Top"
 L["Dock the chat edit box to the top of the chat window (reload to apply)."] = "Dock the chat edit box to the top of the chat window (reload to apply)."
 L["Colour Edit Box"] = "Colour Edit Box"
 L["Tint the edit box border to match the active chat channel (reload to apply)."] = "Tint the edit box border to match the active chat channel (reload to apply)."
+L["Hide Edit Box When Inactive"] = "Hide Edit Box When Inactive"
+L["Keep the chat edit box hidden until you focus it (reload to apply)."] = "Keep the chat edit box hidden until you focus it (reload to apply)."
 L["Hide Side Buttons"] = "Hide Side Buttons"
 L["Hide the social/menu buttons beside the chat window."] = "Hide the social/menu buttons beside the chat window."
+L["Hide Scroll Bar"] = "Hide Scroll Bar"
+L["Remove the scroll bar and jump-to-bottom button (reload to restore)."] = "Remove the scroll bar and jump-to-bottom button (reload to restore)."
+L["Battle.net Pop-up"] = "Battle.net Pop-up"
 L["Tab Channel Switch"] = "Tab Channel Switch"
 L["Press Tab in an empty edit box to cycle chat channels."] = "Press Tab in an empty edit box to cycle chat channels."
 L["Quick Scroll"] = "Quick Scroll"
@@ -453,9 +464,14 @@ L["Play a sound when you receive a whisper."] = "Play a sound when you receive a
 L["Font Size Menu"] = "Font Size Menu"
 L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."] = "Add a font-size submenu to the chat tab right-click menu (reload to apply)."
 L["Keyword Auto-Invite"] = "Keyword Auto-Invite"
-L["Invite players who whisper you the keyword below."] = "Invite players who whisper you the keyword below."
+L["Invite players who whisper you your keyword (set it on the Keyword Invite page)."] = "Invite players who whisper you your keyword (set it on the Keyword Invite page)."
 L["Guild/Friends Only"] = "Guild/Friends Only"
 L["Only auto-invite guild members and Battle.net friends."] = "Only auto-invite guild members and Battle.net friends."
+L["Keyword Invite"] = "Keyword Invite"
+L["When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."] = "When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."
+L["Invite Keyword"] = "Invite Keyword"
+L["Invite keyword set to:"] = "Invite keyword set to:"
+L["Invite keyword cleared."] = "Invite keyword cleared."
 
 -- Chat Copy
 L["Enable Chat Copy"] = "Enable Chat Copy"

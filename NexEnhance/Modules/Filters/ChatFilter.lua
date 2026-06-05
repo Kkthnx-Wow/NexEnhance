@@ -338,10 +338,14 @@ function ChatFilter:OnSettingChanged()
 end
 
 function ChatFilter:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Chat Filter"], L["Filter chat spam and decorate item links (installs on enable; individual toggles below apply live)."])
-	builder:Checkbox(category, self, "spamFilter", L["Spam Filter"], L["Hide messages matching blacklisted keywords or repeated near-identical spam. Manage keywords with /nexfilter."])
-	builder:Slider(category, self, "matches", L["Match Threshold"], L["How many blacklisted keywords a message must contain before it is hidden."], 1, 6, 1)
-	builder:Checkbox(category, self, "blockStranger", L["Block Strangers"], L["Hide whispers from anyone who is not a friend, guild member or group member."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat Filter"], L["Filter chat spam and decorate item links (installs on enable; individual toggles below apply live)."])
+	local _, spamInit = builder:Checkbox(category, self, "spamFilter", L["Spam Filter"], L["Hide messages matching blacklisted keywords or repeated near-identical spam. Manage keywords with /nexfilter."])
+	local _, matchesInit = builder:Slider(category, self, "matches", L["Match Threshold"], L["How many blacklisted keywords a message must contain before it is hidden."], 1, 6, 1)
+	local _, strangerInit = builder:Checkbox(category, self, "blockStranger", L["Block Strangers"], L["Hide whispers from anyone who is not a friend, guild member or group member."])
+
+	builder:DependsOn(spamInit, enableInit)
+	builder:DependsOn(matchesInit, spamInit) -- threshold only matters with the spam filter on
+	builder:DependsOn(strangerInit, enableInit)
 	builder:Checkbox(category, self, "blockSpammer", L["Block Spammers"], L["Hide all messages from a sender once they have tripped the filter repeatedly this session."])
 	builder:Checkbox(category, self, "chatItemLevel", L["Item Level in Chat"], L["Append the item level and gem sockets to item links posted in chat."])
 end

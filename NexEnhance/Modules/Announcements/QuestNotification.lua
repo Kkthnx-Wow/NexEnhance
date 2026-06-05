@@ -222,7 +222,10 @@ function QuestNotification:OnSettingChanged()
 end
 
 function QuestNotification:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Quest Notification"], L["Announce accepted quests and completions to your group."])
-	builder:Checkbox(category, self, "progress", L["Quest Progress"], L["Also announce objective progress updates."])
-	builder:Checkbox(category, self, "onlyCompleteRing", L["Only Completion Sound"], L["Play a sound on quest completion but do not post any chat messages."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Quest Notification"], L["Announce accepted quests and completions to your group."])
+	local _, progressInit = builder:Checkbox(category, self, "progress", L["Quest Progress"], L["Also announce objective progress updates."])
+	local _, ringInit = builder:Checkbox(category, self, "onlyCompleteRing", L["Only Completion Sound"], L["Play a sound on quest completion but do not post any chat messages."])
+
+	builder:DependsOn(progressInit, enableInit)
+	builder:DependsOn(ringInit, enableInit)
 end

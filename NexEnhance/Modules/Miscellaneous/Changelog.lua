@@ -45,6 +45,25 @@ local BACKDROP = {
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.2.0",
+		date = "2026-06-05",
+		intro = "A chat-focused update: a cleaner, smarter edit box, a movable Battle.net pop-up, and a new Mythic+ keystone autoslotter - plus an easier-to-navigate Settings panel.",
+		sections = {
+			{ "Chat", {
+				"Edit box now hides when inactive and recolours reliably for the active channel as you switch.",
+				"Optionally hide the chat scroll bar and jump-to-bottom button.",
+				"Battle.net pop-ups now sit at the chat's top-right corner and are movable in Edit Mode.",
+			} },
+			{ "Automation", {
+				"Auto Keystone: automatically slots your Mythic+ keystone when the Challenge Mode UI opens (defers to AngryKeystones if installed).",
+			} },
+			{ "Interface", {
+				"The Settings sidebar is now listed alphabetically.",
+				"Dependent options grey out when their parent toggle is off across many more modules, and their labels are a touch larger.",
+			} },
+		},
+	},
+	{
 		version = "1.1.0",
 		date = "2026-06-05",
 		intro = "A feature update: a fuller Automation suite, inventory and tooltip quality-of-life, and sharper unit-frame colours - still improve, never reskin.",

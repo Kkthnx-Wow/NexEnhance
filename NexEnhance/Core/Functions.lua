@@ -58,6 +58,25 @@ function F.HexToRGB(hex)
 	return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
 end
 
+--- Convert 0-1 RGBA to the "AARRGGBB" hex string used by Blizzard's Settings
+--- colour swatches (CreateColorFromHexString / Color:GenerateHexColor). Alpha
+--- defaults to fully opaque when omitted.
+function F.RGBAToHex(r, g, b, a)
+	if type(r) == "table" then
+		r, g, b, a = r[1], r[2], r[3], r[4]
+	end
+	return format("%02x%02x%02x%02x", (a or 1) * 255, r * 255, g * 255, b * 255)
+end
+
+--- Convert an "AARRGGBB" (or "RRGGBB") hex string to a 0-1 RGBA quad. Alpha is
+--- 1 when the string has no alpha component.
+function F.HexToRGBA(hex)
+	if #hex == 8 then
+		return tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, tonumber(hex:sub(7, 8), 16) / 255, tonumber(hex:sub(1, 2), 16) / 255
+	end
+	return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255, 1
+end
+
 --- Wrap text in a colour escape sequence. `color` may be a {r,g,b} table or a
 --- key into C.Colors ("red", "brand", ...).
 function F.Colorize(text, color)

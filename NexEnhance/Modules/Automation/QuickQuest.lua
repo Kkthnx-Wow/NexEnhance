@@ -543,6 +543,9 @@ function QuickQuest:OnInitialize()
 end
 
 function QuickQuest:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests; hold SHIFT to pause. Alt-click an NPC name to ignore it."])
-	builder:Checkbox(category, self, "blockInInstances", L["Block in Raids & Instances"], L["Skip single-option gossip auto-selection while in raids and certain instances."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests; hold SHIFT to pause. Alt-click an NPC name to ignore it."])
+	local _, blockInit = builder:Checkbox(category, self, "blockInInstances", L["Block in Raids & Instances"], L["Skip single-option gossip auto-selection while in raids and certain instances."])
+
+	-- Greys out "Block in Raids & Instances" while Quick Quest is disabled.
+	builder:DependsOn(blockInit, enableInit)
 end

@@ -320,13 +320,18 @@ function DataText:OnSettingChanged(key, value)
 end
 
 function DataText:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable DataText"], L["Show a movable FPS / latency readout under the minimap, with a memory/addon tooltip (reload to disable)."])
-	builder:Dropdown(category, self, "display", L["Display"], L["Choose whether to show framerate, latency, or both."], {
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable DataText"], L["Show a movable FPS / latency readout under the minimap, with a memory/addon tooltip (reload to disable)."])
+	local _, displayInit = builder:Dropdown(category, self, "display", L["Display"], L["Choose whether to show framerate, latency, or both."], {
 		{ value = "both", label = L["FPS & Latency"] },
 		{ value = "fps", label = L["FPS Only"] },
 		{ value = "ms", label = L["Latency Only"] },
 	})
-	builder:Checkbox(category, self, "flip", L["Flip Order"], L["Show latency before framerate."])
-	builder:Checkbox(category, self, "classColor", L["Class-Coloured Numbers"], L["Colour the numbers with your class colour instead of value-based colours."])
-	builder:Slider(category, self, "maxAddOns", L["Addons Shown"], L["How many addons to list in the memory tooltip before collapsing the rest under \"Hold Shift\"."], 5, 30, 1)
+	local _, flipInit = builder:Checkbox(category, self, "flip", L["Flip Order"], L["Show latency before framerate."])
+	local _, classColorInit = builder:Checkbox(category, self, "classColor", L["Class-Coloured Numbers"], L["Colour the numbers with your class colour instead of value-based colours."])
+	local _, maxAddOnsInit = builder:Slider(category, self, "maxAddOns", L["Addons Shown"], L["How many addons to list in the memory tooltip before collapsing the rest under \"Hold Shift\"."], 5, 30, 1)
+
+	builder:DependsOn(displayInit, enableInit)
+	builder:DependsOn(flipInit, enableInit)
+	builder:DependsOn(classColorInit, enableInit)
+	builder:DependsOn(maxAddOnsInit, enableInit)
 end

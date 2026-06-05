@@ -129,8 +129,8 @@ end
 
 function OptionBuilder:Checkbox(category, module, key, name, tooltip)
 	local setting = RegisterSetting(category, module, key, name)
-	Settings.CreateCheckbox(category, setting, tooltip)
-	return setting
+	local initializer = Settings.CreateCheckbox(category, setting, tooltip)
+	return setting, initializer
 end
 
 function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, maxValue, step)
@@ -140,8 +140,8 @@ function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, ma
 	if MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label then
 		options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
 	end
-	Settings.CreateSlider(category, setting, options, tooltip)
-	return setting
+	local initializer = Settings.CreateSlider(category, setting, options, tooltip)
+	return setting, initializer
 end
 
 -- `choices` is an array of { value = number, label = string, tooltip = string }.
@@ -159,8 +159,71 @@ function OptionBuilder:Dropdown(category, module, key, name, tooltip, choices)
 		return container:GetData()
 	end
 
-	Settings.CreateDropdown(category, setting, GetOptions, tooltip)
-	return setting
+	local initializer = Settings.CreateDropdown(category, setting, GetOptions, tooltip)
+	return setting, initializer
+end
+
+-- Colour swatch. The stored value is an "AARRGGBB" hex string (Blizzard reads
+-- it via CreateColorFromHexString and writes it back with Color:GenerateHexColor),
+-- so the module's default for `key` must be a hex string. Use F.HexToRGBA /
+-- F.RGBAToHex to convert in the module's apply callback.
+function OptionBuilder:Color(category, module, key, name, tooltip)
+	if not Settings.CreateColorSwatch then return end
+
+	local setting = RegisterSetting(category, module, key, name)
+	local initializer = Settings.CreateColorSwatch(category, setting, tooltip)
+	return setting, initializer
+end
+
+-- Make `child` depend on a parent toggle. `child` and `parent` are the
+-- *initializers* (the 2nd return value from the builder methods above). The
+-- child is automatically greyed out and disabled whenever the parent toggle is
+-- off; Blizzard re-evaluates this when the parent's value changes. The parent
+-- should be a checkbox/toggle so its value reads as a boolean.
+-- ---------------------------------------------------------------------------
+-- Child rows (DependsOn / Indent) render with Blizzard's GameFontNormalSmall,
+-- which is tiny next to their parent. Bump our dependent rows up one point: we
+-- tag the child initializer and restyle its label after Blizzard's
+-- SettingsListElementMixin:Init runs (every control type funnels through it).
+-- ---------------------------------------------------------------------------
+-- luacheck: globals CreateFont
+local childFont
+local function GetChildFont()
+	if childFont then return childFont end
+	childFont = CreateFont("NexEnhanceSettingChildFont")
+	childFont:CopyFontObject("GameFontNormalSmall")
+	local file, size, flags = childFont:GetFont()
+	if file and size then
+		childFont:SetFont(file, size + 1, flags)
+	end
+	return childFont
+end
+
+local elementMixin = _G["SettingsListElementMixin"]
+if elementMixin and not ns.__settingsChildFontHooked then
+	ns.__settingsChildFontHooked = true
+	hooksecurefunc(elementMixin, "Init", function(self, initializer)
+		if initializer and initializer.nexBumpFont and self.Text then
+			self.Text:SetFontObject(GetChildFont())
+		end
+	end)
+end
+
+function OptionBuilder:DependsOn(child, parent)
+	if not (child and parent and child.SetParentInitializer) then return end
+	child.nexBumpFont = true
+	child:SetParentInitializer(parent, function()
+		local setting = parent:GetSetting()
+		return setting and setting:GetValue()
+	end)
+end
+
+-- Nest `child` under `parent` for purely visual grouping (indented) without
+-- ever disabling it.
+function OptionBuilder:Indent(child, parent)
+	if not (child and parent and child.SetParentInitializer) then return end
+	child.nexBumpFont = true
+	child:SetParentInitializer(parent, function() return true end)
 end
 
 -- Themed option groups, in display order. Modules declare a `group` key (see
@@ -284,6 +347,64 @@ local function CreateLandingFrame()
 	return frame
 end
 
+-- ---------------------------------------------------------------------------
+-- Canvas sub-pages
+--   For richer custom panels (lists, custom widgets, etc.) that the vertical
+--   layout can't express. Replicates the native SettingsList header so the page
+--   visually matches Blizzard's, including an optional "Defaults" button.
+--   Adapted from p3lim's Dashi (public domain).
+-- ---------------------------------------------------------------------------
+local canvasMixin = {}
+function canvasMixin:SetDefaultsHandler(callback)
+	local button = self:GetParent().Header.DefaultsButton
+	button:Show()
+	button:SetScript("OnClick", callback)
+end
+
+local function CreateCanvasSubFrame(name)
+	local frame = CreateFrame("Frame")
+
+	local header = CreateFrame("Frame", nil, frame)
+	header:SetPoint("TOPLEFT")
+	header:SetPoint("TOPRIGHT")
+	header:SetHeight(50)
+	frame.Header = header
+
+	local title = header:CreateFontString(nil, "ARTWORK", "GameFontHighlightHuge")
+	title:SetPoint("TOPLEFT", 7, -22)
+	title:SetJustifyH("LEFT")
+	title:SetText(name)
+	header.Title = title
+
+	local defaults = CreateFrame("Button", nil, header, "UIPanelButtonTemplate")
+	defaults:SetPoint("TOPRIGHT", -36, -16)
+	defaults:SetSize(96, 22)
+	defaults:SetText(_G["SETTINGS_DEFAULTS"] or DEFAULTS or "Defaults")
+	defaults:Hide()
+	header.DefaultsButton = defaults
+
+	local divider = header:CreateTexture(nil, "ARTWORK")
+	divider:SetPoint("TOP", 0, -50)
+	divider:SetAtlas("Options_HorizontalDivider", true)
+
+	-- The container the builder draws into.
+	local canvas = Mixin(CreateFrame("Frame", nil, frame), canvasMixin)
+	canvas:SetPoint("BOTTOMLEFT", 0, 5)
+	canvas:SetPoint("BOTTOMRIGHT", -12, 5)
+	canvas:SetPoint("TOP", 0, -56)
+
+	return frame, canvas
+end
+
+local optionsCanvases = {}
+
+-- Public: register a custom canvas sub-page under the addon category. The
+-- `builder(canvas)` callback is invoked lazily the first time the settings panel
+-- is shown; the canvas frame exposes canvas:SetDefaultsHandler(fn).
+function ns:RegisterOptionsCanvas(name, builder)
+	optionsCanvases[#optionsCanvases + 1] = { name = name, builder = builder }
+end
+
 local function BuildOptions()
 	if not (Settings and Settings.RegisterVerticalLayoutCategory) then return end
 
@@ -295,11 +416,18 @@ local function BuildOptions()
 	end
 	ns.settingsCategory = category
 
-	-- One subcategory (with its own layout) per themed group.
+	-- One subcategory (with its own layout) per themed group, listed
+	-- alphabetically by (localised) title so the sidebar reads A, B, C...
 	local groupCategory, groupLayout = {}, {}
 	if Settings.RegisterVerticalLayoutSubcategory then
+		local sortedGroups = {}
 		for i = 1, #GROUP_ORDER do
-			local g = GROUP_ORDER[i]
+			sortedGroups[i] = GROUP_ORDER[i]
+		end
+		table.sort(sortedGroups, function(a, b) return a.title < b.title end)
+
+		for i = 1, #sortedGroups do
+			local g = sortedGroups[i]
 			local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, g.title)
 			groupCategory[g.key] = sub
 			groupLayout[g.key] = layout
@@ -320,6 +448,32 @@ local function BuildOptions()
 			local moduleCategory = groupCategory[key] or category
 			AddSectionHeader(groupLayout[key], module.title or module.name)
 			module:RegisterOptions(moduleCategory, OptionBuilder)
+		end
+	end
+
+	-- Custom canvas sub-pages (registered via ns:RegisterOptionsCanvas). These
+	-- can only be registered after the modules run (that's when they're queued),
+	-- so they trail the themed groups; sort them alphabetically among themselves.
+	if Settings.RegisterCanvasLayoutSubcategory then
+		table.sort(optionsCanvases, function(a, b) return a.name < b.name end)
+		local panel = _G["SettingsPanel"]
+		for i = 1, #optionsCanvases do
+			local entry = optionsCanvases[i]
+			local frame, canvas = CreateCanvasSubFrame(entry.name)
+			Settings.RegisterCanvasLayoutSubcategory(category, frame, entry.name)
+
+			-- Build lazily on first show so we don't pay for the UI up front.
+			if panel and entry.builder then
+				local built = false
+				panel:HookScript("OnShow", function()
+					if not built then
+						built = true
+						entry.builder(canvas)
+					end
+				end)
+			elseif entry.builder then
+				entry.builder(canvas)
+			end
 		end
 	end
 

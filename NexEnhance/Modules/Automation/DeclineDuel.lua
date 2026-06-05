@@ -70,7 +70,10 @@ function DeclineDuel:OnEnable()
 end
 
 function DeclineDuel:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Decline Duels"], L["Automatically decline duel and pet-battle PvP duel requests."])
-	builder:Checkbox(category, self, "declineDuels", L["Decline Player Duels"], L["Decline standard player duel requests."])
-	builder:Checkbox(category, self, "declinePetDuels", L["Decline Pet Duels"], L["Decline pet-battle PvP duel requests."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Decline Duels"], L["Automatically decline duel and pet-battle PvP duel requests."])
+	local _, duelInit = builder:Checkbox(category, self, "declineDuels", L["Decline Player Duels"], L["Decline standard player duel requests."])
+	local _, petInit = builder:Checkbox(category, self, "declinePetDuels", L["Decline Pet Duels"], L["Decline pet-battle PvP duel requests."])
+
+	builder:DependsOn(duelInit, enableInit)
+	builder:DependsOn(petInit, enableInit)
 end

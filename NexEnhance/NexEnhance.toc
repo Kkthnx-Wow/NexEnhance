@@ -2,7 +2,7 @@
 ## Title: |cff5C8BCFNex|rEnhance
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
-## Version: 1.1.0
+## Version: 1.2.0
 ## SavedVariables: NexEnhanceDB
 ## SavedVariablesPerCharacter: NexEnhanceCharDB
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64
@@ -23,6 +23,7 @@ Libs\LibEditMode\embed.xml
 Core\Engine.lua
 Core\Constants.lua
 Core\Functions.lua
+Core\Widgets.lua
 Core\API.lua
 Core\Database.lua
 
@@ -95,6 +96,7 @@ Modules\Automation\DeclineDuel.lua
 Modules\Automation\AutoInvite.lua
 Modules\Automation\AutoGoodbye.lua
 Modules\Automation\AutoResurrect.lua
+Modules\Automation\AutoKeystone.lua
 
 # Announcements
 Modules\Announcements\QuestNotification.lua

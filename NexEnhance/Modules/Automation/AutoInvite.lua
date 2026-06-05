@@ -95,7 +95,11 @@ function AutoInvite:OnEnable()
 end
 
 function AutoInvite:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Auto Invite"], L["Automatically accept group invites from trusted sources."])
-	builder:Checkbox(category, self, "fromFriends", L["Accept From Friends"], L["Auto-accept invites from Battle.net and character friends."])
-	builder:Checkbox(category, self, "fromGuild", L["Accept From Guild"], L["Auto-accept invites from guild members."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Auto Invite"], L["Automatically accept group invites from trusted sources."])
+	local _, friendsInit = builder:Checkbox(category, self, "fromFriends", L["Accept From Friends"], L["Auto-accept invites from Battle.net and character friends."])
+	local _, guildInit = builder:Checkbox(category, self, "fromGuild", L["Accept From Guild"], L["Auto-accept invites from guild members."])
+
+	-- These only matter while Auto Invite is on, so grey them out otherwise.
+	builder:DependsOn(friendsInit, enableInit)
+	builder:DependsOn(guildInit, enableInit)
 end

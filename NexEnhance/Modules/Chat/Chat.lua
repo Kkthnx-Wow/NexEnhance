@@ -25,6 +25,7 @@ local ipairs = ipairs
 local strsub, strlower = string.sub, string.lower
 local floor, format = math.floor, string.format
 local CreateFrame, max = CreateFrame, math.max
+local UIParent = UIParent
 
 -- A classic Blizzard tooltip-style border (gold edge + dark fill) for the box.
 local EDITBOX_BACKDROP = {
@@ -51,7 +52,9 @@ ns:RegisterDefaults({
 		editBoxBorder = true,
 		editBoxTop = true,
 		colorEditBox = true,
+		hideEditBox = true,
 		hideButtons = true,
+		hideScrollBar = true,
 		tabChannelSwitch = true,
 		quickScroll = true,
 		stickyWhisper = true,
@@ -68,6 +71,9 @@ local Chat = ns:NewModule("Chat", "chat", { group = "chat", title = L["Chat"], o
 local cfg
 local messageSoundID = SOUNDKIT and SOUNDKIT.TELL_MESSAGE
 local chatEditBoxes = {}
+
+-- Forward declaration: SetupEditBox hooks each box's UpdateHeader to this.
+local ColorEditBox
 
 local function RegisterEditBox(editBox)
 	if editBox.__nexRegistered then return end
@@ -143,6 +149,13 @@ function Chat:SetupChat(frame)
 		frame.buttonFrame:SetAlpha(0)
 	end
 
+	-- The scroll bar and jump-to-bottom button are pure clutter: mouse-wheel
+	-- scrolling (plus our quick-scroll) already covers everything they do.
+	if cfg.hideScrollBar then
+		if frame.ScrollBar then frame.ScrollBar:Kill() end
+		if frame.ScrollToBottomButton then frame.ScrollToBottomButton:Kill() end
+	end
+
 	-- Tab styling: strip the busy default tab textures for a flat look and
 	-- nudge the tab label up one point so it reads a touch larger.
 	if cfg.styleTabs then
@@ -209,6 +222,32 @@ function Chat:SetupEditBox(frame)
 		UpdateEditBoxAnchor(editBox)
 	end
 
+	if cfg.hideEditBox then
+		-- Keep the box hidden until it's actually in use, instead of leaving a
+		-- faded "IM style" input bar lingering over the chat (and, when docked
+		-- to the top, over the tabs). Show on focus, hide again when it loses
+		-- focus empty, and whenever a tab is clicked.
+		editBox:Hide()
+		editBox:HookScript("OnEditFocusGained", function(self) self:Show() end)
+		editBox:HookScript("OnEditFocusLost", function(self)
+			if self:GetText() == "" then self:Hide() end
+		end)
+
+		local tab = _G[frame:GetName() .. "Tab"]
+		if tab then
+			tab:HookScript("OnClick", function() editBox:Hide() end)
+		end
+	end
+
+	if cfg.colorEditBox and editBox.UpdateHeader then
+		-- Blizzard refreshes the active channel through the edit box's own
+		-- UpdateHeader in most paths, so hooking it per-box is far more reliable
+		-- than the global ChatEdit_UpdateHeader wrapper (which many internal
+		-- paths skip). This is the approach ShestakUI uses.
+		hooksecurefunc(editBox, "UpdateHeader", ColorEditBox)
+		ColorEditBox(editBox)
+	end
+
 	editBox:SetHeight(editBox:GetHeight() + 2)
 
 	editBox.__nexEditBox = true
@@ -238,12 +277,16 @@ local function GetEditBoxColor(editBox)
 	end
 end
 
-local function ColorEditBox(editBox)
+function ColorEditBox(editBox)
 	if not cfg or not cfg.colorEditBox then return end
 	if not editBox or editBox:IsForbidden() then return end
 
 	local r, g, b = GetEditBoxColor(editBox)
-	if not r then return end
+	if not r then
+		-- No channel colour (e.g. an unnumbered CHANNEL): fall back to the
+		-- neutral border so a previous channel's tint doesn't linger.
+		r, g, b = 1, 1, 1
+	end
 
 	if editBox.nexBackdrop then
 		editBox.nexBackdrop:SetBackdropBorderColor(r, g, b)
@@ -261,6 +304,47 @@ local function ColorEditBox(editBox)
 end
 
 -- ---------------------------------------------------------------------------
+-- Battle.net toast pop-up
+--   Pin the friend/online toast to a movable anchor above the chat's
+--   top-right corner and register it with Edit Mode. The toast re-points
+--   itself whenever it shows, so a guarded SetPoint hook keeps it on our
+--   anchor no matter what.
+-- ---------------------------------------------------------------------------
+local function SetupBNToast()
+	local toast = _G["BNToastFrame"]
+	if not toast or toast.__nexMover then return end
+	toast.__nexMover = true
+
+	local width, height = toast:GetSize()
+	if not width or width < 1 then width, height = 244, 80 end
+
+	local mover = CreateFrame("Frame", "NexBNToastMover", UIParent)
+	mover:SetSize(width, height)
+
+	-- Default just above the chat window's top-right corner. Expressed in
+	-- UIParent-relative coords so Edit Mode's save/reset stays consistent.
+	local point, x, y = "TOPRIGHT", -4, -240
+	local chat = _G["ChatFrame1"]
+	if chat and chat:GetRight() and chat:GetTop() then
+		x = chat:GetRight() - UIParent:GetRight()
+		y = (chat:GetTop() - UIParent:GetTop()) + height + 8
+	end
+
+	F.CreateMover(mover, "bnToast", L["Battle.net Pop-up"], point, x, y)
+
+	local function reanchor()
+		if toast.__nexAnchoring then return end
+		toast.__nexAnchoring = true
+		toast:ClearAllPoints()
+		toast:SetPoint("TOPRIGHT", mover, "TOPRIGHT", 0, 0)
+		toast.__nexAnchoring = false
+	end
+
+	hooksecurefunc(toast, "SetPoint", reanchor)
+	reanchor()
+end
+
+-- ---------------------------------------------------------------------------
 -- Tab-key channel switching
 -- ---------------------------------------------------------------------------
 local cycles = {
@@ -275,6 +359,7 @@ local cycles = {
 local function SwitchToChannel(editbox, chatType)
 	editbox:SetAttribute("chatType", chatType)
 	ChatEdit_UpdateHeader(editbox)
+	ColorEditBox(editbox)
 end
 
 function Chat:UpdateTabChannelSwitch()
@@ -338,6 +423,8 @@ local BNInviteFriend = BNInviteFriend
 local CanCooperateWithGameAccount = CanCooperateWithGameAccount
 local C_BattleNet_GetAccountInfoByID = C_BattleNet and C_BattleNet.GetAccountInfoByID
 local IsGuildMember = IsGuildMember
+local strtrim = _G.strtrim
+local DEFAULT_KEYWORD = "inv"
 
 local function IsUnitInGuild(unitName)
 	if not unitName then return end
@@ -375,6 +462,44 @@ function Chat:OnChatWhisper(event, ...)
 			InviteToGroup(author)
 		end
 	end
+end
+
+-- Canvas sub-page hosting the keyword edit box. Blizzard's vertical settings
+-- layout has no text input, so the toggles live in the Chat group and the
+-- keyword itself is edited here.
+local function BuildKeywordCanvas(canvas)
+	local title = canvas:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+	title:SetPoint("TOPLEFT", 8, -8)
+	title:SetText(L["Keyword Invite"])
+
+	local desc = canvas:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+	desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+	desc:SetPoint("RIGHT", canvas, "RIGHT", -16, 0)
+	desc:SetJustifyH("LEFT")
+	desc:SetWordWrap(true)
+	desc:SetText(L["When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."])
+
+	local label = canvas:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	label:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -16)
+	label:SetText(L["Invite Keyword"])
+
+	local box = F.CreateEditBox(canvas, 200, 24)
+	box:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 2, -8)
+	box:SetText(ns.db.chat.inviteKeyword or DEFAULT_KEYWORD)
+	box:SetCallback(function(_, text)
+		text = strtrim(text or "")
+		ns.db.chat.inviteKeyword = text
+		if text == "" then
+			F.Print(L["Invite keyword cleared."])
+		else
+			F.Print(L["Invite keyword set to:"], text)
+		end
+	end)
+
+	canvas:SetDefaultsHandler(function()
+		ns.db.chat.inviteKeyword = DEFAULT_KEYWORD
+		box:SetText(DEFAULT_KEYWORD)
+	end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -432,10 +557,6 @@ function Chat:OnEnable()
 		hooksecurefunc("ChatEdit_CustomTabPressed", Chat.UpdateTabChannelSwitch)
 	end
 
-	if cfg.colorEditBox then
-		hooksecurefunc("ChatEdit_UpdateHeader", ColorEditBox)
-	end
-
 	-- The Combat Log frame is load-on-demand: selecting its tab loads
 	-- Blizzard_CombatLog and sets up its quick-button bar, which re-anchors the
 	-- shared edit box. Re-skin that frame (and re-apply the anchor) once it
@@ -443,6 +564,8 @@ function Chat:OnEnable()
 	if cfg.editBoxTop and _G["FCF_SelectDockFrame"] then
 		hooksecurefunc("FCF_SelectDockFrame", UpdateAllEditBoxAnchors)
 	end
+
+	SetupBNToast()
 
 	self:ChatWhisperSticky()
 
@@ -457,17 +580,39 @@ function Chat:OnEnable()
 end
 
 function Chat:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Chat"], L["Enable the chat enhancements (reload to fully disable)."])
-	builder:Checkbox(category, self, "styleTabs", L["Flatten Tabs"], L["Strip the busy default chat tab textures for a flat look (reload to apply)."])
-	builder:Checkbox(category, self, "editBoxBorder", L["Edit Box Border"], L["Give the chat input a Blizzard tooltip-style border (reload to apply)."])
-	builder:Checkbox(category, self, "editBoxTop", L["Edit Box on Top"], L["Dock the chat edit box to the top of the chat window (reload to apply)."])
-	builder:Checkbox(category, self, "colorEditBox", L["Colour Edit Box"], L["Tint the edit box border to match the active chat channel (reload to apply)."])
-	builder:Checkbox(category, self, "hideButtons", L["Hide Side Buttons"], L["Hide the social/menu buttons beside the chat window."])
-	builder:Checkbox(category, self, "tabChannelSwitch", L["Tab Channel Switch"], L["Press Tab in an empty edit box to cycle chat channels."])
-	builder:Checkbox(category, self, "quickScroll", L["Quick Scroll"], L["Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."])
-	builder:Checkbox(category, self, "stickyWhisper", L["Sticky Whisper"], L["Keep the edit box in whisper mode after replying."])
-	builder:Checkbox(category, self, "whisperSound", L["Whisper Sound"], L["Play a sound when you receive a whisper."])
-	builder:Checkbox(category, self, "fontSizeMenu", L["Font Size Menu"], L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."])
-	builder:Checkbox(category, self, "autoInvite", L["Keyword Auto-Invite"], L["Invite players who whisper you the keyword below."])
-	builder:Checkbox(category, self, "guildInviteOnly", L["Guild/Friends Only"], L["Only auto-invite guild members and Battle.net friends."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat"], L["Enable the chat enhancements (reload to fully disable)."])
+	local _, tabsInit = builder:Checkbox(category, self, "styleTabs", L["Flatten Tabs"], L["Strip the busy default chat tab textures for a flat look (reload to apply)."])
+	local _, boxBorderInit = builder:Checkbox(category, self, "editBoxBorder", L["Edit Box Border"], L["Give the chat input a Blizzard tooltip-style border (reload to apply)."])
+	local _, boxTopInit = builder:Checkbox(category, self, "editBoxTop", L["Edit Box on Top"], L["Dock the chat edit box to the top of the chat window (reload to apply)."])
+	local _, colorBoxInit = builder:Checkbox(category, self, "colorEditBox", L["Colour Edit Box"], L["Tint the edit box border to match the active chat channel (reload to apply)."])
+	local _, hideEditBoxInit = builder:Checkbox(category, self, "hideEditBox", L["Hide Edit Box When Inactive"], L["Keep the chat edit box hidden until you focus it (reload to apply)."])
+	local _, hideButtonsInit = builder:Checkbox(category, self, "hideButtons", L["Hide Side Buttons"], L["Hide the social/menu buttons beside the chat window."])
+	local _, hideScrollInit = builder:Checkbox(category, self, "hideScrollBar", L["Hide Scroll Bar"], L["Remove the scroll bar and jump-to-bottom button (reload to restore)."])
+	local _, tabSwitchInit = builder:Checkbox(category, self, "tabChannelSwitch", L["Tab Channel Switch"], L["Press Tab in an empty edit box to cycle chat channels."])
+	local _, scrollInit = builder:Checkbox(category, self, "quickScroll", L["Quick Scroll"], L["Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."])
+	local _, stickyInit = builder:Checkbox(category, self, "stickyWhisper", L["Sticky Whisper"], L["Keep the edit box in whisper mode after replying."])
+	local _, whisperSoundInit = builder:Checkbox(category, self, "whisperSound", L["Whisper Sound"], L["Play a sound when you receive a whisper."])
+	local _, fontMenuInit = builder:Checkbox(category, self, "fontSizeMenu", L["Font Size Menu"], L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."])
+	local _, autoInviteInit = builder:Checkbox(category, self, "autoInvite", L["Keyword Auto-Invite"], L["Invite players who whisper you your keyword (set it on the Keyword Invite page)."])
+	local _, guildOnlyInit = builder:Checkbox(category, self, "guildInviteOnly", L["Guild/Friends Only"], L["Only auto-invite guild members and Battle.net friends."])
+
+	-- All chat tweaks rely on the module being on.
+	builder:DependsOn(tabsInit, enableInit)
+	builder:DependsOn(boxBorderInit, enableInit)
+	builder:DependsOn(boxTopInit, enableInit)
+	builder:DependsOn(colorBoxInit, enableInit)
+	builder:DependsOn(hideEditBoxInit, enableInit)
+	builder:DependsOn(hideButtonsInit, enableInit)
+	builder:DependsOn(hideScrollInit, enableInit)
+	builder:DependsOn(tabSwitchInit, enableInit)
+	builder:DependsOn(scrollInit, enableInit)
+	builder:DependsOn(stickyInit, enableInit)
+	builder:DependsOn(whisperSoundInit, enableInit)
+	builder:DependsOn(fontMenuInit, enableInit)
+	builder:DependsOn(autoInviteInit, enableInit)
+	-- Guild/Friends Only is meaningless unless Keyword Auto-Invite is on.
+	builder:DependsOn(guildOnlyInit, autoInviteInit)
+
+	-- The keyword needs a text box, which the vertical layout can't host.
+	ns:RegisterOptionsCanvas(L["Keyword Auto-Invite"], BuildKeywordCanvas)
 end

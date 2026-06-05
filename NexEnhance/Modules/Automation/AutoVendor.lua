@@ -264,11 +264,16 @@ function AutoVendor:OnSettingChanged(key, value)
 end
 
 function AutoVendor:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Auto Vendor"], L["Automatically sell junk and repair when opening a merchant."])
-	builder:Checkbox(category, self, "autoRepair", L["Auto Repair"], L["Repair equipment when opening a merchant that can repair."])
-	builder:Checkbox(category, self, "useGuildFunds", L["Use Guild Repairs"], L["Use guild repair funds when available, falling back to your own gold."])
-	builder:Checkbox(category, self, "sellJunk", L["Sell Junk"], L["Sell Poor-quality items, plus anything on your /nexjunk list, one at a time."])
-	builder:Checkbox(category, self, "keepPetTrash", L["Protect Pet Trash"], L["Never auto-sell the handful of grey items that double as a currency."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Auto Vendor"], L["Automatically sell junk and repair when opening a merchant."])
+	local _, repairInit = builder:Checkbox(category, self, "autoRepair", L["Auto Repair"], L["Repair equipment when opening a merchant that can repair."])
+	local _, guildFundsInit = builder:Checkbox(category, self, "useGuildFunds", L["Use Guild Repairs"], L["Use guild repair funds when available, falling back to your own gold."])
+	local _, junkInit = builder:Checkbox(category, self, "sellJunk", L["Sell Junk"], L["Sell Poor-quality items, plus anything on your /nexjunk list, one at a time."])
+	local _, petTrashInit = builder:Checkbox(category, self, "keepPetTrash", L["Protect Pet Trash"], L["Never auto-sell the handful of grey items that double as a currency."])
+
+	builder:DependsOn(repairInit, enableInit)
+	builder:DependsOn(guildFundsInit, repairInit) -- guild repairs only matter if repairing
+	builder:DependsOn(junkInit, enableInit)
+	builder:DependsOn(petTrashInit, junkInit) -- pet-trash protection only matters if selling junk
 end
 
 function AutoVendor:RegisterModuleEvents()

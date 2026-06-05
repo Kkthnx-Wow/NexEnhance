@@ -8,12 +8,16 @@
 	  * Merchant buttons.
 	  * Trade window (your side + their side).
 	  * Loot window.
-	  * Bags & bank slots.
+	  * Bags & bank slots (item level + BoE/BoA/WuE bind labels).
 	  * Scrapping machine (load-on-demand).
 	  * Guild News links (load-on-demand).
 
 	Adapted to the NexEnhance architecture from NDui's Misc/ItemLevel (by yleaf):
 	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Modules/Misc/ItemLevel.lua
+
+	Bag bind-status labels (BoE / BoA / WuE) borrow the idea from Lars Norberg's
+	BlizzardBags_BoE (GoldpawsStuff) — thanks, friend:
+	  https://github.com/GoldpawsStuff/BlizzardBags_BoE
 
 	Item level / gem / enchant data comes from F.GetItemLevel (Core/Functions),
 	which uses the structured C_TooltipInfo API. Hooks are existence-guarded so
@@ -43,6 +47,7 @@ ns:RegisterDefaults({
 	itemLevel = {
 		enable = true,
 		gemsEnchants = true,
+		showBindText = true,
 	},
 })
 
@@ -90,6 +95,14 @@ local function GetQualityColor(quality)
 	local color = quality and QUALITY_COLORS and QUALITY_COLORS[quality]
 	if not color then return 1, 1, 1 end
 	return color.r, color.g, color.b
+end
+
+local function SetBindLabelColor(fs, label)
+	if label == "BoA" or label == "WuE" then
+		fs:SetTextColor(0, 0.8, 1)
+	else
+		fs:SetTextColor(1, 1, 1)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -364,6 +377,8 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Bags & bank
+--   Bind overlay (nexBind) follows GoldpawsStuff's BlizzardBags_BoE approach;
+--   see the module header for credit and link.
 -- ---------------------------------------------------------------------------
 local function UpdateBagSlot(iconBorder)
 	local button = iconBorder.nexOwner
@@ -376,16 +391,57 @@ local function UpdateBagSlot(iconBorder)
 
 	local bagID = button.GetBankTabID and button:GetBankTabID() or (button.GetBagID and button:GetBagID())
 	local slotID = button.GetContainerSlotID and button:GetContainerSlotID() or button:GetID()
-	if not bagID then button.nexILvl:SetText(""); return end
+	if not bagID then
+		button.nexILvl:SetText("")
+		if button.nexBind then button.nexBind:SetText("") end
+		return
+	end
 
 	local info = C_Container.GetContainerItemInfo(bagID, slotID)
 	local quality = info and info.quality
+	local link = info and info.hyperlink
+
 	if quality and quality > 1 then
-		local level = F.GetItemLevel(info.hyperlink, bagID, slotID)
+		local level = F.GetItemLevel(link, bagID, slotID)
 		button.nexILvl:SetText(level)
 		button.nexILvl:SetTextColor(GetQualityColor(quality))
 	else
 		button.nexILvl:SetText("")
+	end
+
+	if ns.db.itemLevel.showBindText and link then
+		if not button.nexBind then
+			button.nexBind = CreateFS(button, 12)
+			button.nexBind:SetPoint("TOPRIGHT", -1, -1)
+		end
+		local label = F.GetItemBindLabel(link, bagID, slotID)
+		if label then
+			button.nexBind:SetText(label)
+			SetBindLabelColor(button.nexBind, label)
+		else
+			button.nexBind:SetText("")
+		end
+	elseif button.nexBind then
+		button.nexBind:SetText("")
+	end
+end
+
+local function RefreshBagSlots()
+	local function ScanFrame(frame)
+		if not frame or not frame.itemButtonPool then return end
+		for bagButton in frame.itemButtonPool:EnumerateActive() do
+			if bagButton.IconBorder and bagButton.IconBorder.nexOwner then
+				UpdateBagSlot(bagButton.IconBorder)
+			end
+		end
+	end
+	for i = 1, 13 do
+		ScanFrame(_G["ContainerFrame" .. i])
+	end
+	ScanFrame(_G["ContainerFrameCombinedBags"])
+	local bank = _G["BankFrame"]
+	if bank and bank.BankPanel then
+		ScanFrame(bank.BankPanel)
 	end
 end
 
@@ -567,6 +623,9 @@ function ItemLevel:OnSettingChanged(key, value)
 	if key == "enable" and value then
 		self:InstallHooks()
 	end
+	if key == "showBindText" then
+		RefreshBagSlots()
+	end
 	-- Re-scan the character sheet if it is open so a toggle applies live.
 	local CharacterFrame = _G["CharacterFrame"]
 	if CharacterFrame and CharacterFrame:IsShown() then
@@ -577,4 +636,5 @@ end
 function ItemLevel:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "enable", L["Enable Item Level"], L["Show item levels on equipped, bag, merchant, trade and loot items."])
 	builder:Checkbox(category, self, "gemsEnchants", L["Show Gems & Enchants"], L["Also show gem, socket and enchant info on Character and Inspect slots."])
+	builder:Checkbox(category, self, "showBindText", L["Show Bind Status"], L["Show BoE, BoA and WuE labels on bag and bank items that are not yet bound."])
 end

@@ -411,3 +411,65 @@ do
 		return iLvlCache[link]
 	end
 end
+
+-- ---------------------------------------------------------------------------
+-- Item bind label (BoE / BoA / WuE)
+--   Idea borrowed from Lars Norberg's BlizzardBags_BoE (GoldpawsStuff):
+--     https://github.com/GoldpawsStuff/BlizzardBags_BoE
+--   Prefers the structured bag-tooltip binding line; falls back to the static
+--   bindType from C_Item.GetItemInfo. Returns nil when bound or not applicable.
+-- ---------------------------------------------------------------------------
+do
+	local C_TooltipInfo = C_TooltipInfo
+	local C_Container = C_Container
+	local C_Item = C_Item
+	local select = select
+
+	local LINE_ITEM_BINDING = Enum.TooltipDataLineType.ItemBinding
+	local BIND = Enum.TooltipDataItemBinding
+	local ITEM_BIND = Enum.ItemBind
+
+	---@return string|nil "BoE", "BoA", "WuE", or "BoU"
+	function F.GetItemBindLabel(link, bagID, slotID)
+		if not link then return end
+
+		if bagID and slotID then
+			local containerInfo = C_Container.GetContainerItemInfo(bagID, slotID)
+			if containerInfo and containerInfo.isBound then return end
+		end
+
+		if bagID and slotID and C_TooltipInfo then
+			local data = C_TooltipInfo.GetBagItem(bagID, slotID)
+			if data and data.lines then
+				for i = 2, #data.lines do
+					local line = data.lines[i]
+					if line.type == LINE_ITEM_BINDING then
+						local bonding = line.bonding
+						if bonding == BIND.BindOnEquip then
+							return "BoE"
+						elseif bonding == BIND.BindOnUse then
+							return "BoU"
+						elseif bonding == BIND.Account or bonding == BIND.BindToAccount
+							or bonding == BIND.BindToBnetAccount or bonding == BIND.BnetAccount then
+							return "BoA"
+						elseif bonding == BIND.AccountUntilEquipped or bonding == BIND.BindToAccountUntilEquipped then
+							return "WuE"
+						end
+						return
+					end
+				end
+			end
+		end
+
+		local bindType = select(14, C_Item.GetItemInfo(link))
+		if bindType == ITEM_BIND.OnEquip then
+			return "BoE"
+		elseif bindType == ITEM_BIND.OnUse then
+			return "BoU"
+		elseif bindType == ITEM_BIND.ToWoWAccount or bindType == ITEM_BIND.ToBnetAccount then
+			return "BoA"
+		elseif bindType == ITEM_BIND.ToBnetAccountUntilEquipped then
+			return "WuE"
+		end
+	end
+end

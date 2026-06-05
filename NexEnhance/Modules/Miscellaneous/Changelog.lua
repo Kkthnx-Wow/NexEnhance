@@ -45,6 +45,25 @@ local BACKDROP = {
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.2.3",
+		date = "2026-06-05",
+		intro = "Inventory clarity and a proper thank-you page: bind labels on bag icons plus a class-coloured credits panel for the authors whose work helped build NexEnhance.",
+		sections = {
+			{ "Inventory", {
+				"Bind Status: show BoE, BoA and WuE on unbound bag and bank items (top-right of the icon; item level stays bottom-left).",
+				"Toggle under Item Level → Show Bind Status.",
+				"Idea borrowed from Lars Norberg's BlizzardBags_BoE (GoldpawsStuff) — thank you, friend.",
+			} },
+			{ "Credits", {
+				"A scrollable thank-you panel with class-coloured contributor cards, feature lists and library acknowledgements.",
+				"Open with /nex credits or from Settings → NexEnhance → Credits.",
+			} },
+			{ "Interface", {
+				"/nex help and the options landing page now list the credits command.",
+			} },
+		},
+	},
+	{
 		version = "1.2.2",
 		date = "2026-06-05",
 		intro = "A small packaging update so CurseForge and Wago can track releases correctly.",

@@ -384,6 +384,8 @@ L["Enable Item Level"] = "Enable Item Level"
 L["Show item levels on equipped, bag, merchant, trade and loot items."] = "Show item levels on equipped, bag, merchant, trade and loot items."
 L["Show Gems & Enchants"] = "Show Gems & Enchants"
 L["Also show gem, socket and enchant info on Character and Inspect slots."] = "Also show gem, socket and enchant info on Character and Inspect slots."
+L["Show Bind Status"] = "Show Bind Status"
+L["Show BoE, BoA and WuE labels on bag and bank items that are not yet bound."] = "Show BoE, BoA and WuE labels on bag and bank items that are not yet bound."
 
 -- Durability
 L["Durability"] = "Durability"
@@ -480,6 +482,15 @@ L["Changelog"] = "Changelog"
 L["Open the changelog"] = "Open the changelog"
 L["Auto-Show Changelog"] = "Auto-Show Changelog"
 L["Open the changelog automatically the first time you log in after an update."] = "Open the changelog automatically the first time you log in after an update."
+
+-- Credits
+L["Credits"] = "Credits"
+L["Open the credits panel"] = "Open the credits panel"
+L["CREDITS_HEADING"] = "Thank You"
+L["CREDITS_SUBTITLE"] = "NexEnhance stands on the shoulders of incredible addon authors."
+L["CREDITS_INTRO"] = "So much of what you see here began elsewhere — borrowed with respect, adapted to fit the default UI, and shared back with gratitude. To every author below: thank you for the ideas, the code, and the years of polish that made this project possible."
+L["CREDITS_LIBRARIES"] = "Libraries"
+L["CREDITS_FOOTER"] = "Built with love for the default UI. NexEnhance would not exist without you."
 
 -- Chat (core)
 L["Enable Chat"] = "Enable Chat"

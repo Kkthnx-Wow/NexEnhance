@@ -8,6 +8,26 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.3] — 2026-06-05
+
+Inventory clarity and a proper thank-you page: bind labels on bag icons plus a
+class-coloured credits panel for the authors whose work helped build NexEnhance.
+
+### Added
+- **Inventory — Bind Status:** show **BoE**, **BoA**, and **WuE** on unbound bag
+  and bank items (top-right of the icon; item level stays bottom-left). Toggle
+  under **Item Level → Show Bind Status**. Idea borrowed from Lars Norberg's
+  [BlizzardBags_BoE](https://github.com/GoldpawsStuff/BlizzardBags_BoE)
+  (GoldpawsStuff) — thank you, friend.
+- **Credits:** a scrollable thank-you panel with class-coloured contributor
+  cards, feature lists, and library acknowledgements. Open with **`/nex credits`**
+  or from **Settings → NexEnhance → Credits**.
+
+### Changed
+- **`/nex help`** and the options landing page now list the credits command.
+
+---
+
 ## [1.2.2] — 2026-06-05
 
 Distribution metadata update for CurseForge and Wago.
@@ -252,6 +272,7 @@ the default UI and gets out of your way.
 
 ---
 
+[1.2.3]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.3
 [1.2.2]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.2
 [1.2.1]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.0

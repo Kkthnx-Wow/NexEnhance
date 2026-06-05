@@ -33,12 +33,19 @@ handlers.help = function(_)
 	F.Print("  /nex toggle <name> -", L["Toggle a module: /nex toggle <module>"])
 	F.Print("  /nex config        -", L["Open the options panel"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
+	F.Print("  /nex credits       -", L["Open the credits panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
 end
 
 handlers.changelog = function(_)
 	if ns.OpenChangelog then
 		ns:OpenChangelog()
+	end
+end
+
+handlers.credits = function(_)
+	if ns.OpenCredits then
+		ns:OpenCredits()
 	end
 end
 
@@ -347,6 +354,7 @@ local function CreateLandingFrame()
 		{ "/nex", L["Open the options panel"] },
 		{ "/nex modules", L["List modules and their state"] },
 		{ "/nex toggle <module>", L["Toggle a module: /nex toggle <module>"] },
+		{ "/nex credits", L["Open the credits panel"] },
 		{ "/nex help", L["Show this help"] },
 	}
 
@@ -466,8 +474,14 @@ local optionsCanvases = {}
 -- Public: register a custom canvas sub-page under the addon category. The
 -- `builder(canvas)` callback is invoked lazily the first time the settings panel
 -- is shown; the canvas frame exposes canvas:SetDefaultsHandler(fn).
-function ns:RegisterOptionsCanvas(name, builder)
-	optionsCanvases[#optionsCanvases + 1] = { name = name, builder = builder }
+-- Optional `sidebarLabel` colours/icons the Settings sidebar entry (e.g. rainbow
+-- |cff escapes); `name` stays plain for sorting and the in-page header.
+function ns:RegisterOptionsCanvas(name, builder, sidebarLabel)
+	optionsCanvases[#optionsCanvases + 1] = {
+		name = name,
+		builder = builder,
+		sidebar = sidebarLabel or name,
+	}
 end
 
 local function BuildOptions()
@@ -533,7 +547,7 @@ local function BuildOptions()
 		for i = 1, #optionsCanvases do
 			local entry = optionsCanvases[i]
 			local frame, canvas = CreateCanvasSubFrame(entry.name)
-			Settings.RegisterCanvasLayoutSubcategory(category, frame, entry.name)
+			Settings.RegisterCanvasLayoutSubcategory(category, frame, entry.sidebar)
 
 			-- Build lazily on first show so we don't pay for the UI up front.
 			if panel and entry.builder then

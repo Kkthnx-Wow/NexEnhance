@@ -1,106 +1,120 @@
-local _, Module = ...
+--[[
+	NexEnhance - World Map
+	-------------------------------------------------------------------------
+	Quality-of-life tweaks for the default world map:
+	  * Player + cursor coordinates along the bottom of the map.
+	  * A smaller, windowed map (scaled down) so it no longer swallows the
+	    whole screen, draggable via an Edit Mode mover (LibEditMode).
+	  * Optional fade while the player is moving, so the map gets out of the
+	    way during travel.
 
-local _G = _G
+	Adapted to the NexEnhance framework from KkthnxUI's Modules/Maps/WorldMap.lua
+	(by Josh "Kkthnx" Russell):
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/master/KkthnxUI/Modules/Maps/WorldMap.lua
 
+	K.* helpers are replaced with framework equivalents (F.ColorStr/F.UnitColor
+	for the class-coloured numbers, C.Media for the coord-bar texture/font).
+	All frame members are existence-guarded so a renamed Blizzard field degrades
+	quietly instead of erroring.
+--]]
+
+-- luacheck: globals PlayerMovementFrameFader
+---@diagnostic disable: undefined-global, undefined-field
+local _, ns = ...
+local F, C, L = ns.F, ns.C, ns.L
+
+local select, type = select, type
+local CreateFrame, UIParent, hooksecurefunc = CreateFrame, UIParent, hooksecurefunc
+local IsPlayerMoving, UIFrameFade = IsPlayerMoving, UIFrameFade
 local C_Map_GetBestMapForUnit = C_Map.GetBestMapForUnit
-local CreateFrame = CreateFrame
-local CreateFrame = CreateFrame
-local IsPlayerMoving = IsPlayerMoving
-local IsPlayerMoving = IsPlayerMoving
-local PLAYER = PLAYER
-local PlayerMovementFrameFader = PlayerMovementFrameFader
-local UIParent = UIParent
-local hooksecurefunc = hooksecurefunc
-local hooksecurefunc = hooksecurefunc
+local C_Map_GetPlayerMapPosition = C_Map.GetPlayerMapPosition
+local PLAYER, MOUSE = PLAYER, (MOUSE_LABEL or "Mouse")
 
-local currentMapID, playerCoords, cursorCoords
-local smallerMapScale = 0.8
+ns:RegisterDefaults({
+	worldMap = {
+		enable = true,
+		coordinates = true,
+		smallMap = true,
+		smallMapScale = 0.8,
+		fadeWhenMoving = false,
+		alphaWhenMoving = 0.35,
+	},
+})
 
-function Module:SetLargeWorldMap()
-	local WorldMapFrame = _G.WorldMapFrame
-	WorldMapFrame:SetParent(UIParent)
-	WorldMapFrame:SetScale(1)
-	WorldMapFrame.ScrollContainer.Child:SetScale(smallerMapScale)
+local WorldMap = ns:NewModule("WorldMap", "worldMap", { group = "maps", title = L["World Map"], order = 10 })
 
-	WorldMapFrame:OnFrameSizeChanged()
-	if WorldMapFrame:GetMapID() then
-		WorldMapFrame.NavBar:Refresh()
+local cfg
+local classColorStr = F.ColorStr(F.UnitColor("player"))
+local currentMapID, cursorCoords, playerCoords, coordsUpdater, fadeFrame, mapAnchor
+
+-- ---------------------------------------------------------------------------
+-- Movable anchor (Edit Mode)
+--   The windowed map follows an invisible anchor frame registered with our
+--   LibEditMode mover, so it can be dragged like any other NexEnhance element.
+--   We anchor the map to it (rather than make the giant map itself the mover)
+--   so Blizzard's own Maximize/Minimize repositioning never fights the saved
+--   position - we simply re-anchor whenever the windowed state is restored.
+-- ---------------------------------------------------------------------------
+local function GetAnchor()
+	if mapAnchor then return mapAnchor end
+	mapAnchor = CreateFrame("Frame", "NexEnhanceWorldMapAnchor", UIParent)
+	mapAnchor:SetSize(700, 466)
+	F.CreateMover(mapAnchor, "worldMap", L["World Map"], "TOPLEFT", 16, -94)
+	return mapAnchor
+end
+
+-- Pin the windowed map's top-left to the mover anchor and size the Edit Mode
+-- box to match the map so the selection overlay lines up.
+local function AnchorMapToMover(wmf)
+	local anchor = GetAnchor()
+	local w, h = wmf:GetSize()
+	if w and w > 1 then
+		anchor:SetSize(w, h)
 	end
+	wmf:ClearAllPoints()
+	wmf:SetPoint("TOPLEFT", anchor, "TOPLEFT")
 end
 
-function Module:UpdateMaximizedSize()
-	local WorldMapFrame = _G.WorldMapFrame
-	local width, height = WorldMapFrame:GetSize()
-	local magicNumber = (1 - smallerMapScale) * 100
-	WorldMapFrame:SetSize((width * smallerMapScale) - (magicNumber + 2), (height * smallerMapScale) - 2)
+-- ---------------------------------------------------------------------------
+-- Coordinates
+-- ---------------------------------------------------------------------------
+local function GetPlayerMapPos(mapID)
+	if not mapID then return end
+	local pos = C_Map_GetPlayerMapPosition(mapID, "player")
+	if not pos then return end
+	return pos:GetXY()
 end
 
-function Module:SynchronizeDisplayState()
-	local WorldMapFrame = _G.WorldMapFrame
-	if WorldMapFrame:IsMaximized() then
-		WorldMapFrame:ClearAllPoints()
-		WorldMapFrame:SetPoint("CENTER", UIParent)
-	end
+local function GetCursorCoords()
+	local wmf = _G.WorldMapFrame
+	local scroll = wmf and wmf.ScrollContainer
+	if not scroll or not scroll:IsMouseOver() then return end
 
-	Module.RestoreMoverFrame(self)
+	local x, y = scroll:GetNormalizedCursorPosition()
+	if x < 0 or x > 1 or y < 0 or y > 1 then return end
+	return x, y
 end
 
-function Module:SetSmallWorldMap()
-	local WorldMapFrame = _G.WorldMapFrame
-	WorldMapFrame:ClearAllPoints()
-	WorldMapFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -94)
+local function CoordsFormat(owner, isNone)
+	local text = isNone and ": --, --" or ": %.1f, %.1f"
+	return owner .. classColorStr .. text
 end
 
-function Module:GetCursorCoords()
-	if not WorldMapFrame.ScrollContainer:IsMouseOver() then
-		return
-	end
-
-	local cursorX, cursorY = WorldMapFrame.ScrollContainer:GetNormalizedCursorPosition()
-	if cursorX < 0 or cursorX > 1 or cursorY < 0 or cursorY > 1 then
-		return
-	end
-
-	return cursorX, cursorY
-end
-
-local function CoordsFormat(owner, none)
-	local text = none and ": --, --" or ": %.1f, %.1f"
-	return owner .. Module.MyClassColor .. text
-end
-
-function Module:UpdateCoords(elapsed)
-	local WorldMapFrame = _G.WorldMapFrame
-	if not WorldMapFrame:IsShown() then
-		return
-	end
+local function UpdateCoords(self, elapsed)
+	if not _G.WorldMapFrame:IsShown() then return end
 
 	self.elapsed = (self.elapsed or 0) + elapsed
+	if self.elapsed < 0.2 then return end
+	self.elapsed = 0
 
-	if self.elapsed > 0.2 then
-		local cursorX, cursorY = Module:GetCursorCoords()
-		if cursorX and cursorY then
-			cursorCoords:SetFormattedText(CoordsFormat("Mouse"), 100 * cursorX, 100 * cursorY)
-		else
-			cursorCoords:SetText(CoordsFormat("Mouse", true))
-		end
+	local cursorX, cursorY = GetCursorCoords()
+	cursorCoords:SetFormattedText(CoordsFormat(MOUSE, not cursorX), 100 * (cursorX or 0), 100 * (cursorY or 0))
 
-		if not currentMapID then
-			playerCoords:SetText(CoordsFormat(PLAYER, true))
-		else
-			local x, y = Module:GetPlayerPosition(currentMapID)
-			if not x or (x == 0 and y == 0) then
-				playerCoords:SetText(CoordsFormat(PLAYER, true))
-			else
-				playerCoords:SetFormattedText(CoordsFormat(PLAYER), 100 * x, 100 * y)
-			end
-		end
-
-		self.elapsed = 0
-	end
+	local x, y = GetPlayerMapPos(currentMapID)
+	playerCoords:SetFormattedText(CoordsFormat(PLAYER, not (currentMapID and x and (x ~= 0 or y ~= 0))), 100 * (x or 0), 100 * (y or 0))
 end
 
-function Module:UpdateMapID()
+local function UpdateMapID(self)
 	if self:GetMapID() == C_Map_GetBestMapForUnit("player") then
 		currentMapID = self:GetMapID()
 	else
@@ -108,177 +122,272 @@ function Module:UpdateMapID()
 	end
 end
 
-function Module:MapShouldFade()
-	-- normally we would check GetCVarBool('mapFade') here instead of the setting
-	return Module.NexConfig.worldmap.FadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
+-- ---------------------------------------------------------------------------
+-- Smaller windowed map (scaled). Each handler is gated by cfg.smallMap so the
+-- option can be toggled live (it applies on the next open / state change).
+-- ---------------------------------------------------------------------------
+local function SetLargeWorldMap()
+	local wmf = _G.WorldMapFrame
+	if not cfg.smallMap then return end
+
+	wmf:SetParent(UIParent)
+	wmf:SetScale(1)
+	if wmf.ScrollContainer and wmf.ScrollContainer.Child then
+		wmf.ScrollContainer.Child:SetScale(cfg.smallMapScale)
+	end
+
+	if wmf.OnFrameSizeChanged then wmf:OnFrameSizeChanged() end
+	if wmf:GetMapID() and wmf.NavBar and wmf.NavBar.Refresh then
+		wmf.NavBar:Refresh()
+	end
 end
 
-function Module:MapFadeOnUpdate(elapsed)
+local function UpdateMaximizedSize()
+	local wmf = _G.WorldMapFrame
+	if not cfg.smallMap then return end
+
+	local width, height = wmf:GetSize()
+	local magicNumber = (1 - cfg.smallMapScale) * 100
+	wmf:SetSize((width * cfg.smallMapScale) - (magicNumber + 2), (height * cfg.smallMapScale) - 2)
+end
+
+local function SynchronizeDisplayState()
+	local wmf = _G.WorldMapFrame
+	if not cfg.smallMap then return end
+
+	if wmf:IsMaximized() then
+		wmf:ClearAllPoints()
+		wmf:SetPoint("CENTER", UIParent)
+	else
+		-- Restore the saved mover position after a Blizzard state change.
+		AnchorMapToMover(wmf)
+	end
+end
+
+local function SetSmallWorldMap()
+	local wmf = _G.WorldMapFrame
+	if not cfg.smallMap or wmf:IsMaximized() then return end
+	AnchorMapToMover(wmf)
+end
+
+-- ---------------------------------------------------------------------------
+-- Fade while moving
+-- ---------------------------------------------------------------------------
+local function MapShouldFade()
+	return cfg.fadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
+end
+
+local function MapFadeOnUpdate(self, elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed
-	if self.elapsed > 0.1 then
-		self.elapsed = 0
+	if self.elapsed < 0.1 then return end
+	self.elapsed = 0
 
-		local object = self.FadeObject
-		local settings = object and object.FadeSettings
-		if not settings then
-			return
-		end
+	local fadeObject = self.FadeObject
+	local settings = fadeObject and fadeObject.FadeSettings
+	if not settings then return end
 
-		local fadeOut = IsPlayerMoving() and (not settings.fadePredicate or settings.fadePredicate())
-		local endAlpha = (fadeOut and (settings.minAlpha or 0.5)) or settings.maxAlpha or 1
-		local startAlpha = _G.WorldMapFrame:GetAlpha()
+	local isFadingOut = IsPlayerMoving() and (not settings.fadePredicate or settings.fadePredicate())
+	local endAlpha = (isFadingOut and (settings.minAlpha or 0.5)) or settings.maxAlpha or 1
+	local startAlpha = _G.WorldMapFrame:GetAlpha()
 
-		object.timeToFade = settings.durationSec or 0.5
-		object.startAlpha = startAlpha
-		object.endAlpha = endAlpha
-		object.diffAlpha = endAlpha - startAlpha
+	fadeObject.timeToFade = settings.durationSec or 0.5
+	fadeObject.startAlpha = startAlpha
+	fadeObject.endAlpha = endAlpha
+	fadeObject.diffAlpha = endAlpha - startAlpha
+	fadeObject.fadeTimer = nil
 
-		if object.fadeTimer then
-			object.fadeTimer = nil
-		end
-
-		UIFrameFade(_G.WorldMapFrame, object)
-	end
+	UIFrameFade(_G.WorldMapFrame, fadeObject)
 end
 
-local fadeFrame
-function Module:StopMapFromFading()
-	if fadeFrame then
-		fadeFrame:Hide()
-	end
+local function StopMapFromFading()
+	if fadeFrame then fadeFrame:Hide() end
 end
 
-function Module:EnableMapFading(frame)
+local function EnableMapFading(frame)
 	if not fadeFrame then
-		fadeFrame = CreateFrame("FRAME")
-		fadeFrame:SetScript("OnUpdate", self.MapFadeOnUpdate)
-		frame:HookScript("OnHide", self.StopMapFromFading)
-
-		fadeFrame.FadeObject = {}
-		fadeFrame.FadeObject.FadeSettings = {}
+		fadeFrame = CreateFrame("Frame")
+		fadeFrame:SetScript("OnUpdate", MapFadeOnUpdate)
+		frame:HookScript("OnHide", StopMapFromFading)
+		fadeFrame.FadeObject = { FadeSettings = {} }
 	end
 
 	local settings = fadeFrame.FadeObject.FadeSettings
-	settings.fadePredicate = Module.MapShouldFade
+	settings.fadePredicate = MapShouldFade
 	settings.durationSec = 0.2
-	settings.minAlpha = Module.NexConfig.worldmap.AlphaWhenMoving
+	settings.minAlpha = cfg.alphaWhenMoving
 	settings.maxAlpha = 1
 
 	fadeFrame:Show()
 end
 
-function Module:UpdateMapFade(minAlpha, maxAlpha, durationSec, fadePredicate) -- self is frame
-	if self:IsShown() and (self == _G.WorldMapFrame and fadePredicate ~= Module.MapShouldFade) then
-		-- blizzard spams code in OnUpdate and doesnt finish their functions, so we shut their fader down :L
-		PlayerMovementFrameFader.RemoveFrame(self)
+-- Intercept Blizzard's frame fader so our predicate takes over for the map.
+local function UpdateMapFade(...)
+	local arg1, arg2 = ...
 
-		-- replacement function which is complete :3
-		if Module.NexConfig.worldmap.FadeWhenMoving then
-			Module:EnableMapFading(self)
-		end
-	end
-end
-
-function Module:WorldMap_OnShow()
-	-- Update coordinates if necessary
-	if self.CoordsUpdater then
-		self.CoordsUpdater:SetScript("OnUpdate", self.UpdateCoords)
-	end
-
-	-- Check if the map has been size adjusted already
-	if self.mapSizeAdjusted then
+	local frame
+	if type(arg1) == "table" and type(arg1.IsShown) == "function" and arg1 ~= PlayerMovementFrameFader then
+		frame = arg1
+	elseif arg1 == PlayerMovementFrameFader and type(arg2) == "table" and type(arg2.IsShown) == "function" then
+		frame = arg2
+	elseif type(arg2) == "table" and type(arg2.IsShown) == "function" then
+		frame = arg2
+	else
 		return
 	end
 
-	-- Resize the map if necessary
-	local frame = _G.WorldMapFrame
-	local maxed = frame:IsMaximized()
-	if maxed then -- Call this outside of smallerWorldMap
-		frame:UpdateMaximizedSize()
-	end
-
-	-- Set the appropriate map size
-	if Module.NexConfig.worldmap.SmallWorldMap then
-		if maxed then
-			Module:SetLargeWorldMap()
-		else
-			Module:SetSmallWorldMap()
+	local fadePredicate
+	for i = 6, 1, -1 do
+		local val = select(i, ...)
+		if type(val) == "function" then
+			fadePredicate = val
+			break
 		end
 	end
 
-	-- Mark the map as size adjusted
-	self.mapSizeAdjusted = true
-end
-
-function Module:WorldMap_OnHide()
-	if self.CoordsUpdater then
-		self.CoordsUpdater:SetScript("OnUpdate", nil)
+	if frame == _G.WorldMapFrame and frame:IsShown() and fadePredicate ~= MapShouldFade then
+		PlayerMovementFrameFader.RemoveFrame(frame)
+		if cfg.fadeWhenMoving then
+			EnableMapFading(frame)
+		else
+			frame:SetAlpha(1)
+		end
 	end
 end
 
-function Module:PLAYER_LOGIN()
-	local WorldMapFrame = _G.WorldMapFrame
-	if Module.NexConfig.worldmap.Coordinates then
-		-- Define the desired color (#F0C500 or RGB values 240/255, 197/255, 0)
-		local textColor = { r = 240 / 255, g = 197 / 255, b = 0 }
+-- ---------------------------------------------------------------------------
+-- Coordinate widgets
+-- ---------------------------------------------------------------------------
+local function BuildCoords()
+	if coordsUpdater then return end
 
-		-- Create the coordinates frame
-		local coordsFrame = CreateFrame("Frame", nil, WorldMapFrame.ScrollContainer)
-		coordsFrame:SetSize(WorldMapFrame:GetWidth(), 17)
-		coordsFrame:SetPoint("BOTTOMLEFT", 17)
-		coordsFrame:SetPoint("BOTTOMRIGHT", 0)
+	local wmf = _G.WorldMapFrame
+	local scroll = wmf.ScrollContainer
+	if not scroll then return end
 
-		-- Background texture for the coordinates frame
-		coordsFrame.Texture = coordsFrame:CreateTexture(nil, "BACKGROUND")
-		coordsFrame.Texture:SetAllPoints()
-		coordsFrame.Texture:SetTexture("Interface\\BUTTONS\\GreyscaleRamp64")
-		coordsFrame.Texture:SetVertexColor(0.04, 0.04, 0.04, 0.5)
+	local bar = CreateFrame("Frame", nil, scroll)
+	bar:SetSize(wmf:GetWidth(), 17)
+	bar:SetPoint("BOTTOMLEFT", 17, 0)
+	bar:SetPoint("BOTTOMRIGHT", 0, 0)
 
-		-- Create the cursor coordinates text
-		cursorCoords = WorldMapFrame.ScrollContainer:CreateFontString(nil, "OVERLAY")
-		cursorCoords:SetFontObject(GameFontNormal)
-		cursorCoords:SetFont(select(1, cursorCoords:GetFont()), 13, select(3, cursorCoords:GetFont()))
-		cursorCoords:SetSize(200, 16)
-		cursorCoords:SetParent(coordsFrame)
-		cursorCoords:ClearAllPoints()
-		cursorCoords:SetPoint("BOTTOMLEFT", 152, 1)
-		cursorCoords:SetTextColor(textColor.r, textColor.g, textColor.b)
-		cursorCoords:SetAlpha(0.9)
+	local tex = bar:CreateTexture(nil, "BACKGROUND")
+	tex:SetAllPoints()
+	tex:SetTexture(C.Media.Textures.blank)
+	tex:SetVertexColor(0.04, 0.04, 0.04, 0.5)
 
-		-- Create the player coordinates text
-		playerCoords = WorldMapFrame.ScrollContainer:CreateFontString(nil, "OVERLAY")
-		playerCoords:SetFontObject(GameFontNormal)
-		playerCoords:SetFont(select(1, playerCoords:GetFont()), 13, select(3, playerCoords:GetFont()))
-		playerCoords:SetSize(200, 16)
-		playerCoords:SetParent(coordsFrame)
-		playerCoords:ClearAllPoints()
-		playerCoords:SetPoint("BOTTOMRIGHT", -132, 1)
-		playerCoords:SetTextColor(textColor.r, textColor.g, textColor.b)
-		playerCoords:SetAlpha(0.9)
+	cursorCoords = bar:CreateFontString(nil, "OVERLAY")
+	cursorCoords:SetFont(C.Media.Fonts.normal, 13, "OUTLINE")
+	cursorCoords:SetSize(200, 16)
+	cursorCoords:SetPoint("BOTTOMLEFT", 152, 1)
+	cursorCoords:SetTextColor(0.94, 0.77, 0)
 
-		hooksecurefunc(WorldMapFrame, "OnFrameSizeChanged", self.UpdateMapID)
-		hooksecurefunc(WorldMapFrame, "OnMapChanged", self.UpdateMapID)
+	playerCoords = bar:CreateFontString(nil, "OVERLAY")
+	playerCoords:SetFont(C.Media.Fonts.normal, 13, "OUTLINE")
+	playerCoords:SetSize(200, 16)
+	playerCoords:SetPoint("BOTTOMRIGHT", -132, 1)
+	playerCoords:SetTextColor(0.94, 0.77, 0)
 
-		self.CoordsUpdater = CreateFrame("Frame", nil, WorldMapFrame.ScrollContainer)
-		self.CoordsUpdater:SetScript("OnUpdate", self.UpdateCoords)
+	hooksecurefunc(wmf, "OnFrameSizeChanged", UpdateMapID)
+	hooksecurefunc(wmf, "OnMapChanged", UpdateMapID)
+
+	coordsUpdater = CreateFrame("Frame", nil, scroll)
+	coordsUpdater:SetScript("OnUpdate", UpdateCoords)
+end
+
+local function SetCoordsShown(shown)
+	if not coordsUpdater then return end
+	cursorCoords:SetShown(shown)
+	playerCoords:SetShown(shown)
+	coordsUpdater:SetScript("OnUpdate", shown and UpdateCoords or nil)
+end
+
+-- ---------------------------------------------------------------------------
+-- Lifecycle
+-- ---------------------------------------------------------------------------
+function WorldMap:Setup()
+	if self.started then return end
+	local wmf = _G.WorldMapFrame
+	if not wmf then return end -- Blizzard_WorldMap not available yet
+	self.started = true
+
+	if cfg.coordinates then
+		BuildCoords()
 	end
 
-	if Module.NexConfig.worldmap.SmallWorldMap then
-		smallerMapScale = Module.NexConfig.worldmap.SmallWorldMapScale or 0.9
+	-- Small-map hooks are installed once; each is gated by cfg.smallMap so the
+	-- option toggles live on the next open / maximize change.
+	hooksecurefunc(wmf, "Maximize", SetLargeWorldMap)
+	hooksecurefunc(wmf, "Minimize", SetSmallWorldMap)
+	hooksecurefunc(wmf, "SynchronizeDisplayState", SynchronizeDisplayState)
+	hooksecurefunc(wmf, "UpdateMaximizedSize", UpdateMaximizedSize)
 
-		self.CreateMoverFrame(WorldMapFrame, nil, true)
-
-		WorldMapFrame.BlackoutFrame.Blackout:SetTexture()
-		WorldMapFrame.BlackoutFrame:EnableMouse(false)
-
-		hooksecurefunc(WorldMapFrame, "Maximize", self.SetLargeWorldMap)
-		hooksecurefunc(WorldMapFrame, "Minimize", self.SetSmallWorldMap)
-		hooksecurefunc(WorldMapFrame, "SynchronizeDisplayState", self.SynchronizeDisplayState)
-		hooksecurefunc(WorldMapFrame, "UpdateMaximizedSize", self.UpdateMaximizedSize)
+	if PlayerMovementFrameFader and PlayerMovementFrameFader.AddDeferredFrame then
+		hooksecurefunc(PlayerMovementFrameFader, "AddDeferredFrame", UpdateMapFade)
 	end
 
-	WorldMapFrame:HookScript("OnShow", self.WorldMap_OnShow)
-	WorldMapFrame:HookScript("OnHide", self.WorldMap_OnHide)
+	self:ClearBlackout()
+	self:Apply()
+end
 
-	hooksecurefunc(PlayerMovementFrameFader, "AddDeferredFrame", self.UpdateMapFade)
+-- Drop the full-screen black backdrop behind the map (and let clicks pass
+-- through it) so the world shows through the smaller map. Irreversible without
+-- a reload, so only done while the smaller map is enabled.
+function WorldMap:ClearBlackout()
+	if self.blackoutCleared or not cfg.smallMap then return end
+	local blackout = _G.WorldMapFrame and _G.WorldMapFrame.BlackoutFrame
+	if not blackout then return end
+
+	if blackout.Blackout and blackout.Blackout.SetTexture then
+		blackout.Blackout:SetTexture()
+	end
+	blackout:EnableMouse(false)
+	self.blackoutCleared = true
+end
+
+-- Re-apply the current scale/position to an already-open map.
+function WorldMap:Apply()
+	local wmf = _G.WorldMapFrame
+	if not wmf then return end
+
+	if cfg.smallMap then
+		if wmf:IsMaximized() then
+			SetLargeWorldMap()
+		else
+			SetSmallWorldMap()
+		end
+	elseif wmf.ScrollContainer and wmf.ScrollContainer.Child then
+		-- Restore Blizzard's full-size map if the option was turned off.
+		wmf.ScrollContainer.Child:SetScale(1)
+		if wmf.OnFrameSizeChanged then wmf:OnFrameSizeChanged() end
+	end
+end
+
+function WorldMap:OnEnable()
+	cfg = ns.db.worldMap
+	if cfg.enable then self:Setup() end
+end
+
+function WorldMap:OnSettingChanged()
+	cfg = ns.db.worldMap
+	if not cfg.enable then return end
+
+	self:Setup()
+	if self.started then
+		if cfg.coordinates then
+			BuildCoords()
+			SetCoordsShown(true)
+		else
+			SetCoordsShown(false)
+		end
+		self:ClearBlackout()
+		self:Apply()
+	end
+end
+
+function WorldMap:RegisterOptions(category, builder)
+	builder:Checkbox(category, self, "enable", L["Enable World Map"], L["Enable the world map enhancements (some changes apply on the next map open or after a reload)."])
+	builder:Checkbox(category, self, "coordinates", L["Show Coordinates"], L["Show player and cursor coordinates along the bottom of the map."])
+	builder:Checkbox(category, self, "smallMap", L["Smaller World Map"], L["Scale the windowed map down so it no longer covers the whole screen."])
+	builder:Slider(category, self, "smallMapScale", L["Map Scale"], L["How large the windowed map is."], 0.5, 1, 0.05)
+	builder:Checkbox(category, self, "fadeWhenMoving", L["Fade When Moving"], L["Fade the map out while your character is moving."])
+	builder:Slider(category, self, "alphaWhenMoving", L["Alpha When Moving"], L["How transparent the map becomes while moving."], 0.1, 1, 0.05)
 end

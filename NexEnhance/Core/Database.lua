@@ -1,86 +1,88 @@
--- Database management for NexEnhance addon
-local AddOn, Core = ...
+--[[
+	NexEnhance - Database
+	-------------------------------------------------------------------------
+	Lightweight saved-variable manager with profile support, modelled on the
+	AceDB layout but with no external dependency.
 
-Core.Title = C_AddOns.GetAddOnMetadata(AddOn, "Title")
-Core.Version = C_AddOns.GetAddOnMetadata(AddOn, "Version")
+	Layout of the `NexEnhanceDB` saved variable:
+	    {
+	        profiles    = { ["Default"] = { ... settings ... } },
+	        profileKeys = { ["Char - Realm"] = "Default" },
+	        global      = { ... account-wide data ... },
+	    }
 
-Core.ScreenWidth, Core.ScreenHeight = GetPhysicalScreenSize()
+	`NexEnhanceCharDB` holds genuinely per-character runtime data that should
+	never be shared through a profile.
 
--- Define font settings
-Core.Font = { STANDARD_TEXT_FONT, 12, "OUTLINE" }
+	Modules register their defaults at load time via `ns:RegisterDefaults`,
+	then read/write through `ns.db` (active profile) once it is built on
+	ADDON_LOADED.
+--]]
 
-Core.MyClass = select(2, UnitClass("player"))
-Core.MyFaction = UnitFactionGroup("player")
-Core.MyLevel = UnitLevel("player")
-Core.MyName = UnitName("player")
-Core.MyRace = select(2, UnitRace("player"))
-Core.MyRealm = GetRealmName()
-Core.MySex = UnitSex("player")
+local _, ns = ...
+local C, F = ns.C, ns.F
 
-Core.MyFullName = Core.MyName .. "-" .. Core.MyRealm
+-- The master default tree. Modules merge their own sub-tables into `profile`.
+ns.defaults = {
+	profile = {},
+	global = {},
+}
 
--- Define info color
-Core.InfoColor = "|CFF5bc0be"
-Core.SystemColor = "|CFFFFCC66"
-
-Core.Media = "Interface\\AddOns\\NexEnhance\\Media\\"
-
-Core.NexEnhance = Core.Media .. "NexEnhance.tga"
-
-Core.Logo256 = Core.Media .. "Logos\\Logo256.blp"
-Core.Logo128 = Core.Media .. "Logos\\Logo128.blp"
-Core.Logo64 = Core.Media .. "Logos\\Logo64.blp"
-
-Core.Discord64 = Core.Media .. "Icons\\Discord64.blp"
-Core.Patreon64 = Core.Media .. "Icons\\Patreon64.blp"
-Core.PayPal64 = Core.Media .. "Icons\\PayPal64.blp"
-
-Core.White8x8 = "Interface\\BUTTONS\\WHITE8X8.BLP"
-Core.StatusBarTexture = Core.Media .. "Statusbar.tga"
-
-Core.EasyMenu = CreateFrame("Frame", "NexEnhance_EasyMenu", UIParent, "UIDropDownMenuTemplate")
-
--- Initialize tables for class colors/list and item quality colors
-Core.ClassList = {}
-Core.ClassColors = {}
-Core.QualityColors = {}
-
-for k, v in pairs(LOCALIZED_CLASS_NAMES_MALE) do
-	Core.ClassList[v] = k
-end
-for k, v in pairs(LOCALIZED_CLASS_NAMES_FEMALE) do
-	Core.ClassList[v] = k
+--- Merge a table of defaults into the profile defaults. Called by modules at
+--- file-run time (before the DB is built), e.g.:
+---     ns:RegisterDefaults({ autoVendor = { enable = true } })
+function ns:RegisterDefaults(defaults, scope)
+	scope = scope or "profile"
+	F.CopyTable(defaults, ns.defaults[scope])
 end
 
--- Populate ClassColors table with class colors
-local colors = CUSTOM_CLASS_COLORS or RAID_CLASS_COLORS
-for class, value in pairs(colors) do
-	Core.ClassColors[class] = {}
-	Core.ClassColors[class].r = value.r
-	Core.ClassColors[class].g = value.g
-	Core.ClassColors[class].b = value.b
-	Core.ClassColors[class].colorStr = value.colorStr
+-- ---------------------------------------------------------------------------
+-- Profile management
+-- ---------------------------------------------------------------------------
+
+--- Switch the active profile, rebuilding `ns.db` and notifying listeners.
+function ns:SetProfile(profileName)
+	local root = _G.NexEnhanceDB
+	root.profileKeys[C.Player.key] = profileName
+	root.profiles[profileName] = root.profiles[profileName] or {}
+
+	-- Apply defaults to the (possibly new) profile and expose it.
+	ns.db = F.CopyDefaults(ns.defaults.profile, root.profiles[profileName])
+	ns.profileName = profileName
+
+	-- Let modules react to a live profile switch.
+	if ns.OnProfileChanged then
+		ns:OnProfileChanged(profileName)
+	end
 end
 
--- Get RGB values for player's class color
-Core.r, Core.g, Core.b = Core.ClassColors[Core.MyClass].r, Core.ClassColors[Core.MyClass].g, Core.ClassColors[Core.MyClass].b
-
--- Convert RGB values to hexadecimal color string
-Core.MyClassColor = format("|cff%02x%02x%02x", Core.r * 255, Core.g * 255, Core.b * 255)
-
--- Populate QualityColors table with item quality colors
-local qualityColors = BAG_ITEM_QUALITY_COLORS
-for index, value in pairs(qualityColors) do
-	Core.QualityColors[index] = { r = value.r, g = value.g, b = value.b }
+--- Return a sorted-by-insertion list of existing profile names.
+function ns:GetProfiles()
+	local list = {}
+	for name in pairs(_G.NexEnhanceDB.profiles) do
+		list[#list + 1] = name
+	end
+	table.sort(list)
+	return list
 end
 
--- Set default colors for specific item qualities
-Core.QualityColors[-1] = { r = 1, g = 1, b = 1 }
-Core.QualityColors[Enum.ItemQuality.Poor] = { r = 0.61, g = 0.61, b = 0.61 }
-Core.QualityColors[Enum.ItemQuality.Common] = { r = 1, g = 1, b = 1 } -- Default color
+-- ---------------------------------------------------------------------------
+-- Setup (called by the engine on ADDON_LOADED, before module OnInitialize)
+-- ---------------------------------------------------------------------------
+function ns:SetupDatabase()
+	-- Saved variables are nil on a brand-new install; create the skeleton.
+	local root = _G.NexEnhanceDB or {}
+	_G.NexEnhanceDB = root
+	root.profiles = root.profiles or {}
+	root.profileKeys = root.profileKeys or {}
+	root.global = F.CopyDefaults(ns.defaults.global, root.global)
 
--- Register NexEnhance statusbar
-local media = LibStub and LibStub("LibSharedMedia-3.0", true)
-if media then
-	media:Register("statusbar", "NexEnhance", Core.NexEnhance)
+	_G.NexEnhanceCharDB = _G.NexEnhanceCharDB or {}
+
+	-- Resolve which profile this character uses (default to its own key).
+	local profileName = root.profileKeys[C.Player.key] or "Default"
+
+	ns.global = root.global
+	ns.charDB = _G.NexEnhanceCharDB
+	ns:SetProfile(profileName)
 end

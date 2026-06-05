@@ -1,0 +1,111 @@
+--[[
+	NexEnhance - Tooltip Mount Source
+	-------------------------------------------------------------------------
+	When you hold Shift over another player's mount *buff* (an aura tooltip),
+	appends the mount's collection status and where it comes from.
+
+	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
+	  https://github.com/Kkthnx-Wow/KkthnxUI
+
+	A sibling of Tooltip.lua: it grabs the module with ns:GetModule("Tooltip")
+	and adds Tooltip:SetupMountSource(), wired up from Tooltip's OnEnable.
+	Hardened for Patch 12.0 Secret Values and guarded to skip the standalone
+	MountsSource addon.
+--]]
+
+local _, ns = ...
+local F = ns.F
+local Tooltip = ns:GetModule("Tooltip")
+if not Tooltip then return end
+
+local _G = _G
+local select = select
+local hooksecurefunc = hooksecurefunc
+
+local AuraUtil = AuraUtil
+local C_AddOns = C_AddOns
+local C_MountJournal = C_MountJournal
+local C_UnitAuras = C_UnitAuras
+local IsShiftKeyDown = IsShiftKeyDown
+local UnitIsPlayer = UnitIsPlayer
+local UnitIsUnit = UnitIsUnit
+
+local COLLECTED = COLLECTED
+local NOT_COLLECTED = NOT_COLLECTED
+local SOURCE = SOURCE
+
+-- spell -> { source, index }, with `false` cached for non-mount spells so we
+-- never re-query the journal for the same aura.
+local mountCache = {}
+
+local function GetMountInfoBySpell(spell)
+	if mountCache[spell] == nil then
+		mountCache[spell] = false
+		local index = C_MountJournal.GetMountFromSpell(spell)
+		if index then
+			local _, mSpell = C_MountJournal.GetMountInfoByID(index)
+			if spell == mSpell then
+				local _, _, source = C_MountJournal.GetMountInfoExtraByID(index)
+				mountCache[spell] = { source = source, index = index }
+			end
+		end
+	end
+	return mountCache[spell] or nil
+end
+
+local function IsCollected(info)
+	-- 11th return of GetMountInfoByID is `isCollected`.
+	return select(11, C_MountJournal.GetMountInfoByID(info.index)) and true or false
+end
+
+-- Append the Source/collection lines once (skip if we've already added them).
+local function AddSourceLine(tip, info)
+	local name = tip.GetName and tip:GetName()
+	if not name then return end
+
+	for i = 1, tip:NumLines() do
+		local line = _G[name .. "TextLeft" .. i]
+		local text = line and line:GetText()
+		if text and F.NotSecret(text) and text == SOURCE then
+			return
+		end
+	end
+
+	tip:AddLine(" ")
+	tip:AddDoubleLine(SOURCE, IsCollected(info) and COLLECTED or NOT_COLLECTED)
+	tip:AddLine(info.source, 1, 1, 1)
+	tip:Show()
+end
+
+-- Only annotate while Shift is held over another player (not yourself).
+local function HandleAura(tip, spellID)
+	if not spellID or F.IsSecret(spellID) then return end
+	if not IsShiftKeyDown() then return end
+	if not UnitIsPlayer("target") or UnitIsUnit("target", "player") then return end
+
+	local info = GetMountInfoBySpell(spellID)
+	if info then
+		AddSourceLine(tip, info)
+	end
+end
+
+function Tooltip:SetupMountSource()
+	-- Defer to the dedicated addon if the user runs it.
+	if C_AddOns.IsAddOnLoaded("MountsSource") then return end
+	if not (C_MountJournal and AuraUtil and C_UnitAuras) then return end
+
+	hooksecurefunc(GameTooltip, "SetUnitAura", function(tip, ...)
+		if tip:IsForbidden() then return end
+		local data = C_UnitAuras.GetAuraDataByIndex(...)
+		if not data then return end
+		HandleAura(tip, select(10, AuraUtil.UnpackAuraData(data)))
+	end)
+
+	hooksecurefunc(GameTooltip, "SetUnitBuffByAuraInstanceID", function(tip, unit, auraInstanceID)
+		if tip:IsForbidden() then return end
+		local data = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, auraInstanceID)
+		if data then
+			HandleAura(tip, data.spellId)
+		end
+	end)
+end

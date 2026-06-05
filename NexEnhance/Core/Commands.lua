@@ -13,6 +13,10 @@ local F, C, L = ns.F, ns.C, ns.L
 local type = type
 local format = string.format
 
+-- Y-offset for the sub-title header divider. Blizzard's default is -50; we push
+-- it down a few pixels so it reads as a clearer separator below the title.
+local NATIVE_DIVIDER_Y = -56
+
 local function Brand(text)
 	return "|c" .. C.BrandHex .. text .. "|r"
 end
@@ -229,21 +233,41 @@ end
 -- Themed option groups, in display order. Modules declare a `group` key (see
 -- ns:NewModule) and land in the matching subcategory; anything without a known
 -- group falls through to "misc".
+-- `icon` is an in-game texture path (with backslashes) or an atlas name. To use
+-- a custom/Wowhead icon, save the file under the addon (e.g. Media\Sections\) and
+-- point `icon` at that path - WoW can't download images at runtime. These are
+-- placeholder in-game icons; swap them freely.
 local GROUP_ORDER = {
-	{ key = "actionbars", title = L["Action Bars"] },
-	{ key = "unitframes", title = L["Unit Frames"] },
-	{ key = "auras", title = L["Auras"] },
-	{ key = "inventory", title = L["Inventory"] },
-	{ key = "chat", title = L["Chat"] },
-	{ key = "filters", title = L["Filters"] },
-	{ key = "tooltip", title = L["Tooltip"] },
-	{ key = "skins", title = L["Skins"] },
-	{ key = "datatext", title = L["DataText"] },
-	{ key = "maps", title = L["Maps"] },
-	{ key = "automation", title = L["Automation"] },
-	{ key = "announcements", title = L["Announcements"] },
-	{ key = "misc", title = L["Miscellaneous"] },
+	{ key = "general", title = L["General"], icon = [[Interface\ICONS\Trade_Engineering]], desc = L["DESC_GENERAL"] },
+	{ key = "actionbars", title = L["Action Bars"], icon = [[Interface\ICONS\Ability_Warrior_Charge]], desc = L["DESC_ACTIONBARS"] },
+	{ key = "unitframes", title = L["Unit Frames"], icon = [[Interface\ICONS\Ability_Warrior_BattleShout]], desc = L["DESC_UNITFRAMES"] },
+	{ key = "auras", title = L["Auras"], icon = [[Interface\ICONS\Spell_Holy_WordFortitude]], desc = L["DESC_AURAS"] },
+	{ key = "inventory", title = L["Inventory"], icon = [[Interface\ICONS\INV_Misc_Bag_08]], desc = L["DESC_INVENTORY"] },
+	{ key = "chat", title = L["Chat"], icon = [[Interface\ICONS\INV_Letter_15]], desc = L["DESC_CHAT"] },
+	{ key = "filters", title = L["Filters"], icon = [[Interface\ICONS\INV_Misc_Spyglass_02]], desc = L["DESC_FILTERS"] },
+	{ key = "tooltip", title = L["Tooltip"], icon = [[Interface\ICONS\INV_Misc_Note_01]], desc = L["DESC_TOOLTIP"] },
+	{ key = "skins", title = L["Skins"], icon = [[Interface\ICONS\INV_Shirt_GuildTabard_01]], desc = L["DESC_SKINS"] },
+	{ key = "datatext", title = L["DataText"], icon = [[Interface\ICONS\INV_Misc_PocketWatch_01]], desc = L["DESC_DATATEXT"] },
+	{ key = "maps", title = L["Maps"], icon = [[Interface\ICONS\INV_Misc_Map_01]], desc = L["DESC_MAPS"] },
+	{ key = "automation", title = L["Automation"], icon = [[Interface\ICONS\INV_Gizmo_01]], desc = L["DESC_AUTOMATION"] },
+	{ key = "announcements", title = L["Announcements"], icon = [[Interface\ICONS\INV_Misc_Horn_01]], desc = L["DESC_ANNOUNCEMENTS"] },
+	{ key = "misc", title = L["Miscellaneous"], icon = [[Interface\ICONS\INV_Misc_QuestionMark]], desc = L["DESC_MISC"] },
 }
+
+-- Build a sidebar label with an inline icon. Texture paths (containing a
+-- backslash) use a |T|t escape; otherwise the value is treated as an atlas name.
+-- The icon is prefixed for display only - sorting still uses the clean title.
+local CreateAtlasMarkup = _G["CreateAtlasMarkup"]
+local function GroupLabel(g)
+	if not g.icon then return g.title end
+	if g.icon:find("\\", 1, true) then
+		return format("|T%s:16:16:0:0|t %s", g.icon, g.title)
+	end
+	if CreateAtlasMarkup then
+		return CreateAtlasMarkup(g.icon, 16, 16) .. " " .. g.title
+	end
+	return g.title
+end
 
 local GROUP_INDEX = {}
 for i = 1, #GROUP_ORDER do
@@ -383,8 +407,11 @@ local function CreateCanvasSubFrame(name)
 	defaults:Hide()
 	header.DefaultsButton = defaults
 
+	-- Sits a touch lower than Blizzard's default (-50) so the line has more
+	-- breathing room beneath the (icon'd) sub-title. Kept in sync with the
+	-- native vertical-layout pages by InstallHeaderDividerNudge below.
 	local divider = header:CreateTexture(nil, "ARTWORK")
-	divider:SetPoint("TOP", 0, -50)
+	divider:SetPoint("TOP", 0, NATIVE_DIVIDER_Y)
 	divider:SetAtlas("Options_HorizontalDivider", true)
 
 	-- The container the builder draws into.
@@ -394,6 +421,44 @@ local function CreateCanvasSubFrame(name)
 	canvas:SetPoint("TOP", 0, -56)
 
 	return frame, canvas
+end
+
+-- The native SettingsList (used by every vertical-layout subcategory) is a single
+-- shared instance, so its header divider is shared across our pages AND Blizzard's.
+-- We can't move it just for our subcategories at creation time; instead we hook the
+-- per-page display and reposition the divider only while a NexEnhance category is
+-- shown, restoring Blizzard's default (-50) for everyone else.
+local function InstallHeaderDividerNudge(ourCategories)
+	local panel = _G["SettingsPanel"]
+	if not (panel and panel.DisplayCategory and panel.GetSettingsList) or panel.nexHeaderDividerHooked then
+		return
+	end
+	panel.nexHeaderDividerHooked = true
+
+	-- The divider texture has no parentKey, so locate it once (cached) by atlas.
+	local divider
+	local function GetDivider()
+		if divider then return divider end
+		local list = panel:GetSettingsList()
+		local header = list and list.Header
+		if not header then return nil end
+		local regions = { header:GetRegions() }
+		for i = 1, #regions do
+			local region = regions[i]
+			if region.GetAtlas and region:GetAtlas() == "Options_HorizontalDivider" then
+				divider = region
+				return divider
+			end
+		end
+		return nil
+	end
+
+	hooksecurefunc(panel, "DisplayCategory", function(_, category)
+		local tex = GetDivider()
+		if not tex then return end
+		tex:ClearAllPoints()
+		tex:SetPoint("TOP", 0, ourCategories[category] and NATIVE_DIVIDER_Y or -50)
+	end)
 end
 
 local optionsCanvases = {}
@@ -419,6 +484,7 @@ local function BuildOptions()
 	-- One subcategory (with its own layout) per themed group, listed
 	-- alphabetically by (localised) title so the sidebar reads A, B, C...
 	local groupCategory, groupLayout = {}, {}
+	local ourCategories = {}
 	if Settings.RegisterVerticalLayoutSubcategory then
 		local sortedGroups = {}
 		for i = 1, #GROUP_ORDER do
@@ -428,9 +494,16 @@ local function BuildOptions()
 
 		for i = 1, #sortedGroups do
 			local g = sortedGroups[i]
-			local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, g.title)
+			local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, GroupLabel(g))
 			groupCategory[g.key] = sub
 			groupLayout[g.key] = layout
+			ourCategories[sub] = true
+
+			-- Intro blurb at the top of the subcategory page.
+			if g.desc and F.CreateSettingsDescription then
+				local desc = F.CreateSettingsDescription(g.desc)
+				if desc then layout:AddInitializer(desc) end
+			end
 		end
 	end
 
@@ -478,6 +551,8 @@ local function BuildOptions()
 	end
 
 	Settings.RegisterAddOnCategory(category)
+
+	InstallHeaderDividerNudge(ourCategories)
 
 	function ns:OpenOptions()
 		if Settings.OpenToCategory then

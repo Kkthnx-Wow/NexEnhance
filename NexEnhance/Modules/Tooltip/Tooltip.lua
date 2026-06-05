@@ -66,6 +66,7 @@ ns:RegisterDefaults({
 		showItemLevel = true,
 		itemLevelByShift = true,
 		hoverTips = true,
+		mountSource = true,
 	},
 })
 
@@ -410,8 +411,8 @@ local function RepositionStatusBar()
 
 	bar:ClearAllPoints()
 	if cfg and cfg.statusBarPosition == "top" then
-		bar:SetPoint("BOTTOMLEFT", GameTooltip, "TOPLEFT", 0, 2)
-		bar:SetPoint("BOTTOMRIGHT", GameTooltip, "TOPRIGHT", 0, 2)
+		bar:SetPoint("BOTTOMLEFT", GameTooltip, "TOPLEFT", 2, 2)
+		bar:SetPoint("BOTTOMRIGHT", GameTooltip, "TOPRIGHT", -2, 2)
 	elseif #savedBarPoints > 0 then
 		for i = 1, #savedBarPoints do
 			bar:SetPoint(unpack(savedBarPoints[i]))
@@ -527,6 +528,7 @@ function Tooltip:OnEnable()
 	if cfg.showIDs and Tooltip.SetupTooltipID then Tooltip:SetupTooltipID() end
 	if cfg.showItemLevel and Tooltip.SetupItemLevel then Tooltip:SetupItemLevel() end
 	if cfg.hoverTips and Tooltip.SetupHoverTips then Tooltip:SetupHoverTips() end
+	if cfg.mountSource and Tooltip.SetupMountSource then Tooltip:SetupMountSource() end
 
 	self:RegisterEvent("MODIFIER_STATE_CHANGED", "ResetUnit")
 
@@ -563,6 +565,7 @@ function Tooltip:RegisterOptions(category, builder)
 	local _, idsInit = builder:Checkbox(category, self, "showIDs", L["Show IDs"], L["Append spell, item, quest and other IDs to tooltips."])
 	local _, iconsInit = builder:Checkbox(category, self, "showIcons", L["Show Icons"], L["Show an icon next to the tooltip title for spells, items and more."])
 	local _, hoverInit = builder:Checkbox(category, self, "hoverTips", L["Hyperlink Hover Tips"], L["Show a tooltip when hovering item/spell links in chat."])
+	local _, mountInit = builder:Checkbox(category, self, "mountSource", L["Show Mount Source"], L["Show a mount's collection status and source on aura tooltips (hold Shift over another player's mount buff)."])
 
 	-- Every tooltip extra is meaningless while the module is off.
 	builder:DependsOn(barPosInit, enableInit)
@@ -576,6 +579,7 @@ function Tooltip:RegisterOptions(category, builder)
 	builder:DependsOn(idsInit, enableInit)
 	builder:DependsOn(iconsInit, enableInit)
 	builder:DependsOn(hoverInit, enableInit)
+	builder:DependsOn(mountInit, enableInit)
 	-- "Item Level on Shift" only applies when item level is shown at all.
 	builder:DependsOn(ilvlShiftInit, ilvlInit)
 end

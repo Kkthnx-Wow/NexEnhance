@@ -10,7 +10,7 @@
 
 -- luacheck: globals ChatFontNormal
 local _, ns = ...
-local F, C, L = ns.F, ns.C, ns.L
+local F, L = ns.F, ns.L
 
 local _G = _G
 local gsub, format, tconcat, tostring = string.gsub, string.format, table.concat, tostring
@@ -112,16 +112,20 @@ function ChatCopy:Toggle(chatFrame)
 	editBox:HighlightText()
 end
 
+local copyButton
+
 local function CreateCopyButton(chatFrame)
 	local button = CreateFrame("Button", nil, chatFrame)
 	button:SetSize(16, 16)
-	button:SetPoint("TOPRIGHT", chatFrame, "TOPRIGHT", -2, 2)
-	button:SetAlpha(0.4)
+	button:SetPoint("BOTTOMRIGHT", chatFrame, "BOTTOMRIGHT", 12, -2)
+	button:SetAlpha(0.2)
 	button:SetFrameStrata("HIGH")
+	button.chatFrame = chatFrame
 
 	local icon = button:CreateTexture(nil, "ARTWORK")
 	icon:SetAllPoints()
 	icon:SetTexture("Interface\\BUTTONS\\UI-GuildButton-PublicNote-Up")
+	icon:SetBlendMode("ADD")
 	-- icon:SetTexCoord(unpack(C.TexCoord)) -- We do not need this as we are using a custom texture
 	button.icon = icon
 
@@ -132,20 +136,44 @@ local function CreateCopyButton(chatFrame)
 		GameTooltip:Show()
 	end)
 	button:SetScript("OnLeave", function(self)
-		self:SetAlpha(0.4)
+		self:SetAlpha(0.2)
 		GameTooltip:Hide()
 	end)
-	button:SetScript("OnClick", function()
-		ChatCopy:Toggle(chatFrame)
+	-- Copy whatever window the button is currently riding, not a captured one.
+	button:SetScript("OnClick", function(self)
+		ChatCopy:Toggle(self.chatFrame)
 	end)
 
 	return button
 end
 
+-- The button is a child of one chat frame, so it hides when that frame's tab is
+-- deselected (the dock hides the whole frame). Move it onto the newly selected
+-- window so a single, tidy button always rides the active tab.
+local function UpdateButtonOwner(chatFrame)
+	if not copyButton or not chatFrame then return end
+	copyButton.chatFrame = chatFrame
+	copyButton:SetParent(chatFrame)
+	copyButton:ClearAllPoints()
+	copyButton:SetPoint("BOTTOMRIGHT", chatFrame, "BOTTOMRIGHT", 12, -2)
+	copyButton:SetFrameStrata("HIGH")
+end
+
 function ChatCopy:OnEnable()
 	if not ns.db.chatCopy.enable then return end
 	-- A single copy button on the primary chat window keeps things tidy.
-	CreateCopyButton(_G["ChatFrame1"])
+	copyButton = CreateCopyButton(_G["ChatFrame1"])
+
+	-- Follow the active tab. FCFDock_SelectWindow(dock, chatFrame) is called for
+	-- every tab change; restrict to the General dock so a second dock can't steal
+	-- the button.
+	if _G["FCFDock_SelectWindow"] then
+		hooksecurefunc("FCFDock_SelectWindow", function(dock, chatFrame)
+			if dock == _G["GENERAL_CHAT_DOCK"] then
+				UpdateButtonOwner(chatFrame)
+			end
+		end)
+	end
 end
 
 function ChatCopy:RegisterOptions(category, builder)

@@ -8,6 +8,37 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.1] — 2026-06-05
+
+A polish-and-extras update: colour your default frames, a Details! skin and a
+mount-source tooltip, plus an easier-to-read Settings panel — still "improve,
+don't reskin," all toggleable from the Settings panel.
+
+### Added
+- **General — Frame Colour:** tint the default unit frames and HUD elements
+  (player, pet, target, focus, the Boss 1–5 frames, class resources, cast bars,
+  totems and the minimap compass) with a colour of your choice. Driven by
+  targeted hooks/events rather than a per-frame update, and taint-safe. Lives in
+  a new **General** settings group.
+- **Skins — Details:** frames each Details! Damage Meter window with the
+  Minimalistic skin plus a clean Blizzard-style border and background, catching
+  newly opened windows through Details' own event listener.
+- **Tooltip — Mount Source:** hold Shift over another player's mount buff to see
+  the mount's collection status and where it comes from. Defers to the standalone
+  MountsSource addon if you run it.
+- **Settings panel — icons & descriptions:** each subcategory now shows an icon
+  in the sidebar and an intro description at the top of its page.
+
+### Changed
+- **Settings panel:** UI Scale moved into the new **General** group, and the
+  sub-title divider sits a little lower for breathing room.
+
+### Fixed
+- **Chat — Chat Copy:** the copy button no longer disappears when you switch
+  chat tabs; it now follows the active chat window.
+
+---
+
 ## [1.2.0] — 2026-06-05
 
 A chat-focused update: a cleaner, smarter edit box, a movable Battle.net pop-up,
@@ -211,6 +242,7 @@ the default UI and gets out of your way.
 
 ---
 
+[1.2.1]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.1
 [1.2.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.0
 [1.1.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.1.0
 [1.0.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.0.0

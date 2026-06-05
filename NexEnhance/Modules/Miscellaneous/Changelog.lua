@@ -45,6 +45,29 @@ local BACKDROP = {
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.2.1",
+		date = "2026-06-05",
+		intro = "A polish-and-extras update: colour your default frames, a Details! skin and a mount-source tooltip, plus an easier-to-read Settings panel - still improve, never reskin.",
+		sections = {
+			{ "General", {
+				"Frame Colour: tint the default unit frames and HUD (player, pet, target, focus, boss, class resources, cast bars, totems and the minimap) with a colour of your choice.",
+				"UI Scale now lives in the new General group.",
+			} },
+			{ "Skins", {
+				"Details: frames each Details! window with the Minimalistic skin plus a clean Blizzard-style border and background.",
+			} },
+			{ "Tooltip", {
+				"Mount Source: hold Shift over another player's mount buff to see its collection status and source.",
+			} },
+			{ "Chat", {
+				"Chat Copy button no longer disappears when switching chat tabs.",
+			} },
+			{ "Interface", {
+				"Each Settings subcategory now has a sidebar icon and an intro description at the top of its page.",
+			} },
+		},
+	},
+	{
 		version = "1.2.0",
 		date = "2026-06-05",
 		intro = "A chat-focused update: a cleaner, smarter edit box, a movable Battle.net pop-up, and a new Mythic+ keystone autoslotter - plus an easier-to-navigate Settings panel.",

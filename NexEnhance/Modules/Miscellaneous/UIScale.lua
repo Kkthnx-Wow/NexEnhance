@@ -32,7 +32,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local UIScale = ns:NewModule("UIScale", "uiScale", { group = "misc", title = L["UI Scale"], order = 1 })
+local UIScale = ns:NewModule("UIScale", "uiScale", { group = "general", title = L["UI Scale"], order = 1 })
 
 local MIN_SCALE, MAX_SCALE = 0.40, 1.15
 

@@ -256,3 +256,49 @@ function F.CreateEditBox(parent, width, height)
 
 	return eb
 end
+
+-- ---------------------------------------------------------------------------
+-- Settings list description
+--   Blizzard's vertical Settings layout has section headers but no body-text
+--   element, so this adds a small wrapped paragraph - e.g. an intro blurb at the
+--   top of each subcategory page. Mirrors Blizzard's own pattern: an XML template
+--   carrying a mixin (see Widgets.xml) built via Settings.CreateElementInitializer.
+-- ---------------------------------------------------------------------------
+-- luacheck: globals NexEnhanceSettingsDescriptionMixin
+
+NexEnhanceSettingsDescriptionMixin = {}
+
+function NexEnhanceSettingsDescriptionMixin:Init(initializer)
+	local data = initializer:GetData()
+	self.Text:SetText(data and data.text or "")
+	self.Text:SetTextColor(0.85, 0.85, 0.85)
+end
+
+-- Measure wrapped text height off-screen. We measure at a slightly narrower
+-- width than the real element so the reserved height never clips the text.
+local descMeasure
+local DESC_MEASURE_WIDTH = 500
+local DESC_PADDING = 14
+
+local function MeasureDescriptionHeight(text)
+	if not descMeasure then
+		descMeasure = UIParent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+		descMeasure:Hide()
+		descMeasure:SetWidth(DESC_MEASURE_WIDTH)
+		descMeasure:SetJustifyH("LEFT")
+		descMeasure:SetWordWrap(true)
+	end
+	descMeasure:SetText(text or "")
+	return (descMeasure:GetStringHeight() or 12) + DESC_PADDING
+end
+
+--- Create an initializer that renders `text` as a wrapped description paragraph,
+--- ready for layout:AddInitializer(...). Returns nil if the Settings API is
+--- unavailable. Height is computed from the text so it never clips.
+function F.CreateSettingsDescription(text)
+	if not (Settings and Settings.CreateElementInitializer) then return end
+	local initializer = Settings.CreateElementInitializer("NexEnhanceSettingsDescriptionTemplate", { text = text })
+	local height = MeasureDescriptionHeight(text)
+	initializer.GetExtent = function() return height end
+	return initializer
+end

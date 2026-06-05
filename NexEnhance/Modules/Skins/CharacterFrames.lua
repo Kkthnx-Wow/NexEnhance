@@ -113,8 +113,8 @@ function CharacterFrames:StyleCharacterFrame()
 
 	CharacterModelScene:SetSize(0, 0)
 	CharacterModelScene:ClearAllPoints()
-	CharacterModelScene:SetPoint("TOPLEFT", CharacterFrame.Inset, 0, 0)
-	CharacterModelScene:SetPoint("BOTTOMRIGHT", CharacterFrame.Inset, 0, 20)
+	CharacterModelScene:SetPoint("TOPLEFT", CharacterFrame.Inset, 4, -4)
+	CharacterModelScene:SetPoint("BOTTOMRIGHT", CharacterFrame.Inset, -4, 4)
 
 	hooksecurefunc(CharacterFrame, "UpdateSize", function()
 		if InCombatLockdown() then return end -- secure frame; never resize in combat

@@ -77,6 +77,12 @@ local ANIMATIONS = {
 
 local PET_MODEL = { offsetX = -500, offsetY = 100, camScale = 9, facing = 6 }
 
+local function CancelTimer(handle)
+	if handle and handle.Cancel then
+		handle:Cancel()
+	end
+end
+
 -- Classic Blizzard tooltip chrome (matches Install, Chat Copy, Changelog, etc.).
 local BLIZZARD_BACKDROP = {
 	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -207,7 +213,7 @@ local function GetAnimation(model, key)
 	return ANIMATIONS[key], key
 end
 
-local function SetAnimation(frame, key)
+local function ApplyAFKAnimation(frame, key)
 	local model = frame.bottom.model
 	local options, usedKey = GetAnimation(model, key)
 	if not options then return end
@@ -230,20 +236,20 @@ end
 local function Model_OnUpdate(self)
 	if self.isIdle then return end
 
-	if GetTime() - self.startTime >= self.duration then
-		self:SetAnimation(0)
-		self.isIdle = true
+	if GetTime() - self.startTime < self.duration then return end
 
-		local frame = self.afkFrame
-		if not frame then return end
+	self:SetAnimation(0)
+	self.isIdle = true
 
-		CancelTimer(frame.animTimer)
-		frame.animTimer = C_Timer.After(self.idleDuration, function()
-			if frame.isAFK then
-				SetAnimation(frame)
-			end
-		end)
-	end
+	local frame = self.afkFrame
+	if not frame or not frame.isAFK then return end
+
+	CancelTimer(frame.animTimer)
+	frame.animTimer = C_Timer.After(self.idleDuration, function()
+		if frame.isAFK then
+			ApplyAFKAnimation(frame)
+		end
+	end)
 end
 
 -- Faction crest + text offsets
@@ -269,12 +275,6 @@ local function CreateRandomStatMessage()
 		end
 	end
 	return L["AFK Random Stats"]
-end
-
-local function CancelTimer(handle)
-	if handle and handle.Cancel then
-		handle:Cancel()
-	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -341,7 +341,7 @@ local function SetAFKMode(frame, enable)
 
 		local model = frame.bottom.model
 		model:SetUnit("player")
-		SetAnimation(frame, "wave")
+		ApplyAFKAnimation(frame, "wave")
 
 		local petModel = frame.bottom.modelPet
 		if UnitExists("pet") then

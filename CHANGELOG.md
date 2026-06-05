@@ -8,6 +8,16 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.4] — 2026-06-05
+
+Hotfix for the AFK Camera animation loop.
+
+### Fixed
+- **AFK Camera:** fixed a Lua error after the wave emote (`attempt to call a nil
+  value`) that stopped the dance/sleep animation cycle from continuing.
+
+---
+
 ## [1.2.3] — 2026-06-05
 
 Inventory clarity, an immersive AFK camera, and a proper thank-you page: bind labels on
@@ -281,6 +291,7 @@ the default UI and gets out of your way.
 
 ---
 
+[1.2.4]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.4
 [1.2.3]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.3
 [1.2.2]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.2
 [1.2.1]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.1

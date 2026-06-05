@@ -45,6 +45,16 @@ local BACKDROP = {
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.2.4",
+		date = "2026-06-05",
+		intro = "Hotfix for the AFK Camera animation loop.",
+		sections = {
+			{ "Fixed", {
+				"AFK Camera: fixed a Lua error after the wave emote that stopped the dance/sleep cycle from continuing.",
+			} },
+		},
+	},
+	{
 		version = "1.2.3",
 		date = "2026-06-05",
 		intro = "Inventory clarity, an immersive AFK camera, and a proper thank-you page: bind labels on bag icons plus a class-coloured credits panel for the authors whose work helped build NexEnhance.",

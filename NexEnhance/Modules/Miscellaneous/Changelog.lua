@@ -56,6 +56,7 @@ local CHANGELOG = {
 			} },
 			{ "Automation", {
 				"Auto Keystone: automatically slots your Mythic+ keystone when the Challenge Mode UI opens (defers to AngryKeystones if installed).",
+				"Auto Hide Tracker: hides the Objective Tracker during boss fights and arenas, keeping objectives visible in Mythic+ by default.",
 			} },
 			{ "Interface", {
 				"The Settings sidebar is now listed alphabetically.",

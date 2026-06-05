@@ -18,6 +18,10 @@ Still "improve, don't reskin," all toggleable from the Settings panel.
 - **Automation — Auto Keystone:** automatically slots your Mythic+ keystone when
   the Challenge Mode UI opens. Uses an instant item-type check (no item-cache
   dependency) and bows out entirely if AngryKeystones is installed.
+- **Automation — Auto Hide Tracker:** hides the Objective Tracker during boss
+  encounters and arena matches via a secure state driver, restoring it afterwards.
+  Keeps objectives visible in Mythic+ by default (toggleable), defers reparenting
+  out of combat when needed, and steps aside for boss mods and third-party trackers.
 - **Chat — Hide Edit Box When Inactive:** keeps the input box hidden until you
   focus it, instead of leaving a faded bar lingering over the chat (and tabs).
 - **Chat — Hide Scroll Bar:** removes the chat scroll bar and jump-to-bottom

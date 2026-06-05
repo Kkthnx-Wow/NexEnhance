@@ -135,33 +135,32 @@ end
 function Tooltip:InsertFactionFrame(faction)
 	if not self.factionFrame then
 		local f = self:CreateTexture(nil, "OVERLAY")
-		f:SetPoint("TOPRIGHT", 0, -5)
+		f:SetPoint("TOPRIGHT", -10, -10)
 		f:SetBlendMode("ADD")
-		f:SetScale(0.3)
-		f:SetAlpha(0.7)
+		f:SetSize(46, 44)
 		self.factionFrame = f
 	end
-	self.factionFrame:SetTexture("Interface\\Timer\\" .. faction .. "-Logo")
+	-- Clean Alliance/Horde crests from the Mount Journal filter buttons.
+	self.factionFrame:SetAtlas("MountJournalIcons-" .. faction)
 	self.factionFrame:Show()
 end
 
-local roleTexCoord = {
-	TANK = { 0, 19 / 64, 22 / 64, 41 / 64 },
-	HEALER = { 20 / 64, 39 / 64, 1 / 64, 20 / 64 },
-	DAMAGER = { 20 / 64, 39 / 64, 22 / 64, 41 / 64 },
+local roleAtlas = {
+	TANK = "roleicon-tiny-tank",
+	HEALER = "roleicon-tiny-healer",
+	DAMAGER = "roleicon-tiny-dps",
 }
 
 function Tooltip:InsertRoleFrame(role)
-	local coord = roleTexCoord[role]
-	if not coord then return end
+	local atlas = roleAtlas[role]
+	if not atlas then return end
 	if not self.roleFrame then
 		local f = self:CreateTexture(nil, "OVERLAY")
 		f:SetPoint("TOPRIGHT", self, -2, -2)
-		f:SetSize(18, 18)
-		f:SetTexture("Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES")
+		f:SetSize(16, 16)
 		self.roleFrame = f
 	end
-	self.roleFrame:SetTexCoord(coord[1], coord[2], coord[3], coord[4])
+	self.roleFrame:SetAtlas(atlas)
 	self.roleFrame:Show()
 end
 

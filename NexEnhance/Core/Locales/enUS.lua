@@ -153,19 +153,27 @@ L["Auto-accept invites from guild members."] = "Auto-accept invites from guild m
 L["Auto Goodbye"] = "Auto Goodbye"
 L["Enable Auto Goodbye"] = "Enable Auto Goodbye"
 L["Send a random friendly farewell to the group after finishing a dungeon or Mythic+ run."] = "Send a random friendly farewell to the group after finishing a dungeon or Mythic+ run."
+-- Short, casual, context-free farewells. These fire after ANY group instance
+-- (LFD dungeon, LFR raid, or M+ key), so nothing here may assume a key, a carry,
+-- a raid, or multiple runs - just generic "that was a group, thanks/gg" energy,
+-- typed the way a real player would (mostly lowercase, quick).
 L["AutoGoodbyeMessages"] = {
-	"GG everyone, thanks for the run!",
-	"Thanks all, that was a good one!",
-	"GG, take care everyone!",
-	"Nice run, thanks for the group!",
-	"Thanks for the carry, see you around!",
-	"Good group, GG and good luck out there!",
-	"Cheers everyone, that was fun!",
-	"Thanks team, have a great one!",
-	"GG, appreciate the runs all!",
-	"Well played everyone, safe travels!",
-	"Thanks for the keys, happy hunting!",
-	"GG! Hope to group with you again.",
+	"gg",
+	"gg all",
+	"ggs",
+	"gg wp",
+	"gg everyone",
+	"ty all",
+	"thanks!",
+	"thanks all",
+	"ty, gg",
+	"gg, ty!",
+	"nice one, ty",
+	"good run, thanks!",
+	"cheers all",
+	"ty for the group",
+	"gg, take care!",
+	"thanks team, gg",
 }
 
 -- Auto Resurrect
@@ -180,6 +188,13 @@ L["Auto Keystone"] = "Auto Keystone"
 L["Enable Auto Keystone"] = "Enable Auto Keystone"
 L["Automatically slot your Mythic+ keystone when the Challenge Mode UI opens."] = "Automatically slot your Mythic+ keystone when the Challenge Mode UI opens."
 L["Keystone automatically placed."] = "Keystone automatically placed."
+
+-- Auto Hide Tracker
+L["Auto Hide Tracker"] = "Auto Hide Tracker"
+L["Enable Auto Hide Tracker"] = "Enable Auto Hide Tracker"
+L["Hide the Objective Tracker during boss encounters and arena matches."] = "Hide the Objective Tracker during boss encounters and arena matches."
+L["Hide in Mythic+"] = "Hide in Mythic+"
+L["Also hide the tracker during Mythic+ keystone runs (otherwise your objectives stay visible)."] = "Also hide the tracker during Mythic+ keystone runs (otherwise your objectives stay visible)."
 
 -- ActionBars
 L["Enable Action Bars"] = "Enable Action Bars"

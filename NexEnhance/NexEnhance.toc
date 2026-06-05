@@ -97,6 +97,7 @@ Modules\Automation\AutoInvite.lua
 Modules\Automation\AutoGoodbye.lua
 Modules\Automation\AutoResurrect.lua
 Modules\Automation\AutoKeystone.lua
+Modules\Automation\AutoHideTracker.lua
 
 # Announcements
 Modules\Announcements\QuestNotification.lua

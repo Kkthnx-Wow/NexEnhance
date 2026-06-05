@@ -50,6 +50,35 @@ local function StyleItemSlots(...)
 	end
 end
 
+-- The Character model uses a ModelScene, not the legacy Model widget the Inspect
+-- frame uses, so there is no SetCamDistanceScale. Instead we nudge the scene's
+-- OrbitCamera zoom to match the Inspect frame's slightly pulled-back framing.
+-- SetUpCharacterSheetScene() transitions with CAMERA_MODIFICATION_TYPE_DISCARD,
+-- which resets the camera to the scene default every refresh, so we simply
+-- re-apply our scale each time PaperDollFrame_SetPlayer runs (no compounding).
+local CHAR_MODEL_ZOOM_SCALE = 1.1
+
+local function AdjustCharacterModelZoom()
+	local scene = _G.CharacterModelScene
+	local camera = scene and scene.GetActiveCamera and scene:GetActiveCamera()
+	if not (camera and camera.GetZoomDistance and camera.SetZoomDistance) then return end
+
+	local distance = camera:GetZoomDistance()
+	if not distance then return end
+
+	local target = distance * CHAR_MODEL_ZOOM_SCALE
+	local maxDistance = camera.GetMaxZoomDistance and camera:GetMaxZoomDistance()
+	if maxDistance and maxDistance > 0 and target > maxDistance then
+		target = maxDistance
+	end
+
+	camera:SetZoomDistance(target)
+	-- Snap so the model doesn't visibly drift on each gear change.
+	if camera.SnapToTargetInterpolationZoom then
+		camera:SnapToTargetInterpolationZoom()
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- Character frame
 -- ---------------------------------------------------------------------------
@@ -131,6 +160,12 @@ function CharacterFrames:StyleCharacterFrame()
 	CharacterStatsPane.ClassBackground:SetHeight(CharacterStatsPane.ClassBackground:GetHeight() + 6)
 	CharacterStatsPane.ClassBackground:SetParent(CharacterFrameInsetRight)
 	CharacterStatsPane.ClassBackground:SetPoint("CENTER")
+
+	-- Match the inspect frame's camera framing on the character model scene.
+	if _G.PaperDollFrame_SetPlayer then
+		hooksecurefunc("PaperDollFrame_SetPlayer", AdjustCharacterModelZoom)
+		AdjustCharacterModelZoom()
+	end
 end
 
 -- ---------------------------------------------------------------------------

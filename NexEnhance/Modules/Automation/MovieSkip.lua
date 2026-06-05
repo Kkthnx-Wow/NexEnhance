@@ -8,12 +8,14 @@
 	NexEnhance framework. Uses HookScript on the (non-secure) movie frames.
 --]]
 
--- luacheck: globals CinematicFrameCloseDialogConfirmButton CinematicFrame MovieFrame
+-- luacheck: globals CinematicFrameCloseDialog CinematicFrameCloseDialogConfirmButton CinematicFrame MovieFrame
+---@diagnostic disable: undefined-field
 local _, ns = ...
 local L = ns.L
 
-local MovieFrame = MovieFrame
-local CinematicFrame = CinematicFrame
+local _G = _G
+-- local MovieFrame = MovieFrame
+-- local CinematicFrame = CinematicFrame
 
 ns:RegisterDefaults({
 	movieSkip = {
@@ -27,11 +29,23 @@ local function db()
 	return ns.db.movieSkip
 end
 
+-- Resolve the skip dialog + its confirm button for whichever frame fired the
+-- key event. Done at keypress time (not login) because the cinematic dialog is
+-- created lazily, so capturing references up front is unreliable.
+local function GetSkipParts(self)
+	if self == MovieFrame then
+		local dialog = MovieFrame.CloseDialog
+		return dialog, dialog and dialog.ConfirmButton
+	end
+	return _G.CinematicFrameCloseDialog, _G.CinematicFrameCloseDialogConfirmButton
+end
+
 local function skipOnKeyDown(self, key)
 	if not db().enable then return end
 	if key == "ESCAPE" then
-		if self:IsShown() and self.closeDialog and self.closeDialog.confirmButton then
-			self.closeDialog:Hide()
+		local dialog = GetSkipParts(self)
+		if self:IsShown() and dialog then
+			dialog:Hide()
 		end
 	end
 end
@@ -39,8 +53,9 @@ end
 local function skipOnKeyUp(self, key)
 	if not db().enable then return end
 	if key == "SPACE" or key == "ESCAPE" or key == "ENTER" then
-		if self:IsShown() and self.closeDialog and self.closeDialog.confirmButton then
-			self.closeDialog.confirmButton:Click()
+		local _, confirmButton = GetSkipParts(self)
+		if self:IsShown() and confirmButton then
+			confirmButton:Click()
 		end
 	end
 end
@@ -48,15 +63,14 @@ end
 function MovieSkip:OnEnable()
 	if not db().enable then return end
 
-	if MovieFrame and MovieFrame.CloseDialog then
-		MovieFrame.closeDialog = MovieFrame.CloseDialog
-		MovieFrame.closeDialog.confirmButton = MovieFrame.CloseDialog.ConfirmButton
+	-- Both are core frames present at login; hook unconditionally and resolve
+	-- the dialog widgets on demand (see GetSkipParts).
+	if MovieFrame then
 		MovieFrame:HookScript("OnKeyDown", skipOnKeyDown)
 		MovieFrame:HookScript("OnKeyUp", skipOnKeyUp)
 	end
 
-	if CinematicFrame and CinematicFrame.closeDialog then
-		CinematicFrame.closeDialog.confirmButton = CinematicFrameCloseDialogConfirmButton
+	if CinematicFrame then
 		CinematicFrame:HookScript("OnKeyDown", skipOnKeyDown)
 		CinematicFrame:HookScript("OnKeyUp", skipOnKeyUp)
 	end

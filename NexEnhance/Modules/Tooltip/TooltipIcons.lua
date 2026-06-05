@@ -85,9 +85,17 @@ function Tooltip:ReskinTooltipIcons()
 		end
 	end
 
-	hooksecurefunc(GameTooltip, "SetUnitAura", function(tip) Tooltip.SetupTooltipIcon(tip) end)
-	hooksecurefunc(GameTooltip, "SetAzeriteEssence", function(tip) Tooltip.SetupTooltipIcon(tip) end)
-	hooksecurefunc(GameTooltip, "SetAzeriteEssenceSlot", function(tip) Tooltip.SetupTooltipIcon(tip) end)
+	-- These tooltip setters may be absent on some clients; guard each hook so a
+	-- missing method degrades quietly instead of erroring during setup.
+	if GameTooltip.SetUnitAura then
+		hooksecurefunc(GameTooltip, "SetUnitAura", function(tip) Tooltip.SetupTooltipIcon(tip) end)
+	end
+	if GameTooltip.SetAzeriteEssence then
+		hooksecurefunc(GameTooltip, "SetAzeriteEssence", function(tip) Tooltip.SetupTooltipIcon(tip) end)
+	end
+	if GameTooltip.SetAzeriteEssenceSlot then
+		hooksecurefunc(GameTooltip, "SetAzeriteEssenceSlot", function(tip) Tooltip.SetupTooltipIcon(tip) end)
+	end
 
 	local gt = GameTooltip ---@type any
 	local eit = EmbeddedItemTooltip ---@type any

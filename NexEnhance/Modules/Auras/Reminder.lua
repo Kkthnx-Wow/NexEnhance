@@ -24,7 +24,8 @@ local F, L = ns.F, ns.L
 
 local pairs, tinsert, next, select = pairs, table.insert, next, select
 local CreateFrame, UIParent = CreateFrame, UIParent
-local GetSpecialization = GetSpecialization
+local C_SpecializationInfo = _G.C_SpecializationInfo
+local GetSpecialization = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization) or GetSpecialization
 local UnitIsDeadOrGhost, UnitInVehicle, InCombatLockdown = UnitIsDeadOrGhost, UnitInVehicle, InCombatLockdown
 local IsInInstance, IsPlayerSpell = IsInInstance, IsPlayerSpell
 local GetWeaponEnchantInfo = GetWeaponEnchantInfo

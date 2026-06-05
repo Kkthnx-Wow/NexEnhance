@@ -203,6 +203,9 @@ function QuestNotification:Update()
 		end
 	elseif self.registered then
 		wipe(completedQuest)
+		-- Reset the seed flag too, so a later re-enable rebuilds the
+		-- completed-quest set silently instead of announcing everything.
+		initComplete = nil
 		for i = 1, #subscriptions do
 			ns:UnregisterEvent(subscriptions[i][1], subscriptions[i][2])
 		end

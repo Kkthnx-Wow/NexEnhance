@@ -164,9 +164,11 @@ function Tooltip:SetupTooltipID()
 		if data.id then Tooltip.AddLineForID(tip, data.id, types.currency) end
 	end)
 
-	hooksecurefunc(GameTooltip, "SetAzeritePower", function(tip, _, _, id)
-		if id then Tooltip.AddLineForID(tip, id, types.azerite, true) end
-	end)
+	if GameTooltip.SetAzeritePower then
+		hooksecurefunc(GameTooltip, "SetAzeritePower", function(tip, _, _, id)
+			if id then Tooltip.AddLineForID(tip, id, types.azerite, true) end
+		end)
+	end
 
 	if _G["QuestMapLogTitleButton_OnEnter"] then
 		hooksecurefunc("QuestMapLogTitleButton_OnEnter", function(btn)

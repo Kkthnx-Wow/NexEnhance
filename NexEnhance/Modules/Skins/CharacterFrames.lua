@@ -17,6 +17,7 @@
 	    frames.
 --]]
 
+---@diagnostic disable: undefined-field
 local _, ns = ...
 local L = ns.L
 
@@ -107,7 +108,8 @@ function CharacterFrames:StyleCharacterFrame()
 
 	-- Larger, clearer item-level readout.
 	local itemLevelValue = CharacterStatsPane.ItemLevelFrame.Value
-	itemLevelValue:SetFont(select(1, itemLevelValue:GetFont()), 20, select(3, ""))
+	local ilvlFont, _, ilvlFlags = itemLevelValue:GetFont()
+	itemLevelValue:SetFont(ilvlFont, 20, ilvlFlags)
 	itemLevelValue:SetShadowOffset(1, -1)
 
 	-- Clean the Title Manager list rows as they scroll into view.

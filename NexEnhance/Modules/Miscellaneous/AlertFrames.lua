@@ -7,16 +7,18 @@
 	Talking Head frame.
 
 	Ported from NDui's Modules/Misc/AlertFrames.lua (by siweia), adapted to the
-	NexEnhance framework. The mover is intentionally dropped - the anchor is
-	hard-coded. All re-anchoring is done with hooksecurefunc, so it is taint-safe.
+	NexEnhance framework. The anchor is registered with Edit Mode (LibEditMode)
+	so it can be dragged. All re-anchoring is done with hooksecurefunc, so it is
+	taint-safe.
 --]]
 
 -- luacheck: globals GroupLootContainer
+---@diagnostic disable: undefined-field
 local _, ns = ...
-local L = ns.L
+local F, L = ns.F, ns.L
 
 local _G = _G
-local ipairs, select, unpack = ipairs, select, unpack
+local select = select
 local tremove = table.remove
 local hooksecurefunc = hooksecurefunc
 local CreateFrame = CreateFrame
@@ -32,9 +34,6 @@ ns:RegisterDefaults({
 })
 
 local AlertFrames = ns:NewModule("AlertFrames", "alertFrames", { group = "misc", title = L["Alert Frames"], order = 30 })
-
--- Hard-coded anchor: top-centre, a little below the very top of the screen.
-local ANCHOR_POSITION = { "TOP", UIParent, "TOP", 0, -40 }
 
 -- Current stacking direction; flipped by AlertFrame_UpdateAnchor depending on
 -- whether the anchor sits in the top or bottom half of the screen.
@@ -147,12 +146,16 @@ function AlertFrames:OnEnable()
 
 	parentFrame = CreateFrame("Frame", nil, UIParent)
 	parentFrame:SetSize(200, 30)
-	parentFrame:SetPoint(unpack(ANCHOR_POSITION))
+	-- Top-centre by default; draggable in Edit Mode.
+	F.CreateMover(parentFrame, "alertFrames", L["Alert Frames"], "TOP", 0, -40)
 
 	GroupLootContainer:EnableMouse(false)
 	GroupLootContainer.ignoreFramePositionManager = true
 
-	for index, subSystem in ipairs(AlertFrame.alertFrameSubSystems) do
+	-- Iterate backwards: we tremove the Talking Head subsystem mid-loop, and a
+	-- forward ipairs would shift indices down and skip the next subsystem.
+	for index = #AlertFrame.alertFrameSubSystems, 1, -1 do
+		local subSystem = AlertFrame.alertFrameSubSystems[index]
 		if subSystem.anchorFrame and subSystem.anchorFrame == _G.TalkingHeadFrame then
 			tremove(AlertFrame.alertFrameSubSystems, index)
 		else

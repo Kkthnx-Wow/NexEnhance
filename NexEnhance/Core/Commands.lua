@@ -28,6 +28,20 @@ handlers.help = function(_)
 	F.Print("  /nex modules       -", L["List modules and their state"])
 	F.Print("  /nex toggle <name> -", L["Toggle a module: /nex toggle <module>"])
 	F.Print("  /nex config        -", L["Open the options panel"])
+	F.Print("  /nex changelog     -", L["Open the changelog"])
+	F.Print("  /nex install       -", L["Open the setup screen"])
+end
+
+handlers.changelog = function(_)
+	if ns.OpenChangelog then
+		ns:OpenChangelog()
+	end
+end
+
+handlers.install = function(_)
+	if ns.OpenInstall then
+		ns:OpenInstall()
+	end
 end
 
 handlers.modules = function(_)

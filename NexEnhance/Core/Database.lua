@@ -33,7 +33,7 @@ ns.defaults = {
 ---     ns:RegisterDefaults({ autoVendor = { enable = true } })
 function ns:RegisterDefaults(defaults, scope)
 	scope = scope or "profile"
-	F.CopyTable(defaults, ns.defaults[scope])
+	F.CopyDefaults(defaults, ns.defaults[scope])
 end
 
 -- ---------------------------------------------------------------------------

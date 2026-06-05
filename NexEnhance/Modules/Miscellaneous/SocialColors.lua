@@ -210,7 +210,7 @@ local function UpdateWhoList(self)
 
 				if button.Name then button.Name:SetTextColor(ClassColorRGB(class)) end
 				if button.Level then button.Level:SetText(DiffColor(level) .. level) end
-				if button.Variable then button.Variable:SetText(whoColumns[whoSortType]) end
+				if button.Variable then button.Variable:SetText(whoColumns[whoSortType] or "") end
 			end
 		end
 	end

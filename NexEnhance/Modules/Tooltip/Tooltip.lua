@@ -23,6 +23,7 @@ local F, C, L = ns.F, ns.C, ns.L
 local _G = _G
 local format, strfind, strupper, strlen = string.format, string.find, string.upper, string.len
 local gsub, pairs, select = string.gsub, pairs, select
+local unpack = unpack
 local hooksecurefunc = hooksecurefunc
 
 local UnitExists = UnitExists
@@ -59,6 +60,7 @@ ns:RegisterDefaults({
 		hideRank = false,
 		mythicScore = true,
 		qualityBorder = true,
+		statusBarPosition = "bottom", -- "bottom" | "top"
 		showIDs = true,
 		showIcons = true,
 		showItemLevel = true,
@@ -124,7 +126,9 @@ function Tooltip:GetTarget(unit)
 	if F.NotSecret(isYou) and isYou then
 		return format("|cffff0000%s|r", ">" .. strupper(YOU) .. "<")
 	end
-	return F.ColorStr(F.UnitColor(unit)) .. (UnitName(unit) or "") .. "|r"
+	local name = UnitName(unit)
+	if not name or F.IsSecret(name) then name = "" end
+	return F.ColorStr(F.UnitColor(unit)) .. name .. "|r"
 end
 
 -- Faction / role frames ------------------------------------------------------
@@ -168,8 +172,12 @@ function Tooltip:UpdateFactionLine(lineData)
 
 	local unit = Tooltip.GetUnit(self)
 	if not unit then return end
-	local unitClass = unit and UnitIsPlayer(unit) and F.NotSecret(UnitIsPlayer(unit)) and UnitClass(unit)
-	local unitCreature = unit and UnitCreatureType(unit)
+	-- Guard the secret check BEFORE boolean-testing the result (12.0.5 can make
+	-- UnitIsPlayer return a secret value under restricted identity).
+	local isPlayer = UnitIsPlayer(unit)
+	isPlayer = F.NotSecret(isPlayer) and isPlayer
+	local unitClass = isPlayer and UnitClass(unit)
+	local unitCreature = UnitCreatureType(unit)
 
 	local linetext = lineData.leftText
 	if not linetext or F.IsSecret(linetext) then return end
@@ -254,6 +262,9 @@ function Tooltip:OnTooltipSetUnit()
 
 	if isPlayer then
 		local name, realm = UnitName(unit)
+		-- Under restricted identity the name can be secret; fall back so the
+		-- concatenations below never operate on a secret value.
+		if not name or F.IsSecret(name) then name = UNKNOWN or "Unknown" end
 		local pvpName = UnitPVPName(unit)
 		local relationship = UnitRealmRelationship(unit)
 		if not cfg.hideTitle and pvpName and F.NotSecret(pvpName) and pvpName ~= "" then
@@ -383,12 +394,44 @@ function Tooltip:UpdateStatusBarColor()
 	end
 end
 
+-- Optional health-bar placement. We capture Blizzard's default anchors once so
+-- the "bottom" choice can restore them exactly; "top" re-anchors the bar above
+-- the tooltip (it auto-tracks size since it pins to GameTooltip's top edge).
+local savedBarPoints
+local function RepositionStatusBar()
+	local bar = GameTooltipStatusBar
+	if not bar then return end
+
+	if not savedBarPoints then
+		savedBarPoints = {}
+		for i = 1, bar:GetNumPoints() do
+			savedBarPoints[i] = { bar:GetPoint(i) }
+		end
+	end
+
+	bar:ClearAllPoints()
+	if cfg and cfg.statusBarPosition == "top" then
+		bar:SetPoint("BOTTOMLEFT", GameTooltip, "TOPLEFT", 0, 2)
+		bar:SetPoint("BOTTOMRIGHT", GameTooltip, "TOPRIGHT", 0, 2)
+	elseif #savedBarPoints > 0 then
+		for i = 1, #savedBarPoints do
+			bar:SetPoint(unpack(savedBarPoints[i]))
+		end
+	else
+		-- Fallback to Blizzard's standard bottom placement.
+		bar:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 0, 0)
+		bar:SetPoint("TOPRIGHT", GameTooltip, "BOTTOMRIGHT", 0, 0)
+	end
+end
+
 function Tooltip:RefreshStatusBar()
 	if not self.text then
 		self.text = F.CreateFS(self, 12, "")
 		self.text:ClearAllPoints()
 		self.text:SetPoint("CENTER", self, "CENTER", 0, 0)
 	end
+
+	RepositionStatusBar()
 	-- Prefer the bar's own watched GUID (set by Blizzard's SetWatch), then fall
 	-- back to the parent tooltip's unit.
 	local guid = self.guid
@@ -477,6 +520,9 @@ function Tooltip:OnEnable()
 		hooksecurefunc(GT.StatusBar, "UpdateUnitHealth", Tooltip.RefreshStatusBar)
 	end
 
+	-- Capture Blizzard's default bar anchors and apply the chosen placement.
+	RepositionStatusBar()
+
 	-- Element add-ons (defined in sibling files).
 	if cfg.showIcons and Tooltip.ReskinTooltipIcons then Tooltip:ReskinTooltipIcons() end
 	if cfg.showIDs and Tooltip.SetupTooltipID then Tooltip:SetupTooltipID() end
@@ -495,8 +541,18 @@ function Tooltip:OnEnable()
 	end
 end
 
+function Tooltip:OnSettingChanged(key)
+	if key == "statusBarPosition" then
+		RepositionStatusBar()
+	end
+end
+
 function Tooltip:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "enable", L["Enable Tooltip"], L["Enhance the game tooltips with extra info (reload to fully disable)."])
+	builder:Dropdown(category, self, "statusBarPosition", L["Health Bar Position"], L["Place the unit health bar at the top or bottom of the tooltip."], {
+		{ value = "bottom", label = L["Bottom"] },
+		{ value = "top", label = L["Top"] },
+	})
 	builder:Checkbox(category, self, "factionIcon", L["Show Faction Icon"], L["Show an Alliance/Horde icon on player tooltips."])
 	builder:Checkbox(category, self, "lfdRole", L["Show Role Icon"], L["Show the group role (tank/healer/dps) icon on player tooltips."])
 	builder:Checkbox(category, self, "hideRealm", L["Hide Realm Name"], L["Hide the realm name on players from other realms (hold Shift to reveal)."])

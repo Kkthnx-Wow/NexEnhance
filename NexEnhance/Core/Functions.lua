@@ -99,23 +99,12 @@ end
 -- Table helpers
 -- ---------------------------------------------------------------------------
 
---- Deep copy a table. Used for cloning defaults so callers never mutate the
---- shared default tree.
-function F.CopyTable(source, target)
-	target = target or {}
-	for key, value in pairs(source) do
-		if type(value) == "table" then
-			target[key] = F.CopyTable(value, type(target[key]) == "table" and target[key] or nil)
-		elseif target[key] == nil then
-			target[key] = value
-		end
-	end
-	return target
-end
-
 --- Recursively fill `target` with any keys missing from `defaults`, without
 --- overwriting values the user already set. This is the saved-variable
---- "apply defaults" pass (cheaper and clearer than a metatable proxy).
+--- "apply defaults" / "merge defaults" pass (cheaper and clearer than a
+--- metatable proxy). NOTE: this is a *merge*, not a clone - to duplicate a
+--- table outright (so the original is untouched) use the global CopyTable from
+--- SharedXML/TableUtil.lua instead.
 function F.CopyDefaults(defaults, target)
 	if type(target) ~= "table" then target = {} end
 	for key, value in pairs(defaults) do

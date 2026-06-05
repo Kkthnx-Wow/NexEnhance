@@ -69,6 +69,10 @@ L["Show Mythic+ Score"] = "Show Mythic+ Score"
 L["Show the player's current-season Mythic+ rating."] = "Show the player's current-season Mythic+ rating."
 L["Quality-Coloured Border"] = "Quality-Coloured Border"
 L["Tint Blizzard's default tooltip border by item quality."] = "Tint Blizzard's default tooltip border by item quality."
+L["Health Bar Position"] = "Health Bar Position"
+L["Place the unit health bar at the top or bottom of the tooltip."] = "Place the unit health bar at the top or bottom of the tooltip."
+L["Bottom"] = "Bottom"
+L["Top"] = "Top"
 L["Show Item Level"] = "Show Item Level"
 L["Show the inspected player's item level on their tooltip."] = "Show the inspected player's item level on their tooltip."
 L["Item Level on Shift"] = "Item Level on Shift"
@@ -108,12 +112,68 @@ L["Auto Repair"] = "Auto Repair"
 L["Repair equipment when opening a merchant that can repair."] = "Repair equipment when opening a merchant that can repair."
 L["Use Guild Repairs"] = "Use Guild Repairs"
 L["Use guild repair funds when available and allowed."] = "Use guild repair funds when available and allowed."
+L["Use guild repair funds when available, falling back to your own gold."] = "Use guild repair funds when available, falling back to your own gold."
 L["Sell Junk"] = "Sell Junk"
 L["Sell Poor-quality items when opening a merchant."] = "Sell Poor-quality items when opening a merchant."
+L["Sell Poor-quality items, plus anything on your /nexjunk list, one at a time."] = "Sell Poor-quality items, plus anything on your /nexjunk list, one at a time."
+L["Protect Pet Trash"] = "Protect Pet Trash"
+L["Never auto-sell the handful of grey items that double as a currency."] = "Never auto-sell the handful of grey items that double as a currency."
 L["Repaired equipment for %s"] = "Repaired equipment for %s"
 L["Repaired equipment using guild funds for %s"] = "Repaired equipment using guild funds for %s"
 L["Sold junk for %s"] = "Sold junk for %s"
 L["Not enough money to repair"] = "Not enough money to repair"
+L["Custom Junk List"] = "Custom Junk List"
+L["Added %s to the junk list."] = "Added %s to the junk list."
+L["Removed %s from the junk list."] = "Removed %s from the junk list."
+L["Cleared the junk list."] = "Cleared the junk list."
+L["The junk list is empty."] = "The junk list is empty."
+L["Usage: /nexjunk add <item link or id>"] = "Usage: /nexjunk add <item link or id>"
+
+-- Decline Duels
+L["Decline Duels"] = "Decline Duels"
+L["Enable Decline Duels"] = "Enable Decline Duels"
+L["Automatically decline duel and pet-battle PvP duel requests."] = "Automatically decline duel and pet-battle PvP duel requests."
+L["Decline Player Duels"] = "Decline Player Duels"
+L["Decline standard player duel requests."] = "Decline standard player duel requests."
+L["Decline Pet Duels"] = "Decline Pet Duels"
+L["Decline pet-battle PvP duel requests."] = "Decline pet-battle PvP duel requests."
+L["Declined a duel request from %s."] = "Declined a duel request from %s."
+L["Declined a pet battle duel request from %s."] = "Declined a pet battle duel request from %s."
+
+-- Auto Invite
+L["Auto Invite"] = "Auto Invite"
+L["Enable Auto Invite"] = "Enable Auto Invite"
+L["Automatically accept group invites from trusted sources."] = "Automatically accept group invites from trusted sources."
+L["Accept From Friends"] = "Accept From Friends"
+L["Auto-accept invites from Battle.net and character friends."] = "Auto-accept invites from Battle.net and character friends."
+L["Accept From Guild"] = "Accept From Guild"
+L["Auto-accept invites from guild members."] = "Auto-accept invites from guild members."
+
+-- Auto Goodbye
+L["Auto Goodbye"] = "Auto Goodbye"
+L["Enable Auto Goodbye"] = "Enable Auto Goodbye"
+L["Send a random friendly farewell to the group after finishing a dungeon or Mythic+ run."] = "Send a random friendly farewell to the group after finishing a dungeon or Mythic+ run."
+L["AutoGoodbyeMessages"] = {
+	"GG everyone, thanks for the run!",
+	"Thanks all, that was a good one!",
+	"GG, take care everyone!",
+	"Nice run, thanks for the group!",
+	"Thanks for the carry, see you around!",
+	"Good group, GG and good luck out there!",
+	"Cheers everyone, that was fun!",
+	"Thanks team, have a great one!",
+	"GG, appreciate the runs all!",
+	"Well played everyone, safe travels!",
+	"Thanks for the keys, happy hunting!",
+	"GG! Hope to group with you again.",
+}
+
+-- Auto Resurrect
+L["Auto Resurrect"] = "Auto Resurrect"
+L["Enable Auto Resurrect"] = "Enable Auto Resurrect"
+L["Automatically accept resurrection requests while you are out of combat (ignores item-cast soul stones like the encounter pylon and brazier)."] = "Automatically accept resurrection requests while you are out of combat (ignores item-cast soul stones like the encounter pylon and brazier)."
+L["Thank the Resurrecter"] = "Thank the Resurrecter"
+L["Send a /thank emote to whoever resurrected you, a few seconds after you are back up."] = "Send a /thank emote to whoever resurrected you, a few seconds after you are back up."
 
 -- ActionBars
 L["Enable Action Bars"] = "Enable Action Bars"
@@ -147,7 +207,9 @@ L["Restyle and resize the Character and Inspect frames (reload to disable)."] = 
 
 -- ClassColors
 L["Enable Class-Coloured Health"] = "Enable Class-Coloured Health"
-L["Colour unit-frame health bars by class for players (player, target, focus, party and more)."] = "Colour unit-frame health bars by class for players (player, target, focus, party and more)."
+L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."] = "Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."
+L["Neutral Target Strip"] = "Neutral Target Strip"
+L["Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."] = "Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."
 
 -- SocialColors
 L["Enable Social Class Colours"] = "Enable Social Class Colours"
@@ -162,6 +224,8 @@ L["Click and drag most Blizzard windows to move them (reload to disable)."] = "C
 L["Quick Quest"] = "Quick Quest"
 L["Enable Quick Quest"] = "Enable Quick Quest"
 L["Automatically accept and turn in quests; hold SHIFT to pause. Alt-click an NPC name to ignore it."] = "Automatically accept and turn in quests; hold SHIFT to pause. Alt-click an NPC name to ignore it."
+L["Block in Raids & Instances"] = "Block in Raids & Instances"
+L["Skip single-option gossip auto-selection while in raids and certain instances."] = "Skip single-option gossip auto-selection while in raids and certain instances."
 L["Alt-click to toggle Quick Quest for this NPC."] = "Alt-click to toggle Quick Quest for this NPC."
 
 -- UIScale
@@ -228,6 +292,19 @@ L["Fade the map out while your character is moving."] = "Fade the map out while 
 L["Alpha When Moving"] = "Alpha When Moving"
 L["How transparent the map becomes while moving."] = "How transparent the map becomes while moving."
 
+-- Wowhead Links
+L["Wowhead Links"] = "Wowhead Links"
+L["Enable Wowhead Links"] = "Enable Wowhead Links"
+L["Add a copyable Wowhead link to the world map (tracked quest) and the achievement frame."] = "Add a copyable Wowhead link to the world map (tracked quest) and the achievement frame."
+L["Press To Copy"] = "Press To Copy"
+
+-- Map Reveal
+L["Map Reveal"] = "Map Reveal"
+L["Enable Map Reveal"] = "Enable Map Reveal"
+L["Reveal unexplored areas on the world map by removing fog of war."] = "Reveal unexplored areas on the world map by removing fog of war."
+L["Dim Revealed Areas"] = "Dim Revealed Areas"
+L["Slightly darken the revealed tiles so explored areas still stand out."] = "Slightly darken the revealed tiles so explored areas still stand out."
+
 -- Buff Reminder
 L["Buff Reminder"] = "Buff Reminder"
 L["Enable Buff Reminder"] = "Enable Buff Reminder"
@@ -273,6 +350,11 @@ L["Total Gold"] = "Total Gold"
 L["Attachments"] = "Attachments"
 L["This letter is cash on delivery."] = "This letter is cash on delivery."
 
+-- Already Known
+L["Already Known"] = "Already Known"
+L["Enable Already Known"] = "Enable Already Known"
+L["Tint already-known recipes, pets, toys and cosmetics green at vendors, the Auction House and Guild Bank (reload to disable)."] = "Tint already-known recipes, pets, toys and cosmetics green at vendors, the Auction House and Guild Bank (reload to disable)."
+
 -- DataText (FPS / latency)
 L["Enable DataText"] = "Enable DataText"
 L["Show a movable FPS / latency readout under the minimap, with a memory/addon tooltip (reload to disable)."] = "Show a movable FPS / latency readout under the minimap, with a memory/addon tooltip (reload to disable)."
@@ -305,6 +387,47 @@ L["Left-Click to collect memory"] = "Left-Click to collect memory"
 L["Reload UI"] = "Reload UI"
 L["Enable Reload Command"] = "Enable Reload Command"
 L["Add /rl, /reloadui, // and /. slash commands to reload the interface (reload to disable)."] = "Add /rl, /reloadui, // and /. slash commands to reload the interface (reload to disable)."
+
+-- Install / First-Run
+L["Welcome to NexEnhance"] = "Welcome to NexEnhance"
+L["Open the setup screen"] = "Open the setup screen"
+L["Install"] = "Install"
+L["Not Now"] = "Not Now"
+L["Loaded. Type /nex for options."] = "Loaded. Type /nex for options."
+L["Set up NexEnhance with a handful of recommended Blizzard settings:"] = "Set up NexEnhance with a handful of recommended Blizzard settings:"
+L["Auto-loot, compare items on hover and self-cast on right-click."] = "Auto-loot, compare items on hover and self-cast on right-click."
+L["Locked action bars that are always shown, with cleaner combat text."] = "Locked action bars that are always shown, with cleaner combat text."
+L["Moving nameplates that show all enemies."] = "Moving nameplates that show all enemies."
+L["Class-coloured raid frames with power bars and no clutter."] = "Class-coloured raid frames with power bars and no clutter."
+L["Your other settings are left untouched. You can re-run this anytime with /nex install."] = "Your other settings are left untouched. You can re-run this anytime with /nex install."
+L["Choosing Install will reload your interface."] = "Choosing Install will reload your interface."
+
+-- Queue Timer
+L["Queue Timer"] = "Queue Timer"
+L["Enable Queue Timer"] = "Enable Queue Timer"
+L["Replace the small LFG/PvP ready countdown with a larger, colour-coded timer (reload to disable)."] = "Replace the small LFG/PvP ready countdown with a larger, colour-coded timer (reload to disable)."
+L["Queue Warning Sound"] = "Queue Warning Sound"
+L["Play a triple beep when the queue is about to expire."] = "Play a triple beep when the queue is about to expire."
+L["Hide Default Timers"] = "Hide Default Timers"
+L["Hide Blizzard's default queue status bars while the custom timer is shown."] = "Hide Blizzard's default queue status bars while the custom timer is shown."
+L["Queue expires in"] = "Queue expires in"
+
+-- Trade Target Info
+L["Trade Target Info"] = "Trade Target Info"
+L["Enable Trade Target Info"] = "Enable Trade Target Info"
+L["Show whether your trade partner is a stranger, friend or guild member, and colour their name (reload to disable)."] = "Show whether your trade partner is a stranger, friend or guild member, and colour their name (reload to disable)."
+L["Stranger"] = "Stranger"
+
+-- Quick Item Delete
+L["Quick Item Delete"] = "Quick Item Delete"
+L["Enable Quick Item Delete"] = "Enable Quick Item Delete"
+L["Skip the type-DELETE confirmation for high-quality and quest items, showing a simple Yes/No prompt instead. Reduces accidental-deletion protection."] = "Skip the type-DELETE confirmation for high-quality and quest items, showing a simple Yes/No prompt instead. Reduces accidental-deletion protection."
+
+-- Changelog
+L["Changelog"] = "Changelog"
+L["Open the changelog"] = "Open the changelog"
+L["Auto-Show Changelog"] = "Auto-Show Changelog"
+L["Open the changelog automatically the first time you log in after an update."] = "Open the changelog automatically the first time you log in after an update."
 
 -- Chat (core)
 L["Enable Chat"] = "Enable Chat"

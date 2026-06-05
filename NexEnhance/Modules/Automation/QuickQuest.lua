@@ -54,6 +54,7 @@ local AccountCompletedFilter = Enum.MinimapTrackingFilter.AccountCompletedQuests
 ns:RegisterDefaults({
 	quickQuest = {
 		enable = false,
+		blockInInstances = false, -- skip single-option gossip in raids/blacklisted instances
 		ignoreNPC = {}, -- [npcID] = true (ignore) / false (force-allow a built-in)
 	},
 })
@@ -269,9 +270,17 @@ Register("GOSSIP_SHOW", function()
 			return C_GossipInfo_SelectOption(firstOptionID)
 		end
 
-		if available == 0 and active == 0 and numOptions == 1 then
-			local _, instance, _, _, _, _, _, mapID = GetInstanceInfo()
-			if instance ~= "raid" and not ignoreGossipNPC[npcID] and not ignoreInstances[mapID] then
+		if available == 0 and active == 0 and numOptions == 1 and not ignoreGossipNPC[npcID] then
+			local allow = true
+			-- Optional safety: skip the single-option walk inside raids and the
+			-- blacklisted instances. Off by default, so it auto-walks everywhere.
+			if db().blockInInstances then
+				local _, instance, _, _, _, _, _, mapID = GetInstanceInfo()
+				if instance == "raid" or ignoreInstances[mapID] then
+					allow = false
+				end
+			end
+			if allow then
 				return C_GossipInfo_SelectOption(firstOptionID)
 			end
 		end
@@ -535,4 +544,5 @@ end
 
 function QuickQuest:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests; hold SHIFT to pause. Alt-click an NPC name to ignore it."])
+	builder:Checkbox(category, self, "blockInInstances", L["Block in Raids & Instances"], L["Skip single-option gossip auto-selection while in raids and certain instances."])
 end

@@ -120,8 +120,15 @@ local eventCallbacks = {} -- event -> { callback, callback, ... }
 eventFrame:SetScript("OnEvent", function(_, event, ...)
 	local callbacks = eventCallbacks[event]
 	if not callbacks then return end
+	-- Slots may be tombstoned (set to false) by UnregisterEvent, including by a
+	-- callback unregistering itself mid-dispatch, so skip any falsy entry. We
+	-- never table.remove during a fire, which keeps indices stable and avoids
+	-- skipping the callback that follows a removed one.
 	for i = 1, #callbacks do
-		callbacks[i](event, ...)
+		local callback = callbacks[i]
+		if callback then
+			callback(event, ...)
+		end
 	end
 end)
 
@@ -131,6 +138,14 @@ function ns:RegisterEvent(event, callback)
 		callbacks = {}
 		eventCallbacks[event] = callbacks
 		eventFrame:RegisterEvent(event)
+	end
+	-- Fill a tombstoned slot if one exists (so add/remove cycles don't grow the
+	-- array); this never shifts indices, so it's safe even mid-dispatch.
+	for i = 1, #callbacks do
+		if not callbacks[i] then
+			callbacks[i] = callback
+			return callback
+		end
 	end
 	callbacks[#callbacks + 1] = callback
 	return callback
@@ -150,12 +165,19 @@ end
 function ns:UnregisterEvent(event, callback)
 	local callbacks = eventCallbacks[event]
 	if not callbacks then return end
-	for i = #callbacks, 1, -1 do
+
+	-- Tombstone (don't table.remove) so this is safe to call mid-dispatch: the
+	-- OnEvent loop keeps stable indices and just skips falsy slots.
+	local anyLive = false
+	for i = 1, #callbacks do
 		if callbacks[i] == callback then
-			table.remove(callbacks, i)
+			callbacks[i] = false
+		elseif callbacks[i] then
+			anyLive = true
 		end
 	end
-	if #callbacks == 0 then
+
+	if not anyLive then
 		eventCallbacks[event] = nil
 		eventFrame:UnregisterEvent(event)
 	end

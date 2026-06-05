@@ -1,20 +1,34 @@
 --[[
 	NexEnhance - ClassColors
 	-------------------------------------------------------------------------
-	Class-colours the health bars of the default Blizzard unit frames for any
-	unit that is (or becomes) a player: player, target, target-of-target,
-	focus, focus-target, pet's target, boss-target players, party and the
-	raid-style/compact frames.
+	Re-colours the health bars of the default Blizzard unit frames:
+	  * players -> their class colour;
+	  * NPCs    -> their reaction colour (hostile red, neutral yellow, friendly
+	               green), matching F.UnitColor and Blizzard's reaction strip.
+	Covered frames: player, pet, target, target-of-target, focus, focus-target,
+	the raid boss frames (Boss1..Boss5), party and the raid-style/compact frames.
+
+	Why NPCs needed fixing: the default atlas health bar is GREEN for everyone
+	(target/focus/boss bars all share "UI-HUD-UnitFrame-Target-...-Bar-Health",
+	a green texture). Blizzard only shows reaction on the small ReputationColor
+	strip + portrait, so a hostile boss still has a GREEN main bar. We tint the
+	main bar by reaction so hostile units read red, neutral yellow, etc.
 
 	How it works (researched from BlizzardInterfaceCode):
-	  * Dragonflight+ HUD health bars (player, target, focus, party, pet) set
-	    `lockColor = true` on load and keep `SetStatusBarColor(1,1,1)`; the green
-	    look is baked into the BarTexture atlas. We must NOT bail on lockColor.
-	    Instead use StatusBar:SetStatusBarDesaturated(true) then
-	    SetStatusBarColor(classRGB) so the atlas greyscales and tints correctly.
-	  * We post-hook `UnitFrameHealthBar_Update` and Target/Focus
+	  * Dragonflight+ HUD health bars (player, target, focus, boss, party, pet)
+	    set `lockColor = true` on load and keep `SetStatusBarColor(1,1,1)`; the
+	    green look is baked into the BarTexture atlas. We must NOT bail on
+	    lockColor. Instead use StatusBar:SetStatusBarDesaturated(true) then
+	    SetStatusBarColor(rgb) so the atlas greyscales and tints correctly.
+	  * We post-hook `UnitFrameHealthBar_Update` and Target/Focus/Boss
 	    `CheckClassification` (which re-applies the health atlas and would
 	    otherwise undo our tint).
+	  * Target/Focus also carry a `ReputationColor` strip (the small bar under
+	    the name). Blizzard tints it with `UnitSelectionColor` (reaction green,
+	    hostile red, NPC rep, etc.) inside `CheckFaction`. The player frame has
+	    no such strip — the name just sits on the dark frame chrome. We
+	    post-hook `CheckFaction` and, when opted in, hide the strip (alpha 0)
+	    so the dark chrome shows through and target matches the player frame.
 	  * Compact frames (raid-style party / raid / arena) colour through
 	    `CompactUnitFrame_UpdateHealthColor(frame)`. Their bars use a plain
 	    texture, so no desaturation is needed - just SetStatusBarColor.
@@ -42,8 +56,13 @@ local _G = _G
 local UnitClass = UnitClass
 local UnitIsPlayer = UnitIsPlayer
 local UnitIsConnected = UnitIsConnected
+local UnitReaction = UnitReaction
+local UnitSelectionColor = UnitSelectionColor
 local hooksecurefunc = hooksecurefunc
+local ipairs = ipairs
 local strfind = string.find
+
+local FACTION_BAR_COLORS = _G["FACTION_BAR_COLORS"]
 
 -- issecretvalue accepts any value (secret or not) and never errors, so it is
 -- the safe gate to check before we branch on a possibly-secret result. Fall
@@ -55,6 +74,7 @@ local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS
 ns:RegisterDefaults({
 	classColors = {
 		enable = true,
+		colorReputation = false,
 	},
 })
 
@@ -79,6 +99,38 @@ local function GetPlayerClassColor(unit)
 	return CLASS_COLORS[class] or nil
 end
 
+-- Resolve the health-bar tint for a unit: class colour for players, reaction
+-- colour (hostile red / neutral yellow / friendly green) for NPCs - matching
+-- F.UnitColor and Blizzard's own reaction strip. Returns r, g, b, or nil when
+-- it cannot decide (classless, disconnected, or identity-restricted/secret) so
+-- the caller can fall back to Blizzard's default atlas instead of guessing.
+-- Every identity read is gated by issecretvalue() before it is boolean-tested.
+local function GetUnitHealthColor(unit)
+	if not unit then return nil end
+
+	local isPlayer = UnitIsPlayer(unit)
+	if issecretvalue(isPlayer) then return nil end
+
+	if isPlayer then
+		local connected = UnitIsConnected(unit)
+		if issecretvalue(connected) or not connected then return nil end
+		local _, class = UnitClass(unit)
+		if issecretvalue(class) or not class then return nil end
+		local color = CLASS_COLORS[class]
+		if color then return color.r, color.g, color.b end
+		return nil
+	end
+
+	-- Non-player: reaction colour. Leave the default atlas if we have no
+	-- reaction table or the reaction is secret/unknown.
+	if not FACTION_BAR_COLORS then return nil end
+	local reaction = UnitReaction(unit, "player")
+	if issecretvalue(reaction) or not reaction then return nil end
+	local color = FACTION_BAR_COLORS[reaction]
+	if color then return color.r, color.g, color.b end
+	return nil
+end
+
 -- Atlas HUD bars use lockColor so Blizzard skips SetStatusBarColor in
 -- UnitFrameHealthBar_Update; the visible green is the atlas at multiply 1,1,1.
 local HUD_DEFAULT_COLOR = { r = 1, g = 1, b = 1 }
@@ -98,11 +150,14 @@ local function ColorStandardHealth(statusbar, unit)
 	if not ns.db.classColors.enable then return end
 
 	unit = unit or statusbar.unit
-	local color = GetPlayerClassColor(unit)
-	if color then
-		ApplyHudHealthColor(statusbar, color.r, color.g, color.b, true)
+	local r, g, b = GetUnitHealthColor(unit)
+	if r then
+		-- Players -> class colour, NPCs -> reaction colour. Desaturate so the
+		-- green atlas greyscales first, then the tint multiplies in correctly.
+		ApplyHudHealthColor(statusbar, r, g, b, true)
 	else
-		-- NPC / secret identity: restore saturated atlas tint.
+		-- Identity-restricted / secret / undecidable: restore the saturated
+		-- atlas so Blizzard's default green stands instead of a wrong guess.
 		ApplyHudHealthColor(statusbar, HUD_DEFAULT_COLOR.r, HUD_DEFAULT_COLOR.g, HUD_DEFAULT_COLOR.b, false)
 	end
 end
@@ -132,6 +187,53 @@ local function ColorCompactHealth(frame)
 end
 
 -- ---------------------------------------------------------------------------
+-- Target / Focus reputation strip (reaction tint -> neutral, like player)
+-- ---------------------------------------------------------------------------
+local function GetReputationColor(frame)
+	local content = frame and frame.TargetFrameContent
+	local main = content and content.TargetFrameContentMain
+	return main and main.ReputationColor
+end
+
+-- Hide the reaction-coloured strip so the dark frame chrome shows through,
+-- exactly like the player frame (which has no such strip at all).
+local function NeutralizeReputationStrip(frame)
+	-- Independent of the health-bar toggle: only act when the user opted in.
+	if not frame or not ns.db.classColors.colorReputation then return end
+
+	local strip = GetReputationColor(frame)
+	if not strip then return end
+
+	strip:SetAlpha(0)
+end
+
+-- Show the strip again and let Blizzard's reaction/selection colour stand
+-- (used when the option is off, so it reverts live without a reload).
+local function RestoreReputationStrip(frame)
+	local unit = frame and frame.unit
+	local strip = GetReputationColor(frame)
+	if not strip then return end
+
+	strip:SetAlpha(1)
+
+	if not unit then return end
+	local r, g, b = UnitSelectionColor(unit)
+	if issecretvalue(r) then return end
+	if r then
+		strip:SetVertexColor(r, g, b)
+	end
+end
+
+-- Neutralize or restore the strip for one frame depending on the option.
+local function RefreshReputationStrip(frame)
+	if ns.db.classColors.colorReputation then
+		NeutralizeReputationStrip(frame)
+	else
+		RestoreReputationStrip(frame)
+	end
+end
+
+-- ---------------------------------------------------------------------------
 -- Immediate refresh for the standard frames that exist at login (compact
 -- frames refresh themselves continuously, so they need no manual pass).
 -- ---------------------------------------------------------------------------
@@ -141,6 +243,20 @@ local standardFrames = {
 	"TargetFrame",
 	"FocusFrame",
 }
+
+-- Boss frames (Boss1TargetFrame .. Boss5TargetFrame) are BossTargetFrameMixin,
+-- built on TargetFrameMixin with unit "boss1".."boss5". They use the SAME
+-- atlas health bar + CheckClassification re-skin, so they need the same hooks
+-- and the same reaction tint as the target/focus frames. They live in
+-- BossTargetFrameContainer.BossTargetFrames and exist (hidden) from login.
+local function ForEachBossFrame(callback)
+	local container = _G["BossTargetFrameContainer"]
+	local frames = container and container.BossTargetFrames
+	if not frames then return end
+	for _, frame in ipairs(frames) do
+		if frame then callback(frame) end
+	end
+end
 
 -- Apply when enabling, restore when disabling. Important: do NOT call back
 -- into UnitFrameHealthBar_Update from addon code. That function reads secret
@@ -161,9 +277,11 @@ function ClassColors:RefreshStandard()
 		local frame = _G[standardFrames[i]]
 		if frame then
 			RefreshBar(frame.healthbar)
+			RefreshReputationStrip(frame)
 			-- Target/Focus carry a target-of-target subframe.
 			if frame.totFrame then
 				RefreshBar(frame.totFrame.healthbar)
+				RefreshReputationStrip(frame.totFrame)
 			end
 		end
 	end
@@ -176,6 +294,12 @@ function ClassColors:RefreshStandard()
 			RefreshBar(bar)
 		end
 	end
+
+	-- Raid boss frames.
+	ForEachBossFrame(function(frame)
+		RefreshBar(frame.healthbar)
+		RefreshReputationStrip(frame)
+	end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -196,6 +320,15 @@ local function HookClassification(frame)
 	end)
 end
 
+local function HookFaction(frame)
+	if not frame or frame.nexFactionHooked then return end
+	if type(frame.CheckFaction) ~= "function" then return end
+	frame.nexFactionHooked = true
+	hooksecurefunc(frame, "CheckFaction", function(f)
+		NeutralizeReputationStrip(f)
+	end)
+end
+
 function ClassColors:InstallHooks()
 	if self.hooksInstalled then return end
 	self.hooksInstalled = true
@@ -206,6 +339,16 @@ function ClassColors:InstallHooks()
 	-- Re-tint after the atlas re-skin on the frames that do it.
 	HookClassification(_G["TargetFrame"])
 	HookClassification(_G["FocusFrame"])
+
+	-- Keep the reaction strip neutral (player-frame style) when opted in.
+	HookFaction(_G["TargetFrame"])
+	HookFaction(_G["FocusFrame"])
+
+	-- Boss frames share the TargetFrame atlas + CheckClassification re-skin.
+	ForEachBossFrame(function(frame)
+		HookClassification(frame)
+		HookFaction(frame)
+	end)
 
 	-- Compact (raid-style) frames.
 	if _G["CompactUnitFrame_UpdateHealthColor"] then
@@ -230,6 +373,8 @@ function ClassColors:OnEnable()
 	self:RegisterEvent("UNIT_CLASSIFICATION_CHANGED", "RefreshEvent")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED", "RefreshEvent")
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshEvent")
+	-- Boss frames appear mid-fight; refresh when an encounter engages units.
+	self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
 
 	self:RefreshStandard()
 end
@@ -244,7 +389,8 @@ function ClassColors:OnSettingChanged(_, value)
 end
 
 function ClassColors:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Class-Coloured Health"], L["Colour unit-frame health bars by class for players (player, target, focus, party and more)."])
+	builder:Checkbox(category, self, "enable", L["Enable Class-Coloured Health"], L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."])
+	builder:Checkbox(category, self, "colorReputation", L["Neutral Target Strip"], L["Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."])
 end
 
 -- ---------------------------------------------------------------------------

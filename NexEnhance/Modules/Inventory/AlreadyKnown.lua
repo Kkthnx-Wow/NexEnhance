@@ -1,0 +1,259 @@
+--[[
+	NexEnhance - Already Known
+	-------------------------------------------------------------------------
+	Tints items you already know a soft green so you can skip re-buying them.
+	Covers recipes, pets, toys/mounts and cosmetics across:
+	  * the Merchant frame (and its Buyback tab)
+	  * the Auction House browse results
+	  * the Guild Bank
+
+	Adapted from NDui's Plugins/AlreadyKnown.lua by siweia:
+	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Plugins/AlreadyKnown.lua
+--]]
+
+-- luacheck: globals MerchantFrame MERCHANT_ITEMS_PER_PAGE BUYBACK_ITEMS_PER_PAGE AuctionHouseFrame GuildBankFrame MAX_GUILDBANK_SLOTS_PER_TAB NUM_SLOTS_PER_GUILDBANK_GROUP SetItemButtonTextureVertexColor COLLECTED ITEM_SPELL_KNOWN
+---@diagnostic disable: undefined-field, redundant-parameter, param-type-mismatch
+local _, ns = ...
+local L = ns.L
+
+local _G = _G
+local select, tonumber = select, tonumber
+local strmatch, strfind, format = string.match, string.find, string.format
+local ceil = math.ceil
+
+local SetItemButtonTextureVertexColor = SetItemButtonTextureVertexColor
+local GetMerchantNumItems, GetMerchantItemLink = GetMerchantNumItems, GetMerchantItemLink
+local GetNumBuybackItems, GetBuybackItemInfo, GetBuybackItemLink = GetNumBuybackItems, GetBuybackItemInfo, GetBuybackItemLink
+local GetCurrentGuildBankTab, GetGuildBankItemInfo, GetGuildBankItemLink = GetCurrentGuildBankTab, GetGuildBankItemInfo, GetGuildBankItemLink
+local C_MerchantFrame_GetItemInfo = C_MerchantFrame.GetItemInfo
+local C_Item_GetItemInfo = C_Item.GetItemInfo
+local C_Item_IsCosmeticItem = C_Item.IsCosmeticItem
+local C_TooltipInfo_GetHyperlink = C_TooltipInfo.GetHyperlink
+local C_TooltipInfo_GetGuildBankItem = C_TooltipInfo.GetGuildBankItem
+local C_PetJournal_GetNumCollectedInfo = C_PetJournal.GetNumCollectedInfo
+
+local MERCHANT_ITEMS_PER_PAGE = _G.MERCHANT_ITEMS_PER_PAGE or 10
+local BUYBACK_ITEMS_PER_PAGE = _G.BUYBACK_ITEMS_PER_PAGE or 12
+local MAX_GUILDBANK_SLOTS_PER_TAB = _G.MAX_GUILDBANK_SLOTS_PER_TAB or 98
+local NUM_SLOTS_PER_GUILDBANK_GROUP = _G.NUM_SLOTS_PER_GUILDBANK_GROUP or 14
+local COLLECTED = _G.COLLECTED
+local ITEM_SPELL_KNOWN = _G.ITEM_SPELL_KNOWN
+
+local COLOR = { r = 0.1, g = 1, b = 0.1 }
+
+-- Item classes whose "known" state is worth checking via a tooltip scan.
+local knowables = {
+	[Enum.ItemClass.Consumable] = true,
+	[Enum.ItemClass.Recipe] = true,
+	[Enum.ItemClass.Miscellaneous] = true,
+	[Enum.ItemClass.ItemEnhancement] = true,
+}
+
+-- Memoise links we have already proven known (cheap to keep for the session).
+local knowns = {}
+
+ns:RegisterDefaults({
+	alreadyKnown = {
+		enable = true,
+	},
+})
+
+local AlreadyKnown = ns:NewModule("AlreadyKnown", "alreadyKnown", { group = "inventory", title = L["Already Known"], order = 50 })
+
+-- ---------------------------------------------------------------------------
+-- Detection
+-- ---------------------------------------------------------------------------
+local function IsPetCollected(speciesID)
+	if not speciesID or speciesID == 0 then return end
+	local numOwned = C_PetJournal_GetNumCollectedInfo(speciesID)
+	return numOwned and numOwned > 0
+end
+
+local function IsAlreadyKnown(link, index)
+	if not link then return end
+
+	local linkType, linkID = strmatch(link, "|H(%a+):(%d+)")
+	linkID = tonumber(linkID)
+
+	if linkType == "battlepet" then
+		return IsPetCollected(linkID)
+	elseif linkType == "item" then
+		local name, _, _, _, _, _, _, _, _, _, _, itemClassID = C_Item_GetItemInfo(link)
+		if not name then return end
+
+		-- Caged battle pets in the guild bank carry their species in tooltip data.
+		if itemClassID == Enum.ItemClass.Battlepet and index then
+			local data = C_TooltipInfo_GetGuildBankItem(GetCurrentGuildBankTab(), index)
+			if data then
+				return data.battlePetSpeciesID and IsPetCollected(data.battlePetSpeciesID)
+			end
+			return
+		end
+
+		if knowns[link] then return true end
+		if not knowables[itemClassID] and not C_Item_IsCosmeticItem(link) then return end
+
+		local data = C_TooltipInfo_GetHyperlink(link, nil, nil, true)
+		if data then
+			for i = 1, #data.lines do
+				local lineData = data.lines[i]
+				local text = lineData and lineData.leftText
+				if text and ((COLLECTED and strfind(text, COLLECTED)) or text == ITEM_SPELL_KNOWN) then
+					knowns[link] = true
+					return true
+				end
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Merchant frame
+-- ---------------------------------------------------------------------------
+local function UpdateMerchantInfo()
+	local numItems = GetMerchantNumItems()
+	for i = 1, MERCHANT_ITEMS_PER_PAGE do
+		local index = (MerchantFrame.page - 1) * MERCHANT_ITEMS_PER_PAGE + i
+		if index > numItems then return end
+
+		local button = _G["MerchantItem" .. i .. "ItemButton"]
+		if button and button:IsShown() then
+			local info = C_MerchantFrame_GetItemInfo(index)
+			local numAvailable = info and info.numAvailable
+			local isUsable = info and info.isUsable
+			if isUsable and IsAlreadyKnown(GetMerchantItemLink(index)) then
+				local r, g, b = COLOR.r, COLOR.g, COLOR.b
+				if numAvailable == 0 then
+					r, g, b = r * 0.5, g * 0.5, b * 0.5
+				end
+				SetItemButtonTextureVertexColor(button, r, g, b)
+			end
+		end
+	end
+end
+
+local function UpdateBuybackInfo()
+	local numItems = GetNumBuybackItems()
+	for index = 1, BUYBACK_ITEMS_PER_PAGE do
+		if index > numItems then return end
+
+		local button = _G["MerchantItem" .. index .. "ItemButton"]
+		if button and button:IsShown() then
+			local isUsable = select(6, GetBuybackItemInfo(index))
+			if isUsable and IsAlreadyKnown(GetBuybackItemLink(index)) then
+				SetItemButtonTextureVertexColor(button, COLOR.r, COLOR.g, COLOR.b)
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Auction House (load-on-demand)
+-- ---------------------------------------------------------------------------
+local function UpdateAuctionItems(self)
+	for i = 1, self.ScrollTarget:GetNumChildren() do
+		local child = select(i, self.ScrollTarget:GetChildren())
+		if child.cells then
+			local button = child.cells[2]
+			local itemKey = button and button.rowData and button.rowData.itemKey
+			if itemKey and itemKey.itemID then
+				local itemLink
+				if itemKey.itemID == 82800 then -- "Pet Cage"
+					itemLink = format("|Hbattlepet:%d::::::|h[Dummy]|h", itemKey.battlePetSpeciesID)
+				else
+					itemLink = format("|Hitem:%d", itemKey.itemID)
+				end
+
+				if itemLink and IsAlreadyKnown(itemLink) then
+					child.SelectedHighlight:Show()
+					child.SelectedHighlight:SetVertexColor(COLOR.r, COLOR.g, COLOR.b)
+					child.SelectedHighlight:SetAlpha(0.25)
+					button.Icon:SetVertexColor(COLOR.r, COLOR.g, COLOR.b)
+					button.IconBorder:SetVertexColor(COLOR.r, COLOR.g, COLOR.b)
+				else
+					child.SelectedHighlight:SetVertexColor(1, 1, 1)
+					button.Icon:SetVertexColor(1, 1, 1)
+					button.IconBorder:SetVertexColor(1, 1, 1)
+				end
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Guild Bank (load-on-demand)
+-- ---------------------------------------------------------------------------
+local function GuildBankFrame_Update(self)
+	if self.mode ~= "bank" then return end
+
+	local tab = GetCurrentGuildBankTab()
+	for i = 1, MAX_GUILDBANK_SLOTS_PER_TAB do
+		local index = i % NUM_SLOTS_PER_GUILDBANK_GROUP
+		if index == 0 then index = NUM_SLOTS_PER_GUILDBANK_GROUP end
+
+		local column = ceil((i - 0.5) / NUM_SLOTS_PER_GUILDBANK_GROUP)
+		local button = self.Columns[column].Buttons[index]
+		if button and button:IsShown() then
+			local texture, _, locked = GetGuildBankItemInfo(tab, i)
+			if texture and not locked then
+				if IsAlreadyKnown(GetGuildBankItemLink(tab, i), i) then
+					SetItemButtonTextureVertexColor(button, COLOR.r, COLOR.g, COLOR.b)
+				else
+					SetItemButtonTextureVertexColor(button, 1, 1, 1)
+				end
+			end
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Lifecycle
+-- ---------------------------------------------------------------------------
+function AlreadyKnown:HookAuctionHouse()
+	if self.auctionHooked then return end
+	local list = AuctionHouseFrame and AuctionHouseFrame.BrowseResultsFrame and AuctionHouseFrame.BrowseResultsFrame.ItemList
+	if list and list.ScrollBox then
+		hooksecurefunc(list.ScrollBox, "Update", UpdateAuctionItems)
+		self.auctionHooked = true
+	end
+end
+
+function AlreadyKnown:HookGuildBank()
+	if self.guildBankHooked then return end
+	if GuildBankFrame then
+		hooksecurefunc(GuildBankFrame, "Update", GuildBankFrame_Update)
+		self.guildBankHooked = true
+	end
+end
+
+function AlreadyKnown:ADDON_LOADED(addon)
+	if addon == "Blizzard_AuctionHouseUI" then
+		self:HookAuctionHouse()
+	elseif addon == "Blizzard_GuildBankUI" then
+		self:HookGuildBank()
+	end
+end
+
+function AlreadyKnown:OnEnable()
+	if not ns.db.alreadyKnown.enable then return end
+
+	-- Merchant + Buyback live in base FrameXML, so hook straight away.
+	hooksecurefunc("MerchantFrame_UpdateMerchantInfo", UpdateMerchantInfo)
+	hooksecurefunc("MerchantFrame_UpdateBuybackInfo", UpdateBuybackInfo)
+
+	-- The AH and Guild Bank are load-on-demand; hook now if present, else wait.
+	if C_AddOns.IsAddOnLoaded("Blizzard_AuctionHouseUI") then
+		self:HookAuctionHouse()
+	end
+	if C_AddOns.IsAddOnLoaded("Blizzard_GuildBankUI") then
+		self:HookGuildBank()
+	end
+
+	if not (self.auctionHooked and self.guildBankHooked) then
+		self:RegisterEvent("ADDON_LOADED")
+	end
+end
+
+function AlreadyKnown:RegisterOptions(category, builder)
+	builder:Checkbox(category, self, "enable", L["Enable Already Known"], L["Tint already-known recipes, pets, toys and cosmetics green at vendors, the Auction House and Guild Bank (reload to disable)."])
+end

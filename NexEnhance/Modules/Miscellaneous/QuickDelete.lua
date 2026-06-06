@@ -36,7 +36,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local QuickDelete = ns:NewModule("QuickDelete", "quickDelete", { group = "misc", title = L["Quick Item Delete"], order = 35 })
+local QuickDelete = ns:NewModule("QuickDelete", "quickDelete", { group = "inventory", title = L["Quick Item Delete"], order = 50 })
 
 local originals = {}
 local applied = false

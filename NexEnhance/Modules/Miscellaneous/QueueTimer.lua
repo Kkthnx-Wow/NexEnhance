@@ -41,7 +41,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local QueueTimer = ns:NewModule("QueueTimer", "queueTimer", { group = "misc", title = L["Queue Timer"], order = 40 })
+local QueueTimer = ns:NewModule("QueueTimer", "queueTimer", { group = "misc", title = L["Queue Timer"], order = 70 })
 
 -- State.
 local remainingPvETime = 0

@@ -53,7 +53,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local FrameColors = ns:NewModule("FrameColors", "frameColors", { group = "general", title = L["Frame Colour"], order = 10 })
+local FrameColors = ns:NewModule("FrameColors", "frameColors", { group = "unitframes", title = L["Frame Colour"], order = 20 })
 
 -- Cached 0-1 colour, refreshed only when the swatch changes (no per-call parse).
 local cr, cg, cb = 0, 0, 0

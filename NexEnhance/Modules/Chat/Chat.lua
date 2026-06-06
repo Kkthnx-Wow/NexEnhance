@@ -80,16 +80,22 @@ local chatEditBoxes = {}
 local ColorEditBox
 
 local function RegisterEditBox(editBox)
-	if editBox.__nexRegistered then return end
+	if editBox.__nexRegistered then
+		return
+	end
 	editBox.__nexRegistered = true
 	chatEditBoxes[#chatEditBoxes + 1] = editBox
 end
 
 local function UpdateEditBoxAnchor(editBox)
-	if not cfg or not cfg.editBoxTop or not editBox then return end
+	if not cfg or not cfg.editBoxTop or not editBox then
+		return
+	end
 
 	local owner = editBox.__nexOwner
-	if not owner or owner:IsForbidden() then return end
+	if not owner or owner:IsForbidden() then
+		return
+	end
 
 	-- Docked frames don't all sit at the same top edge. When the Combat Log
 	-- (ChatFrame2) is selected, Blizzard shoves that frame DOWN by the height of
@@ -139,7 +145,9 @@ function Chat:QuickMouseScroll(dir)
 end
 
 function Chat:SetupChat(frame)
-	if not frame or frame.__nexSetup then return end
+	if not frame or frame.__nexSetup then
+		return
+	end
 
 	-- Let the chat window be dragged anywhere without being clamped to the screen edge.
 	frame:SetClampRectInsets(0, 0, 0, 0)
@@ -156,8 +164,12 @@ function Chat:SetupChat(frame)
 	-- The scroll bar and jump-to-bottom button are pure clutter: mouse-wheel
 	-- scrolling (plus our quick-scroll) already covers everything they do.
 	if cfg.hideScrollBar then
-		if frame.ScrollBar then frame.ScrollBar:Kill() end
-		if frame.ScrollToBottomButton then frame.ScrollToBottomButton:Kill() end
+		if frame.ScrollBar then
+			frame.ScrollBar:Kill()
+		end
+		if frame.ScrollToBottomButton then
+			frame.ScrollToBottomButton:Kill()
+		end
 	end
 
 	-- Tab styling: strip the busy default tab textures for a flat look and
@@ -188,7 +200,9 @@ end
 -- ---------------------------------------------------------------------------
 local function UpdateEditBoxCharCount(editBox)
 	local counter = editBox.nexCharCount
-	if not counter then return end
+	if not counter then
+		return
+	end
 
 	local text = editBox:GetText()
 	local textLen = strlen(text)
@@ -223,7 +237,9 @@ end
 -- ---------------------------------------------------------------------------
 function Chat:SetupEditBox(frame)
 	local editBox = frame.editBox or _G[frame:GetName() .. "EditBox"]
-	if not editBox then return end
+	if not editBox then
+		return
+	end
 
 	editBox.__nexOwner = frame
 	RegisterEditBox(editBox)
@@ -262,7 +278,9 @@ function Chat:SetupEditBox(frame)
 		-- have run). Post-hooking SetPoint re-applies our anchor no matter who
 		-- moves it; the re-entrancy guard stops our own SetPoint from looping.
 		hooksecurefunc(editBox, "SetPoint", function(self)
-			if self.__nexAnchoring or not cfg or not cfg.editBoxTop then return end
+			if self.__nexAnchoring or not cfg or not cfg.editBoxTop then
+				return
+			end
 			self.__nexAnchoring = true
 			UpdateEditBoxAnchor(self)
 			self.__nexAnchoring = false
@@ -276,14 +294,20 @@ function Chat:SetupEditBox(frame)
 		-- to the top, over the tabs). Show on focus, hide again when it loses
 		-- focus empty, and whenever a tab is clicked.
 		editBox:Hide()
-		editBox:HookScript("OnEditFocusGained", function(self) self:Show() end)
+		editBox:HookScript("OnEditFocusGained", function(self)
+			self:Show()
+		end)
 		editBox:HookScript("OnEditFocusLost", function(self)
-			if self:GetText() == "" then self:Hide() end
+			if self:GetText() == "" then
+				self:Hide()
+			end
 		end)
 
 		local tab = _G[frame:GetName() .. "Tab"]
 		if tab then
-			tab:HookScript("OnClick", function() editBox:Hide() end)
+			tab:HookScript("OnClick", function()
+				editBox:Hide()
+			end)
 		end
 	end
 
@@ -308,7 +332,9 @@ function Chat:SetupEditBox(frame)
 
 	editBox:HookScript("OnTextChanged", UpdateEditBoxCharCount)
 	editBox:HookScript("OnEditFocusLost", function(self)
-		if self.nexCharCount then self.nexCharCount:SetText("") end
+		if self.nexCharCount then
+			self.nexCharCount:SetText("")
+		end
 	end)
 
 	editBox.__nexEditBox = true
@@ -323,7 +349,9 @@ end
 -- the numbered "CHANNEL<id>" entry; returns nil when no real colour is known.
 local function GetEditBoxColor(editBox)
 	local chatType = editBox:GetAttribute("chatType")
-	if not chatType then return end
+	if not chatType then
+		return
+	end
 
 	local info = ChatTypeInfo[chatType]
 	if chatType == "CHANNEL" then
@@ -339,8 +367,12 @@ local function GetEditBoxColor(editBox)
 end
 
 function ColorEditBox(editBox)
-	if not cfg or not cfg.colorEditBox then return end
-	if not editBox or editBox:IsForbidden() then return end
+	if not cfg or not cfg.colorEditBox then
+		return
+	end
+	if not editBox or editBox:IsForbidden() then
+		return
+	end
 
 	local r, g, b = GetEditBoxColor(editBox)
 	if not r then
@@ -356,12 +388,24 @@ function ColorEditBox(editBox)
 
 	local name = editBox:GetName()
 	local left, right, mid = _G[name .. "Left"], _G[name .. "Right"], _G[name .. "Mid"]
-	if left then left:SetVertexColor(r, g, b) end
-	if right then right:SetVertexColor(r, g, b) end
-	if mid then mid:SetVertexColor(r, g, b) end
-	if editBox.focusLeft then editBox.focusLeft:SetVertexColor(r, g, b) end
-	if editBox.focusRight then editBox.focusRight:SetVertexColor(r, g, b) end
-	if editBox.focusMid then editBox.focusMid:SetVertexColor(r, g, b) end
+	if left then
+		left:SetVertexColor(r, g, b)
+	end
+	if right then
+		right:SetVertexColor(r, g, b)
+	end
+	if mid then
+		mid:SetVertexColor(r, g, b)
+	end
+	if editBox.focusLeft then
+		editBox.focusLeft:SetVertexColor(r, g, b)
+	end
+	if editBox.focusRight then
+		editBox.focusRight:SetVertexColor(r, g, b)
+	end
+	if editBox.focusMid then
+		editBox.focusMid:SetVertexColor(r, g, b)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -373,11 +417,15 @@ end
 -- ---------------------------------------------------------------------------
 local function SetupBNToast()
 	local toast = _G["BNToastFrame"]
-	if not toast or toast.__nexMover then return end
+	if not toast or toast.__nexMover then
+		return
+	end
 	toast.__nexMover = true
 
 	local width, height = toast:GetSize()
-	if not width or width < 1 then width, height = 244, 80 end
+	if not width or width < 1 then
+		width, height = 244, 80
+	end
 
 	local mover = CreateFrame("Frame", "NexBNToastMover", UIParent)
 	mover:SetSize(width, height)
@@ -394,7 +442,9 @@ local function SetupBNToast()
 	F.CreateMover(mover, "bnToast", L["Battle.net Pop-up"], point, x, y)
 
 	local function reanchor()
-		if toast.__nexAnchoring then return end
+		if toast.__nexAnchoring then
+			return
+		end
 		toast.__nexAnchoring = true
 		toast:ClearAllPoints()
 		toast:SetPoint("TOPRIGHT", mover, "TOPRIGHT", 0, 0)
@@ -409,12 +459,42 @@ end
 -- Tab-key channel switching
 -- ---------------------------------------------------------------------------
 local cycles = {
-	{ chatType = "SAY", IsActive = function(_, _) return true end },
-	{ chatType = "PARTY", IsActive = function(_, _) return IsInGroup() end },
-	{ chatType = "RAID", IsActive = function(_, _) return IsInRaid() end },
-	{ chatType = "INSTANCE_CHAT", IsActive = function(_, _) return IsPartyLFG() end },
-	{ chatType = "GUILD", IsActive = function(_, _) return IsInGuild() end },
-	{ chatType = "SAY", IsActive = function(_, _) return true end },
+	{
+		chatType = "SAY",
+		IsActive = function(_, _)
+			return true
+		end,
+	},
+	{
+		chatType = "PARTY",
+		IsActive = function(_, _)
+			return IsInGroup()
+		end,
+	},
+	{
+		chatType = "RAID",
+		IsActive = function(_, _)
+			return IsInRaid()
+		end,
+	},
+	{
+		chatType = "INSTANCE_CHAT",
+		IsActive = function(_, _)
+			return IsPartyLFG()
+		end,
+	},
+	{
+		chatType = "GUILD",
+		IsActive = function(_, _)
+			return IsInGuild()
+		end,
+	},
+	{
+		chatType = "SAY",
+		IsActive = function(_, _)
+			return true
+		end,
+	},
 }
 
 local function SwitchToChannel(editbox, chatType)
@@ -424,8 +504,12 @@ local function SwitchToChannel(editbox, chatType)
 end
 
 function Chat:UpdateTabChannelSwitch()
-	if not cfg.tabChannelSwitch then return end
-	if strsub(self:GetText(), 1, 1) == "/" then return end
+	if not cfg.tabChannelSwitch then
+		return
+	end
+	if strsub(self:GetText(), 1, 1) == "/" then
+		return
+	end
 
 	local isShiftKeyDown = IsShiftKeyDown()
 	local currentType = self:GetAttribute("chatType")
@@ -438,7 +522,9 @@ function Chat:UpdateTabChannelSwitch()
 	for i = 1, numCycles do
 		if currentType == cycles[i].chatType then
 			local from, to, step = i + 1, numCycles, 1
-			if isShiftKeyDown then from, to, step = i - 1, 1, -1 end
+			if isShiftKeyDown then
+				from, to, step = i - 1, 1, -1
+			end
 			for j = from, to, step do
 				local nextCycle = cycles[j]
 				if nextCycle and nextCycle:IsActive(self) then
@@ -455,8 +541,12 @@ end
 -- ---------------------------------------------------------------------------
 function Chat:ChatWhisperSticky()
 	local sticky = cfg.stickyWhisper and 1 or 0
-	if ChatTypeInfo["WHISPER"] then ChatTypeInfo["WHISPER"].sticky = sticky end
-	if ChatTypeInfo["BN_WHISPER"] then ChatTypeInfo["BN_WHISPER"].sticky = sticky end
+	if ChatTypeInfo["WHISPER"] then
+		ChatTypeInfo["WHISPER"].sticky = sticky
+	end
+	if ChatTypeInfo["BN_WHISPER"] then
+		ChatTypeInfo["BN_WHISPER"].sticky = sticky
+	end
 end
 
 local whisperEvents = {
@@ -465,9 +555,15 @@ local whisperEvents = {
 }
 
 function Chat:PlayWhisperSound(event, _, author)
-	if not cfg.whisperSound then return end
-	if F.IsSecret(author) then return end
-	if not whisperEvents[event] or not messageSoundID then return end
+	if not cfg.whisperSound then
+		return
+	end
+	if F.IsSecret(author) then
+		return
+	end
+	if not whisperEvents[event] or not messageSoundID then
+		return
+	end
 
 	local currentTime = GetTime()
 	if not self._soundTimer or currentTime > self._soundTimer then
@@ -488,7 +584,9 @@ local strtrim = _G.strtrim
 local DEFAULT_KEYWORD = "inv"
 
 local function IsUnitInGuild(unitName)
-	if not unitName then return end
+	if not unitName then
+		return
+	end
 	for i = 1, GetNumGuildMembers() do
 		local name = GetGuildRosterInfo(i)
 		if name and Ambiguate(name, "none") == Ambiguate(unitName, "none") then
@@ -498,17 +596,27 @@ local function IsUnitInGuild(unitName)
 end
 
 function Chat:OnChatWhisper(event, ...)
-	if not cfg.autoInvite then return end
+	if not cfg.autoInvite then
+		return
+	end
 	local msg, author, _, _, _, _, _, _, _, _, _, guid, presenceID = ...
-	if F.IsSecret(msg) then return end
+	if F.IsSecret(msg) then
+		return
+	end
 	local keyword = strlower(cfg.inviteKeyword or "")
-	if keyword == "" or strlower(msg) ~= keyword then return end
+	if keyword == "" or strlower(msg) ~= keyword then
+		return
+	end
 
 	-- Only the leader/assistant can invite to an existing group.
-	if IsInGroup() and not (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then return end
+	if IsInGroup() and not (UnitIsGroupLeader("player") or UnitIsGroupAssistant("player")) then
+		return
+	end
 
 	if event == "CHAT_MSG_BN_WHISPER" then
-		if not (C_BattleNet_GetAccountInfoByID and BNInviteFriend) then return end
+		if not (C_BattleNet_GetAccountInfoByID and BNInviteFriend) then
+			return
+		end
 		local accountInfo = C_BattleNet_GetAccountInfoByID(presenceID)
 		local gameAccountInfo = accountInfo and accountInfo.gameAccountInfo
 		local gameID = gameAccountInfo and gameAccountInfo.gameAccountID
@@ -525,53 +633,19 @@ function Chat:OnChatWhisper(event, ...)
 	end
 end
 
--- Canvas sub-page hosting the keyword edit box. Blizzard's vertical settings
--- layout has no text input, so the toggles live in the Chat group and the
--- keyword itself is edited here.
-local function BuildKeywordCanvas(canvas)
-	local title = canvas:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
-	title:SetPoint("TOPLEFT", 8, -8)
-	title:SetText(L["Keyword Invite"])
-
-	local desc = canvas:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
-	desc:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
-	desc:SetPoint("RIGHT", canvas, "RIGHT", -16, 0)
-	desc:SetJustifyH("LEFT")
-	desc:SetWordWrap(true)
-	desc:SetText(L["When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."])
-
-	local label = canvas:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-	label:SetPoint("TOPLEFT", desc, "BOTTOMLEFT", 0, -16)
-	label:SetText(L["Invite Keyword"])
-
-	local box = F.CreateEditBox(canvas, 200, 24)
-	box:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 2, -8)
-	box:SetText(ns.db.chat.inviteKeyword or DEFAULT_KEYWORD)
-	box:SetCallback(function(_, text)
-		text = strtrim(text or "")
-		ns.db.chat.inviteKeyword = text
-		if text == "" then
-			F.Print(L["Invite keyword cleared."])
-		else
-			F.Print(L["Invite keyword set to:"], text)
-		end
-	end)
-
-	canvas:SetDefaultsHandler(function()
-		ns.db.chat.inviteKeyword = DEFAULT_KEYWORD
-		box:SetText(DEFAULT_KEYWORD)
-	end)
-end
-
 -- ---------------------------------------------------------------------------
 -- Font-size submenu on the tab right-click menu
 -- ---------------------------------------------------------------------------
 local function SetupFontSizeMenu()
-	if not (Menu and Menu.ModifyMenu) then return end
+	if not (Menu and Menu.ModifyMenu) then
+		return
+	end
 
 	local function IsSelected(height)
 		local frame = FCF_GetCurrentChatFrame()
-		if not frame then return false end
+		if not frame then
+			return false
+		end
 		local _, fontHeight = frame:GetFont()
 		return height == floor(fontHeight + 0.5)
 	end
@@ -592,13 +666,17 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function Chat:OnSettingChanged()
-	if not cfg then return end
+	if not cfg then
+		return
+	end
 	self:ChatWhisperSticky()
 end
 
 function Chat:OnEnable()
 	cfg = ns.db.chat
-	if not cfg.enable then return end
+	if not cfg.enable then
+		return
+	end
 
 	for i = 1, NUM_CHAT_WINDOWS do
 		self:SetupChat(_G["ChatFrame" .. i])
@@ -630,10 +708,18 @@ function Chat:OnEnable()
 
 	self:ChatWhisperSticky()
 
-	ns:RegisterEvent("CHAT_MSG_WHISPER", function(event, ...) Chat:PlayWhisperSound(event, ...) end)
-	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", function(event, ...) Chat:PlayWhisperSound(event, ...) end)
-	ns:RegisterEvent("CHAT_MSG_WHISPER", function(event, ...) Chat:OnChatWhisper(event, ...) end)
-	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", function(event, ...) Chat:OnChatWhisper(event, ...) end)
+	ns:RegisterEvent("CHAT_MSG_WHISPER", function(event, ...)
+		Chat:PlayWhisperSound(event, ...)
+	end)
+	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", function(event, ...)
+		Chat:PlayWhisperSound(event, ...)
+	end)
+	ns:RegisterEvent("CHAT_MSG_WHISPER", function(event, ...)
+		Chat:OnChatWhisper(event, ...)
+	end)
+	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", function(event, ...)
+		Chat:OnChatWhisper(event, ...)
+	end)
 
 	if cfg.fontSizeMenu then
 		SetupFontSizeMenu()
@@ -654,7 +740,18 @@ function Chat:RegisterOptions(category, builder)
 	local _, stickyInit = builder:Checkbox(category, self, "stickyWhisper", L["Sticky Whisper"], L["Keep the edit box in whisper mode after replying."])
 	local _, whisperSoundInit = builder:Checkbox(category, self, "whisperSound", L["Whisper Sound"], L["Play a sound when you receive a whisper."])
 	local _, fontMenuInit = builder:Checkbox(category, self, "fontSizeMenu", L["Font Size Menu"], L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."])
-	local _, autoInviteInit = builder:Checkbox(category, self, "autoInvite", L["Keyword Auto-Invite"], L["Invite players who whisper you your keyword (set it on the Keyword Invite page)."])
+
+	builder:Header(L["Auto Invite"])
+	local _, autoInviteInit = builder:Checkbox(category, self, "autoInvite", L["Keyword Auto-Invite"], L["Invite players who whisper you your keyword."])
+	local _, keywordInit = builder:EditBox(category, self, "inviteKeyword", L["Invite Keyword"], L["When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."], 200, function(text)
+		text = strtrim(text or "")
+		if text == "" then
+			F.Print(L["Invite keyword cleared."])
+		else
+			F.Print(L["Invite keyword set to:"], text)
+		end
+		return text
+	end)
 	local _, guildOnlyInit = builder:Checkbox(category, self, "guildInviteOnly", L["Guild/Friends Only"], L["Only auto-invite guild members and Battle.net friends."])
 
 	-- All chat tweaks rely on the module being on.
@@ -670,10 +767,7 @@ function Chat:RegisterOptions(category, builder)
 	builder:DependsOn(stickyInit, enableInit)
 	builder:DependsOn(whisperSoundInit, enableInit)
 	builder:DependsOn(fontMenuInit, enableInit)
-	builder:DependsOn(autoInviteInit, enableInit)
-	-- Guild/Friends Only is meaningless unless Keyword Auto-Invite is on.
-	builder:DependsOn(guildOnlyInit, autoInviteInit)
 
-	-- The keyword needs a text box, which the vertical layout can't host.
-	ns:RegisterOptionsCanvas(L["Keyword Auto-Invite"], BuildKeywordCanvas)
+	builder:DependsOn(keywordInit, autoInviteInit)
+	builder:DependsOn(guildOnlyInit, autoInviteInit)
 end

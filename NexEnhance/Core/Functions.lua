@@ -54,7 +54,9 @@ end
 
 --- Convert a hex string ("RRGGBB" or "ffRRGGBB") to 0-1 RGB triplet.
 function F.HexToRGB(hex)
-	if #hex == 8 then hex = hex:sub(3) end -- strip alpha
+	if #hex == 8 then
+		hex = hex:sub(3)
+	end -- strip alpha
 	return tonumber(hex:sub(1, 2), 16) / 255, tonumber(hex:sub(3, 4), 16) / 255, tonumber(hex:sub(5, 6), 16) / 255
 end
 
@@ -125,7 +127,9 @@ end
 --- table outright (so the original is untouched) use the global CopyTable from
 --- SharedXML/TableUtil.lua instead.
 function F.CopyDefaults(defaults, target)
-	if type(target) ~= "table" then target = {} end
+	if type(target) ~= "table" then
+		target = {}
+	end
 	for key, value in pairs(defaults) do
 		if type(value) == "table" then
 			target[key] = F.CopyDefaults(value, target[key])
@@ -139,7 +143,9 @@ end
 --- Count entries in a hash table (no `#` for non-array tables).
 function F.TableCount(tbl)
 	local count = 0
-	for _ in pairs(tbl) do count = count + 1 end
+	for _ in pairs(tbl) do
+		count = count + 1
+	end
 	return count
 end
 
@@ -153,7 +159,9 @@ end
 function F.Debounce(delay, func)
 	local scheduled = false
 	return function(...)
-		if scheduled then return end
+		if scheduled then
+			return
+		end
 		scheduled = true
 		local args = { ... }
 		C_Timer.After(delay, function()
@@ -187,7 +195,9 @@ function F.CreatePool(creator, resetter)
 	end
 
 	function pool:Release(obj)
-		if resetter then resetter(obj) end
+		if resetter then
+			resetter(obj)
+		end
 		free[obj] = true
 	end
 
@@ -215,7 +225,9 @@ end
 --   boolean-test or compare. Gate any such read with these helpers first.
 -- ---------------------------------------------------------------------------
 do
-	local issecretvalue = _G["issecretvalue"] or function(...) return false end
+	local issecretvalue = _G["issecretvalue"] or function(...)
+		return false
+	end
 
 	--- True when `value` is a secret value (always safe to call).
 	function F.IsSecret(value)
@@ -250,14 +262,18 @@ do
 	--- this never errors under tainted execution.
 	function F.UnitColor(unit)
 		local r, g, b = 1, 1, 1
-		if not unit then return r, g, b end
+		if not unit then
+			return r, g, b
+		end
 
 		local isPlayer = UnitIsPlayer(unit)
 		if F.NotSecret(isPlayer) and isPlayer then
 			local _, class = UnitClass(unit)
 			if F.NotSecret(class) and class then
 				local color = CLASS_COLORS[class]
-				if color then return color.r, color.g, color.b end
+				if color then
+					return color.r, color.g, color.b
+				end
 			end
 			return r, g, b
 		end
@@ -265,31 +281,68 @@ do
 		local reaction = UnitReaction(unit, "player")
 		if F.NotSecret(reaction) and reaction and FACTION_BAR_COLORS then
 			local color = FACTION_BAR_COLORS[reaction]
-			if color then return color.r, color.g, color.b end
+			if color then
+				return color.r, color.g, color.b
+			end
 		end
 		return r, g, b
 	end
 
 	--- Extract the numeric NPC ID from a unit GUID (nil for players/secret).
 	function F.GetNPCID(guid)
-		if not guid or F.IsSecret(guid) then return end
+		if not guid or F.IsSecret(guid) then
+			return
+		end
 		local id = strmatch(guid, "^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)")
 		return tonumber(id)
 	end
 end
 
---- Abbreviate large numbers ("1.2M", "356.1K"); leaves small numbers as-is.
-function F.ShortValue(value)
-	value = value or 0
-	local abs = value < 0 and -value or value
-	if abs >= 1e9 then
-		return format("%.1fG", value / 1e9)
-	elseif abs >= 1e6 then
-		return format("%.1fM", value / 1e6)
-	elseif abs >= 1e3 then
-		return format("%.1fK", value / 1e3)
+-- Number abbreviation built on the 12.0 AbbreviateNumbers API. Two presets,
+-- selectable via General > Number Format (stored in ns.db.numberFormat.style),
+-- mirroring NDui's CreateAbbreviateConfig setup:
+--   1 = Western:          1.2k / 3.4m / 5.6b / 7.8t
+--   2 = East Asian myriad: 1.2w (万) / 3.4y (亿) / 5.6z (兆)
+-- The configs are built lazily/cached on first use so we don't pay for them at
+-- load and so localized abbreviation strings are ready.
+---@diagnostic disable-next-line: undefined-global
+local CreateAbbreviateConfig = CreateAbbreviateConfig
+local AbbreviateNumbers = AbbreviateNumbers
+local numberAbbrevOptions
+
+local function GetNumberAbbrevOptions()
+	if numberAbbrevOptions then
+		return numberAbbrevOptions
 	end
-	return format("%d", value)
+
+	local L = ns.L
+	numberAbbrevOptions = {
+		[1] = { config = CreateAbbreviateConfig({
+			{ breakpoint = 1e12, abbreviation = "t", significandDivisor = 1e10, fractionDivisor = 1e2, abbreviationIsGlobal = false },
+			{ breakpoint = 1e9, abbreviation = "b", significandDivisor = 1e7, fractionDivisor = 1e2, abbreviationIsGlobal = false },
+			{ breakpoint = 1e6, abbreviation = "m", significandDivisor = 1e4, fractionDivisor = 1e2, abbreviationIsGlobal = false },
+			{ breakpoint = 1e3, abbreviation = "k", significandDivisor = 1e2, fractionDivisor = 1e1, abbreviationIsGlobal = false },
+		}) },
+		[2] = { config = CreateAbbreviateConfig({
+			{ breakpoint = 1e12, abbreviation = L["Abbrev Number Three"], significandDivisor = 1e10, fractionDivisor = 1e2, abbreviationIsGlobal = false },
+			{ breakpoint = 1e8, abbreviation = L["Abbrev Number Two"], significandDivisor = 1e6, fractionDivisor = 1e2, abbreviationIsGlobal = false },
+			{ breakpoint = 1e4, abbreviation = L["Abbrev Number One"], significandDivisor = 1e3, fractionDivisor = 1e1, abbreviationIsGlobal = false },
+		}) },
+	}
+	return numberAbbrevOptions
+end
+
+--- Abbreviate large numbers ("1.2m", "356.1k"); leaves small numbers as-is.
+--- Honours the General > Number Format preference; negatives keep their sign.
+function F.ShortValue(value)
+	local style = (ns.db and ns.db.numberFormat and ns.db.numberFormat.style) or 1
+	local opt = GetNumberAbbrevOptions()[style]
+	if opt then
+		---@diagnostic disable-next-line: redundant-parameter
+		return AbbreviateNumbers(value, opt)
+	else
+		return value
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -301,7 +354,9 @@ function F.CreateFS(parent, size, text, layer)
 	local fs = parent:CreateFontString(nil, layer or "OVERLAY")
 	fs:SetFont(C.Media.Fonts.normal, size or 12, "OUTLINE")
 	fs:SetShadowColor(0, 0, 0, 0)
-	if text then fs:SetText(text) end
+	if text then
+		fs:SetText(text)
+	end
 	return fs
 end
 
@@ -343,12 +398,16 @@ do
 	---   { iLvl, enchantText, gems = {tex,...}, gemsColor = {color,...} }
 	--- otherwise it returns a number (or nil).
 	function F.GetItemLevel(link, arg1, arg2, fullScan)
-		if not C_TooltipInfo then return end
+		if not C_TooltipInfo then
+			return
+		end
 
 		if fullScan then
 			---@type any
 			local data = C_TooltipInfo.GetInventoryItem(arg1, arg2)
-			if not data then return end
+			if not data then
+				return
+			end
 
 			wipe(slotData.gems)
 			wipe(slotData.gemsColor)
@@ -386,7 +445,9 @@ do
 			return slotData
 		end
 
-		if iLvlCache[link] then return iLvlCache[link] end
+		if iLvlCache[link] then
+			return iLvlCache[link]
+		end
 
 		---@type any
 		local data
@@ -397,11 +458,15 @@ do
 		else
 			data = C_TooltipInfo.GetHyperlink(link, nil, nil, true)
 		end
-		if not data then return end
+		if not data then
+			return
+		end
 
 		for i = 2, 5 do
 			local lineData = data.lines[i]
-			if not lineData then break end
+			if not lineData then
+				break
+			end
 			local text = lineData.leftText
 			if text and strfind(text, itemLevelString) then
 				iLvlCache[link] = tonumber(strmatch(text, "(%d+)%)?$"))
@@ -431,11 +496,15 @@ do
 
 	---@return string|nil "BoE", "BoA", "WuE", or "BoU"
 	function F.GetItemBindLabel(link, bagID, slotID)
-		if not link then return end
+		if not link then
+			return
+		end
 
 		if bagID and slotID then
 			local containerInfo = C_Container.GetContainerItemInfo(bagID, slotID)
-			if containerInfo and containerInfo.isBound then return end
+			if containerInfo and containerInfo.isBound then
+				return
+			end
 		end
 
 		if bagID and slotID and C_TooltipInfo then
@@ -449,8 +518,7 @@ do
 							return "BoE"
 						elseif bonding == BIND.BindOnUse then
 							return "BoU"
-						elseif bonding == BIND.Account or bonding == BIND.BindToAccount
-							or bonding == BIND.BindToBnetAccount or bonding == BIND.BnetAccount then
+						elseif bonding == BIND.Account or bonding == BIND.BindToAccount or bonding == BIND.BindToBnetAccount or bonding == BIND.BnetAccount then
 							return "BoA"
 						elseif bonding == BIND.AccountUntilEquipped or bonding == BIND.BindToAccountUntilEquipped then
 							return "WuE"

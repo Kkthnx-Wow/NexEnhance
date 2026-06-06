@@ -239,32 +239,103 @@ local function editBox_SetCallback(self, callback)
 	self._callback = callback
 end
 
+-- Soft gold used to highlight the border while the box has keyboard focus.
+local EDITBOX_FOCUS_R, EDITBOX_FOCUS_G, EDITBOX_FOCUS_B = 0.9, 0.75, 0.32
+
+local function editBox_OnFocusGained(self)
+	if self.nexBackdrop then
+		self.nexBackdrop:SetBackdropBorderColor(EDITBOX_FOCUS_R, EDITBOX_FOCUS_G, EDITBOX_FOCUS_B, 1)
+	end
+	if self.nexEntryBox then
+		for _, tex in next, self.nexEntryBox do
+			tex:SetVertexColor(1, 0.92, 0.72)
+		end
+	end
+end
+
+local function editBox_OnFocusLost(self)
+	F.SetBorderColor(self.nexBackdrop)
+	if self.nexEntryBox then
+		for _, tex in next, self.nexEntryBox do
+			tex:SetVertexColor(1, 1, 1)
+		end
+	end
+end
+
+-- Blizzard's "common-gray-button-entrybox" three-slice. All members are 48px
+-- tall: -left (13) is the left cap, -right (314) is the body with the rounded
+-- right end baked in, and -center (16) is the stretchable bridge between them.
+local ENTRYBOX_LEFT = "common-gray-button-entrybox-left"
+local ENTRYBOX_CENTER = "common-gray-button-entrybox-center"
+local ENTRYBOX_RIGHT = "common-gray-button-entrybox-right"
+local ENTRYBOX_NATIVE_HEIGHT = 48
+local ENTRYBOX_LEFT_WIDTH = 13
+local ENTRYBOX_RIGHT_WIDTH = 314
+
+--- Skin `frame` with the gray entry-box three-slice, scaled to the frame's
+--- current height (keeping the caps' aspect ratio). Returns the cached pieces.
+function F.CreateEntryBoxSkin(frame)
+	if frame.nexEntryBox then return frame.nexEntryBox end
+
+	local h = frame:GetHeight()
+	if not h or h <= 0 then h = 24 end
+	local scale = h / ENTRYBOX_NATIVE_HEIGHT
+
+	local left = frame:CreateTexture(nil, "BACKGROUND")
+	left:SetAtlas(ENTRYBOX_LEFT)
+	left:SetSize(ENTRYBOX_LEFT_WIDTH * scale, h)
+	left:SetPoint("LEFT")
+
+	local right = frame:CreateTexture(nil, "BACKGROUND")
+	right:SetAtlas(ENTRYBOX_RIGHT)
+	right:SetSize(ENTRYBOX_RIGHT_WIDTH * scale, h)
+	right:SetPoint("RIGHT")
+
+	local center = frame:CreateTexture(nil, "BACKGROUND")
+	center:SetAtlas(ENTRYBOX_CENTER)
+	center:SetHeight(h)
+	center:SetPoint("LEFT", left, "RIGHT")
+	center:SetPoint("RIGHT", right, "LEFT")
+
+	local pieces = { Left = left, Center = center, Right = right }
+	frame.nexEntryBox = pieces
+	return pieces
+end
+
 --- Create a styled, single-line edit box. `width`/`height` default to 150x22.
---- The returned frame gains :SetCallback(fn) where fn(self, text) fires when the
---- player presses Enter. Escape clears focus.
-function F.CreateEditBox(parent, width, height)
+--- Pass `entryBox` truthy to skin it with Blizzard's gray entry-box three-slice;
+--- otherwise it uses our flat recessed backdrop. Either way the border/texture
+--- brightens while focused. The returned frame gains :SetCallback(fn) where
+--- fn(self, text) fires when the player presses Enter. Escape clears focus.
+function F.CreateEditBox(parent, width, height, entryBox)
 	local eb = CreateFrame("EditBox", nil, parent)
 	eb:SetAutoFocus(false)
 	eb:SetFontObject("ChatFontNormal")
 	eb:SetSize(width or 150, height or 22)
-	eb:SetTextInsets(6, 6, 0, 0)
+	eb:SetTextInsets(8, 8, 0, 0)
 	eb:SetScript("OnEscapePressed", editBox_OnEscape)
 	eb:SetScript("OnEnterPressed", editBox_OnEnter)
 	eb.SetCallback = editBox_SetCallback
 
-	F.CreateBackdrop(eb, 0.7)
+	if entryBox then
+		F.CreateEntryBoxSkin(eb)
+	else
+		F.CreateBackdrop(eb, 0.7)
+	end
+	eb:HookScript("OnEditFocusGained", editBox_OnFocusGained)
+	eb:HookScript("OnEditFocusLost", editBox_OnFocusLost)
 
 	return eb
 end
 
 -- ---------------------------------------------------------------------------
--- Settings list description
---   Blizzard's vertical Settings layout has section headers but no body-text
---   element, so this adds a small wrapped paragraph - e.g. an intro blurb at the
---   top of each subcategory page. Mirrors Blizzard's own pattern: an XML template
---   carrying a mixin (see Widgets.xml) built via Settings.CreateElementInitializer.
+-- Settings list helpers
+--   Blizzard's vertical Settings layout has section headers but no body-text or
+--   text-input element, so these add small custom rows. They mirror Blizzard's
+--   own pattern: XML templates carrying mixins (see Widgets.xml) built via
+--   Settings.CreateElementInitializer.
 -- ---------------------------------------------------------------------------
--- luacheck: globals NexEnhanceSettingsDescriptionMixin
+-- luacheck: globals NexEnhanceSettingsDescriptionMixin NexEnhanceSettingsEditBoxMixin
 
 NexEnhanceSettingsDescriptionMixin = {}
 
@@ -300,5 +371,135 @@ function F.CreateSettingsDescription(text)
 	local initializer = Settings.CreateElementInitializer("NexEnhanceSettingsDescriptionTemplate", { text = text })
 	local height = MeasureDescriptionHeight(text)
 	initializer.GetExtent = function() return height end
+	return initializer
+end
+
+NexEnhanceSettingsEditBoxMixin = {}
+
+local function editBoxRow_OnEnterPressed(self)
+	local owner = self:GetParent()
+	local data = owner and owner._nexData
+	if data and data.setValue then
+		data.setValue(self:GetText() or "")
+		if data.getValue then
+			self:SetText(data.getValue() or "")
+		end
+	end
+	self:ClearFocus()
+end
+
+local function editBoxRow_OnEscapePressed(self)
+	local owner = self:GetParent()
+	local data = owner and owner._nexData
+	if data and data.getValue then
+		self:SetText(data.getValue() or "")
+	end
+	self:ClearFocus()
+end
+
+-- Blizzard anchors control labels at LEFT (indent + 37); mirror that so our row
+-- lines up with the surrounding checkboxes/dropdowns. (See SettingsListElementMixin.)
+local SETTINGS_LABEL_INDENT = 37
+
+--- Re-read the parent dependency (set via builder:DependsOn) and grey out / lock
+--- the row when the parent toggle is off, matching Blizzard's dependent rows.
+function NexEnhanceSettingsEditBoxMixin:EvaluateState()
+	local initializer = self.initializer
+	local enabled = true
+	if initializer and initializer.EvaluateModifyPredicates then
+		enabled = initializer:EvaluateModifyPredicates()
+	end
+
+	local nameColor = enabled and NORMAL_FONT_COLOR or GRAY_FONT_COLOR
+	self.Text:SetTextColor(nameColor:GetRGB())
+	local d = enabled and 0.75 or 0.4
+	self.Description:SetTextColor(d, d, d)
+
+	local box = self.EditBox
+	if box then
+		box:SetEnabled(enabled)
+		if not enabled then box:ClearFocus() end
+		box:SetTextColor(enabled and 1 or 0.5, enabled and 1 or 0.5, enabled and 1 or 0.5)
+		if box.nexEntryBox then
+			local g = enabled and 1 or 0.5
+			for _, tex in next, box.nexEntryBox do
+				tex:SetDesaturated(not enabled)
+				tex:SetVertexColor(g, g, g)
+			end
+		end
+	end
+end
+
+function NexEnhanceSettingsEditBoxMixin:Init(initializer)
+	local data = initializer:GetData()
+	self._nexData = data
+	self.initializer = initializer
+
+	-- Clear any callback left over from a previous pooled use before we re-hook.
+	if self.cbrHandles then
+		self.cbrHandles:Unregister()
+	else
+		self.cbrHandles = Settings.CreateCallbackHandleContainer()
+	end
+
+	-- Live-update our enabled state when the parent toggle (builder:DependsOn)
+	-- changes, exactly as Blizzard's SettingsListElementMixin does.
+	local parentInitializer = initializer.GetParentInitializer and initializer:GetParentInitializer()
+	if parentInitializer then
+		local parentSetting = parentInitializer:GetSetting()
+		if parentSetting then
+			self.cbrHandles:SetOnValueChangedCallback(parentSetting:GetVariable(), self.EvaluateState, self)
+		end
+	end
+
+	self.Text:SetText(data and data.name or "")
+	self.Description:SetText(data and data.tooltip or "")
+
+	-- Match Blizzard's label indent (extra 15px for dependent rows) so the row
+	-- aligns with the checkboxes above/below it.
+	local indent = (initializer.GetIndent and initializer:GetIndent()) or 0
+	self.Text:ClearAllPoints()
+	self.Text:SetPoint("TOPLEFT", indent + SETTINGS_LABEL_INDENT, -4)
+
+	if not self.EditBox then
+		local box = F.CreateEditBox(self, 200, 28, true)
+		box:SetScript("OnEnterPressed", editBoxRow_OnEnterPressed)
+		box:SetScript("OnEscapePressed", editBoxRow_OnEscapePressed)
+		self.EditBox = box
+	end
+
+	-- Anchor the box's left to the label (self.Text) so they share the same
+	-- indent, and drop it below the (possibly wrapped) description. Anchoring to
+	-- the description's BOTTOMLEFT proved unreliable, so we derive the offset
+	-- from its measured height instead.
+	local descHeight = self.Description:GetStringHeight()
+	if not descHeight or descHeight <= 0 then descHeight = 12 end
+	self.EditBox:ClearAllPoints()
+	self.EditBox:SetPoint("TOPLEFT", self.Text, "BOTTOMLEFT", 0, -(descHeight + 11))
+
+	self.EditBox:SetWidth((data and data.width) or 200)
+	self.EditBox:SetText((data and data.getValue and data.getValue()) or "")
+
+	self:EvaluateState()
+end
+
+function NexEnhanceSettingsEditBoxMixin:Release()
+	if self.cbrHandles then
+		self.cbrHandles:Unregister()
+	end
+end
+
+--- Create an initializer for an inline Settings edit box row. The value is owned
+--- by the caller through getValue/setValue so it can write to any saved table.
+function F.CreateSettingsEditBox(name, tooltip, getValue, setValue, width)
+	if not (Settings and Settings.CreateElementInitializer) then return end
+	local initializer = Settings.CreateElementInitializer("NexEnhanceSettingsEditBoxTemplate", {
+		name = name,
+		tooltip = tooltip,
+		getValue = getValue,
+		setValue = setValue,
+		width = width or 200,
+	})
+	initializer.GetExtent = function() return 74 end
 	return initializer
 end

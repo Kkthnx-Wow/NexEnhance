@@ -27,16 +27,16 @@ ns:RegisterDefaults({
 	},
 })
 
-local ChatBubbles = ns:NewModule("ChatBubbles", "chatBubbles", { group = "skins", title = L["Chat Bubbles"], order = 20 })
+local ChatBubbles = ns:NewModule("ChatBubbles", "chatBubbles", { group = "skins", title = L["Chat Bubbles"], order = 30 })
 
 -- A classic Blizzard tooltip-style border, matching the chat edit box.
 local BUBBLE_BACKDROP = {
 	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
 	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
+	tileSize = 12,
+	edgeSize = 12,
+	insets = { left = 3, right = 3, top = 3, bottom = 3 },
 }
 
 -- Only chat (not nameplate) bubbles should be reskinned; these CVars say which
@@ -82,8 +82,8 @@ local function ReskinBubble(chatBubble)
 		local bg = CreateFrame("Frame", nil, chatBubble, "BackdropTemplate")
 		local level = frame:GetFrameLevel()
 		bg:SetFrameLevel(level > 0 and level - 1 or 0)
-		bg:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
-		bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
+		bg:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, -6)
+		bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, 6)
 		bg:SetBackdrop(BUBBLE_BACKDROP)
 		bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
 
@@ -127,9 +127,25 @@ local function CreateWorker()
 	end
 end
 
+-- Chat bubbles inherit the shared ChatBubbleFont object, so shrinking it once
+-- downsizes every (recycled) bubble's text without per-bubble bookkeeping.
+local FONT_REDUCTION = 4
+local function ShrinkBubbleFont()
+	local font = _G.ChatBubbleFont
+	if not font or ChatBubbles.fontResized then return end
+
+	local fontFile, fontSize, fontFlags = font:GetFont()
+	if fontFile and fontSize then
+		-- Never shrink below a legible floor (and never grow it).
+		font:SetFont(fontFile, math.max(fontSize - FONT_REDUCTION, 8), fontFlags)
+		ChatBubbles.fontResized = true
+	end
+end
+
 function ChatBubbles:OnEnable()
 	if not ns.db.chatBubbles.enable then return end
 	if not worker then CreateWorker() end
+	ShrinkBubbleFont()
 end
 
 function ChatBubbles:RegisterOptions(category, builder)

@@ -31,7 +31,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local TradeTarget = ns:NewModule("TradeTargetInfo", "tradeTarget", { group = "misc", title = L["Trade Target Info"], order = 15 })
+local TradeTarget = ns:NewModule("TradeTargetInfo", "tradeTarget", { group = "misc", title = L["Trade Target Info"], order = 20 })
 
 local infoText
 

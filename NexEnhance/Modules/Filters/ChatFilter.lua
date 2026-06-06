@@ -27,6 +27,7 @@ local F, C, L = ns.F, ns.C, ns.L
 
 local pairs = pairs
 local gsub, strmatch, strrep = string.gsub, string.match, string.rep
+local strfind = string.find
 local min, max, tremove = math.min, math.max, table.remove
 local wipe = wipe
 local GetTime, Ambiguate = GetTime, Ambiguate
@@ -128,8 +129,9 @@ local function GetFilterResult(event, msg, name, flag, guid)
 		for keyword in pairs(whitelist) do
 			if keyword ~= "" then
 				found = true
-				local _, count = gsub(filterMsg, keyword, "")
-				if count > 0 then matches = matches + 1 end
+				-- Plain (literal) substring match so keywords containing Lua
+				-- magic characters (%, [, ], -, ...) can't error or over-match.
+				if strfind(filterMsg, keyword, 1, true) then matches = matches + 1 end
 			end
 		end
 		if matches == 0 and found then return 0 end
@@ -139,8 +141,7 @@ local function GetFilterResult(event, msg, name, flag, guid)
 	local matches = 0
 	for keyword in pairs(keywords) do
 		if keyword ~= "" then
-			local _, count = gsub(filterMsg, keyword, "")
-			if count > 0 then matches = matches + 1 end
+			if strfind(filterMsg, keyword, 1, true) then matches = matches + 1 end
 		end
 	end
 	if matches >= cfg.matches then return true end

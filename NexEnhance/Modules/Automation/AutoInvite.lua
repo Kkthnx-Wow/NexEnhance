@@ -21,7 +21,9 @@ local IsInGroup = IsInGroup
 local IsGuildMember = IsGuildMember
 local StaticPopup_Hide = StaticPopup_Hide
 local StaticPopupSpecial_Hide = StaticPopupSpecial_Hide
-local C_BattleNet_GetAccountInfoByGUID = C_BattleNet and C_BattleNet.GetAccountInfoByGUID
+-- PARTY_INVITE_REQUEST hands us a player (character) GUID, so resolve it with
+-- GetGameAccountInfoByGUID; GetAccountInfoByGUID expects a Battle.net account GUID.
+local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet and C_BattleNet.GetGameAccountInfoByGUID
 local C_FriendList_IsFriend = C_FriendList and C_FriendList.IsFriend
 
 ns:RegisterDefaults({
@@ -43,7 +45,7 @@ local function IsTrustedInviter(guid)
 
 	local cfg = ns.db.autoInvite
 	if cfg.fromFriends then
-		if C_BattleNet_GetAccountInfoByGUID and C_BattleNet_GetAccountInfoByGUID(guid) then return true end
+		if C_BattleNet_GetGameAccountInfoByGUID and C_BattleNet_GetGameAccountInfoByGUID(guid) then return true end
 		if C_FriendList_IsFriend and C_FriendList_IsFriend(guid) then return true end
 	end
 	if cfg.fromGuild and IsGuildMember(guid) then

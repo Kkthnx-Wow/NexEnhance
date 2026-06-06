@@ -58,7 +58,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local AlreadyKnown = ns:NewModule("AlreadyKnown", "alreadyKnown", { group = "inventory", title = L["Already Known"], order = 50 })
+local AlreadyKnown = ns:NewModule("AlreadyKnown", "alreadyKnown", { group = "inventory", title = L["Already Known"], order = 40 })
 
 -- ---------------------------------------------------------------------------
 -- Detection

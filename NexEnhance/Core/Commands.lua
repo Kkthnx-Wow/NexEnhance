@@ -186,6 +186,34 @@ function OptionBuilder:Color(category, module, key, name, tooltip)
 	return setting, initializer
 end
 
+function OptionBuilder:EditBox(category, module, key, name, tooltip, width, onCommit)
+	local layout = self.layout
+	if not (layout and F.CreateSettingsEditBox) then return end
+
+	local setting = RegisterSetting(category, module, key, name)
+	local initializer = F.CreateSettingsEditBox(name, tooltip, function()
+		return setting:GetValue()
+	end, function(text)
+		if onCommit then
+			text = onCommit(text) or text
+		end
+		setting:SetValue(text)
+	end, width)
+	if initializer then
+		layout:AddInitializer(initializer)
+	end
+	return setting, initializer
+end
+
+-- Add a section header (same style as the per-module headers) partway through a
+-- module's options, to visually group a related cluster of settings.
+function OptionBuilder:Header(text)
+	local layout = self.layout
+	if layout and _G["CreateSettingsListSectionHeaderInitializer"] then
+		layout:AddInitializer(_G["CreateSettingsListSectionHeaderInitializer"](text))
+	end
+end
+
 -- Make `child` depend on a parent toggle. `child` and `parent` are the
 -- *initializers* (the 2nd return value from the builder methods above). The
 -- child is automatically greyed out and disabled whenever the parent toggle is
@@ -534,7 +562,9 @@ local function BuildOptions()
 			local key = groupCategory[module.group] and module.group or "misc"
 			local moduleCategory = groupCategory[key] or category
 			AddSectionHeader(groupLayout[key], module.title or module.name)
+			OptionBuilder.layout = groupLayout[key]
 			module:RegisterOptions(moduleCategory, OptionBuilder)
+			OptionBuilder.layout = nil
 		end
 	end
 

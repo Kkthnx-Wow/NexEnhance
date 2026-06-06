@@ -49,6 +49,34 @@ local GT = GameTooltip ---@type any
 local ICON_LIST = ICON_LIST
 local HIGHLIGHT_FONT_COLOR = HIGHLIGHT_FONT_COLOR
 
+-- Classic Blizzard tooltip skin, matching the chat edit box and copy frame.
+-- Split into two pieces: the dark fill goes on a frame *behind* the bar (so it
+-- backs the empty portion without covering the health texture), and the gold
+-- edge goes on a frame *above* it (the border texture is transparent in the
+-- centre, so it frames the bar without eating into the fill).
+local STATUSBAR_BG = {
+	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+	tile = true,
+	tileSize = 16,
+	insets = { left = 3, right = 3, top = 3, bottom = 3 },
+}
+local STATUSBAR_BORDER = {
+	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+	edgeSize = 14,
+}
+
+-- Retail unit-frame fill atlas, matching the experience bar. The "-Status"
+-- variant is neutral/tintable, so the per-unit SetStatusBarColor still reads
+-- correctly. Falls back to our shared statusbar texture if unavailable.
+local UNITFRAME_ATLAS = "UI-HUD-UnitFrame-Player-PortraitOff-Bar-Health-Status"
+local function ApplyBarTexture(bar)
+	if _G.C_Texture and _G.C_Texture.GetAtlasInfo and _G.C_Texture.GetAtlasInfo(UNITFRAME_ATLAS) then
+		bar:SetStatusBarTexture(UNITFRAME_ATLAS)
+	else
+		bar:SetStatusBarTexture(C.Media.Textures.statusbar)
+	end
+end
+
 ns:RegisterDefaults({
 	tooltip = {
 		enable = true,
@@ -61,6 +89,7 @@ ns:RegisterDefaults({
 		mythicScore = true,
 		qualityBorder = true,
 		statusBarPosition = "bottom", -- "bottom" | "top"
+		statusBarHeight = 6,
 		showIDs = true,
 		showIcons = true,
 		showItemLevel = true,
@@ -101,7 +130,9 @@ function Tooltip:GetUnit()
 end
 
 function Tooltip:UnitExists(unit)
-	if ShouldUnitIdentityBeSecret and ShouldUnitIdentityBeSecret(unit) then return end
+	if ShouldUnitIdentityBeSecret and ShouldUnitIdentityBeSecret(unit) then
+		return
+	end
 	return unit and UnitExists(unit)
 end
 
@@ -113,7 +144,9 @@ end
 function Tooltip:GetLevelLine()
 	for i = 2, self:NumLines() do
 		local tiptext = _G["GameTooltipTextLeft" .. i]
-		if not tiptext then break end
+		if not tiptext then
+			break
+		end
 		local linetext = tiptext:GetText()
 		if linetext and F.NotSecret(linetext) and strfind(linetext, LEVEL) then
 			return tiptext, i
@@ -122,13 +155,17 @@ function Tooltip:GetLevelLine()
 end
 
 function Tooltip:GetTarget(unit)
-	if F.IsSecret(unit) then return "" end
+	if F.IsSecret(unit) then
+		return ""
+	end
 	local isYou = UnitIsUnit(unit, "player")
 	if F.NotSecret(isYou) and isYou then
 		return format("|cffff0000%s|r", ">" .. strupper(YOU) .. "<")
 	end
 	local name = UnitName(unit)
-	if not name or F.IsSecret(name) then name = "" end
+	if not name or F.IsSecret(name) then
+		name = ""
+	end
 	return F.ColorStr(F.UnitColor(unit)) .. name .. "|r"
 end
 
@@ -154,7 +191,9 @@ local roleAtlas = {
 
 function Tooltip:InsertRoleFrame(role)
 	local atlas = roleAtlas[role]
-	if not atlas then return end
+	if not atlas then
+		return
+	end
 	if not self.roleFrame then
 		local f = self:CreateTexture(nil, "OVERLAY")
 		f:SetPoint("TOPRIGHT", self, -2, -2)
@@ -167,11 +206,17 @@ end
 
 -- Faction line rewrite (AddLinePreCall) -------------------------------------
 function Tooltip:UpdateFactionLine(lineData)
-	if self:IsForbidden() then return end
-	if not self:IsTooltipType(Enum.TooltipDataType.Unit) then return end
+	if self:IsForbidden() then
+		return
+	end
+	if not self:IsTooltipType(Enum.TooltipDataType.Unit) then
+		return
+	end
 
 	local unit = Tooltip.GetUnit(self)
-	if not unit then return end
+	if not unit then
+		return
+	end
 	-- Guard the secret check BEFORE boolean-testing the result (12.0.5 can make
 	-- UnitIsPlayer return a secret value under restricted identity).
 	local isPlayer = UnitIsPlayer(unit)
@@ -180,7 +225,9 @@ function Tooltip:UpdateFactionLine(lineData)
 	local unitCreature = UnitCreatureType(unit)
 
 	local linetext = lineData.leftText
-	if not linetext or F.IsSecret(linetext) then return end
+	if not linetext or F.IsSecret(linetext) then
+		return
+	end
 
 	if linetext == PVP then
 		return true
@@ -210,9 +257,15 @@ end
 
 -- Cleared ---------------------------------------------------------------------
 function Tooltip:OnTooltipCleared()
-	if self:IsForbidden() then return end
-	if self.factionFrame and self.factionFrame:IsShown() then self.factionFrame:Hide() end
-	if self.roleFrame and self.roleFrame:IsShown() then self.roleFrame:Hide() end
+	if self:IsForbidden() then
+		return
+	end
+	if self.factionFrame and self.factionFrame:IsShown() then
+		self.factionFrame:Hide()
+	end
+	if self.roleFrame and self.roleFrame:IsShown() then
+		self.roleFrame:Hide()
+	end
 	-- Restore Blizzard's default border tint (we only ever recolour it).
 	SetDefaultBorderColor(self)
 end
@@ -224,7 +277,9 @@ local function GetDungeonScore(score)
 end
 
 function Tooltip:ShowUnitMythicPlusScore(unit)
-	if not cfg.mythicScore or not C_PlayerInfo_GetPlayerMythicPlusRatingSummary then return end
+	if not cfg.mythicScore or not C_PlayerInfo_GetPlayerMythicPlusRatingSummary then
+		return
+	end
 	local summary = C_PlayerInfo_GetPlayerMythicPlusRatingSummary(unit)
 	local score = summary and summary.currentSeasonScore
 	if score and score > 0 then
@@ -235,7 +290,9 @@ end
 -- Combat hide ----------------------------------------------------------------
 local function ShouldHideInCombat()
 	-- Hide in combat unless Shift is held (Shift always reveals).
-	if not cfg.hideInCombat then return false end
+	if not cfg.hideInCombat then
+		return false
+	end
 	return not IsShiftKeyDown()
 end
 
@@ -246,7 +303,9 @@ end
 
 -- The main unit tooltip rewrite ---------------------------------------------
 function Tooltip:OnTooltipSetUnit()
-	if self:IsForbidden() or self ~= GameTooltip then return end
+	if self:IsForbidden() or self ~= GameTooltip then
+		return
+	end
 
 	if ShouldHideInCombat() and InCombatLockdown() then
 		self:Hide()
@@ -254,7 +313,9 @@ function Tooltip:OnTooltipSetUnit()
 	end
 
 	local unit, guid = Tooltip.GetUnit(self)
-	if not unit then return end
+	if not unit then
+		return
+	end
 
 	local isShiftKeyDown = IsShiftKeyDown()
 	local isPlayer = UnitIsPlayer(unit)
@@ -264,7 +325,9 @@ function Tooltip:OnTooltipSetUnit()
 		local name, realm = UnitName(unit)
 		-- Under restricted identity the name can be secret; fall back so the
 		-- concatenations below never operate on a secret value.
-		if not name or F.IsSecret(name) then name = UNKNOWN or "Unknown" end
+		if not name or F.IsSecret(name) then
+			name = UNKNOWN or "Unknown"
+		end
 		local pvpName = UnitPVPName(unit)
 		local relationship = UnitRealmRelationship(unit)
 		if not cfg.hideTitle and pvpName and F.NotSecret(pvpName) and pvpName ~= "" then
@@ -313,9 +376,15 @@ function Tooltip:OnTooltipSetUnit()
 			end
 
 			rankIndex = (rankIndex or 0) + 1
-			if cfg.hideRank then rank = "" end
-			if guildRealm and isShiftKeyDown then guildName = guildName .. "-" .. guildRealm end
-			if strlen(guildName) > 31 and not isShiftKeyDown then guildName = "..." end
+			if cfg.hideRank then
+				rank = ""
+			end
+			if guildRealm and isShiftKeyDown then
+				guildName = guildName .. "-" .. guildRealm
+			end
+			if strlen(guildName) > 31 and not isShiftKeyDown then
+				guildName = "..."
+			end
 			GameTooltipTextLeft2:SetText("<" .. guildName .. "> " .. (rank or "") .. "(" .. rankIndex .. ")")
 		end
 	end
@@ -342,7 +411,9 @@ function Tooltip:OnTooltipSetUnit()
 
 	if level and F.NotSecret(level) then
 		local boss
-		if level == -1 then boss = "|cffff0000??|r" end
+		if level == -1 then
+			boss = "|cffff0000??|r"
+		end
 
 		local diff = GetCreatureDifficultyColor(level)
 		local classify = UnitClassification(unit)
@@ -386,12 +457,46 @@ end
 -- Status bar -----------------------------------------------------------------
 function Tooltip:UpdateStatusBarColor()
 	local unit = Tooltip.GetUnit(self)
-	if not unit then return end
+	if not unit then
+		return
+	end
 	if F.IsSecret(unit) then
 		self.StatusBar:SetStatusBarColor(0, 1, 0)
 	else
 		self.StatusBar:SetStatusBarColor(F.UnitColor(unit))
 	end
+end
+
+-- Give the health/status bar our Blizzard tooltip border. Created once and
+-- parented to the bar, so it follows the bar wherever it is anchored (top or
+-- bottom) without any per-show work.
+local function StyleStatusBar()
+	local bar = GameTooltipStatusBar
+	if not bar or bar.nexBorder then
+		return
+	end
+
+	ApplyBarTexture(bar)
+
+	local level = bar:GetFrameLevel()
+
+	-- Dark fill behind the bar (shows through the unfilled portion).
+	local bg = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+	bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -3, 3)
+	bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 3, -3)
+	bg:SetFrameLevel(level > 0 and level - 1 or 0)
+	bg:SetBackdrop(STATUSBAR_BG)
+	bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	bar.nexBG = bg
+
+	-- Gold border on top of the bar.
+	local border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+	border:SetPoint("TOPLEFT", bar, "TOPLEFT", -3, 3)
+	border:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 3, -3)
+	border:SetFrameLevel(level + 1)
+	border:SetBackdrop(STATUSBAR_BORDER)
+	border:SetBackdropBorderColor(1, 1, 1)
+	bar.nexBorder = border
 end
 
 -- Optional health-bar placement. We capture Blizzard's default anchors once so
@@ -400,7 +505,9 @@ end
 local savedBarPoints
 local function RepositionStatusBar()
 	local bar = GameTooltipStatusBar
-	if not bar then return end
+	if not bar then
+		return
+	end
 
 	if not savedBarPoints then
 		savedBarPoints = {}
@@ -412,7 +519,7 @@ local function RepositionStatusBar()
 	bar:ClearAllPoints()
 	if cfg and cfg.statusBarPosition == "top" then
 		bar:SetPoint("BOTTOMLEFT", GameTooltip, "TOPLEFT", 2, 2)
-		bar:SetPoint("BOTTOMRIGHT", GameTooltip, "TOPRIGHT", -2, 2)
+		bar:SetPoint("BOTTOMRIGHT", GameTooltip, "TOPRIGHT", -3, 2)
 	elseif #savedBarPoints > 0 then
 		for i = 1, #savedBarPoints do
 			bar:SetPoint(unpack(savedBarPoints[i]))
@@ -422,6 +529,9 @@ local function RepositionStatusBar()
 		bar:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 0, 0)
 		bar:SetPoint("TOPRIGHT", GameTooltip, "BOTTOMRIGHT", 0, 0)
 	end
+
+	-- The bar is anchored on one edge only, so SetHeight drives its thickness.
+	bar:SetHeight((cfg and cfg.statusBarHeight) or 12)
 end
 
 function Tooltip:RefreshStatusBar()
@@ -434,10 +544,18 @@ function Tooltip:RefreshStatusBar()
 	RepositionStatusBar()
 	-- Prefer the bar's own watched GUID (set by Blizzard's SetWatch), then fall
 	-- back to the parent tooltip's unit.
-	local guid = self.guid
-	local unit = (guid and F.NotSecret(guid) and UnitTokenFromGUID(guid)) or Tooltip.GetUnit(self:GetParent())
+	-- local guid = self.guid
+	-- local unit = (guid and F.NotSecret(guid) and UnitTokenFromGUID(guid)) or Tooltip.GetUnit(self:GetParent())
+	-- local ok, value = pcall(UnitHealth, unit)
+	-- if ok and value and F.NotSecret(value) then
+	-- 	self.text:SetText(F.ShortValue(value))
+	-- else
+	-- 	self.text:SetText("")
+	-- end
+
+	local unit = Tooltip.GetUnit(self:GetParent())
 	local ok, value = pcall(UnitHealth, unit)
-	if ok and value and F.NotSecret(value) then
+	if ok and value then
 		self.text:SetText(F.ShortValue(value))
 	else
 		self.text:SetText("")
@@ -474,7 +592,9 @@ function Tooltip:FixRecipeItemNameWidth()
 end
 
 function Tooltip:ResetUnit(btn)
-	if GameTooltip:IsForbidden() then return end
+	if GameTooltip:IsForbidden() then
+		return
+	end
 	if GameTooltip:IsShown() and btn == "LSHIFT" and Tooltip:UnitExists("mouseover") then
 		GT:RefreshData()
 	end
@@ -516,19 +636,31 @@ function Tooltip:OnEnable()
 		end
 	end
 
-	if GT.StatusBar and GT.StatusBar.UpdateUnitHealth then
-		hooksecurefunc(GT.StatusBar, "UpdateUnitHealth", Tooltip.RefreshStatusBar)
-	end
+	--if GT.StatusBar and GT.StatusBar.UpdateUnitHealth then
+	hooksecurefunc(GT.StatusBar, "UpdateUnitHealth", Tooltip.RefreshStatusBar)
+	--end
 
-	-- Capture Blizzard's default bar anchors and apply the chosen placement.
+	-- Frame the health/status bar with our Blizzard border, then capture
+	-- Blizzard's default anchors and apply the chosen placement.
+	StyleStatusBar()
 	RepositionStatusBar()
 
 	-- Element add-ons (defined in sibling files).
-	if cfg.showIcons and Tooltip.ReskinTooltipIcons then Tooltip:ReskinTooltipIcons() end
-	if cfg.showIDs and Tooltip.SetupTooltipID then Tooltip:SetupTooltipID() end
-	if cfg.showItemLevel and Tooltip.SetupItemLevel then Tooltip:SetupItemLevel() end
-	if cfg.hoverTips and Tooltip.SetupHoverTips then Tooltip:SetupHoverTips() end
-	if cfg.mountSource and Tooltip.SetupMountSource then Tooltip:SetupMountSource() end
+	if cfg.showIcons and Tooltip.ReskinTooltipIcons then
+		Tooltip:ReskinTooltipIcons()
+	end
+	if cfg.showIDs and Tooltip.SetupTooltipID then
+		Tooltip:SetupTooltipID()
+	end
+	if cfg.showItemLevel and Tooltip.SetupItemLevel then
+		Tooltip:SetupItemLevel()
+	end
+	if cfg.hoverTips and Tooltip.SetupHoverTips then
+		Tooltip:SetupHoverTips()
+	end
+	if cfg.mountSource and Tooltip.SetupMountSource then
+		Tooltip:SetupMountSource()
+	end
 
 	self:RegisterEvent("MODIFIER_STATE_CHANGED", "ResetUnit")
 
@@ -543,7 +675,7 @@ function Tooltip:OnEnable()
 end
 
 function Tooltip:OnSettingChanged(key)
-	if key == "statusBarPosition" then
+	if key == "statusBarPosition" or key == "statusBarHeight" then
 		RepositionStatusBar()
 	end
 end
@@ -554,6 +686,7 @@ function Tooltip:RegisterOptions(category, builder)
 		{ value = "bottom", label = L["Bottom"] },
 		{ value = "top", label = L["Top"] },
 	})
+	local _, barHeightInit = builder:Slider(category, self, "statusBarHeight", L["Health Bar Height"], L["Set the thickness of the unit health bar."], 12, 24, 1)
 	local _, factionInit = builder:Checkbox(category, self, "factionIcon", L["Show Faction Icon"], L["Show an Alliance/Horde icon on player tooltips."])
 	local _, roleInit = builder:Checkbox(category, self, "lfdRole", L["Show Role Icon"], L["Show the group role (tank/healer/dps) icon on player tooltips."])
 	local _, realmInit = builder:Checkbox(category, self, "hideRealm", L["Hide Realm Name"], L["Hide the realm name on players from other realms (hold Shift to reveal)."])
@@ -569,6 +702,7 @@ function Tooltip:RegisterOptions(category, builder)
 
 	-- Every tooltip extra is meaningless while the module is off.
 	builder:DependsOn(barPosInit, enableInit)
+	builder:DependsOn(barHeightInit, enableInit)
 	builder:DependsOn(factionInit, enableInit)
 	builder:DependsOn(roleInit, enableInit)
 	builder:DependsOn(realmInit, enableInit)

@@ -8,6 +8,55 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.5] — 2026-06-06
+
+Minimap volume and a shortcut menu, a choice of number-abbreviation styles, an
+achievement screenshot helper and a quest navigation skin — plus a tidied
+Settings panel and a batch of bug fixes.
+
+### Added
+- **Maps — Minimap Easy Volume:** hold **Ctrl** and scroll over the minimap to
+  set the master volume (`Sound_MasterVolume`); hold **Alt** to jump across the
+  full 0–100 range. A colour-coded readout fades in over the minimap. Ported
+  from [KkthnxUI](https://github.com/Kkthnx-Wow) by Kkthnx.
+- **Maps — Minimap Menu:** middle-click the minimap for a shortcut menu of
+  common Blizzard panels.
+- **General — Number Format:** choose how large numbers are abbreviated
+  throughout NexEnhance — **Standard** (`1.2k` / `3.4m` / `5.6b` / `7.8t`),
+  **East Asian** (`1.2w` / `3.4y` / `5.6z`), or **Full Numbers**. Built on
+  Blizzard's 12.0 `AbbreviateNumbers` API; abbreviation style borrowed from
+  [NDui](https://github.com/siweia/NDui) by siweia.
+- **Automation — Achievement Screenshot:** automatically capture a screenshot
+  when you earn an achievement (skips achievements already earned account-wide).
+- **Skins — Quest Navigation:** a clean Blizzard-style border on the
+  super-tracked waypoint arrow. Ported from [KkthnxUI](https://github.com/Kkthnx-Wow)
+  by Kkthnx.
+
+### Changed
+- **Chat — Auto Invite:** Keyword Auto-Invite now lives inline in the Chat
+  settings under a new **Auto Invite** header, alongside the keyword input and
+  the Guild/Friends Only toggle — the separate page is gone. The inline keyword
+  box uses Blizzard's gray entry-box skin and highlights gold while focused, and
+  its dependent options grey out when Keyword Auto-Invite is off.
+- **Interface:** reviewed every option and re-sorted them into the most sensible
+  categories (for example, Achievement Screenshot now sits under Automation).
+
+### Fixed
+- **Auto Vendor:** guild-bank repair now works for guilds that grant unlimited
+  withdrawals (`GetGuildBankWithdrawMoney() == -1`).
+- **Chat Bubbles:** font-size reduction is clamped to a minimum so bubble text
+  stays legible.
+- **Chat Filter:** keyword matching is now literal, so punctuation in a keyword
+  is no longer treated as a Lua pattern.
+- **Mail:** the Collect-Gold timer now stops when the mailbox closes, avoiding a
+  stuck timer.
+- **Auto Invite:** Battle.net friend checks use `C_BattleNet.GetGameAccountInfoByGUID`,
+  fixing Guild/Friends-Only invites.
+- **Quest Navigation:** uses `C_Navigation.WasClampedToScreen()` for the
+  on-screen clamp check, fixing a Lua error.
+
+---
+
 ## [1.2.4] — 2026-06-05
 
 A new Experience Bar and Camera Zoom control, chat edit box improvements, plus

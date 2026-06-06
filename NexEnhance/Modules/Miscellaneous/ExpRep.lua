@@ -62,8 +62,22 @@ local C_AzeriteItem_GetAzeriteItemXPInfo = C_AzeriteItem and C_AzeriteItem.GetAz
 local C_AzeriteItem_GetPowerLevel = C_AzeriteItem and C_AzeriteItem.GetPowerLevel
 
 local STATUSBAR = C.Media.Textures.statusbar
+-- Retail unit-frame fill atlas. The "-Status" variant is the neutral, tintable
+-- fill Blizzard colors per unit, so our per-type SetStatusBarColor tints still
+-- read correctly. StatusBar:SetStatusBarTexture handles atlas names atlas-aware.
+local UNITFRAME_ATLAS = "UI-HUD-UnitFrame-Player-PortraitOff-Bar-Health-Status"
 local SPARK = "Interface\\CastingBar\\UI-CastingBar-Spark"
 local REPORT_COOLDOWN = 10
+
+-- Use the WoW unit-frame atlas when the client provides it, else fall back to the
+-- shared media texture so the bar can never render blank.
+local function ApplyBarTexture(sb)
+	if _G.C_Texture and _G.C_Texture.GetAtlasInfo and _G.C_Texture.GetAtlasInfo(UNITFRAME_ATLAS) then
+		sb:SetStatusBarTexture(UNITFRAME_ATLAS)
+	else
+		sb:SetStatusBarTexture(STATUSBAR)
+	end
+end
 
 -- Classic Blizzard tooltip border (matches the AFK Camera, Changelog, Install
 -- panels). Border-only: the dark trough is drawn separately so the bar's fill
@@ -93,7 +107,7 @@ local DEFAULTS = {
 
 ns:RegisterDefaults({ expRep = DEFAULTS })
 
-local ExpRep = ns:NewModule("ExpRep", "expRep", { group = "misc", title = L["Experience Bar"], order = 36 })
+local ExpRep = ns:NewModule("ExpRep", "expRep", { group = "datatext", title = L["Experience Bar"], order = 20 })
 
 local editMode
 local bar
@@ -617,7 +631,7 @@ local function BuildBar()
 	local rest = CreateFrame("StatusBar", nil, f)
 	rest:SetAllPoints()
 	rest:SetFrameLevel(base + 1)
-	rest:SetStatusBarTexture(STATUSBAR)
+	ApplyBarTexture(rest)
 	rest:SetStatusBarColor(1, 0, 1, 0.35)
 	rest:Hide()
 	f.rest = rest
@@ -625,7 +639,7 @@ local function BuildBar()
 	local fill = CreateFrame("StatusBar", nil, f)
 	fill:SetAllPoints()
 	fill:SetFrameLevel(base + 3)
-	fill:SetStatusBarTexture(STATUSBAR)
+	ApplyBarTexture(fill)
 	f.fill = fill
 
 	local spark = fill:CreateTexture(nil, "OVERLAY")

@@ -51,7 +51,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local ItemLevel = ns:NewModule("ItemLevel", "itemLevel", { group = "inventory", title = L["Item Level"], order = 20 })
+local ItemLevel = ns:NewModule("ItemLevel", "itemLevel", { group = "inventory", title = L["Item Level"], order = 10 })
 
 -- Inventory-slot ID -> slot name. The numeric index doubles as the inventory
 -- slot id passed to GetInventoryItemLink / C_TooltipInfo.GetInventoryItem.

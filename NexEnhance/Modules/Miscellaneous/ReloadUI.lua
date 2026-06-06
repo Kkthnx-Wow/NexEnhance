@@ -20,7 +20,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local ReloadUI = ns:NewModule("ReloadUI", "reloadUI", { group = "misc", title = L["Reload UI"], order = 50 })
+local ReloadUI = ns:NewModule("ReloadUI", "reloadUI", { group = "misc", title = L["Reload UI"], order = 80 })
 
 function ReloadUI:OnEnable()
 	if not ns.db.reloadUI.enable then return end

@@ -49,7 +49,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local Durability = ns:NewModule("Durability", "durability", { group = "inventory", title = L["Durability"], order = 30 })
+local Durability = ns:NewModule("Durability", "durability", { group = "inventory", title = L["Durability"], order = 20 })
 
 -- Slot id, localised label, durability fraction (0-1, defaults 1000 = "unset"),
 -- icon escape string. Re-sorted each scan so index 1 is always the worst slot.

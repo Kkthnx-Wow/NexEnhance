@@ -29,7 +29,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local Animation = ns:NewModule("Animation", "animation", { group = "misc", title = L["Animation"], order = 40 })
+local Animation = ns:NewModule("Animation", "animation", { group = "misc", title = L["Animation"], order = 60 })
 
 -- ---------------------------------------------------------------------------
 -- Shared animation builders

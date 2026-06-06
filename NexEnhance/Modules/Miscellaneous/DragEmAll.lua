@@ -23,7 +23,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local DragEmAll = ns:NewModule("DragEmAll", "dragEmAll", { group = "misc", title = L["Drag Frames"], order = 20 })
+local DragEmAll = ns:NewModule("DragEmAll", "dragEmAll", { group = "misc", title = L["Drag Frames"], order = 30 })
 
 -- ["FrameName"] = true  -> drag moves the frame's PARENT
 -- ["FrameName"] = false -> drag moves the frame itself

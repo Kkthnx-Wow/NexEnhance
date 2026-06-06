@@ -36,7 +36,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local DetailsSkin = ns:NewModule("DetailsSkin", "detailsSkin", { group = "skins", title = L["Details"], order = 30 })
+local DetailsSkin = ns:NewModule("DetailsSkin", "detailsSkin", { group = "skins", title = L["Details"], order = 40 })
 
 -- A classic Blizzard tooltip border + dark background fill.
 local DETAILS_BACKDROP = {

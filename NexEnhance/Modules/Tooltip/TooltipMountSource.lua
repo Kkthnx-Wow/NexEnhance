@@ -97,8 +97,11 @@ function Tooltip:SetupMountSource()
 	hooksecurefunc(GameTooltip, "SetUnitAura", function(tip, ...)
 		if tip:IsForbidden() then return end
 		local data = C_UnitAuras.GetAuraDataByIndex(...)
-		if not data then return end
-		HandleAura(tip, select(10, AuraUtil.UnpackAuraData(data)))
+		-- A secret data table (e.g. another unit's auras under Patch 12.0) would
+		-- crash AuraUtil.UnpackAuraData, so read the spellId field directly and
+		-- let HandleAura's IsSecret guard sort out the rest.
+		if not data or F.IsSecret(data) then return end
+		HandleAura(tip, data.spellId)
 	end)
 
 	hooksecurefunc(GameTooltip, "SetUnitBuffByAuraInstanceID", function(tip, unit, auraInstanceID)

@@ -28,7 +28,7 @@ ns:RegisterDefaults({
 })
 ns:RegisterDefaults({ lastChangelog = false }, "global")
 
-local Changelog = ns:NewModule("Changelog", "changelog", { group = "misc", title = L["Changelog"], order = 60 })
+local Changelog = ns:NewModule("Changelog", "changelog", { group = "misc", title = L["Changelog"], order = 90 })
 
 -- A Blizzard tooltip-style border (matches the rest of the UI).
 local BACKDROP = {
@@ -44,6 +44,43 @@ local BACKDROP = {
 -- Notes (keep in sync with CHANGELOG.md)
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
+	{
+		version = "1.2.5",
+		date = "2026-06-06",
+		intro = "Minimap volume and shortcut menu, a choice of number-abbreviation styles, an achievement screenshot helper and a quest navigation skin - plus a tidied Settings panel and a batch of bug fixes.",
+		sections = {
+			{ "Maps", {
+				"Minimap - Easy Volume: hold Ctrl and scroll over the minimap to set the master volume (hold Alt for the full 0-100 range), with a fading on-minimap readout.",
+				"Minimap - Menu: middle-click the minimap for a shortcut menu of common Blizzard panels.",
+				"Ported from KkthnxUI by Kkthnx.",
+			} },
+			{ "General", {
+				"Number Format: pick how large numbers are abbreviated everywhere in NexEnhance - Standard (1.2k / 3.4m), East Asian (1.2w / 3.4y) or Full Numbers.",
+				"Built on Blizzard's 12.0 AbbreviateNumbers API; abbreviation style borrowed from NDui by siweia.",
+			} },
+			{ "Automation", {
+				"Achievement Screenshot: automatically capture a screenshot when you earn an achievement (skips ones already earned account-wide).",
+			} },
+			{ "Skins", {
+				"Quest Navigation: clean Blizzard-style border on the super-tracked waypoint arrow. Ported from KkthnxUI by Kkthnx.",
+			} },
+			{ "Chat", {
+				"Keyword Auto-Invite now lives inline in Chat settings under a new Auto Invite header, alongside the keyword input and Guild/Friends Only - no more separate page.",
+				"The inline keyword box uses Blizzard's gray entry-box skin and highlights gold while focused; dependent options grey out when Keyword Auto-Invite is off.",
+			} },
+			{ "Interface", {
+				"Reviewed every option and re-sorted them into the most sensible categories (for example, Achievement Screenshot now sits under Automation).",
+			} },
+			{ "Fixed", {
+				"Auto Vendor: guild-bank repair now works for guilds that grant unlimited withdrawals.",
+				"Chat Bubbles: font-size reduction is clamped to a minimum so bubble text stays legible.",
+				"Chat Filter: keyword matching is now literal, so punctuation in a keyword is no longer treated as a Lua pattern.",
+				"Mail: the Collect-Gold timer now stops when the mailbox closes, avoiding a stuck timer.",
+				"Auto Invite: Battle.net friend checks use the correct GUID lookup, fixing Guild/Friends-Only invites.",
+				"Quest Navigation: uses the proper on-screen clamp check, fixing a Lua error.",
+			} },
+		},
+	},
 	{
 		version = "1.2.4",
 		date = "2026-06-05",

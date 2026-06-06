@@ -48,7 +48,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local Mail = ns:NewModule("Mail", "mail", { group = "inventory", title = L["Mail"], order = 40 })
+local Mail = ns:NewModule("Mail", "mail", { group = "inventory", title = L["Mail"], order = 30 })
 
 local goldButton
 local isGoldCollecting
@@ -78,6 +78,15 @@ end
 --   the server's command queue keeps up (mirrors the default Open-All cadence).
 -- ---------------------------------------------------------------------------
 local function CollectGold()
+	-- Bail if the mailbox closed mid-collection so we stop poking inbox APIs
+	-- (and the queued timer chain) out of context.
+	local mailFrame = _G["MailFrame"]
+	if not mailFrame or not mailFrame:IsShown() then
+		isGoldCollecting = false
+		UpdateGoldButtonText(false)
+		return
+	end
+
 	if mailIndex > 0 then
 		if not C_Mail_IsCommandPending() then
 			if C_Mail_HasInboxMoney(mailIndex) then

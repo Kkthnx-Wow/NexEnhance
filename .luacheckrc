@@ -1488,6 +1488,7 @@ read_globals = {
 	"AbandonSkill",
 	"AbbreviateLargeNumbers",
 	"AbbreviateNumbers",
+	"CreateAbbreviateConfig",
 	"AcceptAreaSpiritHeal",
 	"AcceptBattlefieldPort",
 	"AcceptDuel",

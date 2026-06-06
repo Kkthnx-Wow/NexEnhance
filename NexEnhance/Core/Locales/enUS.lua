@@ -90,6 +90,8 @@ L["Quality-Coloured Border"] = "Quality-Coloured Border"
 L["Tint Blizzard's default tooltip border by item quality."] = "Tint Blizzard's default tooltip border by item quality."
 L["Health Bar Position"] = "Health Bar Position"
 L["Place the unit health bar at the top or bottom of the tooltip."] = "Place the unit health bar at the top or bottom of the tooltip."
+L["Health Bar Height"] = "Health Bar Height"
+L["Set the thickness of the unit health bar."] = "Set the thickness of the unit health bar."
 L["Bottom"] = "Bottom"
 L["Top"] = "Top"
 L["Show Item Level"] = "Show Item Level"
@@ -109,6 +111,11 @@ L["Show a mount's collection status and source on aura tooltips (hold Shift over
 L["Enable Objective Tracker Skin"] = "Enable Objective Tracker Skin"
 L["Hide the tracker header backgrounds and tidy the minimise button (reload to disable)."] = "Hide the tracker header backgrounds and tidy the minimise button (reload to disable)."
 L["Class-Coloured Bars"] = "Class-Coloured Bars"
+
+-- Quest Navigation
+L["Quest Navigation"] = "Quest Navigation"
+L["Enable Quest Navigation"] = "Enable Quest Navigation"
+L["Show an estimated arrival time under the waypoint arrow (reload to disable)."] = "Show an estimated arrival time under the waypoint arrow (reload to disable)."
 
 -- ChatBubbles
 L["Enable Chat Bubble Border"] = "Enable Chat Bubble Border"
@@ -289,6 +296,16 @@ L["Automatically pick the scale that maps 1 UI pixel to 1 screen pixel for your 
 L["Manual Scale"] = "Manual Scale"
 L["Scale used when Auto is disabled."] = "Scale used when Auto is disabled."
 
+-- Number Format
+L["Number Format"] = "Number Format"
+L["Choose how large numbers are abbreviated throughout NexEnhance."] = "Choose how large numbers are abbreviated throughout NexEnhance."
+L["Standard (1.2k / 3.4m)"] = "Standard (1.2k / 3.4m)"
+L["East Asian (1.2w / 3.4y)"] = "East Asian (1.2w / 3.4y)"
+L["Full Numbers (No Abbreviation)"] = "Full Numbers (No Abbreviation)"
+L["Abbrev Number One"] = "w"
+L["Abbrev Number Two"] = "y"
+L["Abbrev Number Three"] = "z"
+
 -- Camera Zoom
 L["Camera Zoom"] = "Camera Zoom"
 L["Enable Camera Zoom"] = "Enable Camera Zoom"
@@ -363,6 +380,20 @@ L["Enable Map Reveal"] = "Enable Map Reveal"
 L["Reveal unexplored areas on the world map by removing fog of war."] = "Reveal unexplored areas on the world map by removing fog of war."
 L["Dim Revealed Areas"] = "Dim Revealed Areas"
 L["Slightly darken the revealed tiles so explored areas still stand out."] = "Slightly darken the revealed tiles so explored areas still stand out."
+
+-- Minimap
+L["Minimap"] = "Minimap"
+L["Enable Minimap"] = "Enable Minimap"
+L["Adds optional minimap conveniences (reload to apply)."] = "Adds optional minimap conveniences (reload to apply)."
+L["Easy Volume"] = "Easy Volume"
+L["Hold Ctrl and scroll over the minimap to adjust the master volume (hold Alt for full range)."] = "Hold Ctrl and scroll over the minimap to adjust the master volume (hold Alt for full range)."
+L["Minimap Menu"] = "Minimap Menu"
+L["Middle-click the minimap to open a shortcut menu of Blizzard panels."] = "Middle-click the minimap to open a shortcut menu of Blizzard panels."
+L["Calendar"] = "Calendar"
+
+-- Achievement Screenshot
+L["Achievement Screenshot"] = "Achievement Screenshot"
+L["Automatically take a screenshot when you earn a new achievement."] = "Automatically take a screenshot when you earn a new achievement."
 
 -- Buff Reminder
 L["Buff Reminder"] = "Buff Reminder"
@@ -458,7 +489,7 @@ L["Show latency before framerate."] = "Show latency before framerate."
 L["Class-Coloured Numbers"] = "Class-Coloured Numbers"
 L["Colour the numbers with your class colour instead of value-based colours."] = "Colour the numbers with your class colour instead of value-based colours."
 L["Addons Shown"] = "Addons Shown"
-L["How many addons to list in the memory tooltip before collapsing the rest under \"Hold Shift\"."] = "How many addons to list in the memory tooltip before collapsing the rest under \"Hold Shift\"."
+L['How many addons to list in the memory tooltip before collapsing the rest under "Hold Shift".'] = 'How many addons to list in the memory tooltip before collapsing the rest under "Hold Shift".'
 L["Stats"] = "Stats"
 L["Latency"] = "Latency"
 L["Home Latency"] = "Home Latency"
@@ -556,11 +587,11 @@ L["Whisper Sound"] = "Whisper Sound"
 L["Play a sound when you receive a whisper."] = "Play a sound when you receive a whisper."
 L["Font Size Menu"] = "Font Size Menu"
 L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."] = "Add a font-size submenu to the chat tab right-click menu (reload to apply)."
+L["Auto Invite"] = "Auto Invite"
 L["Keyword Auto-Invite"] = "Keyword Auto-Invite"
-L["Invite players who whisper you your keyword (set it on the Keyword Invite page)."] = "Invite players who whisper you your keyword (set it on the Keyword Invite page)."
+L["Invite players who whisper you your keyword."] = "Invite players who whisper you your keyword."
 L["Guild/Friends Only"] = "Guild/Friends Only"
 L["Only auto-invite guild members and Battle.net friends."] = "Only auto-invite guild members and Battle.net friends."
-L["Keyword Invite"] = "Keyword Invite"
 L["When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."] = "When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."
 L["Invite Keyword"] = "Invite Keyword"
 L["Invite keyword set to:"] = "Invite keyword set to:"

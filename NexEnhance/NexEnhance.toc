@@ -44,6 +44,7 @@ Core\Commands.lua
 
 # UI Scale (loads first so the pixel multiplier is ready before any backdrop).
 Modules\Miscellaneous\UIScale.lua
+Modules\Miscellaneous\CameraZoom.lua
 
 # Action Bars
 Modules\ActionBars\ActionBars.lua
@@ -121,6 +122,7 @@ Modules\Miscellaneous\DragEmAll.lua
 Modules\Miscellaneous\AlertFrames.lua
 Modules\Miscellaneous\Animation.lua
 Modules\Miscellaneous\AFKCam.lua
+Modules\Miscellaneous\ExpRep.lua
 Modules\Miscellaneous\ReloadUI.lua
 Modules\Miscellaneous\Changelog.lua
 Modules\Miscellaneous\Credits.lua

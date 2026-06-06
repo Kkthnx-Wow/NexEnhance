@@ -10,11 +10,34 @@ All notable changes to this project are documented here. This project follows
 
 ## [1.2.4] — 2026-06-05
 
-Hotfix for the AFK Camera animation loop.
+A new Experience Bar and Camera Zoom control, chat edit box improvements, plus
+hotfixes for the AFK Camera animation loop and Decline Duels toggle.
+
+### Added
+- **Miscellaneous — Experience Bar:** a single movable bar that replaces
+  Blizzard's status tracking bar. It shows the most relevant mode (experience
+  while levelling — with a rested overlay — otherwise watched reputation, honor,
+  or Azerite), while the tooltip lists **every** applicable progress section with
+  a Blizzard-style divider between them. Blizzard tooltip-style border, and sizing
+  (width/height/font) adjustable from both the Settings panel and Edit Mode.
+- **General — Camera Zoom:** raise the maximum camera zoom-out distance
+  (`cameraDistanceMaxZoomFactor`, Blizzard limit 2.6) with an adjustable slider.
+- **Chat — Edit Box Character Count:** a remaining-character counter parked at the
+  right of the edit box that colour-codes as you approach the 255-byte limit and
+  discounts hyperlink overhead.
+
+### Changed
+- **Chat — Edit Box:** Alt + Arrow keys now pass through to camera/movement
+  instead of stepping through the input, and the box is clamped on-screen.
 
 ### Fixed
+- **Chat — Edit Box:** the blinking text cursor is no longer stripped away when
+  the box is reskinned, so the caret is visible again while typing.
 - **AFK Camera:** fixed a Lua error after the wave emote (`attempt to call a nil
   value`) that stopped the dance/sleep animation cycle from continuing.
+- **Decline Duels:** turning the module off now applies live — previously the
+  master toggle only re-enabled on the way back on, so disabling it left duel
+  and pet-battle requests being auto-declined until a reload.
 
 ---
 

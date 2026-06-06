@@ -44,22 +44,6 @@ local SIDEBAR_RAINBOW = {
 
 local CONTRIBUTORS = {
 	{
-		name = "Josh \"Kkthnx\" Russell",
-		class = "HUNTER",
-		project = "KkthnxUI & CharInspectPlus",
-		url = "github.com/Kkthnx-Wow/KkthnxUI",
-		thanks = "For years of UI craft on KkthnxUI — automation helpers, map tools, skins, durability, reload shortcuts, and the backdrop patterns NexEnhance still builds on.",
-		features = {
-			"Automation — Auto Hide Tracker, Auto Keystone, Decline Duel, Auto Invite, Auto Goodbye, Auto Resurrect",
-			"Maps — Map Reveal, Wowhead Links",
-			"Inventory — Durability",
-			"Skins — Objective Tracker, Character Frames, Chat Bubbles, Details",
-			"Tooltip — Mount Source",
-			"Misc — Queue Timer, Reload UI",
-			"Core — API / backdrop helpers (CharInspectPlus)",
-		},
-	},
-	{
 		name = "Elv & the Tukui team",
 		class = "PALADIN",
 		project = "ElvUI",

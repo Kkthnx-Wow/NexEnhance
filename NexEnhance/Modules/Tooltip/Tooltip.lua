@@ -147,9 +147,9 @@ function Tooltip:InsertFactionFrame(faction)
 end
 
 local roleAtlas = {
-	TANK = "roleicon-tiny-tank",
-	HEALER = "roleicon-tiny-healer",
-	DAMAGER = "roleicon-tiny-dps",
+	TANK = "UI-LFG-RoleIcon-Tank-Background",
+	HEALER = "UI-LFG-RoleIcon-Healer-Background",
+	DAMAGER = "UI-LFG-RoleIcon-DPS-Background",
 }
 
 function Tooltip:InsertRoleFrame(role)
@@ -158,7 +158,7 @@ function Tooltip:InsertRoleFrame(role)
 	if not self.roleFrame then
 		local f = self:CreateTexture(nil, "OVERLAY")
 		f:SetPoint("TOPRIGHT", self, -2, -2)
-		f:SetSize(16, 16)
+		f:SetSize(24, 24)
 		self.roleFrame = f
 	end
 	self.roleFrame:SetAtlas(atlas)

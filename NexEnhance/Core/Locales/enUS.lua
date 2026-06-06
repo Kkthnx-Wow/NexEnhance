@@ -289,6 +289,13 @@ L["Automatically pick the scale that maps 1 UI pixel to 1 screen pixel for your 
 L["Manual Scale"] = "Manual Scale"
 L["Scale used when Auto is disabled."] = "Scale used when Auto is disabled."
 
+-- Camera Zoom
+L["Camera Zoom"] = "Camera Zoom"
+L["Enable Camera Zoom"] = "Enable Camera Zoom"
+L["Raise the maximum camera zoom-out distance."] = "Raise the maximum camera zoom-out distance."
+L["Max Zoom Distance"] = "Max Zoom Distance"
+L["How far out the camera can zoom (Blizzard limit is 2.6)."] = "How far out the camera can zoom (Blizzard limit is 2.6)."
+
 -- AlertFrames
 L["Alert Frames"] = "Alert Frames"
 L["Enable Alert Frames"] = "Enable Alert Frames"
@@ -376,6 +383,28 @@ L["Enable AFK Camera"] = "Enable AFK Camera"
 L["Immersive AFK overlay with camera spin, character model, clock and random stats."] = "Immersive AFK overlay with camera spin, character model, clock and random stats."
 L["AFK Random Stats"] = "Random Stats"
 L["AFK Logout Timer"] = "Logout Timer:"
+
+-- Experience / Reputation Bar
+L["Experience Bar"] = "Experience Bar"
+L["Enable Experience Bar"] = "Enable Experience Bar"
+L["Replace Blizzard's experience/reputation tracker with a movable bar (reload to restore Blizzard's)."] = "Replace Blizzard's experience/reputation tracker with a movable bar (reload to restore Blizzard's)."
+L["Show Bar Text"] = "Show Bar Text"
+L["Show the progress text on the bar."] = "Show the progress text on the bar."
+L["Show Rested"] = "Show Rested"
+L["Show the rested-experience overlay while levelling."] = "Show the rested-experience overlay while levelling."
+L["Bar Width"] = "Bar Width"
+L["Width of the experience bar."] = "Width of the experience bar."
+L["Bar Height"] = "Bar Height"
+L["Height of the experience bar."] = "Height of the experience bar."
+L["Font Size"] = "Font Size"
+L["Size of the bar text."] = "Size of the bar text."
+L["XP"] = "Experience"
+L["Remaining"] = "Remaining"
+L["Rested"] = "Rested"
+L["Bars"] = "Bars"
+L["Paragon"] = "Paragon"
+L["Honor XP"] = "Honor"
+L["Alt + Right-Click to report to party chat."] = "Alt + Right-Click to report to party chat."
 
 -- QuestNotification
 L["Quest Notification"] = "Quest Notification"

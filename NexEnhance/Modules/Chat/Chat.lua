@@ -23,9 +23,13 @@ local F, C, L = ns.F, ns.C, ns.L
 local _G = _G
 local ipairs = ipairs
 local strsub, strlower = string.sub, string.lower
+local strlen, gmatch = string.len, string.gmatch
 local floor, format = math.floor, string.format
 local CreateFrame, max = CreateFrame, math.max
 local UIParent = UIParent
+
+-- WoW chat messages are capped at 255 bytes.
+local MAX_CHAT_BYTES = 255
 
 -- A classic Blizzard tooltip-style border (gold edge + dark fill) for the box.
 local EDITBOX_BACKDROP = {
@@ -178,6 +182,42 @@ function Chat:SetupChat(frame)
 end
 
 -- ---------------------------------------------------------------------------
+-- Remaining-character counter. Hyperlinks (|cFFxxxxxx|H...|h[name]|h|r) cost
+-- far more bytes on the wire than they read as, so discount that escape-sequence
+-- overhead to show a count closer to what actually fits. Mirrors KkthnxUI.
+-- ---------------------------------------------------------------------------
+local function UpdateEditBoxCharCount(editBox)
+	local counter = editBox.nexCharCount
+	if not counter then return end
+
+	local text = editBox:GetText()
+	local textLen = strlen(text)
+
+	local linkOverhead = 0
+	for link in gmatch(text, "(|c%x-|H.-|h).-|h|r") do
+		linkOverhead = linkOverhead + (strlen(link) + 4)
+	end
+	if linkOverhead ~= 0 then
+		textLen = textLen - linkOverhead
+	end
+
+	if textLen <= 0 then
+		counter:SetText("")
+		return
+	end
+
+	local remaining = MAX_CHAT_BYTES - textLen
+	if remaining >= 50 then
+		counter:SetTextColor(0.74, 0.74, 0.74)
+	elseif remaining >= 20 then
+		counter:SetTextColor(1, 0.6, 0)
+	else
+		counter:SetTextColor(1, 0, 0)
+	end
+	counter:SetText(remaining)
+end
+
+-- ---------------------------------------------------------------------------
 -- Edit box: replace Blizzard's chunky input border with a clean 1px border
 -- and (optionally) dock it to the top of the chat window.
 -- ---------------------------------------------------------------------------
@@ -192,14 +232,22 @@ function Chat:SetupEditBox(frame)
 		return
 	end
 
+	-- Disable Alt+Arrow stepping through the input so those keys pass through as
+	-- camera/movement modifiers, and keep the box on-screen if anchored loosely.
+	editBox:SetAltArrowKeyMode(false)
+	editBox:SetClampedToScreen(true)
+
 	if cfg.editBoxBorder then
 		-- Strip the default border art (Left/Mid/Right + focus glow) and give
-		-- the box a proper Blizzard tooltip-style border instead.
-		F.StripTextures(editBox)
+		-- the box a proper Blizzard tooltip-style border instead. Pass 2 to keep
+		-- region index 2 -- the blinking text cursor is a texture region, and
+		-- clearing every region (the default) leaves the caret invisible while
+		-- typing. This mirrors NDui's StripTextures(editBox, 2).
+		F.StripTextures(editBox, 2)
 
 		local bg = CreateFrame("Frame", nil, editBox, "BackdropTemplate")
-		bg:SetPoint("TOPLEFT", editBox, "TOPLEFT", 0, -3)
-		bg:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", 0, 3)
+		bg:SetPoint("TOPLEFT", editBox, "TOPLEFT", 0, 0)
+		bg:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", 12, 0)
 		bg:SetFrameLevel(max(0, editBox:GetFrameLevel() - 1))
 		bg:SetBackdrop(EDITBOX_BACKDROP)
 		bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
@@ -248,7 +296,20 @@ function Chat:SetupEditBox(frame)
 		ColorEditBox(editBox)
 	end
 
-	editBox:SetHeight(editBox:GetHeight() + 2)
+	-- Remaining-character counter, parked just past the right edge of the box so
+	-- it never overlaps what you're typing (matches KkthnxUI/ElvUI placement).
+	local counter = F.CreateFS(editBox, 12, nil, "ARTWORK")
+	counter:ClearAllPoints()
+	counter:SetPoint("LEFT", editBox, "RIGHT", -24, 0)
+	counter:SetJustifyH("CENTER")
+	counter:SetWidth(40)
+	counter:SetText("")
+	editBox.nexCharCount = counter
+
+	editBox:HookScript("OnTextChanged", UpdateEditBoxCharCount)
+	editBox:HookScript("OnEditFocusLost", function(self)
+		if self.nexCharCount then self.nexCharCount:SetText("") end
+	end)
 
 	editBox.__nexEditBox = true
 end

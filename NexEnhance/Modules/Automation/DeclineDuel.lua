@@ -7,8 +7,9 @@
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
 	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/master/KkthnxUI/Modules/Automation/Elements/DeclineDuel.lua
 
-	Both event handlers are registered while the module is on and gated by their
-	own sub-option, so the toggles apply live without a reload.
+	Both event handlers are registered when the module first enables and are
+	gated at fire time by the master toggle and their own sub-option, so every
+	toggle applies live without a reload.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -34,6 +35,7 @@ ns:RegisterDefaults({
 local DeclineDuel = ns:NewModule("DeclineDuel", "declineDuel", { group = "automation", title = L["Decline Duels"], order = 50 })
 
 function DeclineDuel:DUEL_REQUESTED(name)
+	if not ns.db.declineDuel.enable then return end
 	if not ns.db.declineDuel.declineDuels then return end
 
 	CancelDuel()
@@ -42,6 +44,7 @@ function DeclineDuel:DUEL_REQUESTED(name)
 end
 
 function DeclineDuel:PET_BATTLE_PVP_DUEL_REQUESTED(name)
+	if not ns.db.declineDuel.enable then return end
 	if not ns.db.declineDuel.declinePetDuels then return end
 
 	if C_PetBattles_CancelPVPDuel then

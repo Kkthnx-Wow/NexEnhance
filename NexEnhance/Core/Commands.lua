@@ -33,9 +33,17 @@ handlers.help = function(_)
 	F.Print("  /nex toggle <name> -", L["Toggle a module: /nex toggle <module>"])
 	F.Print("  /nex config        -", L["Open the options panel"])
 	F.Print("  /nex reminder      -", L["Toggle buff reminder test icons"])
+	F.Print("  /nex afk           -", L["Toggle AFK camera preview"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
 	F.Print("  /nex credits       -", L["Open the credits panel"])
+	F.Print("  /nex profile       -", L["Open the profile import/export panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
+end
+
+handlers.profile = function(_)
+	if ns.OpenProfiles then
+		ns:OpenProfiles()
+	end
 end
 
 handlers.changelog = function(_)
@@ -92,6 +100,15 @@ handlers.reminder = function(_)
 		module:ToggleTest()
 	else
 		F.Print(F.Colorize(L["Buff Reminder"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
+handlers.afk = function(_)
+	local module = ns:GetModule("AFKCam")
+	if module and module.ToggleTest then
+		module:ToggleTest()
+	else
+		F.Print(F.Colorize(L["AFK Camera"] .. ": ", "brand") .. L["Module unavailable."])
 	end
 end
 

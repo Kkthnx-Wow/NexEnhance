@@ -45,6 +45,23 @@ local BACKDROP = {
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.2.7",
+		date = "2026-06-08",
+		intro = "A full Profiles system - create, copy, switch, delete and import/export your settings as a single copy-paste string - plus a ground-up AFK Camera rework: a resolution-independent cinematic screen with a companion battle pet idling at your side.",
+		sections = {
+			{ "Profiles", {
+				"New Profiles system: create, copy, switch and delete settings profiles, and import/export any profile as a single copy-paste string for backups or sharing. New profiles and copies won't overwrite an existing name - they report an error instead. Open the Profiles settings page or use /nex profile.",
+			} },
+			{ "Automation", {
+				"Cancel Bad Buffs: automatically removes cosmetic costume and holiday transforms (Hallow's End costumes, Mohawked!, Turkey Feathers, Noblegarden disguises, Orb of Deception and similar) while you're out of combat, with an optional chat announcement. Off by default. Reworked from ShestakUI by Wetxius / Shestak.",
+			} },
+			{ "Miscellaneous", {
+				"AFK Camera: reworked into a resolution-independent cinematic letterbox - gradient edge fades, a hero-shot character model, a class rune backdrop, faction crest, clock and date, a 30-minute logout countdown, rotating account statistics and a whisper log - built from fixed, edge-anchored regions so it scales cleanly across all resolutions.",
+				"AFK Camera: a random battle pet from your Pet Journal now idles beside your character. With no pets collected it falls back to Legionnaire Murky (Horde) or Knight-Captain Murky (Alliance).",
+			} },
+		},
+	},
+	{
 		version = "1.2.6",
 		date = "2026-06-07",
 		intro = "A big feature drop - Rare Alert, Delves Automation and a tooltip Vendor Location, smarter Quick Quest and an Experience Bar fade - alongside the minimap squaring, queue-eye polish and a minimap Clock and Location readout, on top of a performance and stability pass: flatter memory use over long sessions, lighter chat and minimap hot paths, and a fix for Communities chat hyperlink tooltips.",

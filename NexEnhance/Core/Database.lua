@@ -99,6 +99,48 @@ function ns:GetProfiles()
 	return list
 end
 
+--- Whether a profile with this name already exists.
+function ns:ProfileExists(name)
+	return _G.NexEnhanceDB.profiles[name] ~= nil
+end
+
+-- Deep copy without touching metatables (profiles are plain data trees).
+local function DeepCopy(src)
+	local dst = {}
+	for k, v in pairs(src) do
+		if type(v) == "table" then
+			dst[k] = DeepCopy(v)
+		else
+			dst[k] = v
+		end
+	end
+	return dst
+end
+
+--- Create `newName` as a deep copy of the *active* profile's stored settings.
+--- Does not switch to it; callers typically follow with ns:SetProfile(newName).
+function ns:CopyProfileInto(newName)
+	local root = _G.NexEnhanceDB
+	if root.profiles[newName] then return false end
+	root.profiles[newName] = DeepCopy(root.profiles[ns.profileName] or {})
+	return true
+end
+
+--- Delete a profile. Refuses to delete the active profile (there must always be
+--- one). Any other character pointing at it falls back to "Default" next login.
+function ns:DeleteProfile(name)
+	if name == ns.profileName then return false end
+
+	local root = _G.NexEnhanceDB
+	root.profiles[name] = nil
+	for key, used in pairs(root.profileKeys) do
+		if used == name then
+			root.profileKeys[key] = nil
+		end
+	end
+	return true
+end
+
 -- ---------------------------------------------------------------------------
 -- Setup (called by the engine on ADDON_LOADED, before module OnInitialize)
 -- ---------------------------------------------------------------------------

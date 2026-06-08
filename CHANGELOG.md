@@ -8,6 +8,39 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.7] — 2026-06-08
+
+Adds a full **Profiles** system — create, copy, switch, delete and import/export
+your settings as a single copy-paste string — and a ground-up **AFK Camera**
+rework: a resolution-independent cinematic screen with a companion battle pet
+idling at your side.
+
+### Added
+- **Automation — Cancel Bad Buffs:** automatically removes cosmetic costume and
+  holiday transforms (Hallow's End costumes, Mohawked!, Turkey Feathers,
+  Noblegarden disguises, Orb of Deception and similar) while you're out of
+  combat, with an optional chat announcement. Matches by spellID and only acts
+  out of combat. Off by default. Reworked from
+  [ShestakUI](https://github.com/Wetxius/ShestakUI) by Wetxius / Shestak.
+- **Miscellaneous — Profiles:** create, copy, switch and delete settings
+  profiles, and import/export any profile as a single copy-paste string for
+  backups or sharing. New profiles and copies won't overwrite an existing name —
+  they report an error instead. Available on the new Profiles settings page or
+  via `/nex profile`.
+- **Miscellaneous — AFK Camera companion pet:** a random battle pet from your
+  Pet Journal now idles beside your character on the AFK screen. If you haven't
+  collected any pets, it falls back to Legionnaire Murky (Horde) or
+  Knight-Captain Murky (Alliance).
+
+### Changed
+- **Miscellaneous — AFK Camera:** reworked into a resolution-independent
+  cinematic letterbox — gradient edge fades, a hero-shot character model, a
+  class rune backdrop, faction crest, clock and date, a 30-minute logout
+  countdown, rotating account statistics and a whisper log — built from fixed,
+  edge-anchored layout regions so it scales cleanly across all resolutions.
+
+---
+
 ## [1.2.6] — 2026-06-07
 
 A big feature drop — **Rare Alert**, **Delves Automation** and a tooltip

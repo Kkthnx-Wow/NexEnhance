@@ -211,6 +211,14 @@ L["AutoGoodbyeMessages"] = {
 	"thanks team, gg",
 }
 
+-- Cancel Bad Buffs
+L["Cancel Bad Buffs"] = "Cancel Bad Buffs"
+L["Enable Cancel Bad Buffs"] = "Enable Cancel Bad Buffs"
+L["Automatically remove cosmetic costume and holiday buffs (Hallow's End costumes, Mohawked!, Turkey Feathers and similar) while you are out of combat."] = "Automatically remove cosmetic costume and holiday buffs (Hallow's End costumes, Mohawked!, Turkey Feathers and similar) while you are out of combat."
+L["Announce Cancelled Buffs"] = "Announce Cancelled Buffs"
+L["Print a message in chat whenever a cosmetic buff is removed."] = "Print a message in chat whenever a cosmetic buff is removed."
+L["Cancelled %s."] = "Cancelled %s."
+
 -- Auto Resurrect
 L["Auto Resurrect"] = "Auto Resurrect"
 L["Enable Auto Resurrect"] = "Enable Auto Resurrect"
@@ -490,6 +498,9 @@ L["Enable AFK Camera"] = "Enable AFK Camera"
 L["Immersive AFK overlay with camera spin, character model, clock and random stats."] = "Immersive AFK overlay with camera spin, character model, clock and random stats."
 L["AFK Random Stats"] = "Random Stats"
 L["AFK Logout Timer"] = "Logout Timer:"
+L["Toggle AFK camera preview"] = "Toggle AFK camera preview"
+L["AFK test mode on - press any key to exit."] = "AFK test mode on - press any key to exit."
+L["AFK test mode off."] = "AFK test mode off."
 
 -- Experience / Reputation Bar
 L["Experience Bar"] = "Experience Bar"
@@ -695,6 +706,30 @@ L["Changelog"] = "Changelog"
 L["Open the changelog"] = "Open the changelog"
 L["Auto-Show Changelog"] = "Auto-Show Changelog"
 L["Open the changelog automatically the first time you log in after an update."] = "Open the changelog automatically the first time you log in after an update."
+
+-- Profiles (management + import / export)
+L["Profiles"] = "Profiles"
+L["Profile Management"] = "Profile Management"
+L["Import / Export"] = "Import / Export"
+L["Current Profile: %s"] = "Current Profile: %s"
+L["Switch To"] = "Switch To"
+L["New"] = "New"
+L["Copy Current"] = "Copy Current"
+L["Delete"] = "Delete"
+L["PROFILE_NEW_PROMPT"] = "Enter a name for the new profile (starts from defaults):"
+L["PROFILE_COPY_PROMPT"] = "Enter a name for the copy of your current profile:"
+L["PROFILE_SWITCH_CONFIRM"] = "Switch to profile \"%s\"? This reloads the UI."
+L["PROFILE_DELETE_CONFIRM"] = "Delete profile \"%s\"? This cannot be undone."
+L["PROFILE_NONE_TO_DELETE"] = "No other profiles"
+L["PROFILE_EXISTS"] = "A profile named \"%s\" already exists."
+L["Export Current Profile"] = "Export Current Profile"
+L["Import Profile"] = "Import Profile"
+L["Open the profile import/export panel"] = "Open the profile import/export panel"
+L["PROFILE_IO_DESC"] = "Back up or share your settings. Click Export to generate a string for your current profile, then copy it. To load settings, paste a string into the box and click Import - this overwrites your current profile and reloads the UI."
+L["PROFILE_EXPORTED"] = "Exported \"%s\" - press Ctrl+C to copy the string below."
+L["PROFILE_IMPORT_EMPTY"] = "Paste a profile string into the box first."
+L["PROFILE_IMPORT_INVALID"] = "That doesn't look like a valid NexEnhance profile string."
+L["PROFILE_IMPORT_CONFIRM"] = "Importing will overwrite your current profile and reload the UI. Continue?"
 
 -- Credits
 L["Credits"] = "Credits"

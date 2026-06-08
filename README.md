@@ -53,6 +53,7 @@ On first login you'll get a short **setup screen** offering a handful of recomme
 | `/nex install` | Re-run the first-time setup screen |
 | `/nex changelog` | Open the in-game changelog |
 | `/nex credits` | Open the credits panel |
+| `/nex profile` | Open the profile management window |
 | `/nex reminder` | Preview the Buff Reminder icons (skinning/positioning) |
 | `/nex afk` | Preview the AFK Camera screen |
 | `/nexjunk add <item>` | Manage your custom Auto Vendor junk list |
@@ -136,6 +137,7 @@ Hands-off quality-of-life.
 - **Faster Loot** — instantly clear loot when auto-loot is active.
 - **Faster Movie Skip** — instantly confirm the cinematic skip dialog.
 - **Decline Duels** — auto-decline player and pet-battle duel requests.
+- **Cancel Bad Buffs** — automatically remove cosmetic costume and holiday transforms (Hallow's End costumes, Mohawked!, Turkey Feathers and the like) while out of combat, with an optional announcement. Off by default.
 - **Auto Accept Invites** — accept group invites from friends and/or guild.
 - **Auto Goodbye** — send a friendly farewell after a dungeon or Mythic+ run.
 - **Auto Resurrect** — accept resurrections out of combat, with an optional thank-you emote.
@@ -148,7 +150,7 @@ Hands-off quality-of-life.
 - **Rare Alert** — announce nearby rares and world events the moment their vignette appears, with an anti-burst sound throttle and optional clickable map links.
 
 ### Miscellaneous
-- **AFK Camera** — an immersive cinematic AFK screen: rotating camera, your character (with class rune and faction crest), clock, logout countdown, rotating account stats and a whisper log. Preview with `/nex afk`.
+- **AFK Camera** — an immersive cinematic AFK screen: rotating camera, your character (with class rune and faction crest) alongside a random collected battle pet, clock, logout countdown, rotating account stats and a whisper log. Preview with `/nex afk`.
 - **Experience Bar** — a movable replacement for Blizzard's status tracking bar (XP, reputation, honor, Azerite) with fade options and Edit Mode sizing.
 - **Animation** — a login logo flyby (`/nexlogo`) and an animated entering/leaving combat banner.
 - **Alert Frames** — move achievement/loot/reward popups to the top of the screen, optionally hide the Talking Head.
@@ -158,6 +160,7 @@ Hands-off quality-of-life.
 - **Drag Frames** — click-and-drag most Blizzard windows to move them.
 - **Social Colours** — class-coloured names and difficulty-coloured levels in the Friends, Who and Guild panels.
 - **Achievement Screenshot** — auto-screenshot when you earn a new achievement.
+- **Profiles** — create, copy, switch and delete settings profiles, plus import/export any profile as a single copy-paste string. Available on the Profiles settings page or via `/nex profile`.
 - **Reload UI** — `/rl`, `/reloadui`, `//` and `/.` reload commands.
 - **Changelog & Credits** — in-game changelog (auto-shown after updates) and a credits panel.
 

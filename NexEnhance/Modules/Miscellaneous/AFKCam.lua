@@ -7,8 +7,10 @@
 
 	Originally from ElvUI by the Tukui team:
 	  https://github.com/tukui-org/ElvUI/blob/main/ElvUI/Game/Shared/Modules/Misc/AFK.lua
-	Model animation cycle and holder offsets adapted from GW2 UI by Mortalknight:
+	Model animation cycle adapted from GW2 UI by Mortalknight:
 	  https://github.com/Mortalknight/GW2_UI/blob/main/Games/Shared/Misc/afk.lua
+	Layout reworked as a resolution-independent cinematic letterbox (gradient
+	fades, edge-anchored elements, fixed model holders).
 --]]
 
 -- luacheck: globals CloseAllWindows MoveViewLeftStart MoveViewLeftStop GetColoredName RemoveExtraSpaces
@@ -32,21 +34,19 @@ local tostring = tostring
 local date = date
 
 local CreateFrame = CreateFrame
+local CreateColor = CreateColor
 local GetTime = GetTime
 local GetGameTime = GetGameTime
 local GetCVarBool = GetCVarBool
 local SetCVar = SetCVar
 local UIParent = UIParent
 local UnitIsAFK = UnitIsAFK
-local UnitExists = UnitExists
 local UnitCastingInfo = UnitCastingInfo
 local UnitChannelInfo = UnitChannelInfo
 local InCombatLockdown = InCombatLockdown
 local IsShiftKeyDown = IsShiftKeyDown
 local IsInGuild = IsInGuild
 local GetGuildInfo = GetGuildInfo
-local GetScreenWidth = GetScreenWidth
-local GetScreenHeight = GetScreenHeight
 local GetAchievementInfo = GetAchievementInfo
 local GetStatistic = GetStatistic
 local GetBattlefieldStatus = GetBattlefieldStatus
@@ -60,6 +60,7 @@ local C_DateAndTime = C_DateAndTime
 local C_PetBattles = C_PetBattles
 
 local FONT = C.Media.Fonts.normal
+local BLANK_TEX = C.Media.Textures.blank
 local CLASS_COLOR = C.ClassColor
 local BRAND = C.Colors.brand
 local LOGO_TEX = C.Media.Textures.logo256
@@ -68,14 +69,61 @@ local CAMERA_SPEED = 0.035
 local CAST_RECHECK_DELAY = 30
 local KEY_RECHECK_DELAY = 60
 
--- Player model animations; holder position follows each entry (GW2 UI / ElvUI pattern).
-local ANIMATIONS = {
-	wave = { id = 67, facing = 6, wait = 5, offsetX = -200, offsetY = 220, duration = 2.3 },
-	dance = { id = 69, facing = 6, wait = 30, offsetX = -200, offsetY = 220, duration = 300 },
-	sleep = { id = 71, facing = 1, wait = 30, offsetX = -200, offsetY = 220, duration = 3000 },
+-- Cinematic letterbox layout (fixed sizes; anchored to screen edges).
+local TOP_FADE = { height = 72, padX = 20, fontSize = 16 }
+local BOTTOM_FADE = { height = 160, padX = 20, fontSize = 22, lineGap = 4 }
+local NAME_CARD = { crestSize = 120, insetX = 24, insetY = 18 }
+local WOW_LOGO = { width = 256, height = 128 }
+-- Hero-shot character: large fixed model region rising from the bottom-right.
+local MODEL_LAYOUT = {
+	width = 600,
+	height = 820,
+	camScale = 0.9,
+	insetX = 30,
+	insetY = 0,
 }
 
-local PET_MODEL = { offsetX = -500, offsetY = 100, camScale = 9, facing = 6 }
+-- Player model animations; small nudges within the bottom-left holder.
+local ANIMATIONS = {
+	wave = { id = 67, facing = 6, wait = 5, offsetX = 0, offsetY = 0, duration = 2.3 },
+	dance = { id = 69, facing = 6, wait = 30, offsetX = 0, offsetY = 0, duration = 300 },
+	sleep = { id = 71, facing = 1, wait = 30, offsetX = 0, offsetY = 16, duration = 3000 },
+}
+
+-- Companion pet: a random collected battle pet idles beside the hero. Pets
+-- auto-frame to the holder, so a fixed holder keeps every species a sensible
+-- on-screen size. Anchored to the player's left/front, near their feet.
+local PET_LAYOUT = {
+	width = 300,
+	height = 340,
+	camScale = 1.0,
+	insetX = 470, -- from the frame's right edge: sits to the hero's left/front
+	insetY = 10,
+	facing = 0.3, -- slightly angled toward the hero/camera
+}
+
+-- Fallback companions when the player owns no battle pets (creature IDs).
+local PET_FALLBACK = {
+	Horde = 113984, -- Legionnaire Murky
+	Alliance = 113983, -- Knight-Captain Murky
+}
+local C_PetJournal = C_PetJournal
+
+-- Class artifact background runes (mirrors the faction crest on the right).
+local CLASS_RUNE = {
+	DEMONHUNTER = "Artifacts-DemonHunter-BG-Rune",
+	DEATHKNIGHT = "Artifacts-DeathKnightFrost-BG-Rune",
+	DRUID = "Artifacts-Druid-BG-Rune",
+	HUNTER = "Artifacts-Hunter-BG-Rune",
+	MAGE = "Artifacts-MageArcane-BG-Rune",
+	MONK = "Artifacts-Monk-BG-Rune",
+	PALADIN = "Artifacts-Paladin-BG-Rune",
+	PRIEST = "Artifacts-Priest-BG-Rune",
+	ROGUE = "Artifacts-Rogue-BG-Rune",
+	SHAMAN = "Artifacts-Shaman-BG-Rune",
+	WARLOCK = "Artifacts-Warlock-BG-Rune",
+	WARRIOR = "Artifacts-Warrior-BG-Rune",
+}
 
 local function CancelTimer(handle)
 	if handle and handle.Cancel then
@@ -83,7 +131,6 @@ local function CancelTimer(handle)
 	end
 end
 
--- Classic Blizzard tooltip chrome (matches Install, Chat Copy, Changelog, etc.).
 local BLIZZARD_BACKDROP = {
 	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
 	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -91,15 +138,6 @@ local BLIZZARD_BACKDROP = {
 	tileSize = 16,
 	edgeSize = 16,
 	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
-
--- Letterbox layout (top bar); bottom bar.
-local TOP_BAR = { height = 58, padX = 16, fontSize = 16 }
-local BOTTOM_BAR = {
-	heightScale = 0.10,
-	heightTrim = 20,
-	fontSize = 20,
-	lineGap = 6,
 }
 
 local IGNORE_KEYS = {
@@ -112,11 +150,57 @@ local PRINT_KEYS = {
 	PRINTSCREEN = true,
 }
 
--- Statistics achievement IDs (GetStatistic accepts these directly on retail).
 local STAT_IDS = {
-	60, 94, 97, 98, 107, 112, 114, 115, 319, 320, 326, 328, 329, 331, 332, 333, 334, 338,
-	345, 349, 353, 588, 812, 837, 838, 839, 840, 919, 932, 933, 934, 1042, 1045, 1047, 1065,
-	1066, 1197, 1198, 1336, 1339, 1487, 1491, 1518, 1776, 2277, 5692, 5693, 5694, 5695, 7399,
+	60,
+	94,
+	97,
+	98,
+	107,
+	112,
+	114,
+	115,
+	319,
+	320,
+	326,
+	328,
+	329,
+	331,
+	332,
+	333,
+	334,
+	338,
+	345,
+	349,
+	353,
+	588,
+	812,
+	837,
+	838,
+	839,
+	840,
+	919,
+	932,
+	933,
+	934,
+	1042,
+	1045,
+	1047,
+	1065,
+	1066,
+	1197,
+	1198,
+	1336,
+	1339,
+	1487,
+	1491,
+	1518,
+	1776,
+	2277,
+	5692,
+	5693,
+	5694,
+	5695,
+	7399,
 	8278,
 }
 
@@ -129,6 +213,7 @@ ns:RegisterDefaults({
 local AFKCam = ns:NewModule("AFKCam", "afkCam", { group = "misc", title = L["AFK Camera"], order = 50 })
 
 local afkFrame
+local manualPreview
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -151,21 +236,44 @@ local function CreateFS(parent, size, justify)
 	return fs
 end
 
-local function CreateBar(parent)
-	local bar = CreateFrame("StatusBar", nil, parent, "BackdropTemplate")
-	bar:SetStatusBarTexture(C.Media.Textures.statusbar)
-	bar:SetMinMaxValues(0, LOGOUT_SECONDS)
-	bar:SetStatusBarColor(BRAND[1], BRAND[2], BRAND[3], 1)
-	bar:SetBackdrop(BLIZZARD_BACKDROP)
-	bar:SetBackdropColor(0, 0, 0, 0.35)
-	bar:SetBackdropBorderColor(1, 1, 1)
-	return bar
+local function CreateVerticalFade(parent, height, opaqueAtTop)
+	local fade = parent:CreateTexture(nil, "BACKGROUND", nil, -2)
+	fade:SetTexture(BLANK_TEX)
+	fade:SetHeight(height)
+	if opaqueAtTop then
+		fade:SetPoint("TOPLEFT", parent, "TOPLEFT")
+		fade:SetPoint("TOPRIGHT", parent, "TOPRIGHT")
+		fade:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0.88), CreateColor(0, 0, 0, 0))
+	else
+		fade:SetPoint("BOTTOMLEFT", parent, "BOTTOMLEFT")
+		fade:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT")
+		fade:SetGradient("VERTICAL", CreateColor(0, 0, 0, 0), CreateColor(0, 0, 0, 0.88))
+	end
+	return fade
 end
 
-local function StylePanelBackdrop(panel, alpha)
-	panel:SetBackdrop(BLIZZARD_BACKDROP)
-	panel:SetBackdropColor(0.06, 0.06, 0.06, alpha or 0.9)
-	panel:SetBackdropBorderColor(1, 1, 1)
+local function CreateGoldAccent(parent, anchorTo, atTop)
+	local accent = parent:CreateTexture(nil, "ARTWORK", nil, 1)
+	accent:SetTexture(BLANK_TEX)
+	accent:SetHeight(2)
+	accent:SetGradient("HORIZONTAL", CreateColor(BRAND[1], BRAND[2], BRAND[3], 0), CreateColor(BRAND[1], BRAND[2], BRAND[3], 0.85))
+	if atTop then
+		accent:SetPoint("BOTTOMLEFT", anchorTo, "BOTTOMLEFT")
+		accent:SetPoint("BOTTOMRIGHT", anchorTo, "BOTTOMRIGHT")
+	else
+		accent:SetPoint("TOPLEFT", anchorTo, "TOPLEFT")
+		accent:SetPoint("TOPRIGHT", anchorTo, "TOPRIGHT")
+	end
+	return accent
+end
+
+local function GetFactionCrestKey(faction)
+	if faction == "Horde" then
+		return "Horde"
+	elseif faction == "Neutral" then
+		return "Panda"
+	end
+	return "Alliance"
 end
 
 local function FormatClock(hour, minute)
@@ -214,9 +322,11 @@ local function GetAnimation(model, key)
 end
 
 local function ApplyAFKAnimation(frame, key)
-	local model = frame.bottom.model
+	local model = frame.model
 	local options, usedKey = GetAnimation(model, key)
-	if not options then return end
+	if not options then
+		return
+	end
 
 	model.curAnimation = usedKey
 	model.duration = options.duration
@@ -226,23 +336,29 @@ local function ApplyAFKAnimation(frame, key)
 	model:SetFacing(options.facing)
 	model:SetAnimation(options.id)
 
-	local holder = frame.bottom.modelHolder
+	local holder = frame.modelHolder
 	if holder then
 		holder:ClearAllPoints()
-		holder:SetPoint("BOTTOMRIGHT", frame.bottom, "BOTTOMRIGHT", options.offsetX, options.offsetY)
+		holder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -(MODEL_LAYOUT.insetX + options.offsetX), MODEL_LAYOUT.insetY + options.offsetY)
 	end
 end
 
 local function Model_OnUpdate(self)
-	if self.isIdle then return end
+	if self.isIdle then
+		return
+	end
 
-	if GetTime() - self.startTime < self.duration then return end
+	if GetTime() - self.startTime < self.duration then
+		return
+	end
 
 	self:SetAnimation(0)
 	self.isIdle = true
 
 	local frame = self.afkFrame
-	if not frame or not frame.isAFK then return end
+	if not frame or not frame.isAFK then
+		return
+	end
 
 	CancelTimer(frame.animTimer)
 	frame.animTimer = C_Timer.After(self.idleDuration, function()
@@ -252,14 +368,69 @@ local function Model_OnUpdate(self)
 	end)
 end
 
--- Faction crest + text offsets
-local function GetFactionLayout(faction)
-	if faction == "Horde" then
-		return "Horde", 140, -20, -10, -10, -36
-	elseif faction == "Neutral" then
-		return "Panda", 90, 15, 10, 20, -5
+-- ---------------------------------------------------------------------------
+-- Companion pet: a random collected battle pet idles beside the hero
+-- ---------------------------------------------------------------------------
+-- Returns a random owned petID from the journal, or nil if none are collected.
+-- Uses reservoir sampling so the scan does not allocate a temporary pet list.
+local function GetRandomOwnedPet()
+	local petJournal = C_PetJournal
+	if not (petJournal and petJournal.GetNumPets and petJournal.GetPetInfoByIndex) then
+		return nil
 	end
-	return "Alliance", 140, -20, -10, -10, -36
+
+	local num = petJournal.GetNumPets()
+	if not num or num == 0 then
+		return nil
+	end
+
+	local selected, count
+	for i = 1, num do
+		local petID, _, isOwned = petJournal.GetPetInfoByIndex(i)
+		if isOwned and petID then
+			count = (count or 0) + 1
+			if math_random(count) == 1 then
+				selected = petID
+			end
+		end
+	end
+
+	return selected
+end
+
+local function Pet_Start(frame)
+	local pet = frame.pet
+	if not pet then
+		return
+	end
+
+	pet:ClearModel()
+
+	local applied = false
+	local petJournal = C_PetJournal
+	local petID = GetRandomOwnedPet()
+	if petID and petJournal and petJournal.GetPetInfoByPetID then
+		local _, _, _, _, _, displayID = petJournal.GetPetInfoByPetID(petID)
+		if displayID and displayID > 0 then
+			applied = pcall(pet.SetDisplayInfo, pet, displayID)
+		end
+	end
+
+	if not applied then
+		local fallback = (C.Player.faction == "Horde") and PET_FALLBACK.Horde or PET_FALLBACK.Alliance
+		pcall(pet.SetCreature, pet, fallback)
+	end
+
+	pet:SetFacing(PET_LAYOUT.facing)
+	pcall(pet.SetAnimation, pet, 0)
+end
+
+local function Pet_Stop(frame)
+	local pet = frame.pet
+	if not pet then
+		return
+	end
+	pet:ClearModel()
 end
 
 local function CreateRandomStatMessage()
@@ -291,18 +462,18 @@ local function UpdateClock(frame)
 
 	if minute ~= frame.lastMinute then
 		frame.lastMinute = minute
-		frame.top.time:SetText(FormatClock(hour, minute))
+		frame.time:SetText(FormatClock(hour, minute))
 		local calendarTime = C_DateAndTime.GetCurrentCalendarTime()
-		frame.top.date:SetText(FormatCalendarDate(calendarTime))
+		frame.date:SetText(FormatCalendarDate(calendarTime))
 	end
 end
 
 local function UpdateLogout(frame)
 	local elapsed = GetTime() - frame.startTime
 	local remaining = LOGOUT_SECONDS - elapsed
-	if remaining < 0 then remaining = 0 end
-
-	frame.top.status:SetValue(remaining)
+	if remaining < 0 then
+		remaining = 0
+	end
 
 	local minutes = math_floor(remaining / 60)
 	local seconds = math_floor(remaining % 60)
@@ -325,7 +496,9 @@ end
 -- ---------------------------------------------------------------------------
 local function SetAFKMode(frame, enable)
 	if enable then
-		if frame.isAFK then return end
+		if frame.isAFK then
+			return
+		end
 
 		MoveViewLeftStart(CAMERA_SPEED)
 		frame:Show()
@@ -334,23 +507,16 @@ local function SetAFKMode(frame, enable)
 
 		if IsInGuild() then
 			local guildName, guildRank = GetGuildInfo("player")
-			frame.bottom.guild:SetFormattedText("%s - %s", guildName or "", guildRank or "")
+			frame.guild:SetFormattedText("%s - %s", guildName or "", guildRank or "")
 		else
-			frame.bottom.guild:SetText(_G.GUILD_NOT_IN_GUILD or "No Guild")
+			frame.guild:SetText(_G.GUILD_NOT_IN_GUILD or "No Guild")
 		end
 
-		local model = frame.bottom.model
+		local model = frame.model
 		model:SetUnit("player")
 		ApplyAFKAnimation(frame, "wave")
 
-		local petModel = frame.bottom.modelPet
-		if UnitExists("pet") then
-			petModel:Show()
-			petModel:SetUnit("pet")
-			petModel:SetAnimation(0)
-		else
-			petModel:Hide()
-		end
+		Pet_Start(frame)
 
 		frame.startTime = GetTime()
 		frame.lastMinute = -1
@@ -383,7 +549,9 @@ local function SetAFKMode(frame, enable)
 		return
 	end
 
-	if not frame.isAFK then return end
+	if not frame.isAFK then
+		return
+	end
 
 	UIParent:Show()
 	frame:Hide()
@@ -394,9 +562,11 @@ local function SetAFKMode(frame, enable)
 	CancelTimer(frame.statsTimer)
 	CancelTimer(frame.logoffTimer)
 	CancelTimer(frame.animTimer)
-	if frame.bottom.model then
-		frame.bottom.model.isIdle = true
+	if frame.model then
+		frame.model.isIdle = true
 	end
+
+	Pet_Stop(frame)
 
 	frame.countdown.text:SetFormattedText("%s |cfff0ff00-30:00|r", L["AFK Logout Timer"])
 	frame.stat.info:SetText(L["AFK Random Stats"])
@@ -424,6 +594,9 @@ local function OnAFKEvent(frame, event, ...)
 				return
 			end
 		end
+		if manualPreview then
+			manualPreview = false
+		end
 		SetAFKMode(frame, false)
 		if event == "PLAYER_REGEN_DISABLED" then
 			frame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -437,11 +610,15 @@ local function OnAFKEvent(frame, event, ...)
 		return
 	end
 
-	if not ns.db.afkCam.enable then return end
+	if manualPreview then
+		return
+	end
 
-	if InCombatLockdown()
-		or (_G.CinematicFrame and _G.CinematicFrame:IsShown())
-		or (_G.MovieFrame and _G.MovieFrame:IsShown()) then
+	if not ns.db.afkCam.enable then
+		return
+	end
+
+	if InCombatLockdown() or (_G.CinematicFrame and _G.CinematicFrame:IsShown()) or (_G.MovieFrame and _G.MovieFrame:IsShown()) then
 		return
 	end
 
@@ -452,8 +629,6 @@ local function OnAFKEvent(frame, event, ...)
 		return
 	end
 
-	-- UnitIsAFK can return a secret boolean (e.g. in instances); we can't branch
-	-- on a secret, so treat that as "not AFK" and bail out of the AFK camera.
 	local isAFK = UnitIsAFK("player")
 	if F.IsSecret(isAFK) then
 		SetAFKMode(frame, false)
@@ -468,10 +643,15 @@ local function OnAFKEvent(frame, event, ...)
 end
 
 local function OnKeyDown(frame, key)
-	if IGNORE_KEYS[key] then return end
+	if IGNORE_KEYS[key] then
+		return
+	end
 	if PRINT_KEYS[key] then
 		Screenshot()
 		return
+	end
+	if manualPreview then
+		manualPreview = false
 	end
 	SetAFKMode(frame, false)
 	C_Timer.After(KEY_RECHECK_DELAY, function()
@@ -483,7 +663,9 @@ local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7
 	local coloredName = _G.GetColoredName(event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
 	local chatType = sub(event, 10)
 	local chatInfo = _G.ChatTypeInfo[chatType]
-	if not chatInfo then return end
+	if not chatInfo then
+		return
+	end
 
 	if event == "CHAT_MSG_BN_WHISPER" then
 		local priest = _G.RAID_CLASS_COLORS and _G.RAID_CLASS_COLORS.PRIEST
@@ -522,10 +704,14 @@ local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7
 	message = gsub(message, "%%", "%%%%")
 
 	local pattern = _G["CHAT_" .. chatType .. "_GET"]
-	if not pattern then return end
+	if not pattern then
+		return
+	end
 
 	local ok, body = pcall(format, pattern .. message, playerLink .. "[" .. coloredName .. "]" .. "|h")
-	if not ok or not body then return end
+	if not ok or not body then
+		return
+	end
 
 	local accessID = _G.ChatHistory_GetAccessID(chatGroup, chatTarget)
 	local typeID = _G.ChatHistory_GetAccessID(chatType, chatTarget, arg12 == "" and arg13 or arg12)
@@ -548,14 +734,14 @@ end
 -- UI construction
 -- ---------------------------------------------------------------------------
 local function BuildFrame()
-	if afkFrame then return afkFrame end
+	if afkFrame then
+		return afkFrame
+	end
 
-	-- Must NOT be parented to UIParent: SetAFKMode hides UIParent, which would
-	-- hide every child frame and leave only the world-camera spin visible.
-	local frame = CreateFrame("Frame", nil, nil, "BackdropTemplate")
+	local frame = CreateFrame("Frame", nil, nil)
 	frame:SetFrameStrata("FULLSCREEN")
 	frame:SetFrameLevel(100)
-	frame:SetScale(UIParent:GetScale())
+	frame:SetScale(UIParent:GetEffectiveScale())
 	frame:SetAllPoints(UIParent)
 	frame:Hide()
 	frame:EnableKeyboard(true)
@@ -566,8 +752,17 @@ local function BuildFrame()
 		OnKeyDown(self, key)
 	end)
 
+	local topFade = CreateVerticalFade(frame, TOP_FADE.height, true)
+	frame.topFade = topFade
+	CreateGoldAccent(frame, topFade, true)
+
+	local bottomFade = CreateVerticalFade(frame, BOTTOM_FADE.height, false)
+	frame.bottomFade = bottomFade
+	CreateGoldAccent(frame, bottomFade, false)
+
 	local chat = CreateFrame("ScrollingMessageFrame", nil, frame)
-	chat:SetSize(500, 200)
+	chat:SetSize(420, 200)
+	chat:SetPoint("RIGHT", frame, "RIGHT", -24, 40)
 	chat:SetFont(FONT, 14, "OUTLINE")
 	chat:SetJustifyH("LEFT")
 	chat:SetMaxLines(100)
@@ -582,80 +777,75 @@ local function BuildFrame()
 	chat:SetScript("OnEvent", OnChatEvent)
 	frame.chat = chat
 
-	local top = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-	top:SetPoint("TOP", frame, "TOP", 0, 4)
-	top:SetSize(UIParent:GetWidth() + 12, TOP_BAR.height)
-	StylePanelBackdrop(top)
-	frame.top = top
+	frame.date = CreateFS(frame, TOP_FADE.fontSize, "LEFT")
+	frame.date:SetPoint("TOPLEFT", frame, "TOPLEFT", TOP_FADE.padX, -TOP_FADE.padX - 4)
+	frame.date:SetTextColor(0.7, 0.7, 0.7)
 
-	chat:SetPoint("TOPLEFT", top, "BOTTOMLEFT", 10, -6)
-
-	local factionKey, factionSize, offsetX, offsetY, nameOffsetX, nameOffsetY = GetFactionLayout(C.Player.faction)
-
-	local bottom = CreateFrame("Frame", nil, frame, "BackdropTemplate")
-	bottom:SetPoint("BOTTOM", frame, "BOTTOM", 0, -C.Mult)
-	bottom:SetWidth(GetScreenWidth() + (C.Mult * 2))
-	bottom:SetHeight(GetScreenHeight() * BOTTOM_BAR.heightScale - BOTTOM_BAR.heightTrim)
-	bottom:SetClipsChildren(false)
-	StylePanelBackdrop(bottom)
-	frame.bottom = bottom
-
-	local logo = bottom:CreateTexture(nil, "OVERLAY")
-	logo:SetSize(256 / 1.4, 256 / 1.4)
-	logo:SetPoint("CENTER", bottom, "CENTER", 0, 60)
-	logo:SetTexture(LOGO_TEX)
-
-	top.time = CreateFS(top, TOP_BAR.fontSize, "LEFT")
-	top.time:SetPoint("RIGHT", top, "RIGHT", -TOP_BAR.padX, 0)
-	top.time:SetTextColor(0.7, 0.7, 0.7)
+	frame.time = CreateFS(frame, TOP_FADE.fontSize, "RIGHT")
+	frame.time:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -TOP_FADE.padX, -TOP_FADE.padX - 4)
+	frame.time:SetTextColor(0.7, 0.7, 0.7)
 
 	local wowLogo = CreateFrame("Frame", nil, frame)
-	wowLogo:SetPoint("TOP", top, "TOP", 0, -6)
+	wowLogo:SetPoint("TOP", frame, "TOP", 0, 4)
 	wowLogo:SetFrameLevel(frame:GetFrameLevel() + 5)
-	wowLogo:SetSize(300, 150)
+	wowLogo:SetSize(WOW_LOGO.width, WOW_LOGO.height)
 	local wowTex = wowLogo:CreateTexture(nil, "OVERLAY")
 	wowTex:SetAllPoints()
+	wowTex:SetTexCoord(0, 1, 0, 1)
 	local displayInfo = GetExpansionDisplayInfo(GetClampedCurrentExpansionLevel())
 	if displayInfo and displayInfo.logo then
 		wowTex:SetTexture(displayInfo.logo)
 	end
+	frame.wowLogo = wowLogo
 
-	top.date = CreateFS(top, TOP_BAR.fontSize, "RIGHT")
-	top.date:SetPoint("LEFT", top, "LEFT", TOP_BAR.padX, 0)
-	top.date:SetTextColor(0.7, 0.7, 0.7)
+	local crestSize = NAME_CARD.crestSize
+	local nameCard = CreateFrame("Frame", nil, frame)
+	nameCard:SetSize(420, crestSize)
+	nameCard:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", NAME_CARD.insetX, NAME_CARD.insetY)
+	frame.nameCard = nameCard
 
-	top.status = CreateBar(top)
-	top.status:SetPoint("TOPRIGHT", top, "BOTTOMRIGHT", 0, 8)
-	top.status:SetPoint("BOTTOMLEFT", top, "BOTTOMLEFT", 0, 5)
-	top.status:SetValue(LOGOUT_SECONDS)
+	frame.faction = nameCard:CreateTexture(nil, "OVERLAY")
+	frame.faction:SetSize(crestSize, crestSize)
+	frame.faction:SetPoint("LEFT", nameCard, "LEFT", 0, 0)
+	frame.faction:SetTexture("Interface/Timer/" .. GetFactionCrestKey(C.Player.faction) .. "-Logo")
 
-	bottom.faction = bottom:CreateTexture(nil, "OVERLAY")
-	bottom.faction:SetSize(factionSize, factionSize)
-	bottom.faction:SetPoint("BOTTOMLEFT", bottom, "BOTTOMLEFT", offsetX, offsetY)
-	bottom.faction:SetTexture("Interface/Timer/" .. factionKey .. "-Logo")
+	-- Class artifact rune: mirrors the faction crest on the opposite (right) edge.
+	local runeAtlas = CLASS_RUNE[C.Player.class]
+	if runeAtlas then
+		frame.classRune = frame:CreateTexture(nil, "ARTWORK")
+		frame.classRune:SetSize(crestSize, crestSize)
+		frame.classRune:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -NAME_CARD.insetX, NAME_CARD.insetY)
+		frame.classRune:SetAtlas(runeAtlas, false)
+	end
 
-	bottom.name = CreateFS(bottom, BOTTOM_BAR.fontSize)
-	bottom.name:SetFormattedText("%s-%s", C.Player.name, C.Player.realm)
-	bottom.name:SetPoint("TOPLEFT", bottom.faction, "TOPRIGHT", nameOffsetX, nameOffsetY)
-	bottom.name:SetTextColor(CLASS_COLOR[1], CLASS_COLOR[2], CLASS_COLOR[3])
+	-- Vertically center the three text rows against the crest.
+	local blockHeight = (BOTTOM_FADE.fontSize * 3) + (BOTTOM_FADE.lineGap * 2)
+	local topInset = -((crestSize - blockHeight) / 2)
 
-	bottom.playerInfo = CreateFS(bottom, BOTTOM_BAR.fontSize)
+	frame.name = CreateFS(nameCard, BOTTOM_FADE.fontSize, "LEFT")
+	frame.name:SetFormattedText("%s-%s", C.Player.name, C.Player.realm)
+	frame.name:SetPoint("TOPLEFT", frame.faction, "TOPRIGHT", 10, topInset)
+	frame.name:SetTextColor(CLASS_COLOR[1], CLASS_COLOR[2], CLASS_COLOR[3])
+
+	frame.playerInfo = CreateFS(nameCard, BOTTOM_FADE.fontSize, "LEFT")
 	local classHex = F.RGBToHex(CLASS_COLOR[1], CLASS_COLOR[2], CLASS_COLOR[3])
-	bottom.playerInfo:SetFormattedText(
-		"|c%s%s %d|r |cff888888%s|r |c%s%s|r",
-		C.BrandHex, _G.LEVEL or "Level", C.Player.level, C.Player.raceName or C.Player.race,
-		classHex, C.Player.className or C.Player.class
-	)
-	bottom.playerInfo:SetPoint("TOPLEFT", bottom.name, "BOTTOMLEFT", 0, -BOTTOM_BAR.lineGap)
+	frame.playerInfo:SetFormattedText("|c%s%s %d|r |cff888888%s|r |c%s%s|r", C.BrandHex, _G.LEVEL or "Level", C.Player.level, C.Player.raceName or C.Player.race, classHex, C.Player.className or C.Player.class)
+	frame.playerInfo:SetPoint("TOPLEFT", frame.name, "BOTTOMLEFT", 0, -BOTTOM_FADE.lineGap)
 
-	bottom.guild = CreateFS(bottom, BOTTOM_BAR.fontSize)
-	bottom.guild:SetText(_G.GUILD_NOT_IN_GUILD or "No Guild")
-	bottom.guild:SetPoint("TOPLEFT", bottom.playerInfo, "BOTTOMLEFT", 0, -BOTTOM_BAR.lineGap)
-	bottom.guild:SetTextColor(0.7, 0.7, 0.7)
+	frame.guild = CreateFS(nameCard, BOTTOM_FADE.fontSize, "LEFT")
+	frame.guild:SetText(_G.GUILD_NOT_IN_GUILD or "No Guild")
+	frame.guild:SetPoint("TOPLEFT", frame.playerInfo, "BOTTOMLEFT", 0, -BOTTOM_FADE.lineGap)
+	frame.guild:SetTextColor(0.7, 0.7, 0.7)
+
+	local nexLogo = frame:CreateTexture(nil, "OVERLAY")
+	nexLogo:SetSize(160, 160)
+	nexLogo:SetPoint("CENTER", frame.bottomFade, "TOP", 0, 0)
+	nexLogo:SetTexture(LOGO_TEX)
+	frame.nexLogo = nexLogo
 
 	local stat = CreateFrame("Frame", nil, frame)
 	stat:SetSize(418, 72)
-	stat:SetPoint("CENTER", 0, 260)
+	stat:SetPoint("CENTER", frame, "CENTER", 0, 200)
 	frame.stat = stat
 
 	stat.bg = stat:CreateTexture(nil, "BACKGROUND")
@@ -710,27 +900,27 @@ local function BuildFrame()
 
 	local wave = ANIMATIONS.wave
 
-	bottom.modelHolder = CreateFrame("Frame", nil, bottom)
-	bottom.modelHolder:SetSize(150, 150)
-	bottom.modelHolder:SetPoint("BOTTOMRIGHT", bottom, "BOTTOMRIGHT", wave.offsetX, wave.offsetY)
+	frame.modelHolder = CreateFrame("Frame", nil, frame)
+	frame.modelHolder:SetSize(MODEL_LAYOUT.width, MODEL_LAYOUT.height)
+	frame.modelHolder:SetFrameLevel(frame:GetFrameLevel() + 2)
+	frame.modelHolder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -(MODEL_LAYOUT.insetX + wave.offsetX), MODEL_LAYOUT.insetY + wave.offsetY)
 
-	bottom.model = CreateFrame("PlayerModel", nil, bottom.modelHolder)
-	bottom.model:SetPoint("CENTER")
-	bottom.model:SetSize(GetScreenWidth() * 2, GetScreenHeight() * 2)
-	bottom.model:SetCamDistanceScale(4.5)
-	bottom.model:SetUnit("player")
-	bottom.model.afkFrame = frame
-	bottom.model:SetScript("OnUpdate", Model_OnUpdate)
+	frame.model = CreateFrame("PlayerModel", nil, frame.modelHolder)
+	frame.model:SetAllPoints(frame.modelHolder)
+	frame.model:SetCamDistanceScale(MODEL_LAYOUT.camScale)
+	frame.model:SetUnit("player")
+	frame.model.afkFrame = frame
+	frame.model:SetScript("OnUpdate", Model_OnUpdate)
 
-	bottom.modelPetHolder = CreateFrame("Frame", nil, bottom)
-	bottom.modelPetHolder:SetSize(150, 150)
-	bottom.modelPetHolder:SetPoint("BOTTOMRIGHT", bottom, "BOTTOMRIGHT", PET_MODEL.offsetX, PET_MODEL.offsetY)
+	frame.petHolder = CreateFrame("Frame", nil, frame)
+	frame.petHolder:SetSize(PET_LAYOUT.width, PET_LAYOUT.height)
+	frame.petHolder:SetFrameLevel(frame:GetFrameLevel() + 3)
+	frame.petHolder:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -PET_LAYOUT.insetX, PET_LAYOUT.insetY)
 
-	bottom.modelPet = CreateFrame("PlayerModel", nil, bottom.modelPetHolder)
-	bottom.modelPet:SetPoint("CENTER")
-	bottom.modelPet:SetSize(GetScreenWidth() * 2, GetScreenHeight() * 2)
-	bottom.modelPet:SetCamDistanceScale(PET_MODEL.camScale)
-	bottom.modelPet:SetFacing(PET_MODEL.facing)
+	frame.pet = CreateFrame("PlayerModel", nil, frame.petHolder)
+	frame.pet:SetAllPoints(frame.petHolder)
+	frame.pet:SetCamDistanceScale(PET_LAYOUT.camScale)
+	frame.pet.afkFrame = frame
 
 	frame:RegisterEvent("PLAYER_FLAGS_CHANGED")
 	frame:RegisterEvent("PLAYER_REGEN_DISABLED")
@@ -750,14 +940,18 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function AFKCam:InstallHooks()
-	if self.hooksInstalled then return end
+	if self.hooksInstalled then
+		return
+	end
 	self.hooksInstalled = true
 	BuildFrame()
 	SetCVar("autoClearAFK", "1")
 end
 
 function AFKCam:OnEnable()
-	if not ns.db.afkCam.enable then return end
+	if not ns.db.afkCam.enable then
+		return
+	end
 	self:InstallHooks()
 end
 
@@ -766,8 +960,23 @@ function AFKCam:OnSettingChanged(key, value)
 		if value then
 			self:InstallHooks()
 		elseif afkFrame and afkFrame.isAFK then
+			if manualPreview then
+				manualPreview = false
+			end
 			SetAFKMode(afkFrame, false)
 		end
+	end
+end
+
+function AFKCam:ToggleTest()
+	self:InstallHooks()
+	manualPreview = not manualPreview
+	if manualPreview then
+		SetAFKMode(afkFrame, true)
+		F.Print(L["AFK test mode on - press any key to exit."])
+	else
+		SetAFKMode(afkFrame, false)
+		F.Print(L["AFK test mode off."])
 	end
 end
 

@@ -32,6 +32,7 @@ handlers.help = function(_)
 	F.Print("  /nex modules       -", L["List modules and their state"])
 	F.Print("  /nex toggle <name> -", L["Toggle a module: /nex toggle <module>"])
 	F.Print("  /nex config        -", L["Open the options panel"])
+	F.Print("  /nex reminder      -", L["Toggle buff reminder test icons"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
 	F.Print("  /nex credits       -", L["Open the credits panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
@@ -82,6 +83,15 @@ handlers.toggle = function(name)
 	F.Print(module.name, "->", state)
 	if module.OnSettingChanged then
 		module:OnSettingChanged("enable", settings.enable)
+	end
+end
+
+handlers.reminder = function(_)
+	local module = ns:GetModule("Reminder")
+	if module and module.ToggleTest then
+		module:ToggleTest()
+	else
+		F.Print(F.Colorize(L["Buff Reminder"] .. ": ", "brand") .. L["Module unavailable."])
 	end
 end
 
@@ -340,7 +350,7 @@ local function MakeFontString(parent, template, layer)
 end
 
 local function CreateLandingFrame()
-	local frame = CreateFrame("Frame", "NexEnhanceOptionsLanding")
+	local frame = CreateFrame("Frame", nil)
 
 	local logo = frame:CreateTexture(nil, "ARTWORK")
 	logo:SetSize(72, 72)

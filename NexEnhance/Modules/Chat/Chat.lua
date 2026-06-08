@@ -411,7 +411,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Battle.net toast pop-up
 --   Pin the friend/online toast to a movable anchor above the chat's
---   top-right corner and register it with Edit Mode. The toast re-points
+--   top-left corner and register it with Edit Mode. The toast re-points
 --   itself whenever it shows, so a guarded SetPoint hook keeps it on our
 --   anchor no matter what.
 -- ---------------------------------------------------------------------------
@@ -427,19 +427,23 @@ local function SetupBNToast()
 		width, height = 244, 80
 	end
 
-	local mover = CreateFrame("Frame", "NexBNToastMover", UIParent)
+	local mover = CreateFrame("Frame", nil, UIParent)
 	mover:SetSize(width, height)
 
-	-- Default just above the chat window's top-right corner. Expressed in
-	-- UIParent-relative coords so Edit Mode's save/reset stays consistent.
-	local point, x, y = "TOPRIGHT", -4, -240
-	local chat = _G["ChatFrame1"]
-	if chat and chat:GetRight() and chat:GetTop() then
-		x = chat:GetRight() - UIParent:GetRight()
-		y = (chat:GetTop() - UIParent:GetTop()) + height + 8
+	-- Default just above the chat window's top-left corner, sitting a little
+	-- higher than the Quick Join button so the two don't overlap. Tracked live
+	-- via onPlace so it follows the chat until the user drags it in Edit Mode.
+	local function placeBNToast(m)
+		m:ClearAllPoints()
+		local chat = _G["ChatFrame1"]
+		if chat then
+			m:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", -4, 120)
+		else
+			m:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 20, 432)
+		end
 	end
 
-	F.CreateMover(mover, "bnToast", L["Battle.net Pop-up"], point, x, y)
+	F.CreateMover(mover, "bnToast", L["Battle.net Pop-up"], "BOTTOMLEFT", 0, 0, placeBNToast)
 
 	local function reanchor()
 		if toast.__nexAnchoring then
@@ -447,11 +451,61 @@ local function SetupBNToast()
 		end
 		toast.__nexAnchoring = true
 		toast:ClearAllPoints()
-		toast:SetPoint("TOPRIGHT", mover, "TOPRIGHT", 0, 0)
+		toast:SetPoint("BOTTOMLEFT", mover, "BOTTOMLEFT", 0, 0)
 		toast.__nexAnchoring = false
 	end
 
 	hooksecurefunc(toast, "SetPoint", reanchor)
+	reanchor()
+end
+
+-- ---------------------------------------------------------------------------
+-- Quick Join toast button
+--   The social/quick-join notification button lives at the chat's corner by
+--   default. Give it its own Edit Mode mover so it can be dragged anywhere,
+--   keeping the same guarded-SetPoint trick as the BN toast since Blizzard
+--   re-anchors it whenever the chat dock updates. Idea from NDui by siweia.
+-- ---------------------------------------------------------------------------
+local function SetupQuickJoinToast()
+	local button = _G["QuickJoinToastButton"]
+	if not button or button.__nexMover then
+		return
+	end
+	button.__nexMover = true
+
+	local width, height = button:GetSize()
+	if not width or width < 1 then
+		width, height = 40, 40
+	end
+
+	local mover = CreateFrame("Frame", nil, UIParent)
+	mover:SetSize(width, height)
+
+	-- Default just above the chat window's top-left corner. Tracked live via
+	-- onPlace so it follows the chat until the user drags it in Edit Mode.
+	local function placeQuickJoin(m)
+		m:ClearAllPoints()
+		local chat = _G["ChatFrame1"]
+		if chat then
+			m:SetPoint("BOTTOMLEFT", chat, "TOPLEFT", -4, 80)
+		else
+			m:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 20, 356)
+		end
+	end
+
+	F.CreateMover(mover, "quickJoinToast", L["Quick Join Button"], "BOTTOMLEFT", 0, 0, placeQuickJoin)
+
+	local function reanchor()
+		if button.__nexAnchoring then
+			return
+		end
+		button.__nexAnchoring = true
+		button:ClearAllPoints()
+		button:SetPoint("BOTTOMLEFT", mover, "BOTTOMLEFT", 0, 0)
+		button.__nexAnchoring = false
+	end
+
+	hooksecurefunc(button, "SetPoint", reanchor)
 	reanchor()
 end
 
@@ -579,9 +633,12 @@ local InviteToGroup = C_PartyInfo and C_PartyInfo.InviteUnit
 local BNInviteFriend = BNInviteFriend
 local CanCooperateWithGameAccount = CanCooperateWithGameAccount
 local C_BattleNet_GetAccountInfoByID = C_BattleNet and C_BattleNet.GetAccountInfoByID
+-- CHAT_MSG_WHISPER hands us a player GUID, so resolve Battle.net friendship
+-- through the game-account lookup (same trust check as Automation/AutoInvite).
+local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet and C_BattleNet.GetGameAccountInfoByGUID
+local C_FriendList_IsFriend = C_FriendList and C_FriendList.IsFriend
 local IsGuildMember = IsGuildMember
 local strtrim = _G.strtrim
-local DEFAULT_KEYWORD = "inv"
 
 local function IsUnitInGuild(unitName)
 	if not unitName then
@@ -593,6 +650,24 @@ local function IsUnitInGuild(unitName)
 			return true
 		end
 	end
+end
+
+local function IsTrustedInviteSender(guid, unitName, accountInfo)
+	if accountInfo then
+		return true -- Battle.net whisper from a known account.
+	end
+	if guid and not F.IsSecret(guid) then
+		if IsGuildMember and IsGuildMember(guid) then
+			return true
+		end
+		if C_FriendList_IsFriend and C_FriendList_IsFriend(guid) then
+			return true
+		end
+		if C_BattleNet_GetGameAccountInfoByGUID and C_BattleNet_GetGameAccountInfoByGUID(guid) then
+			return true
+		end
+	end
+	return IsUnitInGuild(unitName)
 end
 
 function Chat:OnChatWhisper(event, ...)
@@ -622,12 +697,12 @@ function Chat:OnChatWhisper(event, ...)
 		local gameID = gameAccountInfo and gameAccountInfo.gameAccountID
 		if gameID and gameAccountInfo and CanCooperateWithGameAccount(accountInfo) then
 			local fullName = (gameAccountInfo.characterName or "") .. "-" .. (gameAccountInfo.realmName or "")
-			if not cfg.guildInviteOnly or IsUnitInGuild(fullName) then
+			if not cfg.guildInviteOnly or IsTrustedInviteSender(guid, fullName, accountInfo) then
 				BNInviteFriend(gameID)
 			end
 		end
 	elseif InviteToGroup then
-		if not cfg.guildInviteOnly or (guid and IsGuildMember and IsGuildMember(guid)) then
+		if not cfg.guildInviteOnly or IsTrustedInviteSender(guid, author) then
 			InviteToGroup(author)
 		end
 	end
@@ -705,6 +780,7 @@ function Chat:OnEnable()
 	end
 
 	SetupBNToast()
+	SetupQuickJoinToast()
 
 	self:ChatWhisperSticky()
 
@@ -741,8 +817,8 @@ function Chat:RegisterOptions(category, builder)
 	local _, whisperSoundInit = builder:Checkbox(category, self, "whisperSound", L["Whisper Sound"], L["Play a sound when you receive a whisper."])
 	local _, fontMenuInit = builder:Checkbox(category, self, "fontSizeMenu", L["Font Size Menu"], L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."])
 
-	builder:Header(L["Auto Invite"])
-	local _, autoInviteInit = builder:Checkbox(category, self, "autoInvite", L["Keyword Auto-Invite"], L["Invite players who whisper you your keyword."])
+	builder:Header(L["Keyword Auto-Invite"])
+	local _, autoInviteInit = builder:Checkbox(category, self, "autoInvite", L["Enable Keyword Auto-Invite"], L["Invite players who whisper you your keyword."])
 	local _, keywordInit = builder:EditBox(category, self, "inviteKeyword", L["Invite Keyword"], L["When Keyword Auto-Invite is enabled, anyone who whispers you this exact word is invited to your group."], 200, function(text)
 		text = strtrim(text or "")
 		if text == "" then

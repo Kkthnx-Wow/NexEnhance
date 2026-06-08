@@ -114,8 +114,11 @@ function Tooltip:SetupHoverTips()
 
 	local function hookMessageFrame()
 		if CommunitiesFrame and CommunitiesFrame.Chat then
-			CommunitiesFrame.Chat.MessageFrame:SetScript("OnHyperlinkEnter", HyperLink_OnEnter)
-			CommunitiesFrame.Chat.MessageFrame:SetScript("OnHyperlinkLeave", HyperLink_OnLeave)
+			local messageFrame = CommunitiesFrame.Chat.MessageFrame
+			orig1[messageFrame] = messageFrame:GetScript("OnHyperlinkEnter")
+			messageFrame:SetScript("OnHyperlinkEnter", HyperLink_OnEnter)
+			orig2[messageFrame] = messageFrame:GetScript("OnHyperlinkLeave")
+			messageFrame:SetScript("OnHyperlinkLeave", HyperLink_OnLeave)
 		end
 	end
 

@@ -104,6 +104,18 @@ local function FixTooltipMoney()
 end
 
 -- ---------------------------------------------------------------------------
+-- Fix: PetFrame's clickable area is slightly too tall/offset on Midnight.
+-- BetterBlizzFrames tightens the hit rect instead of moving the protected
+-- frame, which avoids managed-frame taint.
+-- ---------------------------------------------------------------------------
+local function FixPetFrameClickArea()
+	local petFrame = _G["PetFrame"]
+	if petFrame and petFrame.SetHitRectInsets then
+		petFrame:SetHitRectInsets(0, 0, 1, 5)
+	end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function BlizzFix:SetupRaidFix()
@@ -135,6 +147,7 @@ function BlizzFix:OnEnable()
 	FixAddonTooltip()
 	FixBackdropSecret()
 	FixTooltipMoney()
+	FixPetFrameClickArea()
 
 	-- LoadOnDemand UIs may already be present; otherwise wait for them.
 	local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded

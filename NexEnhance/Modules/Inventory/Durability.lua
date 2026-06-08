@@ -20,7 +20,12 @@
 ---@diagnostic disable: undefined-field
 
 local _, ns = ...
-local F, L = ns.F, ns.L
+local F, C, L = ns.F, ns.C, ns.L
+
+-- Shared tooltip palette (single source of truth in Constants.lua): gold section
+-- headers, light-blue labels, white values.
+local HDR = C.Colors.header
+local LBL = C.Colors.label
 
 -- Localised globals / API.
 local _G = _G
@@ -205,7 +210,7 @@ local function OnEnter(self)
 	local totalItemLevel, equippedItemLevel = GetAverageItemLevel()
 	GameTooltip:SetOwner(self, "ANCHOR_NONE")
 	GameTooltip:SetPoint("BOTTOMLEFT", self, "TOPRIGHT", 0, 0)
-	GameTooltip:AddDoubleLine(DURABILITY, format("%s: %d/%d", STAT_AVERAGE_ITEM_LEVEL, equippedItemLevel, totalItemLevel), 0.4, 0.6, 1, 0.4, 0.6, 1)
+	GameTooltip:AddDoubleLine(DURABILITY, format("%s: %d/%d", STAT_AVERAGE_ITEM_LEVEL, equippedItemLevel, totalItemLevel), HDR[1], HDR[2], HDR[3], 1, 1, 1)
 	GameTooltip:AddLine(" ")
 
 	local totalCost = 0
@@ -220,7 +225,7 @@ local function OnEnter(self)
 
 	if totalCost > 0 then
 		GameTooltip:AddLine(" ")
-		GameTooltip:AddDoubleLine(repairCostString, F.FormatMoney(totalCost), 0.4, 0.6, 1, 1, 1, 1)
+		GameTooltip:AddDoubleLine(repairCostString, F.FormatMoney(totalCost), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
 	GameTooltip:Show()

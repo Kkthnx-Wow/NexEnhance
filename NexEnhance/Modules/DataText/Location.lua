@@ -1,0 +1,159 @@
+--[[
+	NexEnhance - DataText: Location
+	-------------------------------------------------------------------------
+	Zone and sub-zone text pinned inside the top of the minimap, tinted by the
+	zone's PvP status (sanctuary blue, friendly green, hostile/contested, ...).
+	Replaces the default zone-text button we strip from the minimap cluster.
+	Can be shown always or only on mouseover.
+
+	Adapted from KkthnxUI's Location DataText by Josh "Kkthnx" Russell:
+	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/DataText/Elements/Location.lua
+--]]
+
+---@diagnostic disable: undefined-field, undefined-global
+local _, ns = ...
+local F, L = ns.F, ns.L
+
+local _G = _G
+local unpack = unpack
+
+local CreateFrame = CreateFrame
+local MouseIsOver = MouseIsOver
+local GetZoneText = GetZoneText
+local GetSubZoneText = GetSubZoneText
+local GetMinimapZoneText = GetMinimapZoneText
+local GetZonePVPInfo = _G.C_PvP and _G.C_PvP.GetZonePVPInfo
+
+ns:RegisterDefaults({
+	location = {
+		enable = true,
+		mouseover = true,
+	},
+})
+
+local Location = ns:NewModule("Location", "location", { group = "datatext", title = L["Location"], order = 40 })
+
+local cfg
+local frame
+
+-- Per-PvP-status text colours, matching KkthnxUI's zone palette.
+local PVP_COLORS = {
+	arena = { 0.84, 0.03, 0.03 },
+	combat = { 0.84, 0.03, 0.03 },
+	contested = { 0.9, 0.85, 0.05 },
+	friendly = { 0.05, 0.85, 0.03 },
+	hostile = { 0.84, 0.03, 0.03 },
+	neutral = { 0.9, 0.85, 0.05 },
+	sanctuary = { 0.035, 0.58, 0.84 },
+}
+
+function Location:Update()
+	if not frame then return end
+
+	local zone = GetZoneText()
+	if not zone or zone == "" then
+		zone = GetMinimapZoneText and GetMinimapZoneText() or ""
+	end
+	local subZone = GetSubZoneText()
+	if subZone == zone then
+		subZone = ""
+	end
+
+	local pvpType = (GetZonePVPInfo and GetZonePVPInfo()) or "neutral"
+	local r, g, b = unpack(PVP_COLORS[pvpType] or { 1, 1, 1 })
+
+	frame.zone:SetText(zone)
+	frame.zone:SetTextColor(r, g, b)
+	frame.subZone:SetText(subZone)
+	frame.subZone:SetTextColor(r, g, b)
+end
+
+-- Throttled mouseover poll: we watch MouseIsOver(Minimap) rather than hooking
+-- the minimap's OnEnter/OnLeave so the text stays up while the cursor passes
+-- over the clock, calendar, queue icons and other child frames on top of it.
+local mouseThrottle = 0
+local function MouseoverOnUpdate(self, elapsed)
+	mouseThrottle = mouseThrottle + (elapsed or 0)
+	if mouseThrottle < 0.05 then return end
+	mouseThrottle = 0
+	self:SetAlpha(MouseIsOver(_G["Minimap"]) and 1 or 0)
+end
+
+-- The frame itself stays shown; in mouseover mode we run the poll and fade the
+-- text via alpha, in always-on mode we drop the OnUpdate entirely (the best
+-- throttle is not running a handler at all).
+local function ApplyVisibility()
+	if not frame then return end
+	frame:Show()
+	if cfg.mouseover then
+		frame:SetAlpha(MouseIsOver(_G["Minimap"]) and 1 or 0)
+		frame:SetScript("OnUpdate", MouseoverOnUpdate)
+	else
+		frame:SetScript("OnUpdate", nil)
+		frame:SetAlpha(1)
+	end
+end
+
+function Location:Create()
+	if frame then
+		ApplyVisibility()
+		return
+	end
+
+	local minimap = _G["Minimap"]
+	if not minimap then return end
+
+	frame = CreateFrame("Frame", nil, minimap)
+	frame:SetFrameLevel(minimap:GetFrameLevel() + 5)
+	frame:SetPoint("TOPLEFT", minimap, "TOPLEFT", 2, -4)
+	frame:SetPoint("TOPRIGHT", minimap, "TOPRIGHT", -2, -4)
+	frame:SetHeight(13)
+
+	frame.zone = F.CreateFS(frame, 12)
+	frame.zone:SetPoint("TOP", frame, "TOP", 0, 0)
+	frame.zone:SetWidth(minimap:GetWidth() - 6)
+	frame.zone:SetWordWrap(true)
+	frame.zone:SetNonSpaceWrap(false)
+	frame.zone:SetMaxLines(2)
+
+	frame.subZone = F.CreateFS(frame, 11)
+	frame.subZone:SetPoint("TOP", frame.zone, "BOTTOM", 0, -2)
+	frame.subZone:SetWidth(minimap:GetWidth() - 6)
+	frame.subZone:SetWordWrap(true)
+	frame.subZone:SetNonSpaceWrap(false)
+	frame.subZone:SetMaxLines(1)
+
+	self:RegisterEvent("PLAYER_ENTERING_WORLD", "Update")
+	self:RegisterEvent("ZONE_CHANGED", "Update")
+	self:RegisterEvent("ZONE_CHANGED_INDOORS", "Update")
+	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "Update")
+
+	ApplyVisibility()
+	self:Update()
+end
+
+function Location:OnEnable()
+	cfg = ns.db.location
+	if not cfg.enable then return end
+	self:Create()
+end
+
+function Location:OnSettingChanged(key, value)
+	cfg = ns.db.location
+	if key == "enable" then
+		if value then
+			self:Create()
+		elseif frame then
+			frame:Hide()
+		end
+	elseif key == "mouseover" then
+		ApplyVisibility()
+	end
+end
+
+function Location:RegisterOptions(category, builder)
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Location"], L["Show zone and sub-zone text at the top of the minimap (reload to disable)."])
+	local _, mouseoverInit = builder:Checkbox(category, self, "mouseover", L["Show on Mouseover"], L["Only show the zone text while hovering the minimap."])
+
+	builder:DependsOn(mouseoverInit, enableInit)
+end

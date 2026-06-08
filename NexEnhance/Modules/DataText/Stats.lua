@@ -24,6 +24,7 @@ local sort = table.sort
 local collectgarbage = collectgarbage
 
 local CreateFrame = CreateFrame
+local GetTime = GetTime
 local GetFramerate = GetFramerate
 local GetNetStats = GetNetStats
 local GetNetIpTypes = GetNetIpTypes
@@ -38,15 +39,20 @@ local GetBackgroundLoadingStatus = GetBackgroundLoadingStatus
 local C_AddOns = C_AddOns
 local UNKNOWN = _G.UNKNOWN
 
-ns:RegisterDefaults({
-	datatext = {
-		enable = true,
-		maxAddOns = 12,
-		classColor = false,
-		flip = false,
-		display = "both", -- "both" | "fps" | "ms"
-	},
-})
+-- Shared tooltip palette (single source of truth in Constants.lua): gold section
+-- headers, light-blue labels/hints, white values.
+local HDR = C.Colors.header
+local LBL = C.Colors.label
+
+local DEFAULTS = {
+	enable = true,
+	maxAddOns = 12,
+	classColor = false,
+	flip = false,
+	display = "both", -- "both" | "fps" | "ms"
+}
+
+ns:RegisterDefaults({ datatext = DEFAULTS })
 
 local DataText = ns:NewModule("DataText", "datatext", { group = "datatext", title = L["Stats"], order = 10 })
 
@@ -55,6 +61,9 @@ local stat
 local entered
 local infoTable = {}
 local ipTypes = { "IPv4", "IPv6" }
+local memoryTotal = 0
+local memoryUpdatedAt = 0
+local MEMORY_REFRESH_INTERVAL = 5
 
 -- ---------------------------------------------------------------------------
 -- Formatting helpers
@@ -70,9 +79,13 @@ local function ColorFPS(fps)
 		return format("%s%d|r", ClassPrefix(), fps)
 	end
 	local hex
-	if fps < 15 then hex = "ffd80909"
-	elseif fps < 30 then hex = "ffe8da0f"
-	else hex = "ff0cd809" end
+	if fps < 15 then
+		hex = "ffd80909"
+	elseif fps < 30 then
+		hex = "ffe8da0f"
+	else
+		hex = "ff0cd809"
+	end
 	return format("|c%s%d|r", hex, fps)
 end
 
@@ -81,9 +94,13 @@ local function ColorLatency(ms)
 		return format("%s%d|r", ClassPrefix(), ms)
 	end
 	local hex
-	if ms < 250 then hex = "ff0cd809"
-	elseif ms < 500 then hex = "ffe8da0f"
-	else hex = "ffd80909" end
+	if ms < 250 then
+		hex = "ff0cd809"
+	elseif ms < 500 then
+		hex = "ffe8da0f"
+	else
+		hex = "ffd80909"
+	end
 	return format("|c%s%d|r", hex, ms)
 end
 
@@ -97,9 +114,15 @@ end
 -- Memory share gradient: green (low) -> yellow -> red (hogging the total).
 local function MemoryColor(cur, total)
 	local p = total > 0 and (cur / total) or 0
-	if p >= 1 then return 1, 0, 0 end
-	if p <= 0 then return 0, 1, 0 end
-	if p <= 0.5 then return p / 0.5, 1, 0 end
+	if p >= 1 then
+		return 1, 0, 0
+	end
+	if p <= 0 then
+		return 0, 1, 0
+	end
+	if p <= 0.5 then
+		return p / 0.5, 1, 0
+	end
 	return 1, 1 - (p - 0.5) / 0.5, 0
 end
 
@@ -114,7 +137,9 @@ end
 -- ---------------------------------------------------------------------------
 local function BuildAddonList()
 	local num = C_AddOns.GetNumAddOns()
-	if num == #infoTable then return end
+	if num == #infoTable then
+		return
+	end
 
 	wipe(infoTable)
 	for i = 1, num do
@@ -171,7 +196,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Tooltip: latency detail first, then per-addon memory
 -- ---------------------------------------------------------------------------
-local function OnEnter(self)
+local function OnEnter(self, forceMemory)
 	entered = true
 
 	GameTooltip:SetOwner(self, "ANCHOR_NONE")
@@ -179,32 +204,39 @@ local function OnEnter(self)
 	GameTooltip:ClearLines()
 
 	-- Latency
-	GameTooltip:AddLine(L["Latency"], 0, 0.6, 1)
+	GameTooltip:AddLine(L["Latency"], HDR[1], HDR[2], HDR[3])
 	GameTooltip:AddLine(" ")
 
 	local _, _, home, world = GetNetStats()
-	GameTooltip:AddDoubleLine(L["Home Latency"], ColorLatency(home) .. "|r ms", 0.6, 0.8, 1, 1, 1, 1)
-	GameTooltip:AddDoubleLine(L["World Latency"], ColorLatency(world) .. "|r ms", 0.6, 0.8, 1, 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["Home Latency"], ColorLatency(home) .. "|r ms", LBL[1], LBL[2], LBL[3], 1, 1, 1)
+	GameTooltip:AddDoubleLine(L["World Latency"], ColorLatency(world) .. "|r ms", LBL[1], LBL[2], LBL[3], 1, 1, 1)
 
 	if GetCVarBool("useIPv6") then
 		local homeType, worldType = GetNetIpTypes()
 		GameTooltip:AddLine(" ")
-		GameTooltip:AddDoubleLine(L["Home Protocol"], ipTypes[homeType or 0] or UNKNOWN, 0.6, 0.8, 1, 1, 1, 1)
-		GameTooltip:AddDoubleLine(L["World Protocol"], ipTypes[worldType or 0] or UNKNOWN, 0.6, 0.8, 1, 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["Home Protocol"], ipTypes[homeType or 0] or UNKNOWN, LBL[1], LBL[2], LBL[3], 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["World Protocol"], ipTypes[worldType or 0] or UNKNOWN, LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
 	if GetFileStreamingStatus() ~= 0 or GetBackgroundLoadingStatus() ~= 0 then
 		GameTooltip:AddLine(" ")
-		GameTooltip:AddDoubleLine(L["Bandwidth"], format("%.2f Mbps", GetAvailableBandwidth()), 0.6, 0.8, 1, 1, 1, 1)
-		GameTooltip:AddDoubleLine(L["Download"], format("%.2f%%", GetDownloadedPercentage() * 100), 0.6, 0.8, 1, 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["Bandwidth"], format("%.2f Mbps", GetAvailableBandwidth()), LBL[1], LBL[2], LBL[3], 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["Download"], format("%.2f%%", GetDownloadedPercentage() * 100), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
 	-- System / addon memory
-	if not next(infoTable) then BuildAddonList() end
-	local total = UpdateMemory()
+	if not next(infoTable) then
+		BuildAddonList()
+	end
+	local now = GetTime()
+	if forceMemory or memoryTotal == 0 or (now - memoryUpdatedAt) >= MEMORY_REFRESH_INTERVAL then
+		memoryTotal = UpdateMemory()
+		memoryUpdatedAt = now
+	end
+	local total = memoryTotal
 
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddDoubleLine(L["System"], FormatMemory(total), 0, 0.6, 1, 0.6, 0.8, 1)
+	GameTooltip:AddDoubleLine(L["System"], FormatMemory(total), HDR[1], HDR[2], HDR[3], 1, 1, 1)
 	GameTooltip:AddLine(" ")
 
 	local maxAddOns = ns.db.datatext.maxAddOns
@@ -225,11 +257,11 @@ local function OnEnter(self)
 		for i = maxAddOns + 1, numEnabled do
 			hidden = hidden + (infoTable[i] and infoTable[i][3] or 0)
 		end
-		GameTooltip:AddDoubleLine(format("%d %s (%s)", numEnabled - maxAddOns, L["Hidden"], L["Hold Shift"]), FormatMemory(hidden), 0.6, 0.8, 1, 0.6, 0.8, 1)
+		GameTooltip:AddDoubleLine(format("%d %s (%s)", numEnabled - maxAddOns, L["Hidden"], L["Hold Shift"]), FormatMemory(hidden), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
 	GameTooltip:AddLine(" ")
-	GameTooltip:AddLine(L["Left-Click to collect memory"], 0.6, 0.8, 1)
+	GameTooltip:AddLine(L["Left-Click to collect memory"], LBL[1], LBL[2], LBL[3])
 	GameTooltip:Show()
 end
 
@@ -239,11 +271,158 @@ local function OnLeave()
 end
 
 local function OnMouseUp(self, button)
-	if button ~= "LeftButton" then return end
+	if button ~= "LeftButton" then
+		return
+	end
 	local before = collectgarbage("count")
 	collectgarbage("collect")
 	F.Print(format("%s: %s", L["Collect Memory"], FormatMemory(before - collectgarbage("count"))))
-	if entered then OnEnter(self) end
+	if entered then
+		OnEnter(self, true)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Edit Mode dialog settings
+--   Mirror the appearance options (everything except the master enable toggle)
+--   onto the LibEditMode dialog so the readout can be tuned while it is being
+--   moved. Both paths read/write the same profile keys.
+-- ---------------------------------------------------------------------------
+local editMode
+
+local function ApplySetting(key, value)
+	ns.db.datatext[key] = value
+	cfg = ns.db.datatext
+	if stat then
+		UpdateStat(stat)
+	end
+end
+
+local function MakeCheckbox(key, name, desc)
+	return {
+		kind = editMode.SettingType.Checkbox,
+		name = name,
+		desc = desc,
+		default = DEFAULTS[key],
+		get = function()
+			return ns.db.datatext[key]
+		end,
+		set = function(_, value)
+			ApplySetting(key, value)
+		end,
+	}
+end
+
+local function SetupEditModeSettings()
+	editMode = _G.LibStub and _G.LibStub("LibEditMode", true)
+	if not editMode or not editMode.AddFrameSettings then
+		return
+	end
+
+	editMode:AddFrameSettings(stat, {
+		{
+			kind = editMode.SettingType.Dropdown,
+			name = L["Display"],
+			desc = L["Choose whether to show framerate, latency, or both."],
+			default = DEFAULTS.display,
+			get = function()
+				return ns.db.datatext.display
+			end,
+			set = function(_, value)
+				ApplySetting("display", value)
+			end,
+			values = {
+				{ text = L["FPS & Latency"], value = "both" },
+				{ text = L["FPS Only"], value = "fps" },
+				{ text = L["Latency Only"], value = "ms" },
+			},
+		},
+		MakeCheckbox("flip", L["Flip Order"], L["Show latency before framerate."]),
+		MakeCheckbox("classColor", L["Class-Coloured Numbers"], L["Colour the numbers with your class colour instead of value-based colours."]),
+		{
+			kind = editMode.SettingType.Slider,
+			name = L["Addons Shown"],
+			desc = L['How many addons to list in the memory tooltip before collapsing the rest under "Hold Shift".'],
+			default = DEFAULTS.maxAddOns,
+			minValue = 5,
+			maxValue = 30,
+			valueStep = 1,
+			get = function()
+				return ns.db.datatext.maxAddOns
+			end,
+			set = function(_, value)
+				ApplySetting("maxAddOns", value)
+			end,
+		},
+	})
+end
+
+-- The mover key was bumped (stats -> statsAnchor -> statsAnchor2) so any stale
+-- saved coordinate from the older schemes - including the bad "CENTER, 0, -240"
+-- screen-centre fallback that stranded the readout below the minimap - is
+-- discarded and the readout starts fresh, centred under the minimap.
+local MOVER_KEY = "statsAnchor2"
+local moverRegistered
+
+-- Returns the minimap only when it is a real, anchorable, laid-out region. On a
+-- /reload Blizzard frames can be transiently *forbidden*, and anchoring to a
+-- forbidden frame throws "SetPoint(): Wrong object type for function", so we
+-- never hand such a frame to SetPoint.
+local function MinimapAnchor()
+	local minimap = _G["Minimap"]
+	if minimap and minimap.IsForbidden and not minimap:IsForbidden() and minimap.GetBottom and minimap:GetBottom() then
+		return minimap
+	end
+end
+
+-- Place the readout with a LIVE relative anchor to the minimap. Because this is
+-- a real frame-to-frame anchor it can never be stranded by a bad/stale absolute
+-- coordinate and it tracks the minimap wherever Edit Mode puts it. We also sync
+-- LibEditMode's stored default (absolute UIParent coords, which is all its
+-- "Reset Position" button understands) to the live spot so a reset lands here.
+local function GlueUnderMinimap()
+	local minimap = MinimapAnchor()
+	if not (stat and minimap) then
+		return
+	end
+
+	stat:ClearAllPoints()
+	stat:SetPoint("TOP", minimap, "BOTTOM", 0, -4) -- -4 clears the 3px border
+
+	local lib = _G.LibStub and _G.LibStub("LibEditMode", true)
+	local default = lib and lib.frameDefaults and lib.frameDefaults[stat]
+	if default then
+		local cx, cy = stat:GetCenter()
+		local ux, uy = UIParent:GetCenter()
+		if cx and ux then
+			default.point, default.x, default.y = "CENTER", cx - ux, cy - uy
+		end
+	end
+end
+
+-- Register once the minimap has a resolved position, then keep it glued via the
+-- mover's onPlace hook so the Edit Mode layout callback re-applies the relative
+-- anchor (instead of clobbering it with a stale absolute default).
+local function SetupPosition()
+	if not stat then
+		return
+	end
+
+	local ready = MinimapAnchor()
+
+	if not moverRegistered then
+		if not ready then
+			return
+		end
+		moverRegistered = true
+
+		F.CreateMover(stat, MOVER_KEY, L["Stats"], "CENTER", 0, -240, GlueUnderMinimap)
+		SetupEditModeSettings()
+	end
+
+	if ready and not (ns.db.movers and ns.db.movers[MOVER_KEY]) then
+		GlueUnderMinimap()
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -255,7 +434,7 @@ function DataText:Create()
 		return
 	end
 
-	stat = CreateFrame("Button", "NexEnhanceStats", UIParent)
+	stat = CreateFrame("Button", nil, UIParent)
 	stat:SetSize(120, 20)
 	stat:RegisterForClicks("AnyUp")
 
@@ -273,35 +452,31 @@ function DataText:Create()
 	local elapsed = 0
 	stat:SetScript("OnUpdate", function(self, e)
 		elapsed = elapsed + (e or 0)
-		if elapsed < 1 then return end
+		if elapsed < 1 then
+			return
+		end
 		elapsed = 0
 		UpdateStat(self)
-		if entered then OnEnter(self) end
+		if entered then
+			OnEnter(self)
+		end
 	end)
 
-	-- Size the frame to its text first, then resolve a concrete screen position
-	-- under the minimap so Edit Mode (and its "reset to default") have a real
-	-- absolute anchor instead of snapping to the top of the screen.
+	-- Size the frame to its text, then resolve its position. Registration is
+	-- deferred to the next frame (off the synchronous module-enable / reload path,
+	-- where the minimap can still be transiently forbidden) and re-run on every
+	-- world enter so a late minimap layout can't leave it stranded.
 	UpdateStat(stat)
 
-	local point, x, y = "TOP", 0, -220
-	local minimap = _G["Minimap"]
-	if minimap then
-		stat:ClearAllPoints()
-		stat:SetPoint("TOP", minimap, "BOTTOM", 0, -6)
-		local left, bottom = stat:GetLeft(), stat:GetBottom()
-		if left and bottom then
-			point, x, y = "BOTTOMLEFT", left, bottom
-		end
-		stat:ClearAllPoints()
-	end
-
-	F.CreateMover(stat, "stats", L["Stats"], point, x, y)
+	_G.C_Timer.After(0, SetupPosition)
+	ns:RegisterEvent("PLAYER_ENTERING_WORLD", SetupPosition)
 end
 
 function DataText:OnEnable()
 	cfg = ns.db.datatext
-	if not cfg.enable then return end
+	if not cfg.enable then
+		return
+	end
 	self:Create()
 end
 
@@ -317,6 +492,11 @@ function DataText:OnSettingChanged(key, value)
 		-- display / flip / class-colour changes apply live.
 		UpdateStat(stat)
 	end
+
+	-- Reflect Settings-panel changes in the Edit Mode dialog if it is open.
+	if editMode and editMode.RefreshFrameSettings and stat then
+		editMode:RefreshFrameSettings(stat)
+	end
 end
 
 function DataText:RegisterOptions(category, builder)
@@ -328,7 +508,7 @@ function DataText:RegisterOptions(category, builder)
 	})
 	local _, flipInit = builder:Checkbox(category, self, "flip", L["Flip Order"], L["Show latency before framerate."])
 	local _, classColorInit = builder:Checkbox(category, self, "classColor", L["Class-Coloured Numbers"], L["Colour the numbers with your class colour instead of value-based colours."])
-	local _, maxAddOnsInit = builder:Slider(category, self, "maxAddOns", L["Addons Shown"], L["How many addons to list in the memory tooltip before collapsing the rest under \"Hold Shift\"."], 5, 30, 1)
+	local _, maxAddOnsInit = builder:Slider(category, self, "maxAddOns", L["Addons Shown"], L['How many addons to list in the memory tooltip before collapsing the rest under "Hold Shift".'], 5, 30, 1)
 
 	builder:DependsOn(displayInit, enableInit)
 	builder:DependsOn(flipInit, enableInit)

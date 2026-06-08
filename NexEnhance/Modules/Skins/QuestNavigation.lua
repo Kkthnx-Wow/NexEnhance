@@ -109,6 +109,8 @@ function QuestNavigation:Style()
 
 	local time = frame:CreateFontString(nil, "BACKGROUND")
 	time:SetFont(C.Media.Fonts.normal, size or 12, flags)
+	time:SetShadowColor(0, 0, 0, 1)
+	time:SetShadowOffset(1, -1)
 	time:SetPoint("TOP", frame.DistanceText, "BOTTOM", 0, -2)
 	time:SetHeight(20)
 	time:SetJustifyV("TOP")

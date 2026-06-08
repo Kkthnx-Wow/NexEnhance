@@ -29,6 +29,7 @@ local pairs = pairs
 local gsub, strmatch, strrep = string.gsub, string.match, string.rep
 local strfind = string.find
 local min, max, tremove = math.min, math.max, table.remove
+local tconcat = table.concat
 local wipe = wipe
 local GetTime, Ambiguate = GetTime, Ambiguate
 local IsGuildMember, IsGUIDInGroup = IsGuildMember, IsGUIDInGroup
@@ -69,6 +70,25 @@ local BadBoys = {} -- [name] = times filtered this session
 local chatLines, prevLineID = {}, 0
 local filterResult ---@type any
 local last, this = {}, {} -- reused Levenshtein rows (no per-call allocation)
+local rowPool = {}
+
+local function AcquireChatLine(name, timestamp)
+	local row = tremove(rowPool)
+	if row then
+		row[1], row[3] = name, timestamp
+		wipe(row[2])
+	else
+		row = { name, {}, timestamp }
+	end
+	return row
+end
+
+local function ReleaseChatLine(row)
+	if not row then return end
+	row[1], row[3] = nil, nil
+	wipe(row[2])
+	rowPool[#rowPool + 1] = row
+end
 
 -- Normalized edit distance between two byte arrays (0 = identical, 1 = totally
 -- different). Reuses module-level rows to avoid GC churn.
@@ -147,7 +167,7 @@ local function GetFilterResult(event, msg, name, flag, guid)
 	if matches >= cfg.matches then return true end
 
 	-- Repeat filter: compare against recent lines from the same sender.
-	local msgTable = { name, {}, GetTime() }
+	local msgTable = AcquireChatLine(name, GetTime())
 	if filterMsg == "" then filterMsg = msg end
 	for i = 1, #filterMsg do
 		msgTable[2][i] = filterMsg:byte(i)
@@ -158,15 +178,15 @@ local function GetFilterResult(event, msg, name, flag, guid)
 	for i = 1, size do
 		local line = chatLines[i]
 		if line[1] == msgTable[1] and ((event == "CHAT_MSG_CHANNEL" and msgTable[3] - line[3] < 0.6) or CompareStrDiff(line[2], msgTable[2]) <= 0.1) then
-			tremove(chatLines, i)
+			ReleaseChatLine(tremove(chatLines, i))
 			return true
 		end
 	end
-	if size >= 30 then tremove(chatLines, 1) end
+	if size >= 30 then ReleaseChatLine(tremove(chatLines, 1)) end
 end
 
 local function UpdateChatFilter(_, event, msg, author, _, _, _, flag, _, _, _, _, lineID, guid)
-	if F.IsSecret(msg) then return end
+	if not ns.db.chatFilter.enable or F.IsSecret(msg) then return end
 
 	-- One result per chat line, shared across all chat frames showing it.
 	if lineID ~= prevLineID then
@@ -195,19 +215,20 @@ local function GetSocketTexture(socket, count)
 	return strrep("|TInterface\\ItemSocketingFrame\\UI-EmptySocket-" .. socket .. ":0|t", count)
 end
 
+local socketParts = {}
 local function ItemGemText(link)
-	local text = ""
+	wipe(socketParts)
 	local stats = C_Item_GetItemStats(link)
 	if stats then
 		for stat, count in pairs(stats) do
 			local socket = strmatch(stat, "EMPTY_SOCKET_(%S+)")
 			if socket and socketWatchList[socket] then
 				if socket == "PRIMORDIAL" then socket = "META" end -- texture missing; reuse meta
-				text = text .. GetSocketTexture(socket, count)
+				socketParts[#socketParts + 1] = GetSocketTexture(socket, count)
 			end
 		end
 	end
-	return text
+	return tconcat(socketParts)
 end
 
 local function ItemHasLevel(link)
@@ -226,14 +247,13 @@ local function ReplaceChatHyperlink(link, linkType)
 	local name, itemLevel = ItemHasLevel(link)
 	if name and itemLevel then
 		local new = gsub(link, "|h%[(.-)%]|h", "|h[" .. name .. "(" .. itemLevel .. ")]|h" .. ItemGemText(link))
-		itemCache[link] = new
-		return new
+		return F.CacheSet(itemCache, link, new)
 	end
 	return link
 end
 
 local function UpdateChatItemLevel(_, _, msg, ...)
-	if not ns.db.chatFilter.chatItemLevel or F.IsSecret(msg) then return end
+	if not ns.db.chatFilter.enable or not ns.db.chatFilter.chatItemLevel or F.IsSecret(msg) then return end
 	msg = gsub(msg, "(|H([^:]+):(%d+):.-|h.-|h)", ReplaceChatHyperlink)
 	return false, msg, ...
 end

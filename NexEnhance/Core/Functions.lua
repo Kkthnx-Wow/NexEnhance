@@ -40,6 +40,30 @@ function F.Print(...)
 end
 
 -- ---------------------------------------------------------------------------
+-- Bounded cache
+--   Item links carry random suffixes/bonus IDs, so link-keyed memo tables can
+--   grow without bound across a long session. Writing through F.CacheSet caps
+--   the table: once it crosses `limit` distinct keys we wipe wholesale (cheap
+--   and rare) instead of tracking LRU. The bookkeeping count lives under a
+--   string sentinel key that never collides with item links or numeric IDs,
+--   and callers only ever read with direct key lookups (no iteration).
+-- ---------------------------------------------------------------------------
+local CACHE_COUNT = "__nexCount"
+function F.CacheSet(cache, key, value, limit)
+	local count = cache[CACHE_COUNT] or 0
+	if count >= (limit or 600) then
+		wipe(cache)
+		count = 0
+	end
+	if cache[key] == nil then
+		count = count + 1
+	end
+	cache[CACHE_COUNT] = count
+	cache[key] = value
+	return value
+end
+
+-- ---------------------------------------------------------------------------
 -- Colour helpers
 -- ---------------------------------------------------------------------------
 
@@ -469,7 +493,7 @@ do
 			end
 			local text = lineData.leftText
 			if text and strfind(text, itemLevelString) then
-				iLvlCache[link] = tonumber(strmatch(text, "(%d+)%)?$"))
+				F.CacheSet(iLvlCache, link, tonumber(strmatch(text, "(%d+)%)?$")))
 				break
 			end
 		end

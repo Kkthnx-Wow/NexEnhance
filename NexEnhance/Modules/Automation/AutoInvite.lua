@@ -34,7 +34,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local AutoInvite = ns:NewModule("AutoInvite", "autoInvite", { group = "automation", title = L["Auto Invite"], order = 60 })
+local AutoInvite = ns:NewModule("AutoInvite", "autoInvite", { group = "automation", title = L["Auto Accept Invites"], order = 60 })
 
 -- Remember the last inviter so a duplicate PARTY_INVITE_REQUEST (Blizzard fires
 -- it more than once) doesn't double-accept.
@@ -97,7 +97,7 @@ function AutoInvite:OnEnable()
 end
 
 function AutoInvite:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Auto Invite"], L["Automatically accept group invites from trusted sources."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Auto Accept Invites"], L["Automatically accept group invites from trusted sources."])
 	local _, friendsInit = builder:Checkbox(category, self, "fromFriends", L["Accept From Friends"], L["Auto-accept invites from Battle.net and character friends."])
 	local _, guildInit = builder:Checkbox(category, self, "fromGuild", L["Accept From Guild"], L["Auto-accept invites from guild members."])
 

@@ -79,6 +79,12 @@ C.Colors = {
 	-- Brand colour used for the addon prefix and headers.
 	brand = { 0.36, 0.55, 0.81 }, -- #5C8BCF
 	class = C.ClassColor,
+	-- Semantic tooltip text roles. Single source of truth so every GameTooltip
+	-- the addon builds shares one palette: gold section headers, light-blue
+	-- key/label text, and white values. Change these here, not per-module.
+	header = { 1.00, 0.82, 0.00 }, -- section titles ("Latency", "Saved Raid(s):")
+	label = { 0.60, 0.80, 1.00 }, -- left-hand keys / instructions
+	value = { 1.00, 1.00, 1.00 }, -- right-hand values
 }
 
 -- Pre-built brand colour escape sequence for chat output (built once).
@@ -99,6 +105,9 @@ C.Media = {
 		logo64 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo64",
 		logo128 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo128",
 		logo256 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo256",
+		-- Minimap region reskins (calendar button + instance-difficulty flags).
+		calendar = "Interface\\AddOns\\NexEnhance\\Media\\Minimap\\Calendar",
+		flag = "Interface\\AddOns\\NexEnhance\\Media\\Minimap\\Flag",
 	},
 	Fonts = {
 		normal = STANDARD_TEXT_FONT,

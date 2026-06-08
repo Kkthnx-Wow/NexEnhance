@@ -16,6 +16,8 @@ local _G = _G
 local gsub, strfind, unpack, select, next, pairs = string.gsub, string.find, unpack, select, next, pairs
 local hooksecurefunc = hooksecurefunc
 local C_MountJournal_GetMountInfoByID = C_MountJournal and C_MountJournal.GetMountInfoByID
+local C_Item_GetItemIconByID = C_Item.GetItemIconByID
+local C_Spell_GetSpellTexture = C_Spell.GetSpellTexture
 local newString = "0:0:64:64:5:59:5:59"
 
 function Tooltip:SetupTooltipIcon(icon)
@@ -29,7 +31,10 @@ function Tooltip:SetupTooltipIcon(icon)
 		local line = _G[self:GetName() .. "TextLeft" .. i]
 		if not line then break end
 		local text = line:GetText()
-		if text and F.NotSecret(text) and text ~= " " then
+		-- Secret check FIRST: string ops (strfind/gsub) error on secret strings
+		-- (e.g. aura tooltips in instances). Only then the cheap |T pre-filter so
+		-- we skip the gsub on lines without a texture escape.
+		if text and F.NotSecret(text) and text ~= " " and strfind(text, "|T", 1, true) then
 			local newText, count = gsub(text, "|T([^:]-):[%d+:]+|t", "|T%1:14:14:" .. newString .. "|t")
 			if count > 0 then line:SetText(newText) end
 		end
@@ -51,9 +56,9 @@ local function ReskinRewardIcon(frame)
 end
 
 local GetTooltipTextureByType = {
-	[Enum.TooltipDataType.Item] = function(id) return C_Item.GetItemIconByID(id) end,
-	[Enum.TooltipDataType.Toy] = function(id) return C_Item.GetItemIconByID(id) end,
-	[Enum.TooltipDataType.Spell] = function(id) return C_Spell.GetSpellTexture(id) end,
+	[Enum.TooltipDataType.Item] = function(id) return C_Item_GetItemIconByID(id) end,
+	[Enum.TooltipDataType.Toy] = function(id) return C_Item_GetItemIconByID(id) end,
+	[Enum.TooltipDataType.Spell] = function(id) return C_Spell_GetSpellTexture(id) end,
 	[Enum.TooltipDataType.Mount] = function(id)
 		if C_MountJournal_GetMountInfoByID then return select(3, C_MountJournal_GetMountInfoByID(id)) end
 	end,

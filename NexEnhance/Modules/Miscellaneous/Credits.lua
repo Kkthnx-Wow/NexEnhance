@@ -142,6 +142,38 @@ local CONTRIBUTORS = {
 		},
 	},
 	{
+		name = "Peterodox",
+		class = "EVOKER",
+		project = "Plumber",
+		url = "github.com/Peterodox/Plumber",
+		thanks = "For Plumber — its delve borrowed-power automation, vendor-location tooltips (item/vendor data by gifLeo), and rare-announcement throttling each inspired a NexEnhance equivalent, rebuilt our way against the optimisation guide.",
+		features = {
+			"Automation — Delves Automation",
+			"Tooltip — Vendor Location (data by gifLeo)",
+			"Announcements — Rare Alert (anti-burst throttle & per-vignette re-announce cooldown)",
+		},
+	},
+	{
+		name = "Leatrix",
+		class = "HUNTER",
+		project = "Leatrix Plus",
+		url = "curseforge.com/wow/addons/leatrix-plus",
+		thanks = "For Leatrix Plus — its quest-automation refinements (accept by frequency, costly turn-in protection, and a configurable override key) sharpened NexEnhance's Quick Quest.",
+		features = {
+			"Automation — Quick Quest (frequency filters, turn-in safeguards, override key)",
+		},
+	},
+	{
+		name = "lightspark",
+		class = "MONK",
+		project = "ls_Monobrow",
+		url = "github.com/ls-/ls_Monobrow",
+		thanks = "For ls_Monobrow — its experience-bar fade behaviour (rest dim, reveal on mouseover / in combat / with a target) reimagined event-driven for NexEnhance's bar.",
+		features = {
+			"Misc — Experience Bar fade",
+		},
+	},
+	{
 		name = "Alteredcross",
 		class = "PALADIN",
 		project = "Chief Break-It Officer & Amateur Theorist",

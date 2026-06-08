@@ -30,24 +30,29 @@ local F, C, L = ns.F, ns.C, ns.L
 -- Localised globals / API.
 local _G = _G
 local pairs, select, type = pairs, select, type
-local strsub = string.sub
+local strsub, strupper, format = string.sub, string.upper, string.format
 local hooksecurefunc = hooksecurefunc
 local C_Timer = C_Timer
 local C_Item = C_Item
+local C_Item_GetItemGem = C_Item.GetItemGem
 local C_Container = C_Container
 local UnitExists = UnitExists
 local UnitGUID = UnitGUID
 local GetInventoryItemLink = GetInventoryItemLink
+local GameTooltip = GameTooltip
 
 local QUALITY_COLORS = _G["ITEM_QUALITY_COLORS"]
 local TEX_COORD = { 0.08, 0.92, 0.08, 0.92 }
 local FONT = C.Media.Fonts.normal
+local MISSING_ENCHANT_ICON = 134400 -- inv_misc_questionmark
 
 ns:RegisterDefaults({
 	itemLevel = {
 		enable = true,
 		gemsEnchants = true,
+		missingEnchant = true,
 		showBindText = true,
+		fontSize = 12,
 	},
 })
 
@@ -61,6 +66,20 @@ local inspectSlots = {
 	"MainHand", "SecondaryHand",
 }
 
+-- Equipment slots that take a permanent enchant in current retail; used to flag
+-- an equipped item that is missing one. Indices match inspectSlots / inventory
+-- slot ids. Adjust if Blizzard changes which slots are enchantable.
+local enchantableSlots = {
+	[5] = true,  -- Chest
+	[7] = true,  -- Legs
+	[8] = true,  -- Feet
+	[9] = true,  -- Wrist
+	[11] = true, -- Finger 1
+	[12] = true, -- Finger 2
+	[15] = true, -- Back
+	[16] = true, -- Main Hand
+}
+
 -- ---------------------------------------------------------------------------
 -- Small widget helpers (kept local: specific to this module's overlays)
 -- ---------------------------------------------------------------------------
@@ -72,7 +91,43 @@ local function CreateFS(parent, size)
 	return fs
 end
 
--- A gem/socket icon with a thin 1px border that we toggle with the icon.
+-- Item-level fontstrings use a user-configurable size. They are tracked here so
+-- the size slider can re-apply to every existing label live (created once per
+-- button/slot, so the table only grows as new surfaces are seen).
+local iLvlStrings = {}
+
+local function GetILvlFontSize()
+	return (ns.db and ns.db.itemLevel and ns.db.itemLevel.fontSize) or 12
+end
+
+local function CreateILvlFS(parent)
+	local fs = CreateFS(parent, GetILvlFontSize())
+	iLvlStrings[#iLvlStrings + 1] = fs
+	return fs
+end
+
+local function ApplyILvlFontSize()
+	local size = GetILvlFontSize()
+	for i = 1, #iLvlStrings do
+		iLvlStrings[i]:SetFont(FONT, size, "OUTLINE")
+	end
+end
+
+-- Gem socket hover: show the socketed gem's own tooltip (link resolved at scan
+-- time and stashed on the border frame, which carries the mouse region).
+local function GemIcon_OnEnter(self)
+	if not self.gemLink then return end
+	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+	GameTooltip:SetHyperlink(self.gemLink)
+	GameTooltip:Show()
+end
+
+local function GemIcon_OnLeave()
+	GameTooltip:Hide()
+end
+
+-- A gem/socket icon with a thin 1px border that we toggle with the icon. The
+-- border frame doubles as the mouse region for the gem tooltip.
 local function CreateGemIcon(parent, point, x, y)
 	local icon = parent:CreateTexture(nil, "OVERLAY")
 	icon:SetPoint(point, x, y)
@@ -85,6 +140,42 @@ local function CreateGemIcon(parent, point, x, y)
 	bg:SetPoint("TOPLEFT", icon, "TOPLEFT", -1, 1)
 	bg:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 1, -1)
 	bg:SetFrameLevel(parent:GetFrameLevel() + 3)
+	bg:EnableMouse(true)
+	bg:SetScript("OnEnter", GemIcon_OnEnter)
+	bg:SetScript("OnLeave", GemIcon_OnLeave)
+	bg:Hide()
+	icon.bg = bg
+
+	return icon
+end
+
+-- Missing-enchant warning: a red-tinted icon whose tooltip names its slot.
+local function MissingEnchant_OnEnter(self)
+	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+	GameTooltip:SetText(format(L["Missing Enchant: %s"], self.slotName or ""), 1, 0.2, 0.2)
+	GameTooltip:Show()
+end
+
+-- Built with the same icon + 1px border box as the gem icons so the marker
+-- matches them exactly in size and shape. The border frame carries the mouse.
+local function CreateMissingIcon(parent, point, x, y, slotName)
+	local icon = parent:CreateTexture(nil, "OVERLAY")
+	icon:SetPoint(point, x, y)
+	icon:SetSize(14, 14)
+	icon:SetTexCoord(TEX_COORD[1], TEX_COORD[2], TEX_COORD[3], TEX_COORD[4])
+	icon:SetTexture(MISSING_ENCHANT_ICON)
+	icon:Hide()
+
+	local bg = _G.CreateFrame("Frame", nil, parent, "BackdropTemplate")
+	bg:SetBackdrop({ edgeFile = C.Media.Textures.blank, edgeSize = 1 })
+	bg:SetBackdropBorderColor(0, 0, 0)
+	bg:SetPoint("TOPLEFT", icon, "TOPLEFT", -1, 1)
+	bg:SetPoint("BOTTOMRIGHT", icon, "BOTTOMRIGHT", 1, -1)
+	bg:SetFrameLevel(parent:GetFrameLevel() + 4)
+	bg:EnableMouse(true)
+	bg.slotName = slotName
+	bg:SetScript("OnEnter", MissingEnchant_OnEnter)
+	bg:SetScript("OnLeave", GemIcon_OnLeave)
 	bg:Hide()
 	icon.bg = bg
 
@@ -135,7 +226,7 @@ function ItemLevel:CreateItemStrings(frame, strType)
 		if index ~= 4 then -- skip Shirt
 			local slotFrame = _G[strType .. slot .. "Slot"]
 			if slotFrame then
-				slotFrame.iLvlText = CreateFS(slotFrame, 14)
+				slotFrame.iLvlText = CreateILvlFS(slotFrame)
 				slotFrame.iLvlText:ClearAllPoints()
 				slotFrame.iLvlText:SetPoint("BOTTOMLEFT", slotFrame, "BOTTOMLEFT", 1, 1)
 
@@ -157,12 +248,22 @@ function ItemLevel:CreateItemStrings(frame, strType)
 					local iconY = index > 15 and 20 or 2
 					slotFrame["nexGem" .. i] = CreateGemIcon(slotFrame, point, iconX, iconY)
 				end
+
+				-- Missing-enchant marker, built only for enchantable slots. Same size
+				-- as the gem icons and pushed out the same distance (the first gem's
+				-- x offset), but kept on the enchant-text row so it clears the gems.
+				if enchantableSlots[index] then
+					slotFrame.nexEnchantable = true
+					slotFrame.nexSlotName = _G[strupper(slot) .. "SLOT"] or slot
+					local markX = x > 0 and x + 5 or x - 5
+					slotFrame.enchantMissing = CreateMissingIcon(slotFrame, point, markX, y, slotFrame.nexSlotName)
+				end
 			end
 		end
 	end
 end
 
-function ItemLevel:UpdateSlotInfo(slotFrame, info, quality)
+function ItemLevel:UpdateSlotInfo(slotFrame, info, quality, link)
 	if not slotFrame or not slotFrame.iLvlText then return end
 
 	local infoType = type(info)
@@ -175,20 +276,27 @@ function ItemLevel:UpdateSlotInfo(slotFrame, info, quality)
 
 	if infoType ~= "table" then return end
 
+	local showGems = ns.db.itemLevel.gemsEnchants
 	local enchant = info.enchantText
-	if enchant then
-		enchant = enchant:gsub("^.-%s%-%s", "") -- strip any "Source - " prefix
-		slotFrame.enchantText:SetText(enchant)
+
+	-- Enchant text only when the user wants gem/enchant detail shown.
+	if showGems and enchant then
+		slotFrame.enchantText:SetText((enchant:gsub("^.-%s%-%s", ""))) -- strip "Source - " prefix
+	else
+		slotFrame.enchantText:SetText("")
 	end
 
 	local gemStep = 1
 	for i = 1, 10 do
 		local icon = slotFrame["nexGem" .. i]
 		local bg = icon.bg
-		local gem = info.gems and info.gems[gemStep]
+		local gem = showGems and info.gems and info.gems[gemStep]
 		local color = info.gemsColor and info.gemsColor[gemStep]
 		if gem then
 			icon:SetTexture(gem)
+			-- Resolve the gem's link for its hover tooltip. Socket order matches
+			-- the scan order; empty sockets / essences return nil (no tooltip).
+			bg.gemLink = link and C_Item_GetItemGem and select(2, C_Item_GetItemGem(link, gemStep)) or nil
 			if color then
 				bg:SetBackdropBorderColor(color.r, color.g, color.b)
 			else
@@ -198,8 +306,17 @@ function ItemLevel:UpdateSlotInfo(slotFrame, info, quality)
 			gemStep = gemStep + 1
 		else
 			icon:SetTexture(nil)
+			bg.gemLink = nil
 			bg:Hide()
 		end
+	end
+
+	-- Flag an enchantable slot whose item has no enchant.
+	local missing = slotFrame.enchantMissing
+	if missing then
+		local show = ns.db.itemLevel.missingEnchant and slotFrame.nexEnchantable and not enchant
+		missing:SetShown(show)
+		missing.bg:SetShown(show)
 	end
 end
 
@@ -210,7 +327,7 @@ function ItemLevel:RefreshSlotInfo(unit, index, slotFrame, fullScan)
 		if not link then return end
 		local quality = select(3, C_Item.GetItemInfo(link))
 		local info = F.GetItemLevel(link, unit, index, fullScan)
-		self:UpdateSlotInfo(slotFrame, info, quality)
+		self:UpdateSlotInfo(slotFrame, info, quality, link)
 	end)
 end
 
@@ -218,7 +335,9 @@ function ItemLevel:SetupSlots(frame, strType, unit)
 	if not UnitExists(unit) then return end
 
 	self:CreateItemStrings(frame, strType)
-	local fullScan = ns.db.itemLevel.gemsEnchants
+	-- The enchant scan needs the full tooltip read, so run it when either the
+	-- gem/enchant display or the missing-enchant warning is enabled.
+	local fullScan = ns.db.itemLevel.gemsEnchants or ns.db.itemLevel.missingEnchant
 
 	for index, slot in pairs(inspectSlots) do
 		if index ~= 4 then
@@ -226,9 +345,14 @@ function ItemLevel:SetupSlots(frame, strType, unit)
 			if slotFrame and slotFrame.iLvlText then
 				slotFrame.iLvlText:SetText("")
 				slotFrame.enchantText:SetText("")
+				if slotFrame.enchantMissing then
+					slotFrame.enchantMissing:Hide()
+					slotFrame.enchantMissing.bg:Hide()
+				end
 				for i = 1, 10 do
 					local icon = slotFrame["nexGem" .. i]
 					icon:SetTexture(nil)
+					icon.bg.gemLink = nil
 					icon.bg:Hide()
 				end
 
@@ -239,7 +363,7 @@ function ItemLevel:SetupSlots(frame, strType, unit)
 						self:RefreshSlotInfo(unit, index, slotFrame, fullScan)
 					else
 						local info = F.GetItemLevel(link, unit, index, fullScan)
-						self:UpdateSlotInfo(slotFrame, info, quality)
+						self:UpdateSlotInfo(slotFrame, info, quality, link)
 					end
 				end
 			end
@@ -263,7 +387,7 @@ end
 -- ---------------------------------------------------------------------------
 local function SetSimpleLevel(button, link, quality, bagID, slotID)
 	if not button.nexILvl then
-		button.nexILvl = CreateFS(button, 14)
+		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
 
@@ -286,7 +410,7 @@ end
 -- ---------------------------------------------------------------------------
 function ItemLevel:FlyoutButton(button)
 	if not button.nexILvl then
-		button.nexILvl = CreateFS(button, 14)
+		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
 	button.nexILvl:SetText("")
@@ -360,7 +484,7 @@ function ItemLevel:UpdateLoot()
 		local slotIndex = elementData and elementData.slotIndex
 		if slotIndex then
 			if not button.nexILvl then
-				button.nexILvl = CreateFS(button.Item, 14)
+				button.nexILvl = CreateILvlFS(button.Item)
 				button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 			end
 			local quality = select(5, _G.GetLootSlotInfo(slotIndex))
@@ -385,7 +509,7 @@ local function UpdateBagSlot(iconBorder)
 	if not button then return end
 
 	if not button.nexILvl then
-		button.nexILvl = CreateFS(button, 14)
+		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
 
@@ -480,7 +604,7 @@ end
 -- ---------------------------------------------------------------------------
 local function ScrappingButtonUpdate(button)
 	if not button.nexILvl then
-		button.nexILvl = CreateFS(button, 14)
+		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
 	if not button.itemLink then button.nexILvl:SetText(""); return end
@@ -515,7 +639,7 @@ local function ReplaceNewsLink(link, name)
 		local level = F.GetItemLevel(link)
 		if level then
 			modLink = link:gsub("|h%[(.-)%]|h", "|h(" .. level .. ")" .. name .. "|h")
-			newsCache[link] = modLink
+			F.CacheSet(newsCache, link, modLink)
 		end
 	end
 	return modLink
@@ -623,6 +747,9 @@ function ItemLevel:OnSettingChanged(key, value)
 	if key == "enable" and value then
 		self:InstallHooks()
 	end
+	if key == "fontSize" then
+		ApplyILvlFontSize()
+	end
 	if key == "showBindText" then
 		RefreshBagSlots()
 	end
@@ -636,5 +763,7 @@ end
 function ItemLevel:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "enable", L["Enable Item Level"], L["Show item levels on equipped, bag, merchant, trade and loot items."])
 	builder:Checkbox(category, self, "gemsEnchants", L["Show Gems & Enchants"], L["Also show gem, socket and enchant info on Character and Inspect slots."])
+	builder:Checkbox(category, self, "missingEnchant", L["Warn Missing Enchants"], L["Show a red icon on Character and Inspect slots that can be enchanted but aren't."])
 	builder:Checkbox(category, self, "showBindText", L["Show Bind Status"], L["Show BoE, BoA and WuE labels on bag and bank items that are not yet bound."])
+	builder:Slider(category, self, "fontSize", L["Item Level Font Size"], L["Font size for the item level numbers on equipped, bag, merchant, trade and loot items."], 12, 14, 1)
 end

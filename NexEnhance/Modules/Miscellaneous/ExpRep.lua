@@ -48,6 +48,12 @@ local SendChatMessage = SendChatMessage
 local UnitHonor = UnitHonor
 local UnitHonorMax = UnitHonorMax
 local UnitHonorLevel = UnitHonorLevel
+local UnitExists = UnitExists
+local InCombatLockdown = InCombatLockdown
+local C_Timer = C_Timer
+local UIFrameFadeIn = UIFrameFadeIn
+local UIFrameFadeOut = UIFrameFadeOut
+local UIFrameFadeRemoveFrame = UIFrameFadeRemoveFrame
 local hooksecurefunc = hooksecurefunc
 
 local C_Reputation_GetWatchedFactionData = C_Reputation and C_Reputation.GetWatchedFactionData
@@ -103,6 +109,10 @@ local DEFAULTS = {
 	fontSize = 11,
 	showText = true,
 	showRested = true,
+	fade = false,
+	fadeOpacity = 0,
+	fadeCombat = true,
+	fadeTarget = false,
 }
 
 ns:RegisterDefaults({ expRep = DEFAULTS })
@@ -111,7 +121,6 @@ local ExpRep = ns:NewModule("ExpRep", "expRep", { group = "datatext", title = L[
 
 local editMode
 local bar
-local mode = "none"
 local displayText = ""
 local reportLabel = ""
 local lastReport = 0
@@ -223,13 +232,86 @@ local function AzeriteItem()
 end
 
 local function HideVisibleBar()
-	mode = "none"
 	displayText = ""
 	reportLabel = ""
 	bar.text:SetText("")
 	bar.rest:Hide()
 	bar.reward:Hide()
 	bar:Hide()
+end
+
+-- ---------------------------------------------------------------------------
+-- Fade behaviour (optional)
+--   The bar rests at a low opacity and reveals on mouseover, optionally also
+--   while in combat or while you have a target/focus. We drive it with the
+--   shared Blizzard UIFrameFade manager (one engine-side updater) and the bar's
+--   own OnEnter/OnLeave plus a couple of gated events - no per-frame polling.
+-- ---------------------------------------------------------------------------
+local FADE_DURATION = 0.25
+local FADE_OUT_DELAY = 0.75
+local fadeEventFrame
+local hideTimer
+local isMouseOver = false
+
+-- Conditions (besides hover) that pin the bar fully visible.
+local function FadeForced()
+	local cfg = ns.db.expRep
+	if cfg.fadeCombat and InCombatLockdown() then return true end
+	if cfg.fadeTarget and (UnitExists("target") or UnitExists("focus")) then return true end
+	return false
+end
+
+local function FadeBarIn()
+	if hideTimer then hideTimer:Cancel() end
+	hideTimer = nil
+	if bar then UIFrameFadeIn(bar, FADE_DURATION, bar:GetAlpha(), 1) end
+end
+
+local function FadeBarOut()
+	hideTimer = nil
+	if bar then UIFrameFadeOut(bar, FADE_DURATION, bar:GetAlpha(), (ns.db.expRep.fadeOpacity or 0) / 100) end
+end
+
+-- Snap the bar to the alpha its current state calls for (no scheduled delay).
+local function ApplyFadeState()
+	if not bar then return end
+	if hideTimer then hideTimer:Cancel() end
+	hideTimer = nil
+
+	if not ns.db.expRep.fade then
+		if UIFrameFadeRemoveFrame then UIFrameFadeRemoveFrame(bar) end
+		bar:SetAlpha(1)
+		return
+	end
+
+	if isMouseOver or FadeForced() then
+		FadeBarIn()
+	else
+		FadeBarOut()
+	end
+end
+
+-- (Re)gate the combat/target events to the current fade settings.
+local function RefreshFade()
+	if not fadeEventFrame then
+		fadeEventFrame = CreateFrame("Frame")
+		fadeEventFrame:SetScript("OnEvent", ApplyFadeState)
+	end
+	fadeEventFrame:UnregisterAllEvents()
+
+	local cfg = ns.db.expRep
+	if cfg.fade then
+		if cfg.fadeCombat then
+			fadeEventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+			fadeEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+		end
+		if cfg.fadeTarget then
+			fadeEventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
+			fadeEventFrame:RegisterEvent("PLAYER_FOCUS_CHANGED")
+		end
+	end
+
+	ApplyFadeState()
 end
 
 -- ---------------------------------------------------------------------------
@@ -389,7 +471,6 @@ end
 -- Visible bar modes
 -- ---------------------------------------------------------------------------
 local function ShowExperience()
-	mode = "xp"
 	reportLabel = _G.COMBAT_XP_GAIN or "Experience"
 	displayText = xpState.display
 
@@ -410,7 +491,6 @@ local function ShowExperience()
 end
 
 local function ShowReputation()
-	mode = "rep"
 	reportLabel = _G.REPUTATION or "Reputation"
 	displayText = repState.display
 
@@ -425,7 +505,6 @@ local function ShowReputation()
 end
 
 local function ShowHonor()
-	mode = "honor"
 	reportLabel = _G.HONOR or "Honor"
 	displayText = honorState.display
 
@@ -439,7 +518,6 @@ local function ShowHonor()
 end
 
 local function ShowAzerite()
-	mode = "azerite"
 	reportLabel = _G.AZERITE_POWER or "Azerite"
 	displayText = azeriteState.display
 
@@ -510,6 +588,8 @@ local function AddAzeriteTooltip(addSpacing)
 end
 
 local function OnEnter()
+	isMouseOver = true
+	if ns.db.expRep.fade then FadeBarIn() end
 	if _G.GameTooltip:IsForbidden() then return end
 	_G.GameTooltip:ClearLines()
 	ReleaseDividers()
@@ -531,6 +611,11 @@ local function OnEnter()
 end
 
 local function OnLeave()
+	isMouseOver = false
+	if ns.db.expRep.fade and not FadeForced() then
+		if hideTimer then hideTimer:Cancel() end
+		hideTimer = C_Timer.NewTimer(FADE_OUT_DELAY, FadeBarOut)
+	end
 	ReleaseDividers()
 	if not _G.GameTooltip:IsForbidden() then _G.GameTooltip:Hide() end
 end
@@ -571,6 +656,11 @@ local function UpdateBar(_, _, unit)
 	else
 		HideVisibleBar()
 	end
+
+	-- A freshly-shown bar should respect the resting fade alpha right away.
+	if ns.db.expRep.fade and bar:IsShown() then
+		ApplyFadeState()
+	end
 end
 
 local function ApplyAppearance()
@@ -581,6 +671,8 @@ local function ApplyAppearance()
 	bar.spark:SetHeight(cfg.height + 6)
 	F.SetFontSize(bar.text, cfg.fontSize)
 	bar.text:SetShown(cfg.showText)
+
+	RefreshFade()
 end
 
 local EVENTS = {
@@ -606,7 +698,7 @@ local EVENTS = {
 local function BuildBar()
 	if bar then return bar end
 
-	local f = CreateFrame("Frame", "NexEnhanceExpRepBar", UIParent)
+	local f = CreateFrame("Frame", nil, UIParent)
 	f:SetFrameStrata("LOW")
 	f:EnableMouse(true)
 
@@ -739,6 +831,10 @@ local function SetupEditModeSettings()
 		MakeSlider("fontSize", L["Font Size"], L["Size of the bar text."], 8, 24),
 		MakeCheckbox("showText", L["Show Bar Text"], L["Show the progress text on the bar."]),
 		MakeCheckbox("showRested", L["Show Rested"], L["Show the rested-experience overlay while levelling."]),
+		MakeCheckbox("fade", L["Fade Bar"], L["Fade the bar out and reveal it on mouseover."]),
+		MakeSlider("fadeOpacity", L["Faded Opacity"], L["Opacity of the bar when faded out (0 = fully hidden)."], 0, 100),
+		MakeCheckbox("fadeCombat", L["Show in Combat"], L["Keep the bar fully visible while in combat."]),
+		MakeCheckbox("fadeTarget", L["Show with Target"], L["Keep the bar fully visible while you have a target or focus."]),
 	})
 end
 
@@ -789,10 +885,18 @@ function ExpRep:RegisterOptions(category, builder)
 	local _, widthInit = builder:Slider(category, self, "width", L["Bar Width"], L["Width of the experience bar."], 120, 600, 1)
 	local _, heightInit = builder:Slider(category, self, "height", L["Bar Height"], L["Height of the experience bar."], 6, 40, 1)
 	local _, fontInit = builder:Slider(category, self, "fontSize", L["Font Size"], L["Size of the bar text."], 8, 24, 1)
+	local _, fadeInit = builder:Checkbox(category, self, "fade", L["Fade Bar"], L["Fade the bar out and reveal it on mouseover."])
+	local _, fadeOpacityInit = builder:Slider(category, self, "fadeOpacity", L["Faded Opacity"], L["Opacity of the bar when faded out (0 = fully hidden)."], 0, 100, 5)
+	local _, fadeCombatInit = builder:Checkbox(category, self, "fadeCombat", L["Show in Combat"], L["Keep the bar fully visible while in combat."])
+	local _, fadeTargetInit = builder:Checkbox(category, self, "fadeTarget", L["Show with Target"], L["Keep the bar fully visible while you have a target or focus."])
 
 	builder:DependsOn(textInit, enableInit)
 	builder:DependsOn(restedInit, enableInit)
 	builder:DependsOn(widthInit, enableInit)
 	builder:DependsOn(heightInit, enableInit)
 	builder:DependsOn(fontInit, enableInit)
+	builder:DependsOn(fadeInit, enableInit)
+	builder:DependsOn(fadeOpacityInit, fadeInit)
+	builder:DependsOn(fadeCombatInit, fadeInit)
+	builder:DependsOn(fadeTargetInit, fadeInit)
 end

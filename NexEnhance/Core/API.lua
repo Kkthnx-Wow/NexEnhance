@@ -51,6 +51,27 @@ local function killObject(object)
 	object:Hide()
 end
 
+-- ---------------------------------------------------------------------------
+-- SetFrameHiddenTaintSafe: hide protected/managed Blizzard frames without
+-- reparenting them. Some managed frames (notably PetFrame) can taint when moved
+-- to a hider frame, so modules that need a reversible hide should use alpha +
+-- mouse state instead of SetParent.
+-- ---------------------------------------------------------------------------
+function F.SetFrameHiddenTaintSafe(frame, hidden)
+	if not frame then return end
+
+	frame:SetAlpha(hidden and 0 or 1)
+	if frame.EnableMouse then
+		frame:EnableMouse(not hidden)
+	end
+	if frame.SetMouseClickEnabled then
+		frame:SetMouseClickEnabled(not hidden)
+	end
+	if frame.SetMouseMotionEnabled then
+		frame:SetMouseMotionEnabled(not hidden)
+	end
+end
+
 -- Common Blizzard texture/region child names to clear when stripping a frame.
 local BLIZZARD_TEXTURES = {
 	"Inset", "inset", "InsetFrame", "LeftInset", "RightInset",
@@ -169,17 +190,39 @@ local function getEditMode()
 	return _G.LibStub and _G.LibStub("LibEditMode", true)
 end
 
-function F.CreateMover(frame, key, label, point, x, y)
+-- `onPlace` (optional) is invoked to position the frame whenever it has NOT been
+-- moved by the user. Use it for frames that want a live relative anchor (e.g.
+-- glued under the minimap) instead of a baked absolute coordinate, so they keep
+-- tracking their anchor and can't be stranded by a stale default. Once the user
+-- drags it in Edit Mode the saved absolute position always wins.
+function F.CreateMover(frame, key, label, point, x, y, onPlace)
 	point, x, y = point or "CENTER", x or 0, y or 0
+
+	local function applyDefault()
+		if onPlace then
+			onPlace(frame)
+		else
+			frame:ClearAllPoints()
+			frame:SetPoint(point, x, y)
+		end
+	end
 
 	local function place()
 		local saved = ns.db and ns.db.movers and ns.db.movers[key]
-		local p, ox, oy = point, x, y
 		if saved then
-			p, ox, oy = saved.point, saved.x, saved.y
+			local savedPoint = type(saved.point) == "string" and saved.point
+			local savedX, savedY = tonumber(saved.x), tonumber(saved.y)
+			if savedPoint and savedX and savedY then
+				frame:ClearAllPoints()
+				frame:SetPoint(savedPoint, savedX, savedY)
+			else
+				-- Discard malformed mover data instead of crashing SetPoint.
+				ns.db.movers[key] = nil
+				applyDefault()
+			end
+		else
+			applyDefault()
 		end
-		frame:ClearAllPoints()
-		frame:SetPoint(p, ox, oy)
 	end
 
 	local lib = getEditMode()
@@ -192,7 +235,17 @@ function F.CreateMover(frame, key, label, point, x, y)
 	lib:AddFrame(frame, function(_, _, newPoint, newX, newY)
 		if not ns.db then return end
 		ns.db.movers = ns.db.movers or {}
-		ns.db.movers[key] = { point = newPoint, x = newX, y = newY }
+		-- "Reset to default" re-applies exactly the default we registered below.
+		-- For onPlace movers that default is only a placeholder (the real anchor
+		-- is relative/live), so a literal reset would strand the frame at it
+		-- (e.g. BOTTOMLEFT 0,0 = bottom of the screen). Detect that case, drop
+		-- the saved position and re-run the live anchor instead.
+		if onPlace and newPoint == point and newX == x and newY == y then
+			ns.db.movers[key] = nil
+			applyDefault()
+			return
+		end
+		ns.db.movers[key] = { point = newPoint, x = tonumber(newX) or 0, y = tonumber(newY) or 0 }
 	end, { point = point, x = x, y = y }, label or key)
 
 	place()

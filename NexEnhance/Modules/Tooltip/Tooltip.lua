@@ -19,12 +19,18 @@
 local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
 
+-- Shared tooltip palette (single source of truth in Constants.lua): light-blue
+-- labels used for the non-guildmate guild line below.
+local LBL = C.Colors.label
+
 -- Localised globals.
 local _G = _G
 local format, strfind, strupper, strlen = string.format, string.find, string.upper, string.len
 local gsub, pairs, select = string.gsub, pairs, select
 local unpack = unpack
 local hooksecurefunc = hooksecurefunc
+local issecretvalue = _G["issecretvalue"]
+local canaccessvalue = _G["canaccessvalue"]
 
 local UnitExists = UnitExists
 local UnitIsPlayer, UnitName, UnitPVPName, UnitClass = UnitIsPlayer, UnitName, UnitPVPName, UnitClass
@@ -64,6 +70,27 @@ local STATUSBAR_BORDER = {
 	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 	edgeSize = 14,
 }
+
+local function IsSecretSize(width, height)
+	if issecretvalue and (issecretvalue(width) or issecretvalue(height)) then
+		return true
+	end
+	return canaccessvalue and (not canaccessvalue(width) or not canaccessvalue(height))
+end
+
+local function GuardBackdropSize(frame)
+	local onSizeChanged = frame:GetScript("OnSizeChanged")
+	if not onSizeChanged then
+		return
+	end
+
+	frame:SetScript("OnSizeChanged", function(self, width, height)
+		if IsSecretSize(width, height) then
+			return
+		end
+		onSizeChanged(self, width, height)
+	end)
+end
 
 -- Retail unit-frame fill atlas, matching the experience bar. The "-Status"
 -- variant is neutral/tintable, so the per-unit SetStatusBarColor still reads
@@ -372,7 +399,7 @@ function Tooltip:OnTooltipSetUnit()
 			if IsInGuild() and guildName == myGuild and guildRealm == myGuildRealm then
 				GameTooltipTextLeft2:SetTextColor(0.25, 1, 0.25)
 			else
-				GameTooltipTextLeft2:SetTextColor(0.6, 0.8, 1)
+				GameTooltipTextLeft2:SetTextColor(LBL[1], LBL[2], LBL[3])
 			end
 
 			rankIndex = (rankIndex or 0) + 1
@@ -487,6 +514,7 @@ local function StyleStatusBar()
 	bg:SetFrameLevel(level > 0 and level - 1 or 0)
 	bg:SetBackdrop(STATUSBAR_BG)
 	bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	GuardBackdropSize(bg)
 	bar.nexBG = bg
 
 	-- Gold border on top of the bar.
@@ -496,6 +524,7 @@ local function StyleStatusBar()
 	border:SetFrameLevel(level + 1)
 	border:SetBackdrop(STATUSBAR_BORDER)
 	border:SetBackdropBorderColor(1, 1, 1)
+	GuardBackdropSize(border)
 	bar.nexBorder = border
 end
 

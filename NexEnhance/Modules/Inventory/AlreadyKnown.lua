@@ -14,7 +14,7 @@
 -- luacheck: globals MerchantFrame MERCHANT_ITEMS_PER_PAGE BUYBACK_ITEMS_PER_PAGE AuctionHouseFrame GuildBankFrame MAX_GUILDBANK_SLOTS_PER_TAB NUM_SLOTS_PER_GUILDBANK_GROUP SetItemButtonTextureVertexColor COLLECTED ITEM_SPELL_KNOWN
 ---@diagnostic disable: undefined-field, redundant-parameter, param-type-mismatch
 local _, ns = ...
-local L = ns.L
+local F, L = ns.F, ns.L
 
 local _G = _G
 local select, tonumber = select, tonumber
@@ -31,6 +31,8 @@ local C_Item_IsCosmeticItem = C_Item.IsCosmeticItem
 local C_TooltipInfo_GetHyperlink = C_TooltipInfo.GetHyperlink
 local C_TooltipInfo_GetGuildBankItem = C_TooltipInfo.GetGuildBankItem
 local C_PetJournal_GetNumCollectedInfo = C_PetJournal.GetNumCollectedInfo
+local C_TransmogCollection_GetItemInfo = C_TransmogCollection and C_TransmogCollection.GetItemInfo
+local C_TransmogCollection_PlayerHasTransmogItemModifiedAppearance = C_TransmogCollection and C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance
 
 local MERCHANT_ITEMS_PER_PAGE = _G.MERCHANT_ITEMS_PER_PAGE or 10
 local BUYBACK_ITEMS_PER_PAGE = _G.BUYBACK_ITEMS_PER_PAGE or 12
@@ -69,6 +71,23 @@ local function IsPetCollected(speciesID)
 	return numOwned and numOwned > 0
 end
 
+-- Cosmetic / transmog appearances don't report "known" through the tooltip
+-- COLLECTED / ITEM_SPELL_KNOWN lines, so resolve the item's transmog source and
+-- ask the collection directly. Source-based (not PlayerHasTransmogByItemInfo,
+-- which over-claims for items with link variants). Returns:
+--   true / false  - appearance resolved and (un)collected
+--   nil           - no transmog source (not an appearance, or data not cached
+--                   yet) so the caller should fall back to the tooltip scan.
+local function IsCosmeticCollected(link)
+	if not (C_TransmogCollection_GetItemInfo and C_TransmogCollection_PlayerHasTransmogItemModifiedAppearance) then
+		return
+	end
+	local _, sourceID = C_TransmogCollection_GetItemInfo(link)
+	if sourceID and sourceID ~= 0 then
+		return C_TransmogCollection_PlayerHasTransmogItemModifiedAppearance(sourceID) and true or false
+	end
+end
+
 local function IsAlreadyKnown(link, index)
 	if not link then return end
 
@@ -91,6 +110,17 @@ local function IsAlreadyKnown(link, index)
 		end
 
 		if knowns[link] then return true end
+
+		-- Cosmetics / transmog: ask the appearance collection directly; only
+		-- fall back to the tooltip scan if the source can't be resolved.
+		if C_Item_IsCosmeticItem(link) then
+			local collected = IsCosmeticCollected(link)
+			if collected ~= nil then
+				if collected then F.CacheSet(knowns, link, true) end
+				return collected
+			end
+		end
+
 		if not knowables[itemClassID] and not C_Item_IsCosmeticItem(link) then return end
 
 		local data = C_TooltipInfo_GetHyperlink(link, nil, nil, true)
@@ -99,7 +129,7 @@ local function IsAlreadyKnown(link, index)
 				local lineData = data.lines[i]
 				local text = lineData and lineData.leftText
 				if text and ((COLLECTED and strfind(text, COLLECTED)) or text == ITEM_SPELL_KNOWN) then
-					knowns[link] = true
+					F.CacheSet(knowns, link, true)
 					return true
 				end
 			end

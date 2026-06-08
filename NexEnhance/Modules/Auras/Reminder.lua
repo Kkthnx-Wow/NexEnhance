@@ -38,10 +38,12 @@ local C_Item_GetItemCount = C_Item.GetItemCount
 local C_Item_GetItemCooldown = C_Item.GetItemCooldown
 local C_Item_IsEquippedItem = C_Item.IsEquippedItem
 local C_Item_GetItemIconByID = C_Item.GetItemIconByID
+local C_Timer = C_Timer
 
 ns:RegisterDefaults({
 	reminder = {
 		enable = false,
+		iconSize = 50,
 	},
 })
 
@@ -174,9 +176,19 @@ local function AddItemGroup()
 	end
 end
 
-local iconSize = 36
+local iconSize = 50
 local frames = {}
 local parentFrame
+local testFrames = {}
+local manualTest -- /nex reminder toggle (persists outside Edit Mode)
+local editPreview -- samples shown because Edit Mode is open
+local preview -- samples currently shown (manualTest or editPreview); pauses the live rescan
+
+-- Blizzard tooltip-style gold border, the same edge we frame the minimap with.
+local REMINDER_BORDER = {
+	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+	edgeSize = 14,
+}
 
 -- ---------------------------------------------------------------------------
 -- Per-buff state evaluation (1:1 with NDui, guarded for secret aura values)
@@ -231,30 +243,44 @@ local function Reminder_Update(cfg)
 	end
 end
 
-local function Reminder_Create(cfg)
+-- Shared icon builder used by both the live reminders and the test icons, so a
+-- skin added here is reflected by `/nex reminder` test mode too.
+local function Reminder_BuildFrame(texture)
 	local frame = CreateFrame("Frame", nil, parentFrame)
 	frame:SetSize(iconSize, iconSize)
 
 	local icon = frame:CreateTexture(nil, "ARTWORK")
 	icon:SetAllPoints()
 	icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	icon:SetTexture(texture)
 	frame.Icon = icon
-	F.CreateBackdrop(frame)
 
+	-- Blizzard tooltip-style gold border, wrapping the icon just like the minimap.
+	local border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+	border:SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3)
+	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3)
+	border:SetFrameLevel(frame:GetFrameLevel() + 1)
+	border:SetBackdrop(REMINDER_BORDER)
+	frame.Border = border
+
+	local text = F.CreateFS(frame, 13, L["Lack"])
+	text:ClearAllPoints()
+	text:SetPoint("TOP", frame, "TOP", 0, 16)
+	text:SetTextColor(1, 0.1, 0.1)
+	frame.text = text
+
+	frame:Hide()
+	return frame
+end
+
+local function Reminder_Create(cfg)
 	local texture = cfg.texture
 	if not texture then
 		local spellID = next(cfg.spells)
 		if spellID then texture = C_Spell_GetSpellTexture(spellID) end
 	end
-	icon:SetTexture(texture)
 
-	local text = F.CreateFS(frame, 13, L["Lack"])
-	text:ClearAllPoints()
-	text:SetPoint("TOP", frame, "TOP", 0, 12)
-	text:SetTextColor(1, 0.1, 0.1)
-	frame.text = text
-
-	frame:Hide()
+	local frame = Reminder_BuildFrame(texture)
 	cfg.frame = frame
 	tinsert(frames, frame)
 end
@@ -272,7 +298,10 @@ local function Reminder_UpdateAnchor()
 	parentFrame:SetWidth(offset * (index > 0 and index or 1))
 end
 
-local function Reminder_OnEvent()
+local updatePending
+local function Reminder_RunUpdate()
+	updatePending = nil
+	if preview then return end
 	if not ns.db.reminder.enable or not groups then return end
 
 	for _, cfg in pairs(groups) do
@@ -282,9 +311,88 @@ local function Reminder_OnEvent()
 	Reminder_UpdateAnchor()
 end
 
+-- UNIT_AURA fires in bursts (e.g. a fresh set of raid buffs lands all at once);
+-- coalesce them into a single end-of-frame rescan instead of doing a full
+-- buff scan + visibility + reanchor pass per individual aura change.
+local function Reminder_OnEvent()
+	if updatePending then return end
+	updatePending = true
+	C_Timer.After(0, Reminder_RunUpdate)
+end
+
+-- ---------------------------------------------------------------------------
+-- Sample icons (shown for /nex reminder and while Edit Mode is open)
+-- ---------------------------------------------------------------------------
+local function Reminder_BuildSamples()
+	if #testFrames > 0 then return end
+	-- Prefer the player's real reminder icons; fall back to placeholders for
+	-- classes/specs with nothing configured.
+	local textures = {}
+	if groups then
+		for _, cfg in pairs(groups) do
+			local tex = cfg.texture
+			if not tex then
+				local spellID = next(cfg.spells)
+				if spellID then tex = C_Spell_GetSpellTexture(spellID) end
+			end
+			textures[#textures + 1] = tex
+		end
+	end
+	if #textures == 0 then
+		textures = { 135932, 135987, 132333 }
+	end
+	for i = 1, #textures do
+		testFrames[i] = Reminder_BuildFrame(textures[i])
+	end
+end
+
+local function Reminder_LayoutSamples()
+	local offset = iconSize + 5
+	for i = 1, #testFrames do
+		local frame = testFrames[i]
+		frame:ClearAllPoints()
+		frame:SetPoint("LEFT", parentFrame, "LEFT", offset * (i - 1), 0)
+	end
+	parentFrame:SetWidth(offset * (#testFrames > 0 and #testFrames or 1))
+end
+
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+-- Create the draggable Edit Mode anchor once. Kept separate from Setup so it
+-- always exists (even for classes without reminder buffs, or while disabled),
+-- which is what lets the mover show up in Edit Mode without test mode.
+function Reminder:CreateAnchor()
+	if parentFrame then return end
+	iconSize = (ns.db.reminder and ns.db.reminder.iconSize) or iconSize
+	parentFrame = CreateFrame("Frame", nil, UIParent)
+	parentFrame:SetSize(iconSize, iconSize)
+	F.CreateMover(parentFrame, "reminder", L["Buff Reminder"], "CENTER", -220, 130)
+
+	-- Mirror the icon-size slider onto the frame's Edit Mode dialog.
+	local lib = _G.LibStub and _G.LibStub("LibEditMode", true)
+	if lib and lib.AddFrameSettings and lib.SettingType then
+		lib:AddFrameSettings(parentFrame, {
+			{
+				kind = lib.SettingType.Slider,
+				name = L["Icon Size"],
+				desc = L["Size of the buff reminder icons. Preview with /nex reminder."],
+				default = 50,
+				minValue = 20,
+				maxValue = 64,
+				valueStep = 1,
+				get = function()
+					return ns.db.reminder.iconSize
+				end,
+				set = function(_, value)
+					ns.db.reminder.iconSize = value
+					Reminder:ApplyIconSize()
+				end,
+			},
+		})
+	end
+end
+
 function Reminder:Setup()
 	if self.started then return end
 
@@ -297,9 +405,7 @@ function Reminder:Setup()
 	if not groups then return end
 	self.started = true
 
-	parentFrame = CreateFrame("Frame", "NexEnhanceReminder", UIParent)
-	parentFrame:SetSize(iconSize, iconSize)
-	F.CreateMover(parentFrame, "reminder", L["Buff Reminder"], "CENTER", -220, 130)
+	self:CreateAnchor()
 
 	self:RegisterUnitEvent("UNIT_AURA", Reminder_OnEvent, "player")
 	self:RegisterEvent("UNIT_EXITED_VEHICLE", Reminder_OnEvent)
@@ -323,14 +429,110 @@ function Reminder:Update()
 	end
 end
 
+-- Resize the anchor and every icon (live + sample) to the configured size, then
+-- re-lay-out whichever set is currently shown.
+function Reminder:ApplyIconSize()
+	iconSize = (ns.db.reminder and ns.db.reminder.iconSize) or iconSize
+	if parentFrame then
+		parentFrame:SetSize(iconSize, iconSize)
+	end
+	for _, frame in next, frames do
+		frame:SetSize(iconSize, iconSize)
+	end
+	for i = 1, #testFrames do
+		testFrames[i]:SetSize(iconSize, iconSize)
+	end
+
+	if not parentFrame then return end
+	if preview then
+		Reminder_LayoutSamples()
+	else
+		Reminder_UpdateAnchor()
+	end
+end
+
+-- Show/hide the sample icons based on whether the test toggle or Edit Mode wants
+-- them, restoring the live state when neither does.
+function Reminder:RefreshPreview()
+	self:CreateAnchor()
+
+	local shouldShow = manualTest or editPreview
+	if shouldShow == preview then
+		if shouldShow then Reminder_LayoutSamples() end
+		return
+	end
+	preview = shouldShow
+
+	if shouldShow then
+		-- Hide the live icons so they don't overlap the samples.
+		for _, frame in next, frames do
+			frame:Hide()
+		end
+		Reminder_BuildSamples()
+		parentFrame:Show()
+		for i = 1, #testFrames do
+			testFrames[i]:Show()
+		end
+		Reminder_LayoutSamples()
+	else
+		for i = 1, #testFrames do
+			testFrames[i]:Hide()
+		end
+		if ns.db.reminder.enable and groups then
+			Reminder_RunUpdate()
+		else
+			Reminder_UpdateAnchor()
+			parentFrame:Hide()
+		end
+	end
+end
+
 function Reminder:OnEnable()
+	iconSize = (ns.db.reminder and ns.db.reminder.iconSize) or iconSize
+
+	-- Always build the anchor so the mover is available in Edit Mode, and show
+	-- sample icons on it whenever Edit Mode is open (no test mode required).
+	self:CreateAnchor()
+	if not self.editModeHooked then
+		local lib = _G.LibStub and _G.LibStub("LibEditMode", true)
+		if lib and lib.RegisterCallback then
+			self.editModeHooked = true
+			lib:RegisterCallback("enter", function()
+				editPreview = true
+				self:RefreshPreview()
+			end)
+			lib:RegisterCallback("exit", function()
+				editPreview = false
+				self:RefreshPreview()
+			end)
+		end
+	end
+
 	self:Update()
 end
 
-function Reminder:OnSettingChanged()
+function Reminder:OnSettingChanged(key)
+	if key == "iconSize" then
+		self:ApplyIconSize()
+		return
+	end
 	self:Update()
+end
+
+-- /nex reminder: force-show sample "Lack" icons on the anchor so the layout can
+-- be positioned and skinned without waiting to actually be missing a buff.
+function Reminder:ToggleTest()
+	manualTest = not manualTest
+	self:RefreshPreview()
+	if manualTest then
+		F.Print(F.Colorize(L["Buff Reminder"] .. ": ", "brand") .. L["Test mode on - drag the anchor in Edit Mode."])
+	else
+		F.Print(F.Colorize(L["Buff Reminder"] .. ": ", "brand") .. L["Test mode off."])
+	end
 end
 
 function Reminder:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Buff Reminder"], L["Show a 'Lack' icon when you are missing a buff you can provide. Move the anchor in Edit Mode."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Buff Reminder"], L["Show a 'Lack' icon when you are missing a buff you can provide. Move the anchor in Edit Mode."])
+	local _, sizeInit = builder:Slider(category, self, "iconSize", L["Icon Size"], L["Size of the buff reminder icons. Preview with /nex reminder."], 20, 64, 1)
+	builder:DependsOn(sizeInit, enableInit)
 end

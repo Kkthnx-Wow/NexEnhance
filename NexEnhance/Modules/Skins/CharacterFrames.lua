@@ -19,7 +19,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local L = ns.L
+local L, F = ns.L, ns.F
 
 -- Localised globals.
 local _G = _G
@@ -40,10 +40,14 @@ ns:RegisterDefaults({
 local CharacterFrames = ns:NewModule("CharacterFrames", "characterFrames", { group = "skins", title = L["Character Frames"], order = 20 })
 
 -- Standardise item-slot buttons: strip their borders and use a uniform size.
+-- Only touch the actual equipment slots (their frame names all contain "Slot");
+-- other child buttons like InspectTalents must keep their own size or they get
+-- smooshed into a 37x37 square.
 local function StyleItemSlots(...)
 	for i = 1, select("#", ...) do
 		local slot = select(i, ...)
-		if slot:IsObjectType("Button") or slot:IsObjectType("ItemButton") then
+		local name = slot and slot.GetName and slot:GetName()
+		if name and name:find("Slot") and (slot:IsObjectType("Button") or slot:IsObjectType("ItemButton")) then
 			slot:StripTextures()
 			slot:SetSize(37, 37)
 		end
@@ -61,10 +65,14 @@ local CHAR_MODEL_ZOOM_SCALE = 1.1
 local function AdjustCharacterModelZoom()
 	local scene = _G.CharacterModelScene
 	local camera = scene and scene.GetActiveCamera and scene:GetActiveCamera()
-	if not (camera and camera.GetZoomDistance and camera.SetZoomDistance) then return end
+	if not (camera and camera.GetZoomDistance and camera.SetZoomDistance) then
+		return
+	end
 
 	local distance = camera:GetZoomDistance()
-	if not distance then return end
+	if not distance then
+		return
+	end
 
 	local target = distance * CHAR_MODEL_ZOOM_SCALE
 	local maxDistance = camera.GetMaxZoomDistance and camera:GetMaxZoomDistance()
@@ -83,7 +91,9 @@ end
 -- Character frame
 -- ---------------------------------------------------------------------------
 function CharacterFrames:StyleCharacterFrame()
-	if self.charStyled then return end
+	if self.charStyled then
+		return
+	end
 	self.charStyled = true
 
 	local CharacterFrame = _G.CharacterFrame
@@ -92,7 +102,9 @@ function CharacterFrames:StyleCharacterFrame()
 	local PaperDollFrame = _G.PaperDollFrame
 	local CharacterStatsPane = _G.CharacterStatsPane
 	local CharacterFrameInsetRight = _G.CharacterFrameInsetRight
-	if not (CharacterFrame and CharacterModelScene) then return end
+	if not (CharacterFrame and CharacterModelScene) then
+		return
+	end
 
 	if CharacterFrame:IsShown() then
 		HideUIPanel(CharacterFrame)
@@ -117,7 +129,9 @@ function CharacterFrames:StyleCharacterFrame()
 	CharacterModelScene:SetPoint("BOTTOMRIGHT", CharacterFrame.Inset, -4, 4)
 
 	hooksecurefunc(CharacterFrame, "UpdateSize", function()
-		if InCombatLockdown() then return end -- secure frame; never resize in combat
+		if InCombatLockdown() then
+			return
+		end -- secure frame; never resize in combat
 
 		if CharacterFrame.activeSubframe == "PaperDollFrame" then
 			CharacterFrame:SetSize(640, 431)
@@ -172,12 +186,16 @@ end
 -- Inspect frame (Blizzard_InspectUI - load on demand)
 -- ---------------------------------------------------------------------------
 function CharacterFrames:StyleInspectFrame()
-	if self.inspectStyled then return end
+	if self.inspectStyled then
+		return
+	end
 
 	local InspectFrame = _G.InspectFrame
 	local InspectModelFrame = _G.InspectModelFrame
 	local InspectPaperDollItemsFrame = _G.InspectPaperDollItemsFrame
-	if not (InspectFrame and InspectModelFrame and InspectPaperDollItemsFrame) then return end
+	if not (InspectFrame and InspectModelFrame and InspectPaperDollItemsFrame) then
+		return
+	end
 
 	self.inspectStyled = true
 
@@ -204,8 +222,36 @@ function CharacterFrames:StyleInspectFrame()
 	InspectModelFrame:SetPoint("BOTTOMRIGHT", InspectFrame.Inset, 0, 30)
 	InspectModelFrame:SetCamDistanceScale(1.1)
 
+	-- Average item-level readout in the bottom-left of the items frame, refreshed
+	-- whenever Blizzard updates the inspected unit's level text (adapted from ls_UI).
+	local averageItemLevelText = InspectPaperDollItemsFrame:CreateFontString(nil, "ARTWORK")
+	averageItemLevelText:SetFontObject("GameFontNormal")
+	local aiFont, _, aiFlags = averageItemLevelText:GetFont()
+	averageItemLevelText:SetFont(aiFont, 12, aiFlags)
+	averageItemLevelText:SetShadowOffset(1, -1)
+	averageItemLevelText:SetJustifyH("CENTER")
+	-- Centred just above the main-hand / off-hand slots (they sit at the bottom
+	-- centre of the inset, ~37 tall at y = 5).
+	averageItemLevelText:SetPoint("BOTTOM", InspectFrame.Inset, "BOTTOM", 0, 46)
+	InspectPaperDollItemsFrame.AverageItemLevelText = averageItemLevelText
+
+	if _G.InspectPaperDollFrame_SetLevel and _G.C_PaperDollInfo and _G.C_PaperDollInfo.GetInspectItemLevel then
+		hooksecurefunc("InspectPaperDollFrame_SetLevel", function()
+			local unit = InspectFrame.unit
+			if not unit then
+				return
+			end
+			local ilvl = _G.C_PaperDollInfo.GetInspectItemLevel(unit)
+			if ilvl and F.NotSecret(ilvl) then
+				averageItemLevelText:SetFormattedText(_G.DUNGEON_SCORE_LINK_ITEM_LEVEL or "Item Level %d", ilvl)
+			end
+		end)
+	end
+
 	local function OnInspectSwitchTabs(newID)
-		if InCombatLockdown() then return end -- secure frame
+		if InCombatLockdown() then
+			return
+		end -- secure frame
 
 		local tabID = newID or PanelTemplates_GetSelectedTab(InspectFrame)
 		if tabID == 1 then

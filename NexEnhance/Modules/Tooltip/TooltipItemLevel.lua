@@ -14,6 +14,7 @@ local Tooltip = ns:GetModule("Tooltip")
 if not Tooltip then return end
 
 local _G = _G
+local wipe = wipe
 local select, max, strfind, format, strsplit = select, math.max, string.find, string.format, string.split
 local GetTime, CanInspect, NotifyInspect, ClearInspectPlayer, IsShiftKeyDown = GetTime, CanInspect, NotifyInspect, ClearInspectPlayer, IsShiftKeyDown
 local UnitGUID, UnitClass, UnitIsUnit, UnitIsPlayer = UnitGUID, UnitClass, UnitIsUnit, UnitIsPlayer
@@ -26,6 +27,9 @@ local levelPrefix = STAT_AVERAGE_ITEM_LEVEL .. ": " .. C.InfoColor
 local isPending = LFG_LIST_LOADING
 local resetTime, frequency = 900, 0.5
 local cache, weapon = {}, {}
+-- The inspect cache is keyed by GUID; cap it so a long session of mousing over
+-- many players (cities, raids) can't grow it without bound.
+local cacheCount, CACHE_MAX = 0, 200
 local currentUNIT, currentGUID
 local lastTime = 0
 
@@ -229,7 +233,14 @@ function Tooltip:InspectUnitItemLevel(unit)
 	if not unit or not CanInspect(unit) then return end
 	currentUNIT, currentGUID = unit, checkUnitGUID(unit)
 	if not currentGUID then return end
-	if not cache[currentGUID] then cache[currentGUID] = {} end
+	if not cache[currentGUID] then
+		if cacheCount >= CACHE_MAX then
+			wipe(cache)
+			cacheCount = 0
+		end
+		cache[currentGUID] = {}
+		cacheCount = cacheCount + 1
+	end
 	InspectUnit(unit)
 end
 

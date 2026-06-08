@@ -1,9 +1,10 @@
 --[[
 	NexEnhance - Quick Quest
 	-------------------------------------------------------------------------
-	Automates the boring parts of questing: accepts quests, turns them in,
-	picks the most valuable reward, and walks single-option gossip. Hold SHIFT
-	at any time to suppress automation for that interaction.
+	Automates the boring parts of questing: accepts quests (by frequency), turns
+	them in (skipping costly ones), picks the most valuable reward, and walks
+	single-option gossip. Hold the override key (default SHIFT) to suppress
+	automation for that interaction, or flip it to require the key instead.
 
 	Alt-click an NPC's name (quest or gossip) to toggle a per-character ignore
 	for that NPC, so chatty/utility NPCs are left alone.
@@ -21,10 +22,12 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local next, ipairs, pairs, select = next, ipairs, pairs, select
-local wipe, strfind = wipe, string.find
-local IsAltKeyDown, IsShiftKeyDown = IsAltKeyDown, IsShiftKeyDown
+local wipe, strfind, strupper = wipe, string.find, string.upper
+local IsAltKeyDown, IsShiftKeyDown, IsControlKeyDown = IsAltKeyDown, IsShiftKeyDown, IsControlKeyDown
 local UnitGUID, UnitIsDeadOrGhost = UnitGUID, UnitIsDeadOrGhost
 local InCombatLockdown = InCombatLockdown
+local QuestIsDaily, QuestIsWeekly = QuestIsDaily, QuestIsWeekly
+local GetQuestMoneyToGet = GetQuestMoneyToGet
 local GetItemInfoFromHyperlink, GetInstanceInfo, GetQuestID = GetItemInfoFromHyperlink, GetInstanceInfo, GetQuestID
 local GetNumActiveQuests, GetActiveTitle, GetActiveQuestID, SelectActiveQuest = GetNumActiveQuests, GetActiveTitle, GetActiveQuestID, SelectActiveQuest
 local IsQuestCompletable, GetNumQuestItems, GetQuestItemLink, QuestIsFromAreaTrigger = IsQuestCompletable, GetNumQuestItems, GetQuestItemLink, QuestIsFromAreaTrigger
@@ -48,12 +51,24 @@ local C_GossipInfo_GetNumAvailableQuests = C_GossipInfo.GetNumAvailableQuests
 local C_Item_GetItemInfo = C_Item.GetItemInfo
 local C_Minimap_IsFilteredOut = C_Minimap.IsFilteredOut
 local C_Minimap_IsTrackingHiddenQuests = C_Minimap.IsTrackingHiddenQuests
+local C_TooltipInfo_GetItemByID = C_TooltipInfo and C_TooltipInfo.GetItemByID
 local QuestLabelPrepend = Enum.GossipOptionRecFlags.QuestLabelPrepend
 local AccountCompletedFilter = Enum.MinimapTrackingFilter.AccountCompletedQuests
+local QF_Daily, QF_Weekly = Enum.QuestFrequency.Daily, Enum.QuestFrequency.Weekly
+local MAX_REQUIRED_ITEMS = _G["MAX_REQUIRED_ITEMS"] or 8
+
+-- Override-key choices for the options dropdown.
+local OVERRIDE_SHIFT, OVERRIDE_ALT, OVERRIDE_CONTROL = 1, 2, 3
 
 ns:RegisterDefaults({
 	quickQuest = {
 		enable = false,
+		acceptRegular = true, -- auto-accept regular quests
+		acceptDaily = true, -- auto-accept daily quests
+		acceptWeekly = true, -- auto-accept weekly quests
+		protectTurnIns = true, -- skip turn-ins that consume gold/currency/reagents/account-bound items
+		overrideKey = OVERRIDE_SHIFT, -- which modifier pauses (or, with requireOverride, enables) automation
+		requireOverride = false, -- false: holding the key pauses; true: holding the key is required to run
 		blockInInstances = false, -- skip single-option gossip in raids/blacklisted instances
 		ignoreNPC = {}, -- [npcID] = true (ignore) / false (force-allow a built-in)
 	},
@@ -66,8 +81,29 @@ local function db()
 end
 
 -- ---------------------------------------------------------------------------
--- Event plumbing: each registered handler only runs when enabled and SHIFT is
--- not held. A private frame keeps the choiceQueue / combat re-queue self-contained.
+-- Override key: by default holding the chosen modifier PAUSES automation; with
+-- requireOverride set, automation only runs WHILE the modifier is held.
+-- ---------------------------------------------------------------------------
+local function IsOverrideKeyDown()
+	local key = db().overrideKey
+	if key == OVERRIDE_ALT then return IsAltKeyDown() end
+	if key == OVERRIDE_CONTROL then return IsControlKeyDown() end
+	return IsShiftKeyDown()
+end
+
+local function Automating()
+	if not db().enable then return false end
+	local keyDown = IsOverrideKeyDown()
+	if db().requireOverride then
+		return keyDown
+	end
+	return not keyDown
+end
+
+-- ---------------------------------------------------------------------------
+-- Event plumbing: each registered handler only runs when automation is active
+-- (enabled + override-key state). A private frame keeps the choiceQueue / combat
+-- re-queue self-contained.
 -- ---------------------------------------------------------------------------
 local qqFrame = CreateFrame("Frame")
 qqFrame:SetScript("OnEvent", function(self, event, ...)
@@ -81,7 +117,7 @@ local choiceQueue
 local function Register(event, func)
 	handlers[event] = func
 	qqFrame[event] = function(...)
-		if db().enable and not IsShiftKeyDown() then
+		if Automating() then
 			func(...)
 		end
 	end
@@ -152,6 +188,100 @@ local function UpdateIgnoreList()
 end
 
 -- ---------------------------------------------------------------------------
+-- Action-specific blocklists
+--   blockQuestID         - quests never auto-selected/accepted (consequences,
+--                          or quests that gather items the moment you accept).
+--   selectOnlyIgnoreNPC  - NPCs whose available quests we leave for the player
+--                          to pick up manually, while still auto-turning-in.
+-- ---------------------------------------------------------------------------
+local blockQuestID = {
+	[43923] = true, -- Get Your Own! (Starlight Rose)
+	[43924] = true, -- Get Your Own! (Leyblood)
+	[43925] = true, -- Get Your Own! (Runescale Koi)
+	[71162] = true, -- Dragon Isles waygate
+	[71165] = true, -- Dragon Isles waygate
+}
+
+local selectOnlyIgnoreNPC = {
+	[87706] = true, -- Gazmolf Futzwangler (Ashran)
+	[70022] = true, -- Ku'ma (Timeless Isle)
+	[12944] = true, -- Lokhtos Darkbargainer (Thorium Brotherhood)
+	[87393] = true, -- Sallee Silverclamp (Stormshield)
+	[10307] = true, -- Witch Doctor Mau'ari (Hatecrest)
+}
+
+-- ---------------------------------------------------------------------------
+-- Quest frequency gating (regular / daily / weekly accept toggles)
+-- ---------------------------------------------------------------------------
+local function FrequencyAllowed(frequency)
+	local cfg = db()
+	if frequency == QF_Daily then return cfg.acceptDaily end
+	if frequency == QF_Weekly then return cfg.acceptWeekly end
+	return cfg.acceptRegular
+end
+
+-- QUEST_DETAIL has no frequency field, so fall back to the quest-frame globals.
+local function DetailFrequencyAllowed()
+	local cfg = db()
+	if QuestIsDaily and QuestIsDaily() then return cfg.acceptDaily end
+	if QuestIsWeekly and QuestIsWeekly() then return cfg.acceptWeekly end
+	return cfg.acceptRegular
+end
+
+-- ---------------------------------------------------------------------------
+-- Costly turn-in protection: never auto-complete a quest that consumes gold,
+-- currency, crafting reagents, or account-bound items (Leatrix Plus parity).
+-- ---------------------------------------------------------------------------
+local accountBoundLines = {}
+do
+	local labels = { ITEM_BNETACCOUNTBOUND, ITEM_BIND_TO_BNETACCOUNT, ITEM_BIND_TO_ACCOUNT, ITEM_ACCOUNTBOUND }
+	for i = 1, 4 do
+		if labels[i] then accountBoundLines[labels[i]] = true end
+	end
+end
+
+local function IsCraftingReagent(itemID)
+	return select(17, C_Item_GetItemInfo(itemID)) and true or false
+end
+
+local function IsItemAccountBound(itemID)
+	if not C_TooltipInfo_GetItemByID then return false end
+	local data = C_TooltipInfo_GetItemByID(itemID)
+	local lines = data and data.lines
+	if not lines then return false end
+	for i = 1, #lines do
+		local line = lines[i]
+		if line and line.leftText and accountBoundLines[line.leftText] then
+			return true
+		end
+	end
+	return false
+end
+
+-- Reads the QUEST_PROGRESS frame; only meaningful while that stage is shown.
+local function TurnInHasCost()
+	if not db().protectTurnIns then return false end
+
+	if GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then return true end
+
+	for i = 1, MAX_REQUIRED_ITEMS do
+		local item = _G["QuestProgressItem" .. i]
+		if item and item:IsShown() and item.type == "required" then
+			if item.objectType == "currency" then
+				return true
+			elseif item.objectType == "item" then
+				local itemID = select(6, GetQuestItemInfo("required", i))
+				if itemID and (IsCraftingReagent(itemID) or IsItemAccountBound(itemID)) then
+					return true
+				end
+			end
+		end
+	end
+
+	return false
+end
+
+-- ---------------------------------------------------------------------------
 -- Quest / gossip automation
 -- ---------------------------------------------------------------------------
 Register("QUEST_GREETING", function()
@@ -170,10 +300,10 @@ Register("QUEST_GREETING", function()
 	end
 
 	local available = GetNumAvailableQuests()
-	if available > 0 then
+	if available > 0 and not selectOnlyIgnoreNPC[npcID] then
 		for index = 1, available do
-			local isTrivial, _, _, _, questID = GetAvailableQuestInfo(index)
-			if not IsAccountCompleted(questID) and (not isTrivial or C_Minimap_IsTrackingHiddenQuests()) then
+			local isTrivial, frequency, _, _, questID = GetAvailableQuestInfo(index)
+			if not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(frequency) and (not isTrivial or C_Minimap_IsTrackingHiddenQuests()) then
 				SelectAvailableQuest(index)
 			end
 		end
@@ -233,6 +363,23 @@ local ignoreInstances = {
 
 local QUEST_STRING = "cFF0000FF.-" .. TRANSMOG_SOURCE_2
 
+-- Gossip options that carry their own colour code or angle-bracket markup are
+-- usually "special" (teleports, skip-ahead, choices with consequences). When a
+-- lone option looks special, leave the single-option walk to the player. The
+-- purple quest colour (FF0008E8) is whitelisted because it marks normal quests.
+local function HasUnsafeGossipOption(options)
+	for i = 1, #options do
+		local name = options[i] and options[i].name
+		if name then
+			local upper = strupper(name)
+			if (strfind(upper, "|C") or strfind(upper, "<")) and not strfind(upper, "FF0008E8") then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 Register("GOSSIP_SHOW", function()
 	local npcID = GetNPCID()
 	if ignoreList[npcID] then return end
@@ -249,11 +396,11 @@ Register("GOSSIP_SHOW", function()
 	end
 
 	local available = C_GossipInfo_GetNumAvailableQuests()
-	if available > 0 then
+	if available > 0 and not selectOnlyIgnoreNPC[npcID] then
 		for _, questInfo in ipairs(C_GossipInfo_GetAvailableQuests()) do
 			local trivial = questInfo.isTrivial
 			local questID = questInfo.questID
-			if not IsAccountCompleted(questID) and (not trivial or C_Minimap_IsTrackingHiddenQuests() or (trivial and npcID == 64337)) then
+			if not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(questInfo.frequency) and (not trivial or C_Minimap_IsTrackingHiddenQuests() or (trivial and npcID == 64337)) then
 				C_GossipInfo_SelectAvailableQuest(questInfo.questID)
 			end
 		end
@@ -270,7 +417,7 @@ Register("GOSSIP_SHOW", function()
 			return C_GossipInfo_SelectOption(firstOptionID)
 		end
 
-		if available == 0 and active == 0 and numOptions == 1 and not ignoreGossipNPC[npcID] then
+		if available == 0 and active == 0 and numOptions == 1 and not ignoreGossipNPC[npcID] and not HasUnsafeGossipOption(gossipInfoTable) then
 			local allow = true
 			-- Optional safety: skip the single-option walk inside raids and the
 			-- blacklisted instances. Off by default, so it auto-walks everywhere.
@@ -320,9 +467,10 @@ Register("QUEST_DETAIL", function()
 	elseif QuestGetAutoAccept() then
 		AcknowledgeAutoAcceptQuest()
 	elseif not C_QuestLog_IsQuestTrivial(GetQuestID()) or C_Minimap_IsTrackingHiddenQuests() then
-		if not ignoreList[GetNPCID()] then
-			AcceptQuest()
-		end
+		if ignoreList[GetNPCID()] then return end
+		if blockQuestID[GetQuestID()] then return end
+		if not DetailFrequencyAllowed() then return end
+		AcceptQuest()
 	end
 end)
 
@@ -389,6 +537,8 @@ Register("QUEST_PROGRESS", function()
 			end
 		end
 
+		if TurnInHasCost() then return end
+
 		CompleteQuest()
 	end
 end)
@@ -404,6 +554,9 @@ Register("QUEST_COMPLETE", function()
 	-- Blingtron 6000 only!
 	local npcID = GetNPCID()
 	if npcID == 43929 or npcID == 77789 then return end
+
+	-- Guard against any quest that still wants gold to hand in at this stage.
+	if db().protectTurnIns and GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then return end
 
 	local choices = GetNumQuestChoices()
 	if choices <= 1 then
@@ -459,7 +612,7 @@ Register("QUEST_LOG_UPDATE", AttemptAutoComplete)
 -- payloads, not the event name, so we cannot detect it inside the shared path).
 qqFrame.PLAYER_REGEN_ENABLED = function()
 	qqFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
-	if db().enable and not IsShiftKeyDown() then
+	if Automating() then
 		AttemptAutoComplete()
 	end
 end
@@ -543,9 +696,28 @@ function QuickQuest:OnInitialize()
 end
 
 function QuickQuest:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests; hold SHIFT to pause. Alt-click an NPC name to ignore it."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests; hold the override key to pause. Alt-click an NPC name to ignore it."])
+	local _, regularInit = builder:Checkbox(category, self, "acceptRegular", L["Accept Regular Quests"], L["Automatically accept regular (one-time) quests."])
+	local _, dailyInit = builder:Checkbox(category, self, "acceptDaily", L["Accept Daily Quests"], L["Automatically accept daily quests."])
+	local _, weeklyInit = builder:Checkbox(category, self, "acceptWeekly", L["Accept Weekly Quests"], L["Automatically accept weekly quests."])
+	local _, protectInit = builder:Checkbox(category, self, "protectTurnIns", L["Protect Costly Turn-Ins"], L["Skip turn-ins that would consume gold, currency, crafting reagents, or account-bound items."])
+	local _, requireInit = builder:Checkbox(category, self, "requireOverride", L["Require Override Key"], L["Only automate while the override key is held, instead of using it to pause."])
 	local _, blockInit = builder:Checkbox(category, self, "blockInInstances", L["Block in Raids & Instances"], L["Skip single-option gossip auto-selection while in raids and certain instances."])
 
-	-- Greys out "Block in Raids & Instances" while Quick Quest is disabled.
+	local _, keyInit = builder:Dropdown(category, self, "overrideKey", L["Override Key"], L["The modifier that pauses (or, with Require Override Key, enables) automation."], {
+		{ value = OVERRIDE_SHIFT, label = L["SHIFT"] },
+		{ value = OVERRIDE_ALT, label = L["ALT"] },
+		{ value = OVERRIDE_CONTROL, label = L["CONTROL"] },
+	})
+
+	-- Grey out every dependent option while Quick Quest is disabled.
+	builder:DependsOn(regularInit, enableInit)
+	builder:DependsOn(dailyInit, enableInit)
+	builder:DependsOn(weeklyInit, enableInit)
+	builder:DependsOn(protectInit, enableInit)
+	builder:DependsOn(requireInit, enableInit)
 	builder:DependsOn(blockInit, enableInit)
+	if keyInit then
+		builder:DependsOn(keyInit, enableInit)
+	end
 end

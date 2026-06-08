@@ -57,7 +57,7 @@ local currentMapID, cursorCoords, playerCoords, coordsUpdater, fadeFrame, mapAnc
 -- ---------------------------------------------------------------------------
 local function GetAnchor()
 	if mapAnchor then return mapAnchor end
-	mapAnchor = CreateFrame("Frame", "NexEnhanceWorldMapAnchor", UIParent)
+	mapAnchor = CreateFrame("Frame", nil, UIParent)
 	mapAnchor:SetSize(700, 466)
 	F.CreateMover(mapAnchor, "worldMap", L["World Map"], "TOPLEFT", 16, -94)
 	return mapAnchor
@@ -95,10 +95,13 @@ local function GetCursorCoords()
 	return x, y
 end
 
-local function CoordsFormat(owner, isNone)
-	local text = isNone and ": --, --" or ": %.1f, %.1f"
-	return owner .. classColorStr .. text
-end
+-- Owner label + class colour is constant for the session, so the only per-tick
+-- variation is whether we have coordinates. Precompute all four strings once so
+-- the throttled coord updater never rebuilds them via concatenation.
+local mouseCoordsFmt = MOUSE .. classColorStr .. ": %.1f, %.1f"
+local mouseNoneFmt = MOUSE .. classColorStr .. ": --, --"
+local playerCoordsFmt = PLAYER .. classColorStr .. ": %.1f, %.1f"
+local playerNoneFmt = PLAYER .. classColorStr .. ": --, --"
 
 local function UpdateCoords(self, elapsed)
 	if not _G.WorldMapFrame:IsShown() then return end
@@ -108,10 +111,11 @@ local function UpdateCoords(self, elapsed)
 	self.elapsed = 0
 
 	local cursorX, cursorY = GetCursorCoords()
-	cursorCoords:SetFormattedText(CoordsFormat(MOUSE, not cursorX), 100 * (cursorX or 0), 100 * (cursorY or 0))
+	cursorCoords:SetFormattedText(cursorX and mouseCoordsFmt or mouseNoneFmt, 100 * (cursorX or 0), 100 * (cursorY or 0))
 
 	local x, y = GetPlayerMapPos(currentMapID)
-	playerCoords:SetFormattedText(CoordsFormat(PLAYER, not (currentMapID and x and (x ~= 0 or y ~= 0))), 100 * (x or 0), 100 * (y or 0))
+	local havePlayerPos = currentMapID and x and (x ~= 0 or y ~= 0)
+	playerCoords:SetFormattedText(havePlayerPos and playerCoordsFmt or playerNoneFmt, 100 * (x or 0), 100 * (y or 0))
 end
 
 local function UpdateMapID(self)
@@ -182,13 +186,23 @@ local function MapFadeOnUpdate(self, elapsed)
 	if self.elapsed < 0.1 then return end
 	self.elapsed = 0
 
+	local wmf = _G.WorldMapFrame
+
+	-- Option turned off while the map is open: restore full opacity and stop
+	-- running. Re-enabling re-arms on the next map open (matches smallMap).
+	if not cfg.fadeWhenMoving then
+		wmf:SetAlpha(1)
+		self:Hide()
+		return
+	end
+
 	local fadeObject = self.FadeObject
 	local settings = fadeObject and fadeObject.FadeSettings
 	if not settings then return end
 
 	local isFadingOut = IsPlayerMoving() and (not settings.fadePredicate or settings.fadePredicate())
 	local endAlpha = (isFadingOut and (settings.minAlpha or 0.5)) or settings.maxAlpha or 1
-	local startAlpha = _G.WorldMapFrame:GetAlpha()
+	local startAlpha = wmf:GetAlpha()
 
 	fadeObject.timeToFade = settings.durationSec or 0.5
 	fadeObject.startAlpha = startAlpha
@@ -196,7 +210,7 @@ local function MapFadeOnUpdate(self, elapsed)
 	fadeObject.diffAlpha = endAlpha - startAlpha
 	fadeObject.fadeTimer = nil
 
-	UIFrameFade(_G.WorldMapFrame, fadeObject)
+	UIFrameFade(wmf, fadeObject)
 end
 
 local function StopMapFromFading()

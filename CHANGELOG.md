@@ -8,6 +8,197 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.6] — 2026-06-07
+
+A big feature drop — **Rare Alert**, **Delves Automation** and a tooltip
+**Vendor Location**, smarter **Quick Quest** and an **Experience Bar fade** —
+alongside the minimap squaring, queue-eye polish and a minimap Clock and Location
+readout, on top of a performance and stability pass: flatter memory use over long
+sessions, lighter chat and minimap hot paths, and a fix for Communities chat
+hyperlink tooltips.
+
+### Added
+- **Maps — Minimap overhaul:** the minimap is now squared off with a **Blizzard
+  tooltip-style border** matching our chat bubbles. The default chrome is fully removed
+  (ring, zoom buttons, compass, clock and zone bar), and the mail/indicator,
+  instance difficulty, calendar, streaming and queue-status regions are tidied
+  into the corners. The LFG/queue eye spins a dungeon icon while queued, and a
+  coloured glow pulses for combat (red) or pending mail / calendar invites
+  (yellow).
+  Adapted from [KkthnxUI](https://github.com/Kkthnx-Wow) by Kkthnx. Positioning
+  is left to Blizzard's Edit Mode.
+- **Maps — Collect Buttons:** sweeps stray addon minimap buttons into a fade-in
+  tray behind a small corner toggle, squared and bordered to match the UI. The
+  scan runs a few times after login (so late-loading LibDBIcon buttons get
+  picked up), Blizzard frames and our own widgets are left alone, and you can
+  choose which corner the toggle hugs. Adapted from
+  [KkthnxUI](https://github.com/Kkthnx-Wow) by Kkthnx.
+- **DataText — Clock:** a minimap clock that follows your 12/24-hour and
+  local/realm time CVars (turns red when you have pending calendar invites).
+  Hover for the full date, local & realm time, saved raid / dungeon / world-boss
+  lockouts, daily / weekly resets, Delves, Delver key progress, Timewalking
+  weekly checks and quest completions; hold Shift for storms, hunts, feast and
+  invasion timers. Left-click opens the calendar, middle-click the Great Vault,
+  right-click the time manager. Adapted from [KkthnxUI](https://github.com/Kkthnx-Wow)
+  by Kkthnx.
+- **DataText — Location:** zone and sub-zone text pinned inside the top of the
+  minimap, tinted by the zone's PvP status (sanctuary blue, friendly green,
+  hostile/contested red/yellow). Can be shown always or only on mouseover.
+  Adapted from [KkthnxUI](https://github.com/Kkthnx-Wow) by Kkthnx.
+- **Chat — Quick Join Button:** the social/quick-join notification button is now
+  registered with Edit Mode, so it can be dragged anywhere instead of being
+  pinned to the chat corner. Idea from [NDui](https://github.com/siweia/NDui) by
+  siweia.
+FOr the item level- **Tooltip — Vendor Location:** for special barter/curio items (curios, barter
+  tokens and the like), the bag tooltip shows which NPC to turn them in to and the
+  zone they're in, and **Ctrl-Click** the item sets a map waypoint on the vendor.
+  Concept and item/vendor data from [Plumber](https://github.com/Peterodox/Plumber)
+  by Peterodox (data by gifLeo).
+- **Automation — Delves Automation:** while inside a Delve, automatically confirms
+  the single-choice "borrowed power" popup, with an optional chat announcement of
+  the power that was taken. Concept from
+  [Plumber](https://github.com/Peterodox/Plumber) by Peterodox.
+- **Announcements — Rare Alert:** announces nearby rares and world events the
+  moment their vignette appears on the minimap — a centre-screen banner, an
+  optional alert sound, and an optional clickable map link in chat — with an
+  anti-burst sound throttle and a per-rare re-announce cooldown. Reworked from
+  [NDui](https://github.com/siweia/NDui) by siweia, with throttling ideas from
+  [Plumber](https://github.com/Peterodox/Plumber) by Peterodox.
+- **General — Cast On Key Down:** action buttons can now fire the moment a key is
+  pressed instead of when it is released, via the `ActionButtonUseKeyDown` CVar
+  (combat-safe; deferred until you leave combat if toggled mid-fight).
+- **Action Bars — Skin Extra Buttons:** the Extra Action and Zone Ability
+  buttons can now wear the standard action-bar button frame (Blizzard's HUD
+  icon-frame, slot and pressed art, tinted gold) instead of their oversized
+  one-off artwork, so they match the rest of your bars, with an adjustable
+  scale (applied out of combat).
+- **Auras — Buff Reminder controls:** the reminder icons are now resizable (an
+  **Icon Size** slider in both the Settings panel and the Edit Mode dialog) and
+  wear a Blizzard tooltip-style gold border to match the minimap. A new
+  `/nex reminder` command toggles sample icons so you can position the anchor and
+  preview the look, and the anchor now appears in Edit Mode without entering test
+  mode.
+- **Chat — Battle.net Pop-up:** the Battle.net friend/online toast is now
+  registered with Edit Mode (like the Quick Join button) so it can be dragged
+  anywhere.
+
+### Changed
+- **Automation — Quick Quest:** smarter automation — accept quests by frequency
+  (regular / daily / weekly), protect costly turn-ins (those with a gold or
+  currency cost), pick the most valuable reward, and a configurable override key
+  (default **Shift**) to suppress automation for a single interaction (or flip it
+  to *require* the key). Refinements inspired by
+  [Leatrix Plus](https://www.curseforge.com/wow/addons/leatrix-plus) by Leatrix.
+- **Miscellaneous — Experience Bar fade:** the bar can now rest dimmed and reveal
+  on mouseover, and optionally stay fully visible in combat or while you have a
+  target/focus. Fade behaviour adapted from
+  [ls_Monobrow](https://github.com/ls-/ls_Monobrow) by lightspark.
+- **Performance — Bounded caches:** the link/ID caches behind chat item levels,
+  Already Known, guild-news item levels and mount-source tooltips are now
+  size-capped, so memory stays flat across long sessions instead of slowly
+  growing with every unique item seen.
+- **Performance — Buff Reminder:** rapid `UNIT_AURA` changes are now coalesced
+  into a single end-of-frame update, cutting redundant scans when many buffs
+  land at once.
+- **Performance — Stats:** while the readout is hovered, the per-addon memory
+  scan refreshes on an interval instead of rescanning and re-sorting every
+  second.
+- **Performance — Chat Filter:** the repeat-detection rows and socket-text
+  builder now reuse internal scratch tables, reducing garbage in spam-heavy
+  channels.
+- **Maps — Minimap mail icon:** when the Clock DataText is enabled the new-mail
+  indicator now sits above the clock instead of overlapping the time text.
+- **Maps — Minimap mouse input:** wheel zoom/volume and the middle/right-click
+  menus now run on a dedicated overlay instead of being scripted onto the
+  minimap directly. Left-click passes through for Blizzard's default ping and
+  mouse motion propagates, so pings, mouseover and tooltips keep working. Idea
+  from [NDui](https://github.com/siweia/NDui) by siweia.
+- **Action Bars — Cooldown Text:** long cooldowns now roll over to a **weeks**
+  tier above days, the seconds-to-`mm:ss` switch is configurable (keep showing
+  raw seconds like `90` before flipping to `1:30`), and an optional **Scale
+  Cooldown Text** mode shrinks the numbers with the button and hides them on
+  very small cooldowns. On action buttons the countdown text is also lifted
+  above the hotkey and stack count. Refinements from
+  [tullaCTC](https://github.com/tullamods/tullaCTC) by Tuller.
+- **Skins — Quest Navigation:** the ETA text under the waypoint arrow now has a
+  drop shadow so it stays readable over bright backgrounds.
+- **Skins — Missing Stats:** the character sheet now surfaces the stats Blizzard
+  hides by default — attack power, weapon damage, attack/weapon speed, spell
+  power, energy/rune/focus regen and movement speed — while out of combat, and
+  tidies the existing readouts with two-decimal rating percentages, an equipped
+  + overall item level and a cleaner stat font. Reworked from
+  [NDui](https://github.com/siweia/NDui) by siweia against the current retail
+  paperdoll without replacing Blizzard's stat table, avoiding 12.0 Secret-value
+  taint in combat.
+- **Inventory — Junk Icon:** the coin overlay on Poor-quality bag items now
+  shows all the time, not just while a merchant window is open.
+- **Inventory — Item Level:** gem icons shown on Character and Inspect equipment
+  slots now display the socketed gem's tooltip on hover. Enchantable slots that
+  are missing an enchant now show a red marker whose tooltip names the slot
+  (toggle: *Warn Missing Enchants*).
+- **Inventory — Unusable Items:** item icons across bags, bank and warband bank
+  tint red for gear your class can't use (wrong weapon/armor type or off-hand
+  dual-wield) or that you're below the required level for. Class-restriction data
+  reworked from [LibUnfit-1.0](https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm)
+  by João Cardoso, resolved to your class once at login.
+- **Inventory — Item Level:** the item-level numbers now match the bind-status
+  text size and are resizable with a new **Item Level Font Size** slider (12–14).
+- **Chat — Quick Join & Battle.net toast:** both now default just above the
+  chat's **top-left** corner (raised so they don't overlap), and "Reset to
+  default position" returns them there.
+- **Performance — Tooltip Icons:** the inline-texture resize pass now skips
+  tooltip lines without a texture escape, avoiding needless pattern work on every
+  line.
+- **Performance — Unusable Items:** the per-item class-restriction cache is now
+  size-capped like the other inventory caches, keeping memory flat over long
+  sessions.
+
+### Fixed
+- **Tooltip — Hover Tips:** hovering item/spell links in the Communities
+  (guild/community) chat no longer overwrites Blizzard's own
+  `OnHyperlinkEnter`/`OnHyperlinkLeave` handlers; the originals are now
+  preserved and chained.
+- **Tooltip — Status bar border:** hovering world objects whose tooltip carries
+  12.0 secret values (rare vignettes, Delve doors and similar) no longer throws
+  a `Backdrop.lua` "arithmetic on a secret number" error. Our status-bar border
+  keeps Blizzard's backdrop styling but now skips the resize pass when the bar
+  reports secret dimensions.
+- **Automation — Delves Automation:** the borrowed-power popup is now auto-
+  confirmed reliably. Delve status is read a beat after the
+  `WALK_IN_DATA_UPDATE` / world-change events (the walk-in flag is stale at the
+  exact moment you zone in), so entering a Delve correctly arms the handler.
+- **Inventory — Already Known:** cosmetic/transmog items now tint correctly. We
+  resolve the item's transmog source and query the appearance collection
+  directly instead of relying on the tooltip "collected" line, which cosmetics
+  don't use.
+- **Blizzard — Pet Frame:** tightened the PetFrame click area and added a
+  taint-safe hide helper for protected/managed frames, using alpha and mouse
+  state instead of reparenting. Pattern from BetterBlizzFrames.
+- **Edit Mode — Reset Position:** "Reset to default position" on our relative
+  anchors (Battle.net toast, Quick Join button, Buff Reminder) no longer drops
+  the frame at the bottom-left corner of the screen; it restores the proper live
+  anchor.
+- **Maps — World Map fade:** turning off *Fade When Moving* while the map is open
+  now restores full opacity and stops the fader immediately, instead of leaving
+  it running.
+- **Chat — Chat Filter:** disabling the filter now stops it filtering right away
+  (the per-message handlers respect the master toggle) instead of staying active
+  until reload.
+- **Tooltip — Tooltip Icons (secret values):** hovering auras whose tooltip lines
+  are secret (e.g. inside instances) no longer throws a "string conversion on a
+  secret value" error; the secret check now runs before any string search.
+- **Miscellaneous — AFK Camera (secret values):** `UnitIsAFK` returning a secret
+  boolean (e.g. inside instances) no longer throws a "boolean test on a secret
+  value" error; the AFK camera safely treats it as not-AFK.
+
+### Internal
+- Saved variables now carry a schema version, enabling safe migrations of stored
+  data in future updates.
+- Removed unnecessary global frame names and tidied unused locals across several
+  modules.
+
+---
+
 ## [1.2.5] — 2026-06-06
 
 Minimap volume and a shortcut menu, a choice of number-abbreviation styles, an
@@ -20,7 +211,7 @@ Settings panel and a batch of bug fixes.
   full 0–100 range. A colour-coded readout fades in over the minimap. Ported
   from [KkthnxUI](https://github.com/Kkthnx-Wow) by Kkthnx.
 - **Maps — Minimap Menu:** middle-click the minimap for a shortcut menu of
-  common Blizzard panels.
+  common Blizzard panels; right-click opens the tracking menu.
 - **General — Number Format:** choose how large numbers are abbreviated
   throughout NexEnhance — **Standard** (`1.2k` / `3.4m` / `5.6b` / `7.8t`),
   **East Asian** (`1.2w` / `3.4y` / `5.6z`), or **Full Numbers**. Built on
@@ -52,6 +243,8 @@ Settings panel and a batch of bug fixes.
   stuck timer.
 - **Auto Invite:** Battle.net friend checks use `C_BattleNet.GetGameAccountInfoByGUID`,
   fixing Guild/Friends-Only invites.
+- **Chat — Keyword Auto-Invite:** Guild/Friends Only now accepts trusted keyword
+  whispers from guild members, character friends, or Battle.net friends.
 - **Quest Navigation:** uses `C_Navigation.WasClampedToScreen()` for the
   on-screen clamp check, fixing a Lua error.
 

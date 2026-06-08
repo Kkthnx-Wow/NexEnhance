@@ -452,7 +452,15 @@ local function OnAFKEvent(frame, event, ...)
 		return
 	end
 
-	if UnitIsAFK("player") and not (C_PetBattles and C_PetBattles.IsInBattle and C_PetBattles.IsInBattle()) then
+	-- UnitIsAFK can return a secret boolean (e.g. in instances); we can't branch
+	-- on a secret, so treat that as "not AFK" and bail out of the AFK camera.
+	local isAFK = UnitIsAFK("player")
+	if F.IsSecret(isAFK) then
+		SetAFKMode(frame, false)
+		return
+	end
+
+	if isAFK and not (C_PetBattles and C_PetBattles.IsInBattle and C_PetBattles.IsInBattle()) then
 		SetAFKMode(frame, true)
 	else
 		SetAFKMode(frame, false)
@@ -544,7 +552,7 @@ local function BuildFrame()
 
 	-- Must NOT be parented to UIParent: SetAFKMode hides UIParent, which would
 	-- hide every child frame and leave only the world-camera spin visible.
-	local frame = CreateFrame("Frame", "NexEnhanceAFKCam", nil, "BackdropTemplate")
+	local frame = CreateFrame("Frame", nil, nil, "BackdropTemplate")
 	frame:SetFrameStrata("FULLSCREEN")
 	frame:SetFrameLevel(100)
 	frame:SetScale(UIParent:GetScale())

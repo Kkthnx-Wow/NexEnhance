@@ -37,6 +37,39 @@ function ns:RegisterDefaults(defaults, scope)
 end
 
 -- ---------------------------------------------------------------------------
+-- Schema migration
+--   Bump DB_SCHEMA_VERSION whenever the saved-variable *layout* changes (a key
+--   is renamed/moved/restructured), and add a numbered step to `migrations`.
+--   `migrations[v]` upgrades data from version (v-1) to v and runs once, in
+--   order, only when older data is loaded. Unstamped data is treated as v1
+--   (the baseline before versioning existed), matching the AceDB convention.
+-- ---------------------------------------------------------------------------
+local DB_SCHEMA_VERSION = 2
+
+local migrations = {
+	-- The Battle.net toast and Quick Join button movers were re-defaulted to
+	-- the chat's top-left corner. Drop any stale saved positions so the new
+	-- anchor takes effect once; the user can still drag them afterwards.
+	[2] = function(root)
+		for _, profile in pairs(root.profiles) do
+			if type(profile.movers) == "table" then
+				profile.movers.bnToast = nil
+				profile.movers.quickJoinToast = nil
+			end
+		end
+	end,
+}
+
+local function MigrateDatabase(root)
+	local version = root.schemaVersion or 1
+	for v = version + 1, DB_SCHEMA_VERSION do
+		local step = migrations[v]
+		if step then step(root) end
+	end
+	root.schemaVersion = DB_SCHEMA_VERSION
+end
+
+-- ---------------------------------------------------------------------------
 -- Profile management
 -- ---------------------------------------------------------------------------
 
@@ -76,6 +109,9 @@ function ns:SetupDatabase()
 	root.profiles = root.profiles or {}
 	root.profileKeys = root.profileKeys or {}
 	root.global = F.CopyDefaults(ns.defaults.global, root.global)
+
+	-- Upgrade any older saved layout before modules read from it.
+	MigrateDatabase(root)
 
 	_G.NexEnhanceCharDB = _G.NexEnhanceCharDB or {}
 

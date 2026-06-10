@@ -17,9 +17,9 @@
 --]]
 
 local _, ns = ...
-local C, L = ns.C, ns.L
+local C, L, F = ns.C, ns.L, ns.F
 
-local floor, min, max = math.floor, math.min, math.max
+local min, max = math.min, math.max
 local InCombatLockdown = InCombatLockdown
 local GetPhysicalScreenSize = GetPhysicalScreenSize
 local UIParent = UIParent
@@ -40,10 +40,7 @@ local MIN_SCALE, MAX_SCALE = 0.40, 1.15
 -- baseline Blizzard's UI is authored against.
 local screenHeight = select(2, GetPhysicalScreenSize())
 
-local function Round(value, places)
-	local mult = 10 ^ (places or 0)
-	return floor(value * mult + 0.5) / mult
-end
+local Round = F.Round -- shared rounding helper (Core/Functions)
 
 -- The scale at which 1 UI unit == 1 physical pixel for this resolution.
 local function GetBestScale()

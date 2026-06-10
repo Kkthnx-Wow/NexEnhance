@@ -13,9 +13,9 @@
 			...
 		}
 
-	This table is intentionally left empty - populate it with the per-zone
-	reveal data. Nothing breaks while it is empty; zones with no entry simply
-	stay as Blizzard left them.
+	Populated with per-zone reveal data keyed by map art ID. Zones with no
+	entry simply stay as Blizzard left them, so it is safe to add or trim
+	entries without touching MapReveal.lua.
 --]]
 
 local _, ns = ...

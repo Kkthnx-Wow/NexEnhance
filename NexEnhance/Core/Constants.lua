@@ -125,3 +125,23 @@ C.Mult = 1
 C.TexCoord = { 0.08, 0.92, 0.08, 0.92 }
 C.InfoColor = "|c" .. C.BrandHex
 C.QualityColors = _G["ITEM_QUALITY_COLORS"]
+
+-- ---------------------------------------------------------------------------
+-- Backdrop presets
+--   Shared SetBackdrop tables for the standalone windows and input panels
+--   (Changelog, Credits, Profiles, Install, the chat edit box and copy frame).
+--   These are the classic-backdrop fallback used when a NineSlice skin is not
+--   available, kept here as one source of truth so every panel frames the same
+--   way. SetBackdrop copies the values into the C++ backdrop, so sharing a
+--   single read-only table across frames is safe.
+-- ---------------------------------------------------------------------------
+C.Backdrops = {
+	window = {
+		bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile = true,
+		tileSize = 16,
+		edgeSize = 16,
+		insets = { left = 4, right = 4, top = 4, bottom = 4 },
+	},
+}

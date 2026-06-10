@@ -11,10 +11,11 @@ local C, F = ns.C, ns.F
 
 -- Localised globals (hot-path friendly).
 local select, type, tostring = select, type, tostring
-local pairs, next = pairs, next
+local pairs, ipairs = pairs, ipairs
 local floor = math.floor
 local format = string.format
 local tconcat = table.concat
+local tremove = table.remove
 local wipe = wipe
 local C_Timer = C_Timer
 local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
@@ -197,32 +198,102 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Object pool
---   Generic recycler to avoid churning the GC for frequently created/freed
---   objects (frames, data rows, ...). Mirrors the pool pattern from the report.
+--   Generic recycler that avoids churning the GC for frequently created and
+--   freed objects (frames, textures, data rows). Unlike a plain free-list it
+--   also tracks the *active* set, so the whole batch can be reclaimed in one
+--   call - the usual pattern for "rebuild this list from scratch on refresh".
+--
+--   Adapted from Plumber's API.CreateObjectPool (Peterodox), trimmed to what
+--   NexEnhance needs and guarded so it works for non-frame objects too.
+--
+--     local pool = F.CreatePool(
+--         function() return CreateFrame("Frame", nil, parent) end, -- creator
+--         function(f) f.data = nil end)                            -- onRemoved (optional)
+--
+--     local f = pool:Acquire()   -- reuse a free object, or create one
+--     ...
+--     pool:ReleaseAll()          -- reclaim every active object at once
+--
+--   `onRemoved(obj)` runs when an object is released (after the pool hides and
+--   unanchors frame-like objects). `onAcquired(obj)` runs after one is handed
+--   out. Each created object also gains an :Release() method.
 -- ---------------------------------------------------------------------------
 
---- Create a pool. `creator()` builds a new object; `resetter(obj)` is called
---- when an object is released so it can be reused cleanly.
-function F.CreatePool(creator, resetter)
-	local free = {}
+--- Create a pool. See block comment above for the calling convention.
+function F.CreatePool(creator, onRemoved, onAcquired)
+	local pool = {
+		objects = {}, -- every object the pool has ever created
+		active = {}, -- objects currently handed out
+		free = {}, -- objects available for reuse (used as a stack)
+		numFree = 0,
+	}
 
-	local pool = {}
+	-- Hide/unanchor frame-like objects, then run user cleanup, then park the
+	-- object on the free stack. Capability checks keep this safe for plain
+	-- tables (which have no Hide/ClearAllPoints).
+	local function reclaim(obj)
+		if obj.ClearAllPoints then obj:ClearAllPoints() end
+		if obj.Hide then obj:Hide() end
+		if onRemoved then onRemoved(obj) end
+		pool.numFree = pool.numFree + 1
+		pool.free[pool.numFree] = obj
+	end
+
+	-- One shared closure per pool (not per object) so injecting :Release()
+	-- costs no extra garbage as the pool grows.
+	local function objRelease(obj)
+		pool:Release(obj)
+	end
 
 	function pool:Acquire()
-		local obj = next(free)
-		if obj then
-			free[obj] = nil
+		local obj
+		if self.numFree > 0 then
+			obj = self.free[self.numFree]
+			self.free[self.numFree] = nil
+			self.numFree = self.numFree - 1
 		else
 			obj = creator()
+			self.objects[#self.objects + 1] = obj
+			obj.Release = objRelease
 		end
+
+		self.active[#self.active + 1] = obj
+		if obj.Show then obj:Show() end
+		if onAcquired then onAcquired(obj) end
 		return obj
 	end
 
+	--- Release a single active object back into the pool.
 	function pool:Release(obj)
-		if resetter then
-			resetter(obj)
+		local active = self.active
+		for i = 1, #active do
+			if active[i] == obj then
+				tremove(active, i)
+				reclaim(obj)
+				return
+			end
 		end
-		free[obj] = true
+	end
+
+	--- Reclaim every active object in one pass. Cheap way to clear a list
+	--- before repopulating it.
+	function pool:ReleaseAll()
+		local active = self.active
+		for i = #active, 1, -1 do
+			local obj = active[i]
+			active[i] = nil
+			reclaim(obj)
+		end
+	end
+
+	--- Iterate the active objects: `for _, obj in pool:EnumerateActive() do`.
+	function pool:EnumerateActive()
+		return ipairs(self.active)
+	end
+
+	--- The live active array (do not modify; use Release/ReleaseAll).
+	function pool:GetActiveObjects()
+		return self.active
 	end
 
 	return pool
@@ -231,6 +302,11 @@ end
 -- ---------------------------------------------------------------------------
 -- Safety
 -- ---------------------------------------------------------------------------
+
+--- Shared do-nothing function. Use it to neutralise a method on a frame we want
+--- to stop misbehaving (e.g. an addon button that keeps re-anchoring itself)
+--- without allocating a fresh empty closure at each call site.
+function F.Noop() end
 
 --- Protected call that reports (rather than swallows) failures. Use only at
 --- trust boundaries (third-party callbacks, user input); not in hot loops.
@@ -388,6 +464,27 @@ end
 function F.SetFontSize(fontString, size)
 	local font, _, flags = fontString:GetFont()
 	fontString:SetFont(font, size, flags)
+end
+
+-- ---------------------------------------------------------------------------
+-- Tooltip helpers
+-- ---------------------------------------------------------------------------
+
+--- True when `tip` already shows a left-hand line whose text equals `matchText`.
+--- Used to avoid appending duplicate annotation lines (IDs, source lines) when a
+--- tooltip is rebuilt. Every text read is secret-gated so it never errors under
+--- tainted execution.
+function F.TooltipHasLine(tip, matchText)
+	local name = tip and tip.GetName and tip:GetName()
+	if not name then return false end
+	for i = 1, tip:NumLines() do
+		local line = _G[name .. "TextLeft" .. i]
+		local text = line and line:GetText()
+		if text and F.NotSecret(text) and text == matchText then
+			return true
+		end
+	end
+	return false
 end
 
 -- ---------------------------------------------------------------------------

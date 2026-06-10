@@ -260,7 +260,10 @@ local function Reminder_BuildFrame(texture)
 	border:SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3)
 	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3)
 	border:SetFrameLevel(frame:GetFrameLevel() + 1)
-	border:SetBackdrop(REMINDER_BORDER)
+	-- Edge-only NineSlice (no fill) wrapping the icon, matching the minimap.
+	if not F.CreateNineSlice(border, { layout = "TooltipDefaultLayout", bg = false }) then
+		border:SetBackdrop(REMINDER_BORDER)
+	end
 	frame.Border = border
 
 	local text = F.CreateFS(frame, 13, L["Lack"])

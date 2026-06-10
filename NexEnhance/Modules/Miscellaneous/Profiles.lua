@@ -23,7 +23,7 @@ local _G = _G
 local pairs, type, next = pairs, type, next
 local format, schar, ssub, gsub = string.format, string.char, string.sub, string.gsub
 local floor = math.floor
-local tconcat, tinsert = table.concat, table.insert
+local tconcat = table.concat
 local loadstring, setfenv, pcall = loadstring, setfenv, pcall
 local CreateFrame = CreateFrame
 
@@ -297,20 +297,15 @@ end
 -- ---------------------------------------------------------------------------
 -- Shared content (used by both the canvas page and the standalone window)
 -- ---------------------------------------------------------------------------
-local INPUT_BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
+local INPUT_BACKDROP = C.Backdrops.window
 
 local function CreateInputArea(parent)
 	local box = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	box:SetBackdrop(INPUT_BACKDROP)
-	box:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-	box:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.7)
+	if not F.CreateNineSlice(box, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 }, border = { C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.7 } }) then
+		box:SetBackdrop(INPUT_BACKDROP)
+		box:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+		box:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.7)
+	end
 
 	local scroll = CreateFrame("ScrollFrame", nil, box, "UIPanelScrollFrameTemplate")
 	scroll:SetPoint("TOPLEFT", 8, -8)
@@ -514,14 +509,7 @@ ns:RegisterOptionsCanvas(L["Profiles"], BuildProfileCanvas, ProfilesSidebarLabel
 -- ---------------------------------------------------------------------------
 -- Standalone window (/nex profile)
 -- ---------------------------------------------------------------------------
-local WINDOW_BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
+local WINDOW_BACKDROP = C.Backdrops.window
 
 local window
 
@@ -534,15 +522,12 @@ local function BuildWindow()
 	window:SetFrameStrata("DIALOG")
 	window:SetToplevel(true)
 	window:Hide()
-	window:SetBackdrop(WINDOW_BACKDROP)
-	window:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
-	window:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
-	window:EnableMouse(true)
-	window:SetMovable(true)
-	window:RegisterForDrag("LeftButton")
-	window:SetScript("OnDragStart", window.StartMoving)
-	window:SetScript("OnDragStop", window.StopMovingOrSizing)
-	tinsert(_G.UISpecialFrames, "NexEnhanceProfiles")
+	if not F.CreateNineSlice(window, { layout = "TooltipDefaultLayout", bg = { 0.05, 0.05, 0.07, 0.97 }, border = { C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85 } }) then
+		window:SetBackdrop(WINDOW_BACKDROP)
+		window:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
+		window:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
+	end
+	F.MakeWindowMovable(window, "NexEnhanceProfiles") -- draggable + Escape-close
 
 	local logo = window:CreateTexture(nil, "ARTWORK")
 	logo:SetSize(40, 40)

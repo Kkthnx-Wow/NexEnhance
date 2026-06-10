@@ -42,7 +42,7 @@ local GetInventoryItemLink = GetInventoryItemLink
 local GameTooltip = GameTooltip
 
 local QUALITY_COLORS = _G["ITEM_QUALITY_COLORS"]
-local TEX_COORD = { 0.08, 0.92, 0.08, 0.92 }
+local TEX_COORD = C.TexCoord -- shared icon-zoom crop (Core/Constants)
 local FONT = C.Media.Fonts.normal
 local MISSING_ENCHANT_ICON = 134400 -- inv_misc_questionmark
 
@@ -61,23 +61,40 @@ local ItemLevel = ns:NewModule("ItemLevel", "itemLevel", { group = "inventory", 
 -- Inventory-slot ID -> slot name. The numeric index doubles as the inventory
 -- slot id passed to GetInventoryItemLink / C_TooltipInfo.GetInventoryItem.
 local inspectSlots = {
-	"Head", "Neck", "Shoulder", "Shirt", "Chest", "Waist", "Legs", "Feet",
-	"Wrist", "Hands", "Finger0", "Finger1", "Trinket0", "Trinket1", "Back",
-	"MainHand", "SecondaryHand",
+	"Head",
+	"Neck",
+	"Shoulder",
+	"Shirt",
+	"Chest",
+	"Waist",
+	"Legs",
+	"Feet",
+	"Wrist",
+	"Hands",
+	"Finger0",
+	"Finger1",
+	"Trinket0",
+	"Trinket1",
+	"Back",
+	"MainHand",
+	"SecondaryHand",
 }
 
 -- Equipment slots that take a permanent enchant in current retail; used to flag
 -- an equipped item that is missing one. Indices match inspectSlots / inventory
 -- slot ids. Adjust if Blizzard changes which slots are enchantable.
+-- Midnight (11.x) reworked enchant slots: Wrist and Back/Cloak enchants were
+-- removed, and Head and Shoulder enchants were (re)added.
 local enchantableSlots = {
-	[5] = true,  -- Chest
-	[7] = true,  -- Legs
-	[8] = true,  -- Feet
-	[9] = true,  -- Wrist
+	[1] = true, -- Head
+	[3] = true, -- Shoulder
+	[5] = true, -- Chest
+	[7] = true, -- Legs
+	[8] = true, -- Feet
 	[11] = true, -- Finger 1
 	[12] = true, -- Finger 2
-	[15] = true, -- Back
 	[16] = true, -- Main Hand
+	[17] = true, -- Off Hand
 }
 
 -- ---------------------------------------------------------------------------
@@ -116,7 +133,9 @@ end
 -- Gem socket hover: show the socketed gem's own tooltip (link resolved at scan
 -- time and stashed on the border frame, which carries the mouse region).
 local function GemIcon_OnEnter(self)
-	if not self.gemLink then return end
+	if not self.gemLink then
+		return
+	end
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	GameTooltip:SetHyperlink(self.gemLink)
 	GameTooltip:Show()
@@ -184,7 +203,9 @@ end
 
 local function GetQualityColor(quality)
 	local color = quality and QUALITY_COLORS and QUALITY_COLORS[quality]
-	if not color then return 1, 1, 1 end
+	if not color then
+		return 1, 1, 1
+	end
 	return color.r, color.g, color.b
 end
 
@@ -200,7 +221,9 @@ end
 -- Anchors for the per-slot enchant text (mirrors NDui's layout)
 -- ---------------------------------------------------------------------------
 local function GetSlotAnchor(index)
-	if not index then return "BOTTOMLEFT", 40, 20 end
+	if not index then
+		return "BOTTOMLEFT", 40, 20
+	end
 	if index <= 5 or index == 9 or index == 15 then
 		return "BOTTOMLEFT", 40, 20
 	elseif index == 16 then
@@ -212,14 +235,20 @@ local function GetSlotAnchor(index)
 	end
 end
 
-local function ItemString_Expand(self) self:SetWidth(0) end
-local function ItemString_Collapse(self) self:SetWidth(100) end
+local function ItemString_Expand(self)
+	self:SetWidth(0)
+end
+local function ItemString_Collapse(self)
+	self:SetWidth(100)
+end
 
 -- ---------------------------------------------------------------------------
 -- Per-slot overlay construction (Character / Inspect)
 -- ---------------------------------------------------------------------------
 function ItemLevel:CreateItemStrings(frame, strType)
-	if frame.nexItemStringsDone then return end
+	if frame.nexItemStringsDone then
+		return
+	end
 	frame.nexItemStringsDone = true
 
 	for index, slot in pairs(inspectSlots) do
@@ -264,7 +293,9 @@ function ItemLevel:CreateItemStrings(frame, strType)
 end
 
 function ItemLevel:UpdateSlotInfo(slotFrame, info, quality, link)
-	if not slotFrame or not slotFrame.iLvlText then return end
+	if not slotFrame or not slotFrame.iLvlText then
+		return
+	end
 
 	local infoType = type(info)
 	local level = infoType == "table" and info.iLvl or info
@@ -274,7 +305,9 @@ function ItemLevel:UpdateSlotInfo(slotFrame, info, quality, link)
 		slotFrame.iLvlText:SetTextColor(GetQualityColor(quality))
 	end
 
-	if infoType ~= "table" then return end
+	if infoType ~= "table" then
+		return
+	end
 
 	local showGems = ns.db.itemLevel.gemsEnchants
 	local enchant = info.enchantText
@@ -322,9 +355,13 @@ end
 
 function ItemLevel:RefreshSlotInfo(unit, index, slotFrame, fullScan)
 	C_Timer.After(0.1, function()
-		if not UnitExists(unit) then return end
+		if not UnitExists(unit) then
+			return
+		end
 		local link = GetInventoryItemLink(unit, index)
-		if not link then return end
+		if not link then
+			return
+		end
 		local quality = select(3, C_Item.GetItemInfo(link))
 		local info = F.GetItemLevel(link, unit, index, fullScan)
 		self:UpdateSlotInfo(slotFrame, info, quality, link)
@@ -332,7 +369,9 @@ function ItemLevel:RefreshSlotInfo(unit, index, slotFrame, fullScan)
 end
 
 function ItemLevel:SetupSlots(frame, strType, unit)
-	if not UnitExists(unit) then return end
+	if not UnitExists(unit) then
+		return
+	end
 
 	self:CreateItemStrings(frame, strType)
 	-- The enchant scan needs the full tooltip read, so run it when either the
@@ -416,18 +455,26 @@ function ItemLevel:FlyoutButton(button)
 	button.nexILvl:SetText("")
 
 	local location = button.location
-	if not location then return end
+	if not location then
+		return
+	end
 
 	local EquipmentManager_GetLocationData = _G["EquipmentManager_GetLocationData"]
 	local EquipmentManager_GetItemInfoByLocation = _G["EquipmentManager_GetItemInfoByLocation"]
 	local special = _G["EQUIPMENTFLYOUT_FIRST_SPECIAL_LOCATION"]
 
 	if type(location) == "number" then
-		if special and location >= special then return end
-		if not EquipmentManager_GetLocationData then return end
+		if special and location >= special then
+			return
+		end
+		if not EquipmentManager_GetLocationData then
+			return
+		end
 
 		local locationData = EquipmentManager_GetLocationData(location)
-		if not locationData then return end
+		if not locationData then
+			return
+		end
 		local quality = EquipmentManager_GetItemInfoByLocation and select(13, EquipmentManager_GetItemInfoByLocation(location))
 		if locationData.isBags then
 			SetSimpleLevel(button, C_Container.GetContainerItemLink(locationData.bag, locationData.slot), quality, locationData.bag, locationData.slot)
@@ -436,7 +483,9 @@ function ItemLevel:FlyoutButton(button)
 		end
 	elseif button.GetItemLocation then
 		local itemLocation = button:GetItemLocation()
-		if not itemLocation then return end
+		if not itemLocation then
+			return
+		end
 		local quality = C_Item.GetItemQuality(itemLocation)
 		if itemLocation:IsBagAndSlot() then
 			local bag, slot = itemLocation:GetBagAndSlot()
@@ -453,7 +502,9 @@ end
 -- ---------------------------------------------------------------------------
 function ItemLevel:MerchantButton(link)
 	local button = _G[self:GetName() .. "ItemButton"]
-	if not button then return end
+	if not button then
+		return
+	end
 	local quality = link and select(3, C_Item.GetItemInfo(link))
 	SetSimpleLevel(button, link, quality)
 end
@@ -463,7 +514,9 @@ end
 -- ---------------------------------------------------------------------------
 local function UpdateTradeItem(prefix, index, link)
 	local button = _G[prefix .. index]
-	if not button then return end
+	if not button then
+		return
+	end
 	local quality = link and select(3, C_Item.GetItemInfo(link))
 	SetSimpleLevel(button, link, quality)
 end
@@ -473,7 +526,9 @@ end
 -- ---------------------------------------------------------------------------
 function ItemLevel:UpdateLoot()
 	local scrollTarget = self.ScrollTarget
-	if not scrollTarget then return end
+	if not scrollTarget then
+		return
+	end
 
 	for i = 1, scrollTarget:GetNumChildren() do
 		local button = select(i, scrollTarget:GetChildren())
@@ -503,21 +558,33 @@ end
 -- Bags & bank
 --   Bind overlay (nexBind) follows GoldpawsStuff's BlizzardBags_BoE approach;
 --   see the module header for credit and link.
+--
+--   We post-hook each item button's UpdateCooldown - the final call Blizzard
+--   makes when refreshing a slot - so the item-level and bind overlays repaint
+--   on every refresh for bags, the character bank and the warband bank alike.
+--   (Triggering off IconBorder:SetShown instead, as we used to, misses the
+--   bank/warband refresh path: it updates item buttons without toggling the
+--   quality border, so those overlays never populated. Mirrors the proven
+--   UnusableItems coverage.)
 -- ---------------------------------------------------------------------------
-local function UpdateBagSlot(iconBorder)
-	local button = iconBorder.nexOwner
-	if not button then return end
+local function UpdateBagSlot(button)
+	if not button then
+		return
+	end
 
 	if not button.nexILvl then
 		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
 
+	-- bagID 0 (backpack) is valid, so test for nil rather than falsiness.
 	local bagID = button.GetBankTabID and button:GetBankTabID() or (button.GetBagID and button:GetBagID())
-	local slotID = button.GetContainerSlotID and button:GetContainerSlotID() or button:GetID()
-	if not bagID then
+	local slotID = button.GetContainerSlotID and button:GetContainerSlotID() or (button.GetID and button:GetID())
+	if bagID == nil or slotID == nil then
 		button.nexILvl:SetText("")
-		if button.nexBind then button.nexBind:SetText("") end
+		if button.nexBind then
+			button.nexBind:SetText("")
+		end
 		return
 	end
 
@@ -550,36 +617,65 @@ local function UpdateBagSlot(iconBorder)
 	end
 end
 
-local function RefreshBagSlots()
-	local function ScanFrame(frame)
-		if not frame or not frame.itemButtonPool then return end
-		for bagButton in frame.itemButtonPool:EnumerateActive() do
-			if bagButton.IconBorder and bagButton.IconBorder.nexOwner then
-				UpdateBagSlot(bagButton.IconBorder)
-			end
-		end
+local function ScanFramePool(frame)
+	local pool = frame and frame.itemButtonPool
+	if not pool then
+		return
 	end
-	for i = 1, 13 do
-		ScanFrame(_G["ContainerFrame" .. i])
-	end
-	ScanFrame(_G["ContainerFrameCombinedBags"])
-	local bank = _G["BankFrame"]
-	if bank and bank.BankPanel then
-		ScanFrame(bank.BankPanel)
+	for button in pool:EnumerateActive() do
+		UpdateBagSlot(button)
 	end
 end
 
+local function RefreshBagSlots()
+	for i = 1, 13 do
+		ScanFramePool(_G["ContainerFrame" .. i])
+	end
+	ScanFramePool(_G["ContainerFrameCombinedBags"])
+	local bank = _G["BankFrame"]
+	if bank and bank.BankPanel then
+		ScanFramePool(bank.BankPanel)
+	end
+end
+
+-- Discover the active item buttons in a pool, post-hook each one's
+-- UpdateCooldown once, and paint it immediately so overlays show up on the
+-- first open instead of waiting for the next refresh.
 local function HandleBagSlots(frame)
-	if not frame.EnumerateValidItems and not frame.itemButtonPool then return end
-	local pool = frame.itemButtonPool
-	if not pool then return end
+	local pool = frame and frame.itemButtonPool
+	if not pool then
+		return
+	end
 	for button in pool:EnumerateActive() do
-		if button.IconBorder and not button.nexBagHooked then
-			button.IconBorder.nexOwner = button
-			hooksecurefunc(button.IconBorder, "SetShown", UpdateBagSlot)
+		if not button.nexBagHooked and type(button.UpdateCooldown) == "function" then
+			hooksecurefunc(button, "UpdateCooldown", UpdateBagSlot)
 			button.nexBagHooked = true
 		end
+		UpdateBagSlot(button)
 	end
+end
+
+-- Bank hooking is split out and guarded so it can run from HookBags (if the
+-- bank UI is already present) or lazily from BANKFRAME_OPENED (the bank panel
+-- is load-on-demand, so it usually doesn't exist when the module first loads).
+local bankHooked = false
+local function HookBank()
+	if bankHooked then
+		return
+	end
+	local bank = _G["BankFrame"]
+	local panel = bank and bank.BankPanel
+	if not (panel and panel.GenerateItemSlotsForSelectedTab) then
+		return
+	end
+	bankHooked = true
+	hooksecurefunc(panel, "GenerateItemSlotsForSelectedTab", HandleBagSlots)
+	-- Switching to an already-built tab (and most warband-bank refreshes) only
+	-- calls RefreshAllItemsForSelectedTab, not GenerateItemSlots, so hook both.
+	if panel.RefreshAllItemsForSelectedTab then
+		hooksecurefunc(panel, "RefreshAllItemsForSelectedTab", HandleBagSlots)
+	end
+	HandleBagSlots(panel)
 end
 
 function ItemLevel:HookBags()
@@ -587,15 +683,24 @@ function ItemLevel:HookBags()
 		local frame = _G["ContainerFrame" .. i]
 		if frame and frame.UpdateItemSlots then
 			hooksecurefunc(frame, "UpdateItemSlots", HandleBagSlots)
+			HandleBagSlots(frame)
 		end
 	end
 	local combined = _G["ContainerFrameCombinedBags"]
 	if combined and combined.UpdateItemSlots then
 		hooksecurefunc(combined, "UpdateItemSlots", HandleBagSlots)
+		HandleBagSlots(combined)
 	end
+	HookBank()
+end
+
+-- Install the bank hooks the first time the bank opens (covers the load-on-
+-- demand bank UI) and repaint the visible tab.
+function ItemLevel:BANKFRAME_OPENED()
+	HookBank()
 	local bank = _G["BankFrame"]
-	if bank and bank.BankPanel and bank.BankPanel.GenerateItemSlotsForSelectedTab then
-		hooksecurefunc(bank.BankPanel, "GenerateItemSlotsForSelectedTab", HandleBagSlots)
+	if bank and bank.BankPanel then
+		HandleBagSlots(bank.BankPanel)
 	end
 end
 
@@ -607,7 +712,10 @@ local function ScrappingButtonUpdate(button)
 		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
-	if not button.itemLink then button.nexILvl:SetText(""); return end
+	if not button.itemLink then
+		button.nexILvl:SetText("")
+		return
+	end
 
 	local quality = 1
 	if button.item and not button.item:IsItemEmpty() and button.item:GetItemName() then
@@ -619,7 +727,9 @@ local function ScrappingButtonUpdate(button)
 end
 
 local function ScrappingSetup(frame)
-	if not frame.ItemSlots or not frame.ItemSlots.scrapButtons then return end
+	if not frame.ItemSlots or not frame.ItemSlots.scrapButtons then
+		return
+	end
 	for button in frame.ItemSlots.scrapButtons:EnumerateActive() do
 		if button and not button.nexScrapHooked and button.RefreshIcon then
 			hooksecurefunc(button, "RefreshIcon", ScrappingButtonUpdate)
@@ -633,7 +743,9 @@ end
 -- ---------------------------------------------------------------------------
 local newsCache = {}
 local function ReplaceNewsLink(link, name)
-	if not link then return end
+	if not link then
+		return
+	end
 	local modLink = newsCache[link]
 	if not modLink then
 		local level = F.GetItemLevel(link)
@@ -646,24 +758,34 @@ local function ReplaceNewsLink(link, name)
 end
 
 local function GuildNewsSetText(button)
-	if not button.text then return end
+	if not button.text then
+		return
+	end
 	local newText = button.text:GetText()
-	if not newText then return end
+	if not newText then
+		return
+	end
 	newText = newText:gsub("(|Hitem:%d+:.-|h%[(.-)%]|h)", ReplaceNewsLink)
-	if newText then button.text:SetText(newText) end
+	if newText then
+		button.text:SetText(newText)
+	end
 end
 
 -- ---------------------------------------------------------------------------
 -- Hook installation
 -- ---------------------------------------------------------------------------
 function ItemLevel:InstallHooks()
-	if self.hooksInstalled then return end
+	if self.hooksInstalled then
+		return
+	end
 	self.hooksInstalled = true
 
 	-- Character frame.
 	local CharacterFrame = _G["CharacterFrame"]
 	if CharacterFrame then
-		CharacterFrame:HookScript("OnShow", function() self:UpdatePlayerSlots() end)
+		CharacterFrame:HookScript("OnShow", function()
+			self:UpdatePlayerSlots()
+		end)
 		self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "UpdatePlayerSlots")
 	end
 
@@ -674,9 +796,13 @@ function ItemLevel:InstallHooks()
 	if _G["EquipmentFlyout_UpdateItems"] then
 		hooksecurefunc("EquipmentFlyout_UpdateItems", function()
 			local flyout = _G["EquipmentFlyoutFrame"]
-			if not flyout or not flyout.buttons then return end
+			if not flyout or not flyout.buttons then
+				return
+			end
 			for _, button in pairs(flyout.buttons) do
-				if button:IsShown() then self:FlyoutButton(button) end
+				if button:IsShown() then
+					self:FlyoutButton(button)
+				end
 			end
 		end)
 	end
@@ -704,8 +830,10 @@ function ItemLevel:InstallHooks()
 		hooksecurefunc(LootFrame.ScrollBox, "Update", self.UpdateLoot)
 	end
 
-	-- Bags & bank.
+	-- Bags & bank. The bank panel is load-on-demand, so also (re)hook it the
+	-- first time the bank is opened.
 	self:HookBags()
+	self:RegisterEvent("BANKFRAME_OPENED")
 
 	-- Guild News (if Communities/GuildUI already present).
 	if _G["GuildNewsButton_SetText"] then

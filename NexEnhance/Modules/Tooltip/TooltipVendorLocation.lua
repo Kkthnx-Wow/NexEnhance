@@ -22,7 +22,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local F, L = ns.F, ns.L
+local L = ns.L
 
 -- Localised globals (handlers run on every item tooltip / modified click).
 local format = string.format

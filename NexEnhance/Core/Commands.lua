@@ -12,6 +12,104 @@ local F, C, L = ns.F, ns.C, ns.L
 
 local type = type
 local format = string.format
+local tonumber = tonumber
+local ipairs = ipairs
+
+local C_Map = C_Map
+local C_AreaPoiInfo = C_AreaPoiInfo
+local C_VignetteInfo = C_VignetteInfo
+local C_UIWidgetManager = C_UIWidgetManager
+
+-- POI fields (names/descriptions) can be Secret in instanced content; guard every
+-- value before tostring so the scan never errors on a secret. See the Midnight
+-- Secret Values guide: tostring() on a secret value throws.
+local function SafeStr(v)
+	if v == nil then
+		return "-"
+	end
+	if F.IsSecret(v) then
+		return "<secret>"
+	end
+	return tostring(v)
+end
+
+-- Dump every widget in a POI's tooltipWidgetSet: type plus any timer/bar/text
+-- value we can read. Used to discover where event countdowns (e.g. Stormarion's
+-- "Next Assault") actually live so the datatext can parse the right field.
+local function DumpWidgetSet(widgetSet)
+	if not (widgetSet and C_UIWidgetManager and C_UIWidgetManager.GetAllWidgetsBySetID) then
+		return
+	end
+	local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(widgetSet)
+	if not widgets then
+		return
+	end
+	local widgetManager = rawget(_G, "UIWidgetManager")
+	for _, w in ipairs(widgets) do
+		local info
+		if widgetManager then
+			local typeInfo = widgetManager:GetWidgetTypeInfo(w.widgetType)
+			if typeInfo and typeInfo.visInfoDataFunction then
+				info = typeInfo.visInfoDataFunction(w.widgetID)
+			end
+		end
+		local detail = "-"
+		if info then
+			detail = format(
+				"text=%s timer=%s/%s bar=%s/%s/%s",
+				SafeStr(info.text or info.headerText or info.overrideBarText),
+				SafeStr(info.timerValue),
+				SafeStr(info.timerMin),
+				SafeStr(info.barValue),
+				SafeStr(info.barMin),
+				SafeStr(info.barMax)
+			)
+		end
+		F.Print(format("      w:%s type:%s | %s", SafeStr(w.widgetID), SafeStr(w.widgetType), detail))
+	end
+end
+
+-- Dump one POI-id list (area POIs, events, quest hubs...) for a map. World events
+-- like Stormarion Assault / Void Incursions are surfaced by GetEventsForMap, not
+-- the plain GetAreaPOIForMap, which is why the first scan came up empty. Returns
+-- how many lines were printed so the caller can detect a fully empty scan.
+local function ScanPoiList(mapID, poiIDs, label)
+	if not poiIDs or #poiIDs == 0 then
+		return 0
+	end
+
+	local printed = 0
+	for _, poiID in ipairs(poiIDs) do
+		local poi = C_AreaPoiInfo.GetAreaPOIInfo(mapID, poiID)
+		if poi then
+			if printed == 0 then
+				F.Print(F.Colorize(label .. ":", "brand"))
+			end
+			local secs = C_AreaPoiInfo.GetAreaPOISecondsLeft and C_AreaPoiInfo.GetAreaPOISecondsLeft(poiID)
+			local widgetSet = poi.tooltipWidgetSet
+			local widgetCount
+			if widgetSet and C_UIWidgetManager and C_UIWidgetManager.GetAllWidgetsBySetID then
+				local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(widgetSet)
+				widgetCount = widgets and #widgets or 0
+			end
+			F.Print(format(
+				"  %d | %s | %s | poi:%s | widget:%s (%s) | locked:%s event:%s suppress:%s",
+				poiID,
+				SafeStr(poi.name),
+				SafeStr(poi.atlasName),
+				secs and SafeStr(secs) or "-",
+				SafeStr(widgetSet),
+				widgetCount and tostring(widgetCount) or "-",
+				SafeStr(rawget(poi, "isLocked")),
+				SafeStr(rawget(poi, "isCurrentEvent")),
+				SafeStr(rawget(poi, "isSuppressible"))
+			))
+			DumpWidgetSet(widgetSet)
+			printed = printed + 1
+		end
+	end
+	return printed
+end
 
 -- Y-offset for the sub-title header divider. Blizzard's default is -50; we push
 -- it down a few pixels so it reads as a clearer separator below the title.
@@ -33,11 +131,13 @@ handlers.help = function(_)
 	F.Print("  /nex toggle <name> -", L["Toggle a module: /nex toggle <module>"])
 	F.Print("  /nex config        -", L["Open the options panel"])
 	F.Print("  /nex reminder      -", L["Toggle buff reminder test icons"])
+	F.Print("  /nex rare          -", L["Toggle rare alert popup preview"])
 	F.Print("  /nex afk           -", L["Toggle AFK camera preview"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
 	F.Print("  /nex credits       -", L["Open the credits panel"])
 	F.Print("  /nex profile       -", L["Open the profile import/export panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
+	F.Print("  /nex poiscan       -", L["Dump area POIs on your current map (event setup)"])
 end
 
 handlers.profile = function(_)
@@ -92,6 +192,7 @@ handlers.toggle = function(name)
 	if module.OnSettingChanged then
 		module:OnSettingChanged("enable", settings.enable)
 	end
+	ns:TriggerCallback("SettingChanged." .. module.dbKey .. ".enable", settings.enable, module)
 end
 
 handlers.reminder = function(_)
@@ -103,12 +204,78 @@ handlers.reminder = function(_)
 	end
 end
 
+handlers.rare = function(_)
+	local module = ns:GetModule("RareAlert")
+	if module and module.ToggleTest then
+		module:ToggleTest()
+	else
+		F.Print(F.Colorize(L["Rare Alert"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
 handlers.afk = function(_)
 	local module = ns:GetModule("AFKCam")
 	if module and module.ToggleTest then
 		module:ToggleTest()
 	else
 		F.Print(F.Colorize(L["AFK Camera"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
+-- Dev/setup helper: dump every Area POI on the current map (or a passed map id)
+-- with its id, name, atlas, remaining time and widget set. Used to capture the
+-- live runtime IDs for new world events (Stormarion Assault, Void Incursions,
+-- Abundance Harvest) that aren't published in wow-ui-source.
+handlers.poiscan = function(rest)
+	if not (C_Map and C_AreaPoiInfo and C_AreaPoiInfo.GetAreaPOIForMap) then
+		F.Print(F.Colorize(L["POI scan unavailable on this client."], "red"))
+		return
+	end
+
+	local mapID = tonumber(rest) or (C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player"))
+	if not mapID then
+		F.Print(F.Colorize(L["No map found. Try: /nex poiscan <mapID>"], "red"))
+		return
+	end
+
+	local mapInfo = C_Map.GetMapInfo and C_Map.GetMapInfo(mapID)
+	F.Print(F.Colorize(format(L["Area POIs on map %d (%s):"], mapID, mapInfo and mapInfo.name or "?"), "brand"))
+
+	local total = 0
+	total = total + ScanPoiList(mapID, C_AreaPoiInfo.GetAreaPOIForMap(mapID), L["POIs"])
+	if C_AreaPoiInfo.GetEventsForMap then
+		total = total + ScanPoiList(mapID, C_AreaPoiInfo.GetEventsForMap(mapID), L["Events"])
+	end
+	if C_AreaPoiInfo.GetQuestHubsForMap then
+		total = total + ScanPoiList(mapID, C_AreaPoiInfo.GetQuestHubsForMap(mapID), L["Quest Hubs"])
+	end
+	if C_AreaPoiInfo.GetDelvesForMap then
+		total = total + ScanPoiList(mapID, C_AreaPoiInfo.GetDelvesForMap(mapID), L["Delves"])
+	end
+
+	-- Vignettes are the live map/minimap markers (rares, treasures and some
+	-- escalating events such as the Void Incursion progress marker). They're keyed
+	-- by transient GUID, not map id, so we dump all currently-active ones.
+	if C_VignetteInfo and C_VignetteInfo.GetVignettes then
+		local guids = C_VignetteInfo.GetVignettes()
+		if guids then
+			local printed = 0
+			for _, guid in ipairs(guids) do
+				local v = C_VignetteInfo.GetVignetteInfo(guid)
+				if v then
+					if printed == 0 then
+						F.Print(F.Colorize(L["Vignettes"] .. ":", "brand"))
+					end
+					F.Print(format("  %s | %s | %s", SafeStr(v.vignetteID), SafeStr(v.name), SafeStr(v.atlasName)))
+					printed = printed + 1
+				end
+			end
+			total = total + printed
+		end
+	end
+
+	if total == 0 then
+		F.Print("  " .. L["None reported - stand in the zone, or pass a map id: /nex poiscan <mapID>"])
 	end
 end
 
@@ -142,6 +309,13 @@ local function ApplyModuleSetting(module, key, value)
 		module:OnSettingChanged(key, value)
 	elseif module.UpdateStylingConfig then
 		module:UpdateStylingConfig()
+	end
+
+	-- Broadcast on the internal bus so *other* modules can react to this change
+	-- without a hard reference to the owning module. Subscribe with:
+	--   ns:RegisterCallback("SettingChanged."..dbKey.."."..key, fn[, owner])
+	if module.dbKey then
+		ns:TriggerCallback("SettingChanged." .. module.dbKey .. "." .. key, value, module)
 	end
 end
 
@@ -430,6 +604,16 @@ local function CreateLandingFrame()
 		end
 		self.stats:SetFormattedText(L["%d modules, %d enabled"], total, enabled)
 	end
+
+	-- First real use of the internal signal bus: keep the landing-page module
+	-- count live when a module is toggled from Settings or `/nex toggle`.
+	for i = 1, #ns.modules do
+		local module = ns.modules[i]
+		if module.dbKey then
+			ns:RegisterCallback("SettingChanged." .. module.dbKey .. ".enable", "OnRefresh", frame)
+		end
+	end
+	frame:OnRefresh()
 
 	return frame
 end

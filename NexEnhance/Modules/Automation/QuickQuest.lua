@@ -14,7 +14,7 @@
 	player click would do, so this stays taint-safe.
 --]]
 
--- luacheck: globals QuestInfoRewardsFrame QuestInfoItem_OnClick QuestFrame QuestNpcNameFrame GossipFrame GossipFrameCloseButton
+-- luacheck: globals QuestInfoRewardsFrame QuestInfoItem_OnClick QuestFrame QuestNpcNameFrame GossipFrame GossipFrameCloseButton InteractiveWormholes
 -- The Lua Language Server ships outdated quest API signatures (e.g. SelectActiveQuest
 -- as 0-arg, non-optional questIDs); silence those false positives here.
 ---@diagnostic disable: param-type-mismatch, redundant-parameter
@@ -31,13 +31,15 @@ local GetQuestMoneyToGet = GetQuestMoneyToGet
 local GetItemInfoFromHyperlink, GetInstanceInfo, GetQuestID = GetItemInfoFromHyperlink, GetInstanceInfo, GetQuestID
 local GetNumActiveQuests, GetActiveTitle, GetActiveQuestID, SelectActiveQuest = GetNumActiveQuests, GetActiveTitle, GetActiveQuestID, SelectActiveQuest
 local IsQuestCompletable, GetNumQuestItems, GetQuestItemLink, QuestIsFromAreaTrigger = IsQuestCompletable, GetNumQuestItems, GetQuestItemLink, QuestIsFromAreaTrigger
-local QuestGetAutoAccept, AcceptQuest, CloseQuest, CompleteQuest, AcknowledgeAutoAcceptQuest = QuestGetAutoAccept, AcceptQuest, CloseQuest, CompleteQuest, AcknowledgeAutoAcceptQuest
+local QuestGetAutoAccept, AcceptQuest, ConfirmAcceptQuest, CloseQuest, CompleteQuest, AcknowledgeAutoAcceptQuest = QuestGetAutoAccept, AcceptQuest, ConfirmAcceptQuest, CloseQuest, CompleteQuest, AcknowledgeAutoAcceptQuest
 local GetNumQuestChoices, GetQuestReward, GetQuestItemInfo = GetNumQuestChoices, GetQuestReward, GetQuestItemInfo
-local GetNumAvailableQuests, GetAvailableQuestInfo, SelectAvailableQuest = GetNumAvailableQuests, GetAvailableQuestInfo, SelectAvailableQuest
+local GetNumAvailableQuests, GetAvailableQuestInfo, GetAvailableLevel, SelectAvailableQuest = GetNumAvailableQuests, GetAvailableQuestInfo, GetAvailableLevel, SelectAvailableQuest
 local GetNumAutoQuestPopUps, GetAutoQuestPopUp, ShowQuestOffer, ShowQuestComplete = GetNumAutoQuestPopUps, GetAutoQuestPopUp, ShowQuestOffer, ShowQuestComplete
 local CreateFrame, StaticPopup_Hide, RemoveAutoQuestPopUp = CreateFrame, StaticPopup_Hide, RemoveAutoQuestPopUp
 local C_QuestLog_IsWorldQuest = C_QuestLog.IsWorldQuest
 local C_QuestLog_IsQuestTrivial = C_QuestLog.IsQuestTrivial
+local C_QuestLog_GetQuestDifficultyLevel = C_QuestLog.GetQuestDifficultyLevel
+local C_QuestLog_RequestLoadQuestByID = C_QuestLog.RequestLoadQuestByID
 local C_QuestLog_GetQuestTagInfo = C_QuestLog.GetQuestTagInfo
 local C_QuestLog_IsQuestFlaggedCompletedOnAccount = C_QuestLog.IsQuestFlaggedCompletedOnAccount
 local C_GossipInfo_GetOptions = C_GossipInfo.GetOptions
@@ -52,8 +54,11 @@ local C_Item_GetItemInfo = C_Item.GetItemInfo
 local C_Minimap_IsFilteredOut = C_Minimap.IsFilteredOut
 local C_Minimap_IsTrackingHiddenQuests = C_Minimap.IsTrackingHiddenQuests
 local C_TooltipInfo_GetItemByID = C_TooltipInfo and C_TooltipInfo.GetItemByID
+local C_PlayerInteractionManager_IsInteractingWithNpcOfType = C_PlayerInteractionManager.IsInteractingWithNpcOfType
 local QuestLabelPrepend = Enum.GossipOptionRecFlags.QuestLabelPrepend
+local FlagsUtil_IsSet = _G["FlagsUtil"] and _G["FlagsUtil"].IsSet
 local AccountCompletedFilter = Enum.MinimapTrackingFilter.AccountCompletedQuests
+local TaxiNodeInteraction = Enum.PlayerInteractionType.TaxiNode
 local QF_Daily, QF_Weekly = Enum.QuestFrequency.Daily, Enum.QuestFrequency.Weekly
 local MAX_REQUIRED_ITEMS = _G["MAX_REQUIRED_ITEMS"] or 8
 
@@ -70,6 +75,7 @@ ns:RegisterDefaults({
 		overrideKey = OVERRIDE_SHIFT, -- which modifier pauses (or, with requireOverride, enables) automation
 		requireOverride = false, -- false: holding the key pauses; true: holding the key is required to run
 		blockInInstances = false, -- skip single-option gossip in raids/blacklisted instances
+		autoSkipGossip = false, -- auto-click lone red "<Skip ...>" gossip (skip ahead / skip conversation)
 		ignoreNPC = {}, -- [npcID] = true (ignore) / false (force-allow a built-in)
 	},
 })
@@ -102,26 +108,54 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Event plumbing: each registered handler only runs when automation is active
--- (enabled + override-key state). A private frame keeps the choiceQueue / combat
--- re-queue self-contained.
+-- (enabled + override-key state). Events are still feature-scoped, but they use
+-- the addon-wide dispatcher instead of a private frame.
 -- ---------------------------------------------------------------------------
-local qqFrame = CreateFrame("Frame")
-qqFrame:SetScript("OnEvent", function(self, event, ...)
-	local fn = self[event]
-	if fn then fn(...) end
-end)
-
 local handlers = {}
 local choiceQueue
+local regenRetryRegistered = false
+local regenRetryCallback
+
+local function CancelRegenRetry()
+	if not regenRetryRegistered then return end
+	regenRetryRegistered = false
+	ns:UnregisterEvent("PLAYER_REGEN_ENABLED", regenRetryCallback)
+end
+
+-- Events are collected here at load but only registered in the shared dispatcher
+-- while the module is enabled (see SetEventsActive). Quick Quest defaults to OFF, so
+-- without this gate it would keep waking on QUEST_LOG_UPDATE etc. for users who
+-- never turn it on. (Plumber idiom: feature-scoped event registration.)
+local registeredEvents = {}
 
 local function Register(event, func)
 	handlers[event] = func
-	qqFrame[event] = function(...)
+	local callback = function(_, ...)
 		if Automating() then
 			func(...)
 		end
 	end
-	qqFrame:RegisterEvent(event)
+	registeredEvents[#registeredEvents + 1] = { event, callback }
+end
+
+local eventsActive = false
+local function SetEventsActive(state)
+	if state then
+		if eventsActive then return end
+		eventsActive = true
+		for i = 1, #registeredEvents do
+			local entry = registeredEvents[i]
+			ns:RegisterEvent(entry[1], entry[2])
+		end
+	elseif eventsActive then
+		eventsActive = false
+		-- Clears the gated events plus any transient PLAYER_REGEN_ENABLED retry.
+		for i = 1, #registeredEvents do
+			local entry = registeredEvents[i]
+			ns:UnregisterEvent(entry[1], entry[2])
+		end
+		CancelRegenRetry()
+	end
 end
 
 local function GetNPCID()
@@ -131,6 +165,27 @@ end
 local function IsAccountCompleted(questID)
 	return C_Minimap_IsFilteredOut(AccountCompletedFilter) and C_QuestLog_IsQuestFlaggedCompletedOnAccount(questID)
 end
+
+-- Blizzard can surface gossip/quest-list entries before the quest record is
+-- cached. If we decide from uncached data, the trivial/repeatable flags can be
+-- wrong, so retry the same handler once QUEST_DATA_LOAD_RESULT arrives.
+local questDataQueue = {}
+
+local function WaitForQuestData(questID, callback)
+	if not (questID and C_QuestLog_RequestLoadQuestByID) then return false end
+	questDataQueue[questID] = callback
+	C_QuestLog_RequestLoadQuestByID(questID)
+	return true
+end
+
+Register("QUEST_DATA_LOAD_RESULT", function(questID, success)
+	local callback = questDataQueue[questID]
+	if not callback then return end
+	questDataQueue[questID] = nil
+	if success ~= false then
+		callback()
+	end
+end)
 
 -- ---------------------------------------------------------------------------
 -- Ignore list (built-in NPCs + per-character overrides)
@@ -303,7 +358,10 @@ Register("QUEST_GREETING", function()
 	if available > 0 and not selectOnlyIgnoreNPC[npcID] then
 		for index = 1, available do
 			local isTrivial, frequency, _, _, questID = GetAvailableQuestInfo(index)
-			if not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(frequency) and (not isTrivial or C_Minimap_IsTrackingHiddenQuests()) then
+			local questLevel = GetAvailableLevel and GetAvailableLevel(index)
+			if questID and (not questLevel or questLevel == 0) then
+				WaitForQuestData(questID, handlers.QUEST_GREETING)
+			elseif not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(frequency) and (not isTrivial or C_Minimap_IsTrackingHiddenQuests()) then
 				SelectAvailableQuest(index)
 			end
 		end
@@ -356,12 +414,53 @@ local autoSelectFirstOptionList = {
 	[167839] = true, -- Soul Remnant, Torghast
 }
 
+-- Newer retail quest/task gossip options that are not always flagged like normal
+-- quests. Sourced from p3lim's QuickQuest data and kept option-ID based so we
+-- don't accidentally match unrelated NPC text.
+local questGossipOptions = {
+	[109275] = true, -- Soridormi - begin time rift
+	[120619] = true, -- Big Dig task
+	[120620] = true, -- Big Dig task
+	[120555] = true, -- Awakening The Machine
+	[120733] = true, -- Theater Troupe
+
+	-- Darkmoon Faire games / returns
+	[40563] = true, -- Whack-a-Gnoll
+	[28701] = true, -- Cannon
+	[31202] = true, -- Shooting gallery
+	[39245] = true, -- Tonk
+	[40224] = true, -- Ring toss
+	[43060] = true, -- Firebird
+	[52651] = true, -- Dance
+	[41759] = true, -- Pet battle 1
+	[42668] = true, -- Pet battle 2
+	[40872] = true, -- Cannon return
+}
+
+local ignoreGossipOptions = {
+	[122442] = true, -- Leave the dungeon in Remix
+	[44733] = true,  -- Teleport
+	[125350] = true, -- Siren Isle teleport
+	[125351] = true, -- Siren Isle teleport
+	[131324] = true, -- Winter Veil Hillsbrad teleport
+	[131325] = true, -- Winter Veil Hillsbrad teleport
+}
+
 local ignoreInstances = {
 	[1571] = true, -- Court of Stars
 	[1626] = true, -- Suramar withered training
 }
 
 local QUEST_STRING = "cFF0000FF.-" .. TRANSMOG_SOURCE_2
+local SKIP_GOSSIP_PREFIX, SKIP_GOSSIP_PREFIX_UPPER = "|cFFFF0000<", "|CFFFF0000<"
+
+local function IsQuestLabelPrepend(flags)
+	if not flags then return false end
+	if FlagsUtil_IsSet then
+		return FlagsUtil_IsSet(flags, QuestLabelPrepend)
+	end
+	return flags == QuestLabelPrepend
+end
 
 -- Gossip options that carry their own colour code or angle-bracket markup are
 -- usually "special" (teleports, skip-ahead, choices with consequences). When a
@@ -383,13 +482,19 @@ end
 Register("GOSSIP_SHOW", function()
 	local npcID = GetNPCID()
 	if ignoreList[npcID] then return end
+	if C_PlayerInteractionManager_IsInteractingWithNpcOfType and C_PlayerInteractionManager_IsInteractingWithNpcOfType(TaxiNodeInteraction) then return end
+	local wormholes = _G["InteractiveWormholes"]
+	if wormholes and wormholes.IsActive and wormholes:IsActive() then return end
 
 	local active = C_GossipInfo_GetNumActiveQuests()
 	if active > 0 then
 		for _, questInfo in ipairs(C_GossipInfo_GetActiveQuests()) do
 			local questID = questInfo.questID
 			local isWorldQuest = questID and C_QuestLog_IsWorldQuest(questID)
-			if questInfo.isComplete and not isWorldQuest then
+			local questLevel = questID and C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
+			if questID and (not questLevel or questLevel == 0) then
+				WaitForQuestData(questID, handlers.GOSSIP_SHOW)
+			elseif questInfo.isComplete and not isWorldQuest then
 				C_GossipInfo_SelectActiveQuest(questID)
 			end
 		end
@@ -400,7 +505,14 @@ Register("GOSSIP_SHOW", function()
 		for _, questInfo in ipairs(C_GossipInfo_GetAvailableQuests()) do
 			local trivial = questInfo.isTrivial
 			local questID = questInfo.questID
-			if not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(questInfo.frequency) and (not trivial or C_Minimap_IsTrackingHiddenQuests() or (trivial and npcID == 64337)) then
+			local questLevel = questID and C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
+			if questID == 82449 then
+				-- "The Call of the Worldsoul" behaves like a repeatable selector
+				-- quest, but the quest APIs don't reliably classify it that way.
+				C_GossipInfo_SelectAvailableQuest(questID)
+			elseif questID and (not questLevel or questLevel == 0) then
+				WaitForQuestData(questID, handlers.GOSSIP_SHOW)
+			elseif not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(questInfo.frequency) and (not trivial or C_Minimap_IsTrackingHiddenQuests() or (trivial and npcID == 64337)) then
 				C_GossipInfo_SelectAvailableQuest(questInfo.questID)
 			end
 		end
@@ -418,6 +530,7 @@ Register("GOSSIP_SHOW", function()
 		end
 
 		if available == 0 and active == 0 and numOptions == 1 and not ignoreGossipNPC[npcID] and not HasUnsafeGossipOption(gossipInfoTable) then
+			if ignoreGossipOptions[firstOptionID] then return end
 			local allow = true
 			-- Optional safety: skip the single-option walk inside raids and the
 			-- blacklisted instances. Off by default, so it auto-walks everywhere.
@@ -433,16 +546,38 @@ Register("GOSSIP_SHOW", function()
 		end
 	end
 
-	-- Auto-select when there is exactly one quest-flagged gossip option.
-	local numQuestGossips = 0
-	local questGossipID
+	-- One pass to find quest-flagged gossip options and red "<Skip ...>" options.
+	-- Blizzard colours skip choices red with an angle-bracket prefix
+	-- (|cFFFF0000<...>): both the campaign "skip ahead" walks and the per-NPC
+	-- "<Skip conversation>" branches. These usually ALSO carry the quest prepend
+	-- flag (so they show the (Quest) icon next to a normal "listen/continue"
+	-- option), so the skip is tracked separately rather than in the quest bucket.
+	local numQuestGossips, numSkipGossips = 0, 0
+	local questGossipID, skipGossipID
 	for i = 1, numOptions do
 		local option = gossipInfoTable[i]
-		if option.name and (strfind(option.name, QUEST_STRING) or option.flags == QuestLabelPrepend) then
-			numQuestGossips = numQuestGossips + 1
-			questGossipID = option.gossipOptionID
+		local name = option.name
+		if name then
+			if strfind(name, SKIP_GOSSIP_PREFIX, 1, true) == 1 or strfind(name, SKIP_GOSSIP_PREFIX_UPPER, 1, true) == 1 then
+				numSkipGossips = numSkipGossips + 1
+				skipGossipID = option.gossipOptionID
+			end
+			if questGossipOptions[option.gossipOptionID] or strfind(name, QUEST_STRING) or IsQuestLabelPrepend(option.flags) then
+				numQuestGossips = numQuestGossips + 1
+				questGossipID = option.gossipOptionID
+			end
 		end
 	end
+
+	-- Opt-in: when there is exactly one red "<Skip ...>" option, prefer it over the
+	-- listen/continue branch so alts can blow past story/campaign dialogue. Off by
+	-- default so it never silently bypasses dialogue you wanted to read. Checked
+	-- before the quest-gossip auto-select so it wins when both are present.
+	if db().autoSkipGossip and numSkipGossips == 1 and not ignoreGossipOptions[skipGossipID] then
+		return C_GossipInfo_SelectOption(skipGossipID)
+	end
+
+	-- Auto-select when there is exactly one quest-flagged gossip option.
 	if numQuestGossips == 1 then
 		return C_GossipInfo_SelectOption(questGossipID)
 	end
@@ -462,19 +597,35 @@ Register("GOSSIP_CONFIRM", function(index)
 end)
 
 Register("QUEST_DETAIL", function()
+	local questID = GetQuestID()
+	if not questID or questID == 0 then return end
+
+	local questLevel = C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
+	if not questLevel or questLevel == 0 then
+		WaitForQuestData(questID, handlers.QUEST_DETAIL)
+		return
+	end
+
 	if QuestIsFromAreaTrigger() then
 		AcceptQuest()
 	elseif QuestGetAutoAccept() then
 		AcknowledgeAutoAcceptQuest()
-	elseif not C_QuestLog_IsQuestTrivial(GetQuestID()) or C_Minimap_IsTrackingHiddenQuests() then
+		RemoveAutoQuestPopUp(questID)
+	elseif not C_QuestLog_IsQuestTrivial(questID) or C_Minimap_IsTrackingHiddenQuests() then
 		if ignoreList[GetNPCID()] then return end
-		if blockQuestID[GetQuestID()] then return end
+		if blockQuestID[questID] then return end
 		if not DetailFrequencyAllowed() then return end
 		AcceptQuest()
 	end
 end)
 
-Register("QUEST_ACCEPT_CONFIRM", AcceptQuest)
+Register("QUEST_ACCEPT_CONFIRM", function()
+	if ConfirmAcceptQuest then
+		ConfirmAcceptQuest()
+	else
+		AcceptQuest()
+	end
+end)
 
 Register("QUEST_ACCEPTED", function()
 	if QuestFrame:IsShown() and QuestGetAutoAccept() then
@@ -587,31 +738,51 @@ Register("QUEST_COMPLETE", function()
 	end
 end)
 
-local function AttemptAutoComplete()
-	if GetNumAutoQuestPopUps() > 0 then
-		-- Auto-quest popups taint while dead/in combat; retry once it lifts.
-		if UnitIsDeadOrGhost("player") or InCombatLockdown() then
-			qqFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
-			return
-		end
+local function RegisterRegenRetry()
+	if regenRetryRegistered then return end
+	regenRetryRegistered = true
+	ns:RegisterEvent("PLAYER_REGEN_ENABLED", regenRetryCallback)
+end
 
-		local questID, popUpType = GetAutoQuestPopUp(1)
-		if not C_QuestLog_IsWorldQuest(questID) then
-			if popUpType == "OFFER" then
-				ShowQuestOffer(questID)
-			elseif popUpType == "COMPLETE" then
-				ShowQuestComplete(questID)
+local function AttemptAutoComplete()
+	local numPopUps = GetNumAutoQuestPopUps()
+	if numPopUps == 0 then return end
+
+	-- Avoid stomping the map/quest UI while the player is already interacting
+	-- with it (p3lim/QuickQuest#45).
+	local WorldMapFrame = _G["WorldMapFrame"]
+	if (WorldMapFrame and WorldMapFrame:IsShown()) or (QuestFrame and QuestFrame:IsShown()) then
+		return
+	end
+
+	-- Auto-quest popups taint while dead/in combat; retry once it lifts.
+	if UnitIsDeadOrGhost("player") or InCombatLockdown() then
+		RegisterRegenRetry()
+		return
+	end
+
+	for index = 1, numPopUps do
+		local questID, popUpType = GetAutoQuestPopUp(index)
+		if questID then
+			local questLevel = C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
+			if not questLevel or questLevel == 0 then
+				WaitForQuestData(questID, AttemptAutoComplete)
+			elseif not C_QuestLog_IsWorldQuest(questID) then
+				if popUpType == "OFFER" then
+					ShowQuestOffer(questID)
+				elseif popUpType == "COMPLETE" then
+					ShowQuestComplete(questID)
+				end
+				RemoveAutoQuestPopUp(questID)
 			end
-			RemoveAutoQuestPopUp(questID)
 		end
 	end
 end
 Register("QUEST_LOG_UPDATE", AttemptAutoComplete)
 
--- Dedicated, self-unregistering combat handler (the dispatcher passes event
--- payloads, not the event name, so we cannot detect it inside the shared path).
-qqFrame.PLAYER_REGEN_ENABLED = function()
-	qqFrame:UnregisterEvent("PLAYER_REGEN_ENABLED")
+-- Dedicated, self-unregistering combat retry for auto-quest popups.
+regenRetryCallback = function()
+	CancelRegenRetry()
 	if Automating() then
 		AttemptAutoComplete()
 	end
@@ -695,6 +866,18 @@ function QuickQuest:OnInitialize()
 	end
 end
 
+-- OnEnable only fires for modules enabled at login; combined with the live
+-- toggle below this keeps the quest events bound exactly while the feature is on.
+function QuickQuest:OnEnable()
+	SetEventsActive(db().enable)
+end
+
+function QuickQuest:OnSettingChanged(key, value)
+	if key == "enable" then
+		SetEventsActive(value)
+	end
+end
+
 function QuickQuest:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests; hold the override key to pause. Alt-click an NPC name to ignore it."])
 	local _, regularInit = builder:Checkbox(category, self, "acceptRegular", L["Accept Regular Quests"], L["Automatically accept regular (one-time) quests."])
@@ -703,6 +886,7 @@ function QuickQuest:RegisterOptions(category, builder)
 	local _, protectInit = builder:Checkbox(category, self, "protectTurnIns", L["Protect Costly Turn-Ins"], L["Skip turn-ins that would consume gold, currency, crafting reagents, or account-bound items."])
 	local _, requireInit = builder:Checkbox(category, self, "requireOverride", L["Require Override Key"], L["Only automate while the override key is held, instead of using it to pause."])
 	local _, blockInit = builder:Checkbox(category, self, "blockInInstances", L["Block in Raids & Instances"], L["Skip single-option gossip auto-selection while in raids and certain instances."])
+	local _, skipInit = builder:Checkbox(category, self, "autoSkipGossip", L["Auto-Skip Story Gossip"], L["Automatically click red \"<Skip ...>\" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read."])
 
 	local _, keyInit = builder:Dropdown(category, self, "overrideKey", L["Override Key"], L["The modifier that pauses (or, with Require Override Key, enables) automation."], {
 		{ value = OVERRIDE_SHIFT, label = L["SHIFT"] },
@@ -717,6 +901,7 @@ function QuickQuest:RegisterOptions(category, builder)
 	builder:DependsOn(protectInit, enableInit)
 	builder:DependsOn(requireInit, enableInit)
 	builder:DependsOn(blockInit, enableInit)
+	builder:DependsOn(skipInit, enableInit)
 	if keyInit then
 		builder:DependsOn(keyInit, enableInit)
 	end

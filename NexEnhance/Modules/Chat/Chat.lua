@@ -32,14 +32,7 @@ local UIParent = UIParent
 local MAX_CHAT_BYTES = 255
 
 -- A classic Blizzard tooltip-style border (gold edge + dark fill) for the box.
-local EDITBOX_BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
+local EDITBOX_BACKDROP = C.Backdrops.window
 
 local IsInGroup, IsInRaid, IsInGuild = IsInGroup, IsInRaid, IsInGuild
 local IsShiftKeyDown, IsControlKeyDown = IsShiftKeyDown, IsControlKeyDown
@@ -265,9 +258,11 @@ function Chat:SetupEditBox(frame)
 		bg:SetPoint("TOPLEFT", editBox, "TOPLEFT", 0, 0)
 		bg:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", 12, 0)
 		bg:SetFrameLevel(max(0, editBox:GetFrameLevel() - 1))
-		bg:SetBackdrop(EDITBOX_BACKDROP)
-		bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-		bg:SetBackdropBorderColor(1, 1, 1)
+		if not F.CreateNineSlice(bg, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 }, border = { 1, 1, 1, 1 } }) then
+			bg:SetBackdrop(EDITBOX_BACKDROP)
+			bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+			bg:SetBackdropBorderColor(1, 1, 1)
+		end
 		editBox.nexBackdrop = bg
 	end
 
@@ -382,7 +377,11 @@ function ColorEditBox(editBox)
 	end
 
 	if editBox.nexBackdrop then
-		editBox.nexBackdrop:SetBackdropBorderColor(r, g, b)
+		if editBox.nexBackdrop.nexNineSlice then
+			F.SetNineSliceBorderColor(editBox.nexBackdrop, r, g, b)
+		else
+			editBox.nexBackdrop:SetBackdropBorderColor(r, g, b)
+		end
 		return
 	end
 

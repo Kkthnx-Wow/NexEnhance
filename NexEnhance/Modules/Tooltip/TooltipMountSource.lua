@@ -18,7 +18,6 @@ local F = ns.F
 local Tooltip = ns:GetModule("Tooltip")
 if not Tooltip then return end
 
-local _G = _G
 local select = select
 local hooksecurefunc = hooksecurefunc
 
@@ -61,16 +60,7 @@ end
 
 -- Append the Source/collection lines once (skip if we've already added them).
 local function AddSourceLine(tip, info)
-	local name = tip.GetName and tip:GetName()
-	if not name then return end
-
-	for i = 1, tip:NumLines() do
-		local line = _G[name .. "TextLeft" .. i]
-		local text = line and line:GetText()
-		if text and F.NotSecret(text) and text == SOURCE then
-			return
-		end
-	end
+	if F.TooltipHasLine(tip, SOURCE) then return end
 
 	tip:AddLine(" ")
 	tip:AddDoubleLine(SOURCE, IsCollected(info) and COLLECTED or NOT_COLLECTED)

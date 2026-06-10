@@ -4,7 +4,7 @@
 	A minimap clock that follows Blizzard's own 12/24h and local/realm time
 	CVars. Hovering it opens a tooltip with the full date, local & realm time,
 	resets, saved raid / dungeon / world-boss lockouts, weekly quest checks,
-	Delves, Delver keys, and Shift-held world-event details.
+	Delves, the weekly "Choose Your Path" meta, and Shift-held world-event details.
 
 	Adapted from KkthnxUI's Time DataText by Josh "Kkthnx" Russell:
 	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/DataText/Elements/Time.lua
@@ -19,6 +19,7 @@ local date, time = date, time
 local format, find, match = string.format, string.find, string.match
 local floor, fmod = math.floor, math.fmod
 local ipairs, pairs, select, tonumber = ipairs, pairs, select, tonumber
+local sort = table.sort
 local wipe = wipe
 
 -- Shared tooltip palette (single source of truth in Constants.lua): gold section
@@ -40,9 +41,10 @@ local GameTime_GetLocalTime = GameTime_GetLocalTime
 local InCombatLockdown = InCombatLockdown
 local IsShiftKeyDown = IsShiftKeyDown
 local RequestRaidInfo = RequestRaidInfo
-local SecondsToTime = SecondsToTime
 local ToggleFrame = ToggleFrame
 local UIParent = UIParent
+local UnitLevel = UnitLevel
+local GetMaxLevelForPlayerExpansion = GetMaxLevelForPlayerExpansion
 
 local C_AddOns = C_AddOns
 local C_AreaPoiInfo = C_AreaPoiInfo
@@ -53,12 +55,19 @@ local C_Item = C_Item
 local C_Map = C_Map
 local C_QuestLog = C_QuestLog
 local C_Spell = C_Spell
+local C_TaskQuest = C_TaskQuest
 local C_Texture = C_Texture
+local C_UIWidgetManager = C_UIWidgetManager
 
 ns:RegisterDefaults({
 	timeText = {
 		enable = true,
 		classColor = false,
+		-- Pre-Midnight world events (Legion invasions, BfA faction assaults,
+		-- Dragonflight elemental storms / Grand Hunt / Community Feast) and the
+		-- legacy daily-quest checklist. Off by default now that the live content
+		-- is Midnight; flip on to keep tracking the old timers.
+		showLegacy = false,
 	},
 })
 
@@ -69,12 +78,10 @@ local clock
 local entered
 local isTimeWalker
 local walkerTexture
+local tooltipElapsed = 0
 
 local region = GetCVar and GetCVar("portal") or "US"
-local keyInfo = C_CurrencyInfo and C_CurrencyInfo.GetCurrencyInfo and C_CurrencyInfo.GetCurrencyInfo(3028)
-local keyName = keyInfo and keyInfo.name or L["Restored Coffer Key"]
 
-local DELVES_KEYS = { 91175, 91176, 91177, 91178 }
 local LEGION_ZONE_TIME = { EU = 1762434000, US = 1762421400, CN = 1762450200 }
 local BFA_ZONE_TIME = { CN = 1546743600, EU = 1546768800, US = 1546769340 }
 local COMMUNITY_FEAST_TIME = { CN = 1679747400, TW = 1679747400, KR = 1679747400, EU = 1679749200, US = 1679751000 }
@@ -97,8 +104,16 @@ local invIndex = {
 }
 
 local mapAreaPoiIDs = {
-	[630] = 5175, [641] = 5210, [650] = 5177, [634] = 5178,
-	[862] = 5973, [863] = 5969, [864] = 5970, [896] = 5964, [942] = 5966, [895] = 5896,
+	[630] = 5175,
+	[641] = 5210,
+	[650] = 5177,
+	[634] = 5178,
+	[862] = 5973,
+	[863] = 5969,
+	[864] = 5970,
+	[896] = 5964,
+	[942] = 5966,
+	[895] = 5896,
 }
 
 local QUEST_LIST = {
@@ -138,15 +153,71 @@ local DELVE_LIST = {
 local DELVE_SCAN_MAPS = {
 	-- Current + older TWW delve zones. Dynamic POI scanning decides which ones
 	-- are actually active on the player's client/content patch.
-	2393, 2424, 2405, 2413, 2395, 2437,
-	2248, 2215, 2214, 2255, 2346, 2371,
+	2393,
+	2424,
+	2405,
+	2413,
+	2395,
+	2437,
+	2248,
+	2215,
+	2214,
+	2255,
+	2346,
+	2371,
 }
+local MAX_BOUNTIFUL_DELVES = 4
 
 local STORM_POI_IDS = {
 	[2022] = { { 7249, 7250, 7251, 7252 }, { 7253, 7254, 7255, 7256 }, { 7257, 7258, 7259, 7260 } },
 	[2023] = { { 7221, 7222, 7223, 7224 }, { 7225, 7226, 7227, 7228 } },
 	[2024] = { { 7229, 7230, 7231, 7232 }, { 7233, 7234, 7235, 7236 }, { 7237, 7238, 7239, 7240 } },
 	[2025] = { { 7245, 7246, 7247, 7248 }, { 7298, 7299, 7300, 7301 } },
+}
+
+-- Void Assaults (Midnight 12.0.x current content). One zone is active per weekly
+-- rotation (Eversong Woods <-> Zul'Aman); the meta-quest gates the weekly Spark
+-- of Radiance. Quest IDs are from 12.0.5 datamining: IsQuestFlaggedCompleted
+-- returns false for an unknown ID and the on-quest check returns nil, so a stale
+-- ID fails safe (the line is simply omitted) rather than erroring or lying.
+-- Verify live with: /run print(C_QuestLog.IsQuestFlaggedCompleted(95842))
+local VOID_ASSAULT_META = 95842
+local VOID_ASSAULTS = {
+	{ id = 94385, fallback = "Void Assaults: Eversong Woods" },
+	{ id = 94386, fallback = "Void Assaults: Zul'Aman" },
+}
+
+-- Midnight's headline weekly: the "Choose Your Path" meta quest "Unity Against
+-- the Void" from Lady Liadrin. It auto-completes when any one of its offered path
+-- quests is finished, so its completed flag is the single source of truth for the
+-- weekly. The path quests below let us show progress for whichever path the
+-- player picked (e.g. "Midnight: Delves  1/3"). Prey / World Boss IDs aren't
+-- needed for completion (the meta flag covers them); they only miss the optional
+-- progress line, which fails safe. Verify with:
+--   /run print(C_QuestLog.IsQuestFlaggedCompleted(93744))
+local WEEKLY_META_QUEST = 93744 -- Unity Against the Void
+local WEEKLY_PATH_QUESTS = {
+	93909, -- Midnight: Delves
+	93766, -- Midnight: World Quests
+	93891, -- Midnight: Legends of the Haranir
+}
+
+local WORLD_BOSS_NAMES = {
+	"Lu'ashal",
+	"Lu’ashal",
+	"Thorm'belan",
+	"Thorm'Belan",
+	"Thorm’belan",
+	"Predaxas",
+	"Cragpine",
+}
+
+-- Curated current-content POIs for events whose tooltip/timer is split across
+-- sibling event POIs. The dynamic scanner below still finds new events, while
+-- these IDs let us query alternate timers when Blizzard's visible event pin
+-- only reports "active" through GetAreaPOISecondsLeft.
+local CURRENT_WORLD_EVENT_POIS = {
+	{ name = "Stormarion Assault", mapID = 2405, ids = { 8419, 8421, 8422 } },
 }
 
 local atlasCache = {}
@@ -182,12 +253,19 @@ local function FormatClock(hour, minute, pending)
 	return format(_G.TIMEMANAGER_TICKER_12HOUR .. " %s", h, minute, suffix)
 end
 
--- World-event countdowns (invasions, storms, hunts) run for hours, so display
--- them as HH:MM. NDui reaches the same result by dividing seconds->minutes
--- before its MM:SS formatter; we convert straight from raw seconds here.
-local function FormatShortTime(seconds)
+-- Compact, unit-suffixed countdown used for every tooltip timer (resets, saved
+-- lockouts, delves, world events) so they all read the same: "6d 10h", "10h 30m",
+-- "32m", "45s". Two largest units only, mirroring the examples requested.
+local function FormatTimer(seconds)
 	seconds = floor(seconds or 0)
-	return format("%.2d:%.2d", floor(seconds / 3600), floor((seconds % 3600) / 60))
+	if seconds >= 86400 then
+		return format("%dd %dh", floor(seconds / 86400), floor((seconds % 86400) / 3600))
+	elseif seconds >= 3600 then
+		return format("%dh %dm", floor(seconds / 3600), floor((seconds % 3600) / 60))
+	elseif seconds >= 60 then
+		return format("%dm", floor(seconds / 60))
+	end
+	return format("%ds", seconds)
 end
 
 local function UpdateClock(self)
@@ -207,8 +285,12 @@ end
 -- Cached lookups
 -- ---------------------------------------------------------------------------
 local function TextureStringByAtlas(atlas, width, height)
-	if not atlas or not C_Texture or not C_Texture.GetAtlasInfo then return "" end
-	if not C_Texture.GetAtlasInfo(atlas) then return "" end
+	if not atlas or not C_Texture or not C_Texture.GetAtlasInfo then
+		return ""
+	end
+	if not C_Texture.GetAtlasInfo(atlas) then
+		return ""
+	end
 	return format("|A:%s:%d:%d|a", atlas, height or 16, width or 16)
 end
 
@@ -220,7 +302,9 @@ local function GetElementalType(element)
 end
 
 local function GetItemLink(itemID)
-	if not C_Item or not C_Item.GetItemInfo then return nil end
+	if not C_Item or not C_Item.GetItemInfo then
+		return nil
+	end
 	if not itemCache[itemID] then
 		itemCache[itemID] = select(2, C_Item.GetItemInfo(itemID))
 	end
@@ -231,11 +315,17 @@ end
 -- Calendar / quest data
 -- ---------------------------------------------------------------------------
 function Clock:CheckTimeWalker()
-	if not C_Calendar or not C_DateAndTime or not find then return end
-	if not C_Calendar.GetNumDayEvents or not C_Calendar.GetDayEvent or not C_Calendar.OpenCalendar or not C_Calendar.SetAbsMonth then return end
+	if not C_Calendar or not C_DateAndTime or not find then
+		return
+	end
+	if not C_Calendar.GetNumDayEvents or not C_Calendar.GetDayEvent or not C_Calendar.OpenCalendar or not C_Calendar.SetAbsMonth then
+		return
+	end
 
 	local calDate = C_DateAndTime.GetCurrentCalendarTime()
-	if not calDate then return end
+	if not calDate then
+		return
+	end
 
 	C_Calendar.SetAbsMonth(calDate.month, calDate.year)
 	C_Calendar.OpenCalendar()
@@ -260,24 +350,124 @@ local function AddResets()
 	GameTooltip:AddLine(" ")
 	local daily = GetQuestResetTime and GetQuestResetTime()
 	if daily and daily > 0 then
-		GameTooltip:AddDoubleLine(L["Daily Reset"], SecondsToTime(daily, true, nil, 2), LBL[1], LBL[2], LBL[3], 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["Daily Reset"], FormatTimer(daily), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
 	local weekly = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset and C_DateAndTime.GetSecondsUntilWeeklyReset()
 	if weekly and weekly > 0 then
-		GameTooltip:AddDoubleLine(L["Weekly Reset"], SecondsToTime(weekly, true, nil, 2), LBL[1], LBL[2], LBL[3], 1, 1, 1)
+		GameTooltip:AddDoubleLine(L["Weekly Reset"], FormatTimer(weekly), LBL[1], LBL[2], LBL[3], 1, 1, 1)
+	end
+end
+
+-- Walk from the player's current map up to its continent, then collect the
+-- continent + all of its zone maps. Current-content scans stay patch-proof this
+-- way: no static map-ID table is needed when the player is in the right region.
+local function CollectContinentZones(result)
+	if not C_Map or not C_Map.GetBestMapForUnit or not C_Map.GetMapInfo then
+		return
+	end
+
+	local mapID = C_Map.GetBestMapForUnit("player")
+	local guard = 0
+	while mapID and guard < 20 do
+		guard = guard + 1
+		local info = C_Map.GetMapInfo(mapID)
+		if not info then
+			return
+		end
+		if info.mapType == Enum.UIMapType.Continent then
+			break
+		end
+		mapID = info.parentMapID
+	end
+	if not mapID then
+		return
+	end
+
+	result[#result + 1] = mapID
+	if C_Map.GetMapChildrenInfo then
+		local children = C_Map.GetMapChildrenInfo(mapID, Enum.UIMapType.Zone, true)
+		if children then
+			for _, child in ipairs(children) do
+				if child.mapID then
+					result[#result + 1] = child.mapID
+				end
+			end
+		end
+	end
+end
+
+local worldBossScanBuffer = {}
+
+local function IsMidnightWorldBossName(name)
+	if not name then
+		return false
+	end
+	for _, bossName in ipairs(WORLD_BOSS_NAMES) do
+		if find(name, bossName, 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+local function GetSavedWorldBossReset(name)
+	local count = GetNumSavedWorldBosses and GetNumSavedWorldBosses() or 0
+	for i = 1, count do
+		local savedName, id, reset = GetSavedWorldBossInfo(i)
+		if savedName == name and id ~= 11 and id ~= 12 and id ~= 13 then
+			return reset
+		end
+	end
+end
+
+local function FindActiveWorldBoss()
+	if not (C_TaskQuest and C_TaskQuest.GetQuestsOnMap) then
+		return
+	end
+
+	local maps = worldBossScanBuffer
+	wipe(maps)
+	CollectContinentZones(maps)
+
+	for _, mapID in ipairs(maps) do
+		local tasks = C_TaskQuest.GetQuestsOnMap(mapID)
+		if tasks then
+			for _, task in ipairs(tasks) do
+				local questID = task and (task.questID or task.questId)
+				local name = questID and _G.QuestUtils_GetQuestName and _G.QuestUtils_GetQuestName(questID)
+				if IsMidnightWorldBossName(name) then
+					return name, questID
+				end
+			end
+		end
 	end
 end
 
 local function AddWorldBosses()
-	local count = GetNumSavedWorldBosses and GetNumSavedWorldBosses() or 0
-	if count == 0 then return end
+	local activeName = FindActiveWorldBoss()
+	local activeReset = activeName and GetSavedWorldBossReset(activeName)
+	local header
 
-	AddTooltipTitle(_G.RAID_INFO_WORLD_BOSS)
+	if activeName then
+		AddTooltipTitle(_G.RAID_INFO_WORLD_BOSS)
+		header = true
+		if activeReset then
+			GameTooltip:AddDoubleLine(activeName, _G.QUEST_COMPLETE, 1, 1, 1, 0, 1, 0)
+		else
+			GameTooltip:AddDoubleLine(activeName, L["Available"], 1, 1, 1, 1, 0.82, 0)
+		end
+	end
+
+	local count = GetNumSavedWorldBosses and GetNumSavedWorldBosses() or 0
 	for i = 1, count do
 		local name, id, reset = GetSavedWorldBossInfo(i)
-		if name and id ~= 11 and id ~= 12 and id ~= 13 then
-			GameTooltip:AddDoubleLine(name, SecondsToTime(reset, true, nil, 2), 1, 1, 1, 0.75, 0.75, 0.75)
+		if name and id ~= 11 and id ~= 12 and id ~= 13 and name ~= activeName then
+			if not header then
+				AddTooltipTitle(_G.RAID_INFO_WORLD_BOSS)
+				header = true
+			end
+			GameTooltip:AddDoubleLine(name, FormatTimer(reset), 1, 1, 1, 0.75, 0.75, 0.75)
 		end
 	end
 end
@@ -285,21 +475,41 @@ end
 -- Locale-independent difficulty abbreviations keyed by difficultyID, so long
 -- names like "Looking For Raid" / "40 Player" stay short in the tooltip.
 local DIFF_ABBR = {
-	[1] = "N", [2] = "H",
-	[3] = "10N", [4] = "25N", [5] = "10H", [6] = "25H", [7] = "LFR",
-	[9] = "40", [14] = "N", [15] = "H", [16] = "M", [17] = "LFR",
-	[23] = "M", [24] = "TW", [33] = "TW",
+	[1] = "N",
+	[2] = "H",
+	[3] = "10N",
+	[4] = "25N",
+	[5] = "10H",
+	[6] = "25H",
+	[7] = "LFR",
+	[9] = "40",
+	[14] = "N",
+	[15] = "H",
+	[16] = "M",
+	[17] = "LFR",
+	[23] = "M",
+	[24] = "TW",
+	[33] = "TW",
 }
 
 -- Tier colours (gear-quality language: green/blue/purple) so the abbreviation
 -- stands out at a glance. Keyed by difficultyID to stay locale-independent.
 local DIFF_COLOR = {
-	[1] = "1eff00", [3] = "1eff00", [4] = "1eff00", [14] = "1eff00", -- Normal: green
-	[2] = "0070dd", [5] = "0070dd", [6] = "0070dd", [15] = "0070dd", -- Heroic: blue
-	[16] = "a335ee", [23] = "a335ee", -- Mythic: purple
-	[7] = "9d9d9d", [17] = "9d9d9d", -- LFR: grey
+	[1] = "1eff00",
+	[3] = "1eff00",
+	[4] = "1eff00",
+	[14] = "1eff00", -- Normal: green
+	[2] = "0070dd",
+	[5] = "0070dd",
+	[6] = "0070dd",
+	[15] = "0070dd", -- Heroic: blue
+	[16] = "a335ee",
+	[23] = "a335ee", -- Mythic: purple
+	[7] = "9d9d9d",
+	[17] = "9d9d9d", -- LFR: grey
 	[9] = "ff8000", -- 40 Player: orange
-	[24] = "00ccff", [33] = "00ccff", -- Timewalking: light blue
+	[24] = "00ccff",
+	[33] = "00ccff", -- Timewalking: light blue
 }
 
 local function AbbrDiff(diff, diffName)
@@ -313,10 +523,16 @@ end
 
 -- Smooth red (none) -> orange/yellow (partial) -> green (cleared) by ratio.
 local function ProgressColor(progress, total)
-	if not total or total <= 0 then return 1, 0, 0 end
+	if not total or total <= 0 then
+		return 1, 0, 0
+	end
 	local ratio = (progress or 0) / total
-	if ratio <= 0 then return 1, 0, 0 end
-	if ratio >= 1 then return 0, 1, 0 end
+	if ratio <= 0 then
+		return 1, 0, 0
+	end
+	if ratio >= 1 then
+		return 0, 1, 0
+	end
 	if ratio <= 0.5 then
 		return 1, ratio * 2, 0 -- red -> yellow
 	end
@@ -339,7 +555,9 @@ end
 
 local function AddLockouts()
 	local count = GetNumSavedInstances and GetNumSavedInstances() or 0
-	if count == 0 then return end
+	if count == 0 then
+		return
+	end
 
 	local dungeonHeader, raidHeader
 	for i = 1, count do
@@ -351,49 +569,99 @@ local function AddLockouts()
 					AddTooltipTitle(L["Saved Dungeon(s)"])
 					dungeonHeader = true
 				end
-				GameTooltip:AddDoubleLine(format("%s - %s %s", name, AbbrDiff(diff, diffName), ProgressString(progress, numEncounters)), SecondsToTime(reset, true, nil, 2), 1, 1, 1, r, g, b)
+				GameTooltip:AddDoubleLine(format("%s - %s %s", name, AbbrDiff(diff, diffName), ProgressString(progress, numEncounters)), FormatTimer(reset), 1, 1, 1, r, g, b)
 			elseif isRaid then
 				if not raidHeader then
 					AddTooltipTitle(L["Saved Raid(s)"])
 					raidHeader = true
 				end
-				GameTooltip:AddDoubleLine(format("%s - %s %s", name, AbbrDiff(diff, diffName), ProgressString(progress, numEncounters)), SecondsToTime(reset, true, nil, 2), 1, 1, 1, r, g, b)
+				GameTooltip:AddDoubleLine(format("%s - %s %s", name, AbbrDiff(diff, diffName), ProgressString(progress, numEncounters)), FormatTimer(reset), 1, 1, 1, r, g, b)
 			end
 		end
 	end
 end
 
-local function AddQuestCompletions()
-	if not C_QuestLog or not C_QuestLog.IsQuestFlaggedCompleted then return end
+-- Localized quest title (falls back to the raw quest API or nil). Returns nil for
+-- the empty string the quest APIs hand back before a quest name is cached.
+local function QuestName(questID)
+	local name = _G.QuestUtils_GetQuestName and _G.QuestUtils_GetQuestName(questID)
+	if (not name or name == "") and C_QuestLog.GetTitleForQuestID then
+		name = C_QuestLog.GetTitleForQuestID(questID)
+	end
+	if name and name ~= "" then
+		return name
+	end
+end
 
+-- Returns the in-log "Choose Your Path" path quest's name and objective progress
+-- ("1/3"), or nil when no tracked path is in the quest log. Objective counts are
+-- guarded against 12.0 secret values (they can be secret inside instances), in
+-- which case the progress string is omitted but the path name still shows.
+local function GetActivePathProgress()
+	if not C_QuestLog.GetLogIndexForQuestID then
+		return
+	end
+	for _, questID in ipairs(WEEKLY_PATH_QUESTS) do
+		if C_QuestLog.GetLogIndexForQuestID(questID) then
+			local progress
+			local objectives = C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(questID)
+			local o = objectives and objectives[1]
+			if o and o.numFulfilled and o.numRequired and F.NotSecret(o.numFulfilled) and F.NotSecret(o.numRequired) and o.numRequired > 0 then
+				progress = format("%d/%d", o.numFulfilled, o.numRequired)
+			end
+			return QuestName(questID), progress
+		end
+	end
+end
+
+-- The weekly "Choose Your Path" meta (Unity Against the Void, Lady Liadrin).
+-- This is the headline Midnight weekly, so it always shows at max level as a
+-- reminder (hidden on leveling alts). Green = done, red = not yet; an indented
+-- line shows the picked path's progress while it's in the quest log.
+local function AddWeeklyMeta()
+	if not C_QuestLog or not C_QuestLog.IsQuestFlaggedCompleted then
+		return
+	end
+	-- Max-level content only - don't nag leveling alts with a weekly they can't do.
+	if GetMaxLevelForPlayerExpansion and UnitLevel("player") < GetMaxLevelForPlayerExpansion() then
+		return
+	end
+
+	local metaDone = C_QuestLog.IsQuestFlaggedCompleted(WEEKLY_META_QUEST)
+	local pathName, pathProgress = GetActivePathProgress()
+
+	AddTooltipTitle(L["Weekly Quest"])
+	GameTooltip:AddDoubleLine(QuestName(WEEKLY_META_QUEST) or L["Choose Your Path"], metaDone and _G.QUEST_COMPLETE or _G.INCOMPLETE, 1, 1, 1, metaDone and 0 or 1, metaDone and 1 or 0, 0)
+	if not metaDone and pathName then
+		GameTooltip:AddDoubleLine("  " .. pathName, pathProgress or _G.INCOMPLETE, LBL[1], LBL[2], LBL[3], 1, 1, 1)
+	end
+end
+
+local function AddQuestCompletions()
+	if not C_QuestLog or not C_QuestLog.IsQuestFlaggedCompleted then
+		return
+	end
+
+	-- The QUEST_LIST entries are all pre-Midnight dailies/weeklies (Winter Veil,
+	-- Blingtron, Timewarped, Grand Hunt, Community Feast, Big Dig, Superbloom...),
+	-- so they only show when legacy tracking is enabled. Midnight's current
+	-- weekly is handled by AddWeeklyMeta below.
 	local header
-	for _, q in ipairs(QUEST_LIST) do
-		if q.id and C_QuestLog.IsQuestFlaggedCompleted(q.id) then
-			if (not q.twBadge) or (isTimeWalker and (walkerTexture == q.texture or walkerTexture == (q.texture and q.texture - 1))) then
-				local name = q.itemID and GetItemLink(q.itemID) or (q.questName and _G.QuestUtils_GetQuestName and _G.QuestUtils_GetQuestName(q.id)) or q.name
-				if name and name ~= "" then
-					if not header then
-						AddTooltipTitle(_G.QUESTS_LABEL)
-						header = true
+	if cfg and cfg.showLegacy then
+		for _, q in ipairs(QUEST_LIST) do
+			if q.id and C_QuestLog.IsQuestFlaggedCompleted(q.id) then
+				if (not q.twBadge) or (isTimeWalker and (walkerTexture == q.texture or walkerTexture == (q.texture and q.texture - 1))) then
+					local name = q.itemID and GetItemLink(q.itemID) or (q.questName and _G.QuestUtils_GetQuestName and _G.QuestUtils_GetQuestName(q.id)) or q.name
+					if name and name ~= "" then
+						if not header then
+							AddTooltipTitle(_G.QUESTS_LABEL)
+							header = true
+						end
+						GameTooltip:AddDoubleLine(name, _G.QUEST_COMPLETE, 1, 1, 1, 1, 0, 0)
 					end
-					GameTooltip:AddDoubleLine(name, _G.QUEST_COMPLETE, 1, 1, 1, 1, 0, 0)
 				end
 			end
 		end
-	end
-
-	local keyCount = 0
-	for _, questID in ipairs(DELVES_KEYS) do
-		if C_QuestLog.IsQuestFlaggedCompleted(questID) then
-			keyCount = keyCount + 1
-		end
-	end
-	if keyCount > 0 then
-		if not header then
-			AddTooltipTitle(_G.QUESTS_LABEL)
-		end
-		local done = keyCount == #DELVES_KEYS
-		GameTooltip:AddDoubleLine(keyName, format("%d/%d", keyCount, #DELVES_KEYS), 1, 1, 1, done and 1 or 0, done and 0 or 1, 0)
 	end
 end
 
@@ -405,8 +673,14 @@ local function IsBountifulDelve(info)
 end
 
 local function AddDelveLine(uiMapID, info, header, seen)
-	local id = info and (info.areaPoiID or info.poiID or info.delveID or info.name)
-	if not info or (id and seen[id]) then return header, false end
+	-- Dedup by delve NAME, not POI id: the same bountiful delve is returned by
+	-- both the continent map and its child zone map with *different* areaPoiIDs,
+	-- so keying on the id would list each daily delve twice. The name is stable
+	-- across those duplicate listings, so it collapses them to one entry.
+	local id = info and (info.name or info.areaPoiID or info.poiID or info.delveID)
+	if not info or (id and seen[id]) then
+		return header, false
+	end
 	if id then
 		seen[id] = true
 	end
@@ -417,88 +691,432 @@ local function AddDelveLine(uiMapID, info, header, seen)
 	end
 
 	local mapInfo = C_Map.GetMapInfo(uiMapID)
-	GameTooltip:AddDoubleLine(format("%s - %s", mapInfo and mapInfo.name or L["Unknown"], info.name or L["Unknown"]), SecondsToTime(GetQuestResetTime(), true, nil, 2), 1, 1, 1, 0.75, 0.75, 0.75)
+	GameTooltip:AddDoubleLine(format("%s - %s", mapInfo and mapInfo.name or L["Unknown"], info.name or L["Unknown"]), FormatTimer(GetQuestResetTime()), 1, 1, 1, 1, 1, 1)
 	return header, true
 end
 
 -- Reused scratch buffer (avoid per-hover table churn).
 local delveScanBuffer = {}
 
--- Walk from the player's current map up to its continent, then collect the
--- continent + all of its zone maps. This keeps delve detection patch-proof: we
--- never hardcode the current expansion's map IDs.
-local function CollectContinentZones(result)
-	if not C_Map or not C_Map.GetBestMapForUnit or not C_Map.GetMapInfo then return end
-
-	local mapID = C_Map.GetBestMapForUnit("player")
-	local guard = 0
-	while mapID and guard < 20 do
-		guard = guard + 1
-		local info = C_Map.GetMapInfo(mapID)
-		if not info then return end
-		if info.mapType == Enum.UIMapType.Continent then break end
-		mapID = info.parentMapID
-	end
-	if not mapID then return end
-
-	result[#result + 1] = mapID
-	if C_Map.GetMapChildrenInfo then
-		local children = C_Map.GetMapChildrenInfo(mapID, Enum.UIMapType.Zone, true)
-		if children then
-			for _, child in ipairs(children) do
-				if child.mapID then
-					result[#result + 1] = child.mapID
-				end
-			end
-		end
-	end
-end
-
 -- Scan the given maps for bountiful delves using Blizzard's delve POI list.
-local function ScanDelveMaps(maps, header, seen)
-	if not C_AreaPoiInfo.GetDelvesForMap then return header, false end
+local function ScanDelveMaps(maps, header, seen, shown)
+	if not C_AreaPoiInfo.GetDelvesForMap then
+		return header, false, shown
+	end
 
 	local found
 	for _, uiMapID in ipairs(maps) do
+		if shown >= MAX_BOUNTIFUL_DELVES then
+			break
+		end
 		local poiIDs = C_AreaPoiInfo.GetDelvesForMap(uiMapID)
 		if poiIDs then
 			for _, poiID in ipairs(poiIDs) do
+				if shown >= MAX_BOUNTIFUL_DELVES then
+					break
+				end
 				local info = C_AreaPoiInfo.GetAreaPOIInfo(uiMapID, poiID)
 				if IsBountifulDelve(info) then
 					local added
 					header, added = AddDelveLine(uiMapID, info, header, seen)
 					found = found or added
+					if added then
+						shown = shown + 1
+					end
 				end
 			end
 		end
 	end
-	return header, found
+	return header, found, shown
 end
 
 local function AddDelves()
-	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOIInfo then return end
-	if not C_Map or not C_Map.GetMapInfo then return end
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOIInfo then
+		return
+	end
+	if not C_Map or not C_Map.GetMapInfo then
+		return
+	end
 
 	local header, found
 	local seen = {}
+	local shown = 0
 
 	-- 1) Dynamic scan of the player's current continent (current content).
 	local maps = delveScanBuffer
 	wipe(maps)
 	CollectContinentZones(maps)
-	header, found = ScanDelveMaps(maps, header, seen)
-	if found then return end
+	header, found, shown = ScanDelveMaps(maps, header, seen, shown)
+	if found then
+		return
+	end
 
 	-- 2) Static known delve maps via the same delve API (for when the player is
 	--    off-continent but we still want this week's bountiful delves).
-	header, found = ScanDelveMaps(DELVE_SCAN_MAPS, header, seen)
-	if found then return end
+	header, found, shown = ScanDelveMaps(DELVE_SCAN_MAPS, header, seen, shown)
+	if found then
+		return
+	end
 
 	-- 3) Legacy fallback: hardcoded POI IDs for older clients.
 	for _, delve in ipairs(DELVE_LIST) do
+		if shown >= MAX_BOUNTIFUL_DELVES then
+			break
+		end
 		local info = C_AreaPoiInfo.GetAreaPOIInfo(delve.uiMapID, delve.delveID or 0)
 		if info then
-			header = AddDelveLine(delve.uiMapID, info, header, seen)
+			local added
+			header, added = AddDelveLine(delve.uiMapID, info, header, seen)
+			if added then
+				shown = shown + 1
+			end
+		end
+	end
+end
+
+-- Current-content weekly: Void Assaults. Only the active zone's weekly (and the
+-- meta) is shown, and only once the player has it in their log or has completed
+-- it, so the tooltip never lists an irrelevant rotation. Green = done, red = not.
+local function VoidQuestName(id, fallback)
+	local name = _G.QuestUtils_GetQuestName and _G.QuestUtils_GetQuestName(id)
+	if name and name ~= "" then
+		return name
+	end
+	return fallback
+end
+
+local function AddVoidAssaults()
+	if not C_QuestLog or not C_QuestLog.IsQuestFlaggedCompleted then
+		return
+	end
+	local getLogIndex = C_QuestLog.GetLogIndexForQuestID
+
+	local header
+	for _, q in ipairs(VOID_ASSAULTS) do
+		local done = C_QuestLog.IsQuestFlaggedCompleted(q.id)
+		if done or (getLogIndex and getLogIndex(q.id)) then
+			if not header then
+				AddTooltipTitle(L["Void Assaults"])
+				header = true
+			end
+			GameTooltip:AddDoubleLine(VoidQuestName(q.id, q.fallback), done and _G.QUEST_COMPLETE or _G.INCOMPLETE, 1, 1, 1, done and 0 or 1, done and 1 or 0, 0)
+		end
+	end
+
+	local metaDone = C_QuestLog.IsQuestFlaggedCompleted(VOID_ASSAULT_META)
+	if metaDone or (getLogIndex and getLogIndex(VOID_ASSAULT_META)) then
+		if not header then
+			AddTooltipTitle(L["Void Assaults"])
+		end
+		GameTooltip:AddDoubleLine(VoidQuestName(VOID_ASSAULT_META, L["Weekly Meta"]), metaDone and _G.QUEST_COMPLETE or _G.INCOMPLETE, LBL[1], LBL[2], LBL[3], metaDone and 0 or 1, metaDone and 1 or 0, 0)
+	end
+end
+
+-- Current-content world events (Stormarion Assault, Abundance Harvest, Void
+-- Incursions...). Blizzard exposes these through GetEventsForMap; we scan the
+-- player's continent and merge duplicates by name (the same event can appear on
+-- multiple zone maps with different POI IDs). World bosses are omitted here
+-- because AddWorldBosses already tracks them. Ambient always-on POIs such as
+-- Prey or Legends of the Haranir are filtered out unless they carry a timer.
+local worldEventScanBuffer = {}
+local worldEventByName = {}
+
+local function ParseWidgetTextSeconds(text)
+	if not text or text == "" or F.IsSecret(text) then
+		return
+	end
+	-- WoW pluralization tokens like "|4Min:Min;" can sit between the number and
+	-- its unit word (e.g. "Time Left: 2 |4Min:Min; 38 |4Sec:Sec;"). Match a number
+	-- followed by optional space / pipe / digit noise, then the unit, so this
+	-- handles both the escaped form and plain "5 Min 45 Sec".
+	local days = match(text, "(%d+)[%s|%d]*[Dd]ay")
+	local hours = match(text, "(%d+)[%s|%d]*[Hh]our")
+	local mins = match(text, "(%d+)[%s|%d]*[Mm]in")
+	local secs = match(text, "(%d+)[%s|%d]*[Ss]ec")
+	if days or hours or mins or secs then
+		local total = (tonumber(days) or 0) * 86400 + (tonumber(hours) or 0) * 3600 + (tonumber(mins) or 0) * 60 + (tonumber(secs) or 0)
+		if total > 0 then
+			return total
+		end
+	end
+	local h, m, s = match(text, "(%d+):(%d+):(%d+)")
+	if h then
+		local total = tonumber(h) * 3600 + tonumber(m) * 60 + tonumber(s)
+		if total > 0 then
+			return total
+		end
+	end
+end
+
+local function WidgetTimerSeconds(info)
+	if not info or info.shownState == Enum.WidgetShownState.Hidden then
+		return
+	end
+	if info.timerValue and info.timerMin and F.NotSecret(info.timerValue) and F.NotSecret(info.timerMin) then
+		local remaining = info.timerValue - info.timerMin
+		if remaining > 0 then
+			return remaining
+		end
+	end
+	if info.hasTimer and info.barValue and info.barMin and F.NotSecret(info.barValue) and F.NotSecret(info.barMin) then
+		local remaining = info.barValue - info.barMin
+		if remaining > 0 then
+			return remaining
+		end
+		if info.barMax and F.NotSecret(info.barMax) then
+			remaining = info.barMax - info.barValue
+			if remaining > 0 then
+				return remaining
+			end
+		end
+	end
+	return ParseWidgetTextSeconds(info.text) or ParseWidgetTextSeconds(info.headerText) or ParseWidgetTextSeconds(info.overrideBarText)
+end
+
+local function WidgetProgressPercent(info)
+	if not info or info.shownState == Enum.WidgetShownState.Hidden then
+		return
+	end
+	if not (info.barValue and info.barMin and info.barMax) then
+		return
+	end
+	if F.IsSecret(info.barValue) or F.IsSecret(info.barMin) or F.IsSecret(info.barMax) then
+		return
+	end
+
+	local range = info.barMax - info.barMin
+	if range <= 0 then
+		return
+	end
+	local pct = ((info.barValue - info.barMin) / range) * 100
+	if pct >= 0 and pct <= 100 then
+		return pct
+	end
+end
+
+local function GetWidgetVisInfo(widgetID, widgetType)
+	local widgetManager = _G.UIWidgetManager
+	if widgetManager then
+		local typeInfo = widgetManager:GetWidgetTypeInfo(widgetType)
+		if typeInfo and typeInfo.visInfoDataFunction then
+			return typeInfo.visInfoDataFunction(widgetID)
+		end
+	end
+	if not C_UIWidgetManager then
+		return
+	end
+	if widgetType == Enum.UIWidgetVisualizationType.ScenarioHeaderTimer then
+		return C_UIWidgetManager.GetScenarioHeaderTimerWidgetVisualizationInfo(widgetID)
+	end
+	if widgetType == Enum.UIWidgetVisualizationType.StatusBar then
+		return C_UIWidgetManager.GetStatusBarWidgetVisualizationInfo(widgetID)
+	end
+	if widgetType == Enum.UIWidgetVisualizationType.TextWithState then
+		return C_UIWidgetManager.GetTextWithStateWidgetVisualizationInfo(widgetID)
+	end
+	if widgetType == Enum.UIWidgetVisualizationType.IconAndText and C_UIWidgetManager.GetIconAndTextWidgetVisualizationInfo then
+		return C_UIWidgetManager.GetIconAndTextWidgetVisualizationInfo(widgetID)
+	end
+	if widgetType == Enum.UIWidgetVisualizationType.TextureAndText and C_UIWidgetManager.GetTextureAndTextWidgetVisualizationInfo then
+		return C_UIWidgetManager.GetTextureAndTextWidgetVisualizationInfo(widgetID)
+	end
+end
+
+local function GetPoiWidgetSecondsLeft(poi)
+	local setID = poi and poi.tooltipWidgetSet
+	if not setID or not C_UIWidgetManager or not C_UIWidgetManager.GetAllWidgetsBySetID then
+		return
+	end
+	local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(setID)
+	if not widgets then
+		return
+	end
+
+	local best
+	for _, widget in ipairs(widgets) do
+		local info = GetWidgetVisInfo(widget.widgetID, widget.widgetType)
+		local secs = info and WidgetTimerSeconds(info)
+		if secs and F.NotSecret(secs) and secs > 0 and (not best or secs < best) then
+			best = secs
+		end
+	end
+	return best
+end
+
+local function GetPoiWidgetProgressPercent(poi)
+	local setID = poi and poi.tooltipWidgetSet
+	if not setID or not C_UIWidgetManager or not C_UIWidgetManager.GetAllWidgetsBySetID then
+		return
+	end
+	local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(setID)
+	if not widgets then
+		return
+	end
+
+	for _, widget in ipairs(widgets) do
+		local info = GetWidgetVisInfo(widget.widgetID, widget.widgetType)
+		local pct = info and WidgetProgressPercent(info)
+		if pct then
+			return pct
+		end
+	end
+end
+
+local function GetPoiSecondsLeft(poiID, poi)
+	local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft and C_AreaPoiInfo.GetAreaPOISecondsLeft(poiID)
+	if secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 0 then
+		return secondsLeft
+	end
+	if poi then
+		return GetPoiWidgetSecondsLeft(poi)
+	end
+end
+
+local function IsImpendingVoidIncursion(name)
+	if not name then
+		return false
+	end
+	local lowerName = name:lower()
+	return find(lowerName, "impending", 1, true) and find(lowerName, "incursion", 1, true)
+end
+
+local function IsActiveVoidIncursion(name)
+	if not name then
+		return false
+	end
+	local lowerName = name:lower()
+	return find(lowerName, "void incursion", 1, true) and not find(lowerName, "impending", 1, true)
+end
+
+local function IsTrackedWorldEvent(name, atlasName, secs)
+	if not name or name == "" then
+		return false
+	end
+	if IsMidnightWorldBossName(name) then
+		return false
+	end
+	if secs and F.NotSecret(secs) and secs > 0 then
+		return true
+	end
+	local lowerName = name:lower()
+	if find(lowerName, "stormarion", 1, true) then
+		return true
+	end
+	if find(lowerName, "abundance", 1, true) then
+		return true
+	end
+	if find(lowerName, "incursion", 1, true) then
+		return true
+	end
+	if find(lowerName, "impending", 1, true) then
+		return true
+	end
+	if atlasName then
+		local lowerAtlas = atlasName:lower()
+		if find(lowerAtlas, "stormarion", 1, true) or find(lowerAtlas, "abundance", 1, true) then
+			return true
+		end
+	end
+	return false
+end
+
+local function MergeWorldEvent(byName, name, secs, pct)
+	local entry = byName[name]
+	if not entry then
+		byName[name] = { name = name, secs = secs, pct = pct }
+		return
+	end
+	if secs and F.NotSecret(secs) and secs > 0 then
+		if not entry.secs or entry.secs <= 0 or secs < entry.secs then
+			entry.secs = secs
+		end
+	end
+	if pct and F.NotSecret(pct) then
+		entry.pct = pct
+	end
+end
+
+local function AddConfiguredWorldEvents(byName)
+	for _, event in ipairs(CURRENT_WORLD_EVENT_POIS) do
+		local found
+		for _, poiID in ipairs(event.ids) do
+			local poi = C_AreaPoiInfo.GetAreaPOIInfo(event.mapID, poiID)
+			if poi then
+				found = true
+				MergeWorldEvent(byName, event.name or poi.name, GetPoiSecondsLeft(poiID, poi))
+			end
+		end
+		if found and not byName[event.name] then
+			MergeWorldEvent(byName, event.name)
+		end
+	end
+end
+
+local function AddWorldEvents()
+	if not (C_AreaPoiInfo and C_AreaPoiInfo.GetEventsForMap and C_AreaPoiInfo.GetAreaPOIInfo) then
+		return
+	end
+	if not (C_Map and C_Map.GetMapInfo) then
+		return
+	end
+
+	local maps = worldEventScanBuffer
+	wipe(maps)
+	CollectContinentZones(maps)
+
+	local byName = worldEventByName
+	wipe(byName)
+	AddConfiguredWorldEvents(byName)
+
+	for _, uiMapID in ipairs(maps) do
+		local events = C_AreaPoiInfo.GetEventsForMap(uiMapID)
+		if events then
+			for _, poiID in ipairs(events) do
+				local poi = C_AreaPoiInfo.GetAreaPOIInfo(uiMapID, poiID)
+				if poi and poi.name then
+					local secs = GetPoiSecondsLeft(poiID, poi)
+					local pct = IsImpendingVoidIncursion(poi.name) and GetPoiWidgetProgressPercent(poi)
+					if IsTrackedWorldEvent(poi.name, poi.atlasName, secs) then
+						MergeWorldEvent(byName, poi.name, secs, pct)
+					end
+				end
+			end
+		end
+	end
+
+	local list = maps
+	wipe(list)
+	for _, entry in pairs(byName) do
+		list[#list + 1] = entry
+	end
+	if #list == 0 then
+		return
+	end
+
+	sort(list, function(a, b)
+		local aTimed = a.secs and a.secs > 0
+		local bTimed = b.secs and b.secs > 0
+		if aTimed ~= bTimed then
+			return aTimed
+		end
+		if aTimed and bTimed and a.secs ~= b.secs then
+			return a.secs < b.secs
+		end
+		return a.name < b.name
+	end)
+
+	AddTooltipTitle(L["World Events"])
+	for _, entry in ipairs(list) do
+		local secs = entry.secs
+		if entry.pct and F.NotSecret(entry.pct) then
+			GameTooltip:AddDoubleLine(entry.name, format("%d%%", floor(entry.pct + 0.5)), 1, 1, 1, 1, 0.82, 0)
+		elseif IsActiveVoidIncursion(entry.name) then
+			GameTooltip:AddDoubleLine(entry.name, L["Active"], 1, 1, 1, 0.75, 0.75, 0.75)
+		elseif secs and F.NotSecret(secs) and secs > 0 then
+			-- Same compact format/color as Daily/Weekly Reset and Delves.
+			GameTooltip:AddDoubleLine(entry.name, FormatTimer(secs), 1, 1, 1, 1, 1, 1)
+		else
+			GameTooltip:AddDoubleLine(entry.name, L["Active"], 1, 1, 1, 0.75, 0.75, 0.75)
 		end
 	end
 end
@@ -507,10 +1125,14 @@ end
 -- Shift-held world-event helpers
 -- ---------------------------------------------------------------------------
 local function GetInvasionInfo(mapID)
-	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft or not C_Map or not C_Map.GetMapInfo then return nil, nil end
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft or not C_Map or not C_Map.GetMapInfo then
+		return nil, nil
+	end
 
 	local areaPoiID = mapAreaPoiIDs[mapID]
-	if not areaPoiID then return nil, nil end
+	if not areaPoiID then
+		return nil, nil
+	end
 
 	local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(areaPoiID)
 	local mapData = C_Map.GetMapInfo(mapID)
@@ -533,7 +1155,9 @@ local function GetNextInvasionTime(baseTime, index)
 end
 
 local function GetNextInvasionLocation(nextTime, index)
-	if not C_Map or not C_Map.GetMapInfo then return _G.QUEUE_TIME_UNAVAILABLE end
+	if not C_Map or not C_Map.GetMapInfo then
+		return _G.QUEUE_TIME_UNAVAILABLE
+	end
 
 	local inv = invIndex[index]
 	if #inv.timeTable == 0 then
@@ -551,8 +1175,12 @@ local function GetNextInvasionLocation(nextTime, index)
 end
 
 local function AddShiftWorldEvents()
-	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOIInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft then return end
-	if not C_Map or not C_Map.GetMapInfo then return end
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOIInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft then
+		return
+	end
+	if not C_Map or not C_Map.GetMapInfo then
+		return
+	end
 
 	for mapID, group in pairs(STORM_POI_IDS) do
 		for _, poiIDs in pairs(group) do
@@ -563,7 +1191,7 @@ local function AddShiftWorldEvents()
 					AddTooltipTitle(poi.name)
 					local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(poiID) or 0
 					local map = C_Map.GetMapInfo(mapID)
-					GameTooltip:AddDoubleLine((map and map.name or L["Unknown"]) .. GetElementalType(eType), FormatShortTime(secondsLeft), 1, 1, 1, secondsLeft < 3600 and 1 or 0, secondsLeft < 3600 and 0 or 1, 0)
+					GameTooltip:AddDoubleLine((map and map.name or L["Unknown"]) .. GetElementalType(eType), FormatTimer(secondsLeft), 1, 1, 1, 1, 1, 1)
 					break
 				end
 			end
@@ -576,7 +1204,7 @@ local function AddShiftWorldEvents()
 			AddTooltipTitle(poi.name)
 			local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(areaID) or 0
 			local map = C_Map.GetMapInfo(mapID)
-			GameTooltip:AddDoubleLine(map and map.name or L["Unknown"], FormatShortTime(secondsLeft), 1, 1, 1, secondsLeft < 3600 and 1 or 0, secondsLeft < 3600 and 0 or 1, 0)
+			GameTooltip:AddDoubleLine(map and map.name or L["Unknown"], FormatTimer(secondsLeft), 1, 1, 1, 1, 1, 1)
 			break
 		end
 	end
@@ -600,7 +1228,7 @@ local function AddShiftWorldEvents()
 		local secondsLeft, zoneName = CheckInvasion(index)
 		local nextTime = GetNextInvasionTime(inv.baseTime, index)
 		if secondsLeft then
-			GameTooltip:AddDoubleLine(L["Current Invasion"] .. (zoneName or ""), FormatShortTime(secondsLeft), 1, 1, 1, secondsLeft < 3600 and 1 or 0, secondsLeft < 3600 and 0 or 1, 0)
+			GameTooltip:AddDoubleLine(L["Current Invasion"] .. (zoneName or ""), FormatTimer(secondsLeft), 1, 1, 1, 1, 1, 1)
 		end
 		GameTooltip:AddDoubleLine(L["Next Invasion"] .. GetNextInvasionLocation(nextTime, index), date("%m/%d %H:%M", nextTime), 1, 1, 1, 0.75, 0.75, 0.75)
 	end
@@ -611,6 +1239,7 @@ end
 -- ---------------------------------------------------------------------------
 local function OnEnter(self)
 	entered = true
+	tooltipElapsed = 0
 	self:RegisterEvent("MODIFIER_STATE_CHANGED")
 	RequestRaidInfo()
 
@@ -633,13 +1262,21 @@ local function OnEnter(self)
 	AddWorldBosses()
 	AddLockouts()
 	AddQuestCompletions()
+	AddWeeklyMeta()
 	AddDelves()
+	AddVoidAssaults()
+	AddWorldEvents()
 
-	if IsShiftKeyDown() then
-		AddShiftWorldEvents()
-	else
-		GameTooltip:AddLine(" ")
-		GameTooltip:AddLine(L["Hold SHIFT for info"], LBL[1], LBL[2], LBL[3])
+	-- Legacy world-event timers live behind the SHIFT modifier and the
+	-- showLegacy toggle. When legacy tracking is off the SHIFT hint is hidden so
+	-- the tooltip stays focused on current (Midnight) content.
+	if cfg and cfg.showLegacy then
+		if IsShiftKeyDown() then
+			AddShiftWorldEvents()
+		else
+			GameTooltip:AddLine(" ")
+			GameTooltip:AddLine(L["Hold SHIFT for info"], LBL[1], LBL[2], LBL[3])
+		end
 	end
 
 	GameTooltip:AddLine(" ")
@@ -720,10 +1357,17 @@ function Clock:Create()
 	local elapsed = 5
 	clock:SetScript("OnUpdate", function(self, e)
 		elapsed = elapsed + (e or 0)
-		if elapsed < 5 then return end
+		if elapsed < 5 then
+			return
+		end
 		elapsed = 0
 		UpdateClock(self)
-		if entered then OnEnter(self) end
+		if entered then
+			tooltipElapsed = tooltipElapsed + 5
+			if tooltipElapsed >= 30 then
+				OnEnter(self)
+			end
+		end
 	end)
 
 	UpdateClock(clock)
@@ -731,7 +1375,9 @@ end
 
 function Clock:OnEnable()
 	cfg = ns.db.timeText
-	if not cfg.enable then return end
+	if not cfg.enable then
+		return
+	end
 	self:Create()
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "CheckTimeWalker")
 end
@@ -752,6 +1398,8 @@ end
 function Clock:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Clock"], L["Show a clock on the minimap with a lockout / reset tooltip (reload to disable)."])
 	local _, classColorInit = builder:Checkbox(category, self, "classColor", L["Class-Coloured Numbers"], L["Colour the clock with your class colour."])
+	local _, legacyInit = builder:Checkbox(category, self, "showLegacy", L["Show Legacy World Events"], L["Track pre-Midnight world events (Legion invasions, faction assaults, elemental storms, Grand Hunt, Community Feast) and the old daily-quest checklist. Hold SHIFT over the clock to see the timers."])
 
 	builder:DependsOn(classColorInit, enableInit)
+	builder:DependsOn(legacyInit, enableInit)
 end

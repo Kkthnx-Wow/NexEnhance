@@ -174,6 +174,8 @@ local function SetupTextContainer(cooldown)
 	local fs = cooldown:GetCountdownFontString()
 	if not fs then return end
 
+	-- Park the countdown text on a very-high-level child so it always draws
+	-- above the cooldown swipe/edge and the icon's own overlay textures.
 	local container = CreateFrame("Frame", nil, cooldown)
 	container:SetAllPoints(cooldown)
 	container:SetFrameLevel(777)

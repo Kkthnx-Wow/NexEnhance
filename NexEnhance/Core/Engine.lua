@@ -184,6 +184,79 @@ function ns:UnregisterEvent(event, callback)
 end
 
 -- ---------------------------------------------------------------------------
+-- Internal signal bus (pub/sub)
+--   The dispatcher above is for *WoW game events*. This bus is for *internal*
+--   addon signals, so modules can react to one another without holding hard
+--   references - e.g. the options panel broadcasts "SettingChanged.tooltip.enable"
+--   and any number of unrelated modules subscribe to it.
+--
+--   Adapted from Plumber's CallbackRegistry (Peterodox). A subscriber is either
+--   a plain function or the *name* of a method resolved on `owner` when the
+--   signal fires; binding `owner` up front avoids a per-subscription closure.
+--
+--     ns:RegisterCallback("SettingChanged.tooltip.enable", "RefreshAnchors", self)
+--     ns:RegisterCallback("SettingChanged.tooltip.enable", function(value) ... end)
+--     ns:TriggerCallback("SettingChanged.tooltip.enable", true)
+-- ---------------------------------------------------------------------------
+local signalCallbacks = {} -- signal -> { { callback, owner, isMethod }, ... }
+
+--- Subscribe `callback` to `signal`. `callback` is a function or a method name
+--- on `owner`. When `owner` is given it is passed as the first argument
+--- (function form) or the receiver (method form). Returns `callback` so the
+--- caller can keep a handle for UnregisterCallback.
+function ns:RegisterCallback(signal, callback, owner)
+	local list = signalCallbacks[signal]
+	if not list then
+		list = {}
+		signalCallbacks[signal] = list
+	end
+	list[#list + 1] = { callback, owner, type(callback) == "string" }
+	return callback
+end
+
+--- Fire `signal`, invoking every subscriber in registration order with `...`.
+--- Allocation-free on the hot path (no varargs repacking).
+function ns:TriggerCallback(signal, ...)
+	local list = signalCallbacks[signal]
+	if not list then return end
+	-- Tombstoned slots are skipped, so subscribers can unregister mid-fire
+	-- without shifting the callback that follows them.
+	for i = 1, #list do
+		local cb = list[i]
+		if cb then
+			if cb[3] then
+				cb[2][cb[1]](cb[2], ...) -- owner:method(...)
+			elseif cb[2] then
+				cb[1](cb[2], ...) -- func(owner, ...)
+			else
+				cb[1](...) -- func(...)
+			end
+		end
+	end
+end
+
+--- Remove a previously registered callback, matched by `callback` (function or
+--- method name) and `owner`. Safe to call from within a fired callback.
+function ns:UnregisterCallback(signal, callback, owner)
+	local list = signalCallbacks[signal]
+	if not list then return end
+
+	local anyLive = false
+	for i = 1, #list do
+		local cb = list[i]
+		if cb and cb[1] == callback and cb[2] == owner then
+			list[i] = false
+		elseif cb then
+			anyLive = true
+		end
+	end
+
+	if not anyLive then
+		signalCallbacks[signal] = nil
+	end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 --   ADDON_LOADED -> Initialize() : saved variables are ready, build the DB
 --                                  and run each module's OnInitialize.

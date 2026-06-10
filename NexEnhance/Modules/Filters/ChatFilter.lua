@@ -292,7 +292,7 @@ end
 -- ---------------------------------------------------------------------------
 -- /nexfilter - manage the account-wide keyword lists
 -- ---------------------------------------------------------------------------
-local function PrintSet(label, set)
+local function PrintSet(set)
 	local any = false
 	for keyword in pairs(set) do
 		F.Print("  " .. keyword)
@@ -301,7 +301,6 @@ local function PrintSet(label, set)
 	if not any then
 		F.Print(F.Colorize("  (" .. L["empty"] .. ")", "gray"))
 	end
-	return label
 end
 
 local function HandleFilterCommand(input)
@@ -326,9 +325,9 @@ local function HandleFilterCommand(input)
 		F.Print(F.Colorize(L["Chat filter keywords cleared."], "brand"))
 	elseif cmd == "list" then
 		F.Print(F.Colorize(L["Filter keywords"] .. ":", "brand"))
-		PrintSet(nil, set.keywords)
+		PrintSet(set.keywords)
 		F.Print(F.Colorize(L["Whitelist keywords"] .. ":", "brand"))
-		PrintSet(nil, set.whitelist)
+		PrintSet(set.whitelist)
 	else
 		F.Print(F.Colorize(L["Chat filter usage:"], "brand"))
 		F.Print("  /nexfilter add <keyword>")

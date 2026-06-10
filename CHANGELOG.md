@@ -8,6 +8,172 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.8] — 2026-06-10
+
+Brings the Clock (Time) datatext up to Midnight — Stormarion Assault, Abundance
+and Void Incursion timers, active world-boss tracking, Void Assault weeklies and
+a delve rework — with older world events tucked behind a toggle. Also sharper
+rare alerts, item level and bind status on the warband bank, and more Midnight
+secret-value hardening across tooltips. The rare popup is now a proper
+click-to-track banner with Edit Mode settings, faster loot is more reliable, the
+loot frame can grow taller, known housing decor is detected, and tooltip health
+text works with secret health values instead of blanking out.
+
+### Added
+
+- **DataText — Clock (Midnight world events):** the lockout tooltip now tracks
+  current Midnight world content — Stormarion Assault, Abundance (e.g. Herbalism
+  Grotto) and Void Incursions — reading live countdowns and progress from the
+  POI/event widgets instead of guessing, and labelling impending vs. active
+  incursions.
+- **DataText — Clock (active world boss):** detects the world boss that is up
+  right now via a map POI scan, shown alongside the existing saved world-boss
+  lockout.
+- **DataText — Clock (Void Assaults):** weekly Void Assault meta and its sub-
+  objectives are tracked with a fail-safe so the line is skipped when the quest
+  data isn't available.
+- **DataText — Clock (weekly "Choose Your Path"):** the lockout tooltip now
+  tracks Midnight's headline weekly — the Unity Against the Void meta from Lady
+  Liadrin. The meta's completed flag drives the Complete/Incomplete status, and
+  whichever path you picked (e.g. Midnight: Delves) shows its objective progress
+  underneath while it's in your log. Only shown once you're engaged with it, so
+  it never nags low-level alts.
+- **DataText — Clock (legacy world events):** older expansion world events
+  (Legion invasions, faction assaults, elemental storms, feasts and the like)
+  now sit behind a "Show Legacy World Events" toggle, off by default.
+- **Inventory — Loot Frame:** new module that lets Blizzard's default loot
+  window grow taller so more loot fits on one page without scrolling. Includes a
+  live toggle and a configurable max height percentage.
+- **Inventory — Already Known:** housing decor items now tint green when already
+  owned. The check uses the Midnight housing catalog API when available and
+  counts both stored decor and decor already placed in a house.
+- **Announcements — Rare Alert popup:** rare alerts can now show a movable
+  popup with a 2D portrait when the rare is visible, falling back to the
+  vignette atlas icon otherwise. Left-click can target the rare, optionally mark
+  it with a raid marker, and set a TomTom or Blizzard waypoint.
+- **Announcements — Rare Alert preview:** `/nex rare` still toggles a sticky
+  preview banner, while Edit Mode now shows the banner automatically so it can be
+  moved without running the preview command first.
+- **Announcements — Rare Alert (sound while alt-tabbed):** an optional toggle
+  makes the alert sound audible while WoW is minimised or in the background,
+  briefly overriding your background-sound setting and restoring it afterwards.
+  Mechanism cherry-picked from RareAlert. Off by default.
+
+### Changed
+
+- **DataText — Clock (timer format):** every countdown in the lockout tooltip
+  (daily/weekly resets, saved instances, delves and world events) now uses one
+  compact format — `6d 10h`, `10h 30m`, `32m`, `45s` — in consistent white text,
+  with status colours kept only for special states (Available, Active, Complete,
+  percentages).
+- **DataText — Clock (delves):** delve tracking is reworked for Midnight — it
+  caps the bountiful-delve list to the four that can be up and de-duplicates
+  entries by delve name so the same delve no longer appears twice across
+  continent and zone maps. The old War Within coffer-key fragment line was
+  dropped (the weekly is now tracked via the Choose Your Path meta above).
+- **Announcements — Rare Alert (click-to-target):** hardened the secure target
+  click so it works for players who use key-down action casting. The popup now
+  forces `ActionButtonUseKeyDown` off for the duration of the click and restores
+  it afterwards, so `/targetexact` fires reliably. Cherry-picked from RareAlert.
+- **Tooltip — quality border:** the old recipe item-name width tweak has been
+  removed; reading and writing tooltip line geometry is fragile under Midnight
+  Secret Values and the cosmetic gain wasn't worth the taint risk. The item
+  post-call now only tints Blizzard's default border by item quality.
+- **Automation — Faster Loot:** reworked the fast-loot path into a paced
+  slot-walker inspired by SpeedyAutoLoot. It listens to both `LOOT_READY` and
+  `LOOT_OPENED`, handles noisy auto-loot state more reliably, avoids duplicate
+  event work and stops cleanly on `LOOT_CLOSED`.
+- **Announcements — Rare Alert:** detection is stricter and cheaper. Treasure,
+  lore and non-rare vignette atlas types are filtered out, NPC IDs can be parsed
+  from vignette GUIDs for the ignore list, and per-rare cooldowns prevent repeat
+  spam when flying in and out of range.
+- **Announcements — Rare Alert:** Edit Mode integration is cleaner. The
+  LibEditMode selection frame is raised above the secure popup overlay while in
+  Edit Mode, so the banner can be dragged without disabling click behavior or
+  special-casing popup clicks.
+- **Tooltip:** the health/status bar text now follows ElvUI's retail-safe model:
+  Blizzard updates the bar, NexEnhance post-hooks the health refresh and displays
+  secret health values through whitelisted number abbreviation instead of trying
+  to inspect them.
+- **Miscellaneous — Credits:** updated credits for recent inspiration and
+  cherry-picks, including SpeedyAutoLoot, Improved Loot Frame and RareScanner.
+
+### Fixed
+
+- **Inventory — Item Level:** fixed item level and bind status not appearing on
+  bank and warband bank items. The bag/bank slots now update off
+  `ItemButton:UpdateCooldown` (matching Unusable Items), hook both the
+  generate- and refresh-all paths for bank tabs, and install their hooks on
+  `BANKFRAME_OPENED` so the load-on-demand bank UI is covered.
+- **Tooltip (secret values):** fixed Secret-Value taint thrown from Blizzard's
+  own tooltip widget code (`GameTooltip_AddWidgetSet`, `GameTooltip_ClearWidgetSet`
+  and `EmbeddedItemTooltip_UpdateSize`) when our hooks run while widget geometry
+  is secret — for example on map POI / world-event tooltips. These paths are now
+  wrapped so a secret-value error is swallowed instead of bubbling up as a Lua
+  error.
+- **Tooltip:** fixed missing health text on `GameTooltipStatusBar`, including
+  secret health values returned by Midnight combat/instance APIs. Secret values
+  are displayed safely instead of being discarded by `F.NotSecret` guards.
+- **Tooltip:** fixed health text flickering or briefly showing the wrong values
+  while the tooltip is refreshing (for example when jumping in-game). The health
+  text now follows Blizzard/ElvUI's `UpdateUnitHealth` path and only reads the
+  unit attached to the tooltip/status bar instead of guessing from a fresh
+  `mouseover` lookup.
+- **Tooltip:** fixed secret-value taint caused by tooltip cleanup paths touching
+  Blizzard tooltip/widget state at unsafe times, including map POI/event tooltip
+  hide/clear paths.
+- **Tooltip:** hid the tooltip status bar without branching on `IsShown()`, since
+  the bar can inherit secret aspects after Blizzard writes secret health values
+  into it.
+- **Announcements — Rare Alert:** fixed combat-blocked popup show/hide paths for
+  the secure targeting overlay by skipping show in combat and deferring hides
+  until `PLAYER_REGEN_ENABLED`.
+- **Announcements — Rare Alert:** fixed Edit Mode click/drag conflicts where the
+  secure overlay could sit above LibEditMode's mover and prevent moving the
+  popup.
+- **Automation — Faster Loot:** fixed locked-slot handling across client return
+  variants for `GetLootSlotInfo`.
+- **Maps — Minimap (Collect Buttons):** fixed the AllTheThings minimap button
+  showing up oversized and escaping the tray. Its icon is re-clamped to the slot
+  on every tray open (so addons that resize their own button after our skin
+  can't overflow the grid), and its self-positioning is neutralised once parked
+  so it stops re-anchoring itself to the minimap.
+- **Automation — Faster Movie Skip:** fixed the module not turning on live —
+  enabling it from the Settings panel now installs its hooks immediately instead
+  of requiring a reload.
+- **Miscellaneous — Social Colours:** fixed the friends/who list refresh doing
+  O(n²) work (it re-walked the whole row list for every row); it now enumerates
+  the scroll rows once per refresh.
+
+### Performance & Internals
+- **Core — Object pool:** rebuilt `F.CreatePool` into a Plumber-style pool that
+  tracks active/free objects, injects an `obj:Release()` helper, and adds
+  `ReleaseAll()`/`EnumerateActive()` with optional acquire/release hooks.
+- **Core — Signal bus:** added an internal pub/sub callback bus
+  (`ns:RegisterCallback` / `TriggerCallback` / `UnregisterCallback`) adapted from
+  Plumber's CallbackRegistry, so modules can react to one another (e.g. setting
+  changes) without holding hard references. Every settings change now broadcasts
+  a `SettingChanged.<module>.<key>` signal, and several read-outs (the Settings
+  landing-page module count, the minimap mail/clock indicator and button-tray
+  position) update live in response.
+- **Automation — Quick Quest:** now uses the shared addon event dispatcher
+  instead of its own private event frame, and only registers its quest events
+  while the module is enabled (it defaults off, so it no longer wakes on
+  `QUEST_LOG_UPDATE` and friends for players who never turn it on).
+- **Action Bars:** the hotkey-abbreviation pass is now memoised per keybind
+  string, so the ~19-rule substitution runs once per unique bind instead of on
+  every `SetText` (bar page changes, binding updates, vehicle swaps).
+- **Chat — Channels:** URL highlighting now does a cheap plain-text probe before
+  running its three link patterns, skipping the expensive passes on the common
+  case of a line with no link.
+- **DataText — Clock & Stats:** while hovered, the heavy tooltips now rebuild on
+  a throttle (clock lockout/world-event scan every 30s; the addon-memory scan
+  every 5s) instead of every timer tick, while the visible clock/FPS/latency text
+  keeps updating as before. The Stats memory list still expands instantly when
+  you hold Shift.
+
+---
+
 ## [1.2.7] — 2026-06-08
 
 Adds a full **Profiles** system — create, copy, switch, delete and import/export

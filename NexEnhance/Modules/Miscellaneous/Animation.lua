@@ -160,12 +160,6 @@ function Animation:SetupCombatText()
 	text:ClearAllPoints()
 	text:SetPoint("CENTER")
 
-	-- local bg = frame:CreateTexture(nil, "ARTWORK")
-	-- bg:SetTexture("Interface\\LFGFrame\\UI-LFG-SEPARATOR")
-	-- bg:SetTexCoord(0, 0.66, 0, 0.31)
-	-- bg:SetPoint("BOTTOM", 0, -20)
-	-- bg:SetSize(150, 30)
-
 	local anim = frame:CreateAnimationGroup()
 	createTranslation(anim, 1, cfg.slideInDist, 0, cfg.inDuration, "IN")
 	createAlpha(anim, 1, 0, 1, cfg.inDuration)
@@ -186,11 +180,9 @@ function Animation:SetupCombatText()
 		if event == "PLAYER_REGEN_DISABLED" then
 			text:SetText(ENTERING_COMBAT)
 			text:SetTextColor(1, 0.1, 0.1)
-			-- bg:SetVertexColor(1, 0.1, 0.1, 0.8)
 		else
 			text:SetText(LEAVING_COMBAT)
 			text:SetTextColor(0.1, 1, 0.1)
-			-- bg:SetVertexColor(0.1, 1, 0.1, 0.8)
 		end
 		anim:Stop()
 		frame:Show()

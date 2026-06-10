@@ -6,6 +6,7 @@
 	  * the Merchant frame (and its Buyback tab)
 	  * the Auction House browse results
 	  * the Guild Bank
+	  * housing decor items
 
 	Adapted from NDui's Plugins/AlreadyKnown.lua by siweia:
 	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Plugins/AlreadyKnown.lua
@@ -17,10 +18,12 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local _G = _G
-local select, tonumber = select, tonumber
+local select, tonumber, pcall = select, tonumber, pcall
 local strmatch, strfind, format = string.match, string.find, string.format
 local ceil = math.ceil
 
+local C_AddOns = C_AddOns
+local C_Timer = C_Timer
 local SetItemButtonTextureVertexColor = SetItemButtonTextureVertexColor
 local GetMerchantNumItems, GetMerchantItemLink = GetMerchantNumItems, GetMerchantItemLink
 local GetNumBuybackItems, GetBuybackItemInfo, GetBuybackItemLink = GetNumBuybackItems, GetBuybackItemInfo, GetBuybackItemLink
@@ -33,6 +36,13 @@ local C_TooltipInfo_GetGuildBankItem = C_TooltipInfo.GetGuildBankItem
 local C_PetJournal_GetNumCollectedInfo = C_PetJournal.GetNumCollectedInfo
 local C_TransmogCollection_GetItemInfo = C_TransmogCollection and C_TransmogCollection.GetItemInfo
 local C_TransmogCollection_PlayerHasTransmogItemModifiedAppearance = C_TransmogCollection and C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance
+local C_HousingCatalog = _G.C_HousingCatalog
+local C_HousingCatalog_GetCatalogEntryInfoByItem = C_HousingCatalog and C_HousingCatalog.GetCatalogEntryInfoByItem
+local C_HousingCatalog_GetCatalogEntryInfo = C_HousingCatalog and C_HousingCatalog.GetCatalogEntryInfo
+local C_HousingCatalog_GetDecorTotalOwnedCount = C_HousingCatalog and C_HousingCatalog.GetDecorTotalOwnedCount
+local C_HousingCatalog_RequestHousingMarketInfoRefresh = C_HousingCatalog and C_HousingCatalog.RequestHousingMarketInfoRefresh
+local C_HousingCatalog_SearchCatalogCategories = C_HousingCatalog and C_HousingCatalog.SearchCatalogCategories
+local C_HousingCatalog_SearchCatalogSubcategories = C_HousingCatalog and C_HousingCatalog.SearchCatalogSubcategories
 
 local MERCHANT_ITEMS_PER_PAGE = _G.MERCHANT_ITEMS_PER_PAGE or 10
 local BUYBACK_ITEMS_PER_PAGE = _G.BUYBACK_ITEMS_PER_PAGE or 12
@@ -42,6 +52,17 @@ local COLLECTED = _G.COLLECTED
 local ITEM_SPELL_KNOWN = _G.ITEM_SPELL_KNOWN
 
 local COLOR = { r = 0.1, g = 1, b = 0.1 }
+local HOUSING_WARMUP_SEARCH_OPTIONS = { withOwnedEntriesOnly = true, includeFeaturedCategory = false }
+
+-- Housing catalog "owned stack" subtypes (a record you actually own).
+local OWNED_MODIFIED_STACK, OWNED_UNMODIFIED_STACK
+do
+	local sub = Enum and Enum.HousingCatalogEntrySubtype
+	if sub then
+		OWNED_MODIFIED_STACK = sub.OwnedModifiedStack
+		OWNED_UNMODIFIED_STACK = sub.OwnedUnmodifiedStack
+	end
+end
 
 -- Item classes whose "known" state is worth checking via a tooltip scan.
 local knowables = {
@@ -88,6 +109,73 @@ local function IsCosmeticCollected(link)
 	end
 end
 
+-- True when a housing catalog entry represents something the player owns:
+-- a copy in storage (quantity), a copy placed in a house (numPlaced), an
+-- unredeemed copy (remainingRedeemable), or an "owned stack" subtype.
+local function EntryInfoOwned(info)
+	if not info then return false end
+	if (info.quantity and info.quantity > 0)
+		or (info.numPlaced and info.numPlaced > 0)
+		or (info.remainingRedeemable and info.remainingRedeemable > 0) then
+		return true
+	end
+
+	local entryID = info.entryID
+	if entryID and (entryID.entrySubtype == OWNED_MODIFIED_STACK or entryID.entrySubtype == OWNED_UNMODIFIED_STACK) then
+		return true
+	end
+
+	return false
+end
+
+-- Reused so the owned-stack re-query below doesn't allocate per item/subtype.
+local entryQuery = {}
+
+local function QueryOwnedEntryInfo(entryType, recordID, subtype)
+	if not subtype then return false end
+
+	entryQuery.entryType = entryType
+	entryQuery.entrySubtype = subtype
+	entryQuery.recordID = recordID
+	entryQuery.subtypeIdentifier = 0
+	return EntryInfoOwned(C_HousingCatalog_GetCatalogEntryInfo(entryQuery))
+end
+
+-- Housing decor items have a collection state separate from recipes/toys and
+-- transmog, so ask the Midnight housing catalog. The by-item lookup frequently
+-- returns the *Unowned* catalog entry (zero counts) even for decor you own, so
+-- when that happens re-query the owned stacks (subtypeIdentifier 0) directly to
+-- confirm ownership. Mirrors CaerdonWardrobe's HousingMixin. Returns:
+--   true / false - resolved as a housing entry and (un)owned
+--   nil          - not a housing catalog item, fall back to other checks.
+local function IsDecorCollected(link)
+	if not C_HousingCatalog_GetCatalogEntryInfoByItem then
+		return
+	end
+
+	local info = C_HousingCatalog_GetCatalogEntryInfoByItem(link, true)
+	if not info then
+		return
+	end
+
+	if EntryInfoOwned(info) then
+		return true
+	end
+
+	local entryID = info.entryID
+	if entryID and C_HousingCatalog_GetCatalogEntryInfo then
+		local entryType, recordID = entryID.entryType, entryID.recordID
+		if entryType and recordID then
+			if QueryOwnedEntryInfo(entryType, recordID, OWNED_UNMODIFIED_STACK)
+				or QueryOwnedEntryInfo(entryType, recordID, OWNED_MODIFIED_STACK) then
+				return true
+			end
+		end
+	end
+
+	return false
+end
+
 local function IsAlreadyKnown(link, index)
 	if not link then return end
 
@@ -100,6 +188,14 @@ local function IsAlreadyKnown(link, index)
 		local name, _, _, _, _, _, _, _, _, _, _, itemClassID = C_Item_GetItemInfo(link)
 		if not name then return end
 
+		if knowns[link] then return true end
+
+		local decorCollected = IsDecorCollected(link)
+		if decorCollected ~= nil then
+			if decorCollected then F.CacheSet(knowns, link, true) end
+			return decorCollected
+		end
+
 		-- Caged battle pets in the guild bank carry their species in tooltip data.
 		if itemClassID == Enum.ItemClass.Battlepet and index then
 			local data = C_TooltipInfo_GetGuildBankItem(GetCurrentGuildBankTab(), index)
@@ -108,8 +204,6 @@ local function IsAlreadyKnown(link, index)
 			end
 			return
 		end
-
-		if knowns[link] then return true end
 
 		-- Cosmetics / transmog: ask the appearance collection directly; only
 		-- fall back to the tooltip scan if the source can't be resolved.
@@ -237,6 +331,66 @@ local function GuildBankFrame_Update(self)
 end
 
 -- ---------------------------------------------------------------------------
+-- Housing data warmup
+-- ---------------------------------------------------------------------------
+local function RefreshVisibleItems()
+	if MerchantFrame and MerchantFrame:IsShown() then
+		UpdateMerchantInfo()
+		UpdateBuybackInfo()
+	end
+
+	local list = AuctionHouseFrame and AuctionHouseFrame:IsShown() and AuctionHouseFrame.BrowseResultsFrame and AuctionHouseFrame.BrowseResultsFrame.ItemList
+	if list and list.ScrollBox and list.ScrollBox.ScrollTarget then
+		UpdateAuctionItems(list.ScrollBox)
+	end
+
+	if GuildBankFrame and GuildBankFrame:IsShown() then
+		GuildBankFrame_Update(GuildBankFrame)
+	end
+end
+
+function AlreadyKnown:WarmHousingData()
+	if self.housingWarmed or not C_HousingCatalog_GetCatalogEntryInfoByItem then return end
+
+	-- Blizzard lazy-loads owned decor counts; opening the catalog does this too.
+	if C_AddOns and C_AddOns.LoadAddOn then
+		pcall(C_AddOns.LoadAddOn, "Blizzard_HousingEventHandler")
+	elseif _G.LoadAddOn then
+		pcall(_G.LoadAddOn, "Blizzard_HousingEventHandler")
+	end
+
+	if C_HousingCatalog_RequestHousingMarketInfoRefresh then
+		pcall(C_HousingCatalog_RequestHousingMarketInfoRefresh)
+	end
+	if C_HousingCatalog_GetDecorTotalOwnedCount then
+		pcall(C_HousingCatalog_GetDecorTotalOwnedCount)
+	end
+	if C_HousingCatalog_SearchCatalogCategories then
+		pcall(C_HousingCatalog_SearchCatalogCategories, HOUSING_WARMUP_SEARCH_OPTIONS)
+	end
+	if C_HousingCatalog_SearchCatalogSubcategories then
+		pcall(C_HousingCatalog_SearchCatalogSubcategories, HOUSING_WARMUP_SEARCH_OPTIONS)
+	end
+
+	self.housingWarmed = true
+end
+
+local function FlushHousingRefresh()
+	AlreadyKnown.housingRefreshQueued = false
+	RefreshVisibleItems()
+end
+
+function AlreadyKnown:RefreshHousingItems()
+	if self.housingRefreshQueued then return end
+	self.housingRefreshQueued = true
+	if C_Timer then
+		C_Timer.After(0.1, FlushHousingRefresh)
+	else
+		FlushHousingRefresh()
+	end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function AlreadyKnown:HookAuctionHouse()
@@ -264,6 +418,22 @@ function AlreadyKnown:ADDON_LOADED(addon)
 	end
 end
 
+function AlreadyKnown:HOUSING_MARKET_AVAILABILITY_UPDATED()
+	self:RefreshHousingItems()
+end
+
+function AlreadyKnown:HOUSING_STORAGE_UPDATED()
+	self:RefreshHousingItems()
+end
+
+function AlreadyKnown:HOUSING_STORAGE_ENTRY_UPDATED()
+	self:RefreshHousingItems()
+end
+
+function AlreadyKnown:HOUSE_DECOR_ADDED_TO_CHEST()
+	self:RefreshHousingItems()
+end
+
 function AlreadyKnown:OnEnable()
 	if not ns.db.alreadyKnown.enable then return end
 
@@ -282,8 +452,16 @@ function AlreadyKnown:OnEnable()
 	if not (self.auctionHooked and self.guildBankHooked) then
 		self:RegisterEvent("ADDON_LOADED")
 	end
+
+	if C_HousingCatalog_GetCatalogEntryInfoByItem then
+		self:WarmHousingData()
+		self:RegisterEvent("HOUSING_MARKET_AVAILABILITY_UPDATED")
+		self:RegisterEvent("HOUSING_STORAGE_UPDATED")
+		self:RegisterEvent("HOUSING_STORAGE_ENTRY_UPDATED")
+		self:RegisterEvent("HOUSE_DECOR_ADDED_TO_CHEST")
+	end
 end
 
 function AlreadyKnown:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Already Known"], L["Tint already-known recipes, pets, toys and cosmetics green at vendors, the Auction House and Guild Bank (reload to disable)."])
+	builder:Checkbox(category, self, "enable", L["Enable Already Known"], L["Tint already-known recipes, pets, toys, cosmetics and housing decor green at vendors, the Auction House and Guild Bank (reload to disable)."])
 end

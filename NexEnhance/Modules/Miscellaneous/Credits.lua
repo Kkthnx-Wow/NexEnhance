@@ -7,22 +7,13 @@
 --]]
 
 local _, ns = ...
-local C, L = ns.C, ns.L
+local C, L, F = ns.C, ns.L, ns.F
 
 local _G = _G
-local ipairs = ipairs
 local format = string.format
-local tinsert = table.insert
 local CreateFrame = CreateFrame
 
-local BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
+local BACKDROP = C.Backdrops.window
 
 local CARD_PAD = 14
 local CARD_GAP = 12
@@ -174,6 +165,36 @@ local CONTRIBUTORS = {
 		},
 	},
 	{
+		name = "Yuyuli",
+		class = "DEMONHUNTER",
+		project = "Speedy AutoLoot",
+		url = "curseforge.com/wow/addons/speedyautoloot",
+		thanks = "For Speedy AutoLoot — its paced loot-slot walking, dual LOOT_READY/LOOT_OPENED handling and first-seen auto-loot state detection reshaped NexEnhance's Faster Loot rewrite.",
+		features = {
+			"Automation — Faster Loot (paced slot walk, duplicate-event guard, auto-loot state)",
+		},
+	},
+	{
+		name = "Cybeloras",
+		class = "HUNTER",
+		project = "Improved Loot Frame",
+		url = "curseforge.com/wow/addons/improved-loot-frame",
+		thanks = "For Improved Loot Frame — the idea of letting the loot window grow to fit everything on one page, rebuilt for the modern scrollbox loot frame in NexEnhance.",
+		features = {
+			"Inventory — Loot Frame (taller, single-page loot window)",
+		},
+	},
+	{
+		name = "maqjav & Maciza-Tyrande",
+		class = "SHAMAN",
+		project = "RareScanner",
+		url = "curseforge.com/wow/addons/rarescanner",
+		thanks = "For RareScanner — its rare-vignette handling inspired NexEnhance's Rare Alert popup: the click-to-track waypoint banner and 2D portrait/icon fallback, rebuilt data-free our way.",
+		features = {
+			"Announcements — Rare Alert (click-to-track popup, 2D portrait, NPC-ID filtering)",
+		},
+	},
+	{
 		name = "Alteredcross",
 		class = "PALADIN",
 		project = "Chief Break-It Officer & Amateur Theorist",
@@ -280,8 +301,10 @@ local function CreateCreditCard(parent, entry, contentWidth)
 	local textWidth = contentWidth - CARD_PAD * 2 - 6
 
 	local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	card:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background" })
-	card:SetBackdropColor(0.04, 0.04, 0.05, 0.92)
+	if not F.CreateNineSlice(card, { layout = "TooltipDefaultLayout", bg = { 0.04, 0.04, 0.05, 0.92 }, border = { 0, 0, 0, 0 } }) then
+		card:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background" })
+		card:SetBackdropColor(0.04, 0.04, 0.05, 0.92)
+	end
 
 	local accent = card:CreateTexture(nil, "ARTWORK")
 	accent:SetColorTexture(r, g, b, 1)
@@ -404,15 +427,12 @@ local function BuildStandalone()
 	frame:SetFrameStrata("DIALOG")
 	frame:SetToplevel(true)
 	frame:Hide()
-	frame:SetBackdrop(BACKDROP)
-	frame:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
-	frame:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
-	frame:EnableMouse(true)
-	frame:SetMovable(true)
-	frame:RegisterForDrag("LeftButton")
-	frame:SetScript("OnDragStart", frame.StartMoving)
-	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-	tinsert(_G.UISpecialFrames, "NexEnhanceCredits")
+	if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout", bg = { 0.05, 0.05, 0.07, 0.97 }, border = { C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85 } }) then
+		frame:SetBackdrop(BACKDROP)
+		frame:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
+		frame:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
+	end
+	F.MakeWindowMovable(frame, "NexEnhanceCredits") -- draggable + Escape-close
 
 	local logo = frame:CreateTexture(nil, "ARTWORK")
 	logo:SetSize(48, 48)

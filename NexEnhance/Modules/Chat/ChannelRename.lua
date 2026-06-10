@@ -16,7 +16,7 @@ local F, C, L = ns.F, ns.C, ns.L
 
 local _G = _G
 local gsub, format, strupper, strsub = string.gsub, string.format, string.upper, string.sub
-local strmatch = string.match
+local strmatch, strfind = string.match, string.find
 local type, tostring, date = type, tostring, date
 
 ns:RegisterDefaults({
@@ -77,9 +77,17 @@ local function HighlightURL(prefix, url, suffix)
 end
 
 local function ApplyURLs(text)
-	text = gsub(text, "(%s?)(%a+://[%w_/%.%?%%=~&%-'%-]+)(%s?)", HighlightURL)
-	text = gsub(text, "(%s?)(www%.[%w_/%.%?%%=~&%-'%-]+)(%s?)", HighlightURL)
-	text = gsub(text, "(%s?)([_%w%-%.~]+@[_%w%-]+%.[_%w%-%.]+)(%s?)", HighlightURL)
+	-- Most chat lines contain no link, so a cheap plain-text probe lets us skip
+	-- the (expensive) pattern passes entirely on the common case.
+	if strfind(text, "://", 1, true) then
+		text = gsub(text, "(%s?)(%a+://[%w_/%.%?%%=~&%-'%-]+)(%s?)", HighlightURL)
+	end
+	if strfind(text, "www.", 1, true) then
+		text = gsub(text, "(%s?)(www%.[%w_/%.%?%%=~&%-'%-]+)(%s?)", HighlightURL)
+	end
+	if strfind(text, "@", 1, true) then
+		text = gsub(text, "(%s?)([_%w%-%.~]+@[_%w%-]+%.[_%w%-%.]+)(%s?)", HighlightURL)
+	end
 	return text
 end
 

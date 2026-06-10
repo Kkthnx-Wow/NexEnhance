@@ -80,7 +80,6 @@ NexEnhance groups its modules into the same themed categories you'll find in the
 
 ### Unit Frames
 - **Class-Coloured Health** — colour unit-frame health by class (players) or reaction (NPCs) across player, target, focus, boss, party and more, with an optional neutral target strip.
-- **Frame Colour** — tint the default unit frames and HUD (player, pet, target, focus, boss, class resources, cast bars, totems, minimap) with a colour of your choice, including a custom border colour.
 
 ### Auras
 - **Buff Reminder** — show a "Lack" icon when you're missing a buff you can provide. Resizable icons, a Blizzard-style border, and an Edit Mode mover (preview with `/nex reminder`).
@@ -190,6 +189,7 @@ NexEnhance stands on the shoulders of incredible addon authors — borrowed with
 - **Siweia** (NDui) and **yleaf** — chat, automation, tooltip, inventory and item-level groundwork
 - **p3lim** — QuickQuest, Dashi helpers, and **LibEditMode**
 - **Peterodox** (Plumber), **Leatrix** (Leatrix Plus), **lightspark** (ls_Monobrow), **Lars Norberg**, **Shestak**, **Cloudy**, **emelio**, and **Alteredcross**
+- **Yuyuli** (Speedy AutoLoot) — Faster Loot rewrite, **Cybeloras** (Improved Loot Frame) — Loot Frame, and **maqjav & Maciza-Tyrande** (RareScanner) — Rare Alert popup
 
 Thank you all. NexEnhance would not exist without you.
 

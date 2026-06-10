@@ -20,7 +20,7 @@ local L = ns.L
 
 -- Localised globals / API.
 local _G = _G
-local pairs, ipairs, select = pairs, ipairs, select
+local pairs, ipairs, select, wipe = pairs, ipairs, select, wipe
 local format = string.format
 local floor = math.floor
 local hooksecurefunc = hooksecurefunc
@@ -134,14 +134,33 @@ local function IsActive()
 	return ns.db.socialColors.enable
 end
 
+-- Enumerate a ScrollBox's live row frames without the O(n^2) repeated
+-- `select(i, ScrollTarget:GetChildren())` pattern (each select re-walks the
+-- whole child list). Modern ScrollBoxes expose GetFrames(), which returns the
+-- active-frame array directly with no allocation; fall back to the legacy
+-- enumeration (into a reused scratch table) only if that API is missing.
+local enumScratch = {}
+local function GetRowFrames(scrollBox)
+	if scrollBox.GetFrames then
+		return scrollBox:GetFrames()
+	end
+	local target = scrollBox.ScrollTarget
+	if not target then return nil end
+	wipe(enumScratch)
+	for i = 1, target:GetNumChildren() do
+		enumScratch[i] = select(i, target:GetChildren())
+	end
+	return enumScratch
+end
+
 local function UpdateFriendsList(self)
 	if not IsActive() then return end
+	local buttons = GetRowFrames(self)
+	if not buttons then return end
 	local playerArea = GetAreaText()
-	local scrollTarget = self.ScrollTarget
-	if not scrollTarget then return end
 
-	for i = 1, scrollTarget:GetNumChildren() do
-		local button = select(i, scrollTarget:GetChildren())
+	for i = 1, #buttons do
+		local button = buttons[i]
 		if button and button:IsShown() then
 			local nameText, infoText
 
@@ -188,14 +207,14 @@ local whoSortType = "zone"
 
 local function UpdateWhoList(self)
 	if not IsActive() then return end
+	local buttons = GetRowFrames(self)
+	if not buttons then return end
 	local playerZone = GetAreaText()
 	local playerGuild = GetGuildInfo("player")
 	local playerRace = UnitRace("player")
-	local scrollTarget = self.ScrollTarget
-	if not scrollTarget then return end
 
-	for i = 1, scrollTarget:GetNumChildren() do
-		local button = select(i, scrollTarget:GetChildren())
+	for i = 1, #buttons do
+		local button = buttons[i]
 		if button and button.index then
 			local info = C_FriendList.GetWhoInfo(button.index)
 			if info then

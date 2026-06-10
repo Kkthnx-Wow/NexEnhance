@@ -59,6 +59,7 @@ local DataText = ns:NewModule("DataText", "datatext", { group = "datatext", titl
 local cfg
 local stat
 local entered
+local tooltipElapsed = 0
 local infoTable = {}
 local ipTypes = { "IPv4", "IPv6" }
 local memoryTotal = 0
@@ -198,6 +199,8 @@ end
 -- ---------------------------------------------------------------------------
 local function OnEnter(self, forceMemory)
 	entered = true
+	tooltipElapsed = 0
+	self:RegisterEvent("MODIFIER_STATE_CHANGED")
 
 	GameTooltip:SetOwner(self, "ANCHOR_NONE")
 	GameTooltip:SetPoint("TOPRIGHT", self, "BOTTOMRIGHT", 0, -6)
@@ -267,6 +270,9 @@ end
 
 local function OnLeave()
 	entered = false
+	if stat then
+		stat:UnregisterEvent("MODIFIER_STATE_CHANGED")
+	end
 	GameTooltip:Hide()
 end
 
@@ -448,6 +454,11 @@ function DataText:Create()
 	stat:SetScript("OnEnter", OnEnter)
 	stat:SetScript("OnLeave", OnLeave)
 	stat:SetScript("OnMouseUp", OnMouseUp)
+	stat:SetScript("OnEvent", function(self, event)
+		if event == "MODIFIER_STATE_CHANGED" and entered then
+			OnEnter(self)
+		end
+	end)
 
 	local elapsed = 0
 	stat:SetScript("OnUpdate", function(self, e)
@@ -458,7 +469,10 @@ function DataText:Create()
 		elapsed = 0
 		UpdateStat(self)
 		if entered then
-			OnEnter(self)
+			tooltipElapsed = tooltipElapsed + 1
+			if tooltipElapsed >= MEMORY_REFRESH_INTERVAL then
+				OnEnter(self)
+			end
 		end
 	end)
 

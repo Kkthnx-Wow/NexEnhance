@@ -14,8 +14,6 @@ local _, ns = ...
 local L = ns.L
 
 local _G = _G
--- local MovieFrame = MovieFrame
--- local CinematicFrame = CinematicFrame
 
 ns:RegisterDefaults({
 	movieSkip = {
@@ -60,8 +58,13 @@ local function skipOnKeyUp(self, key)
 	end
 end
 
-function MovieSkip:OnEnable()
-	if not db().enable then return end
+-- Install the key hooks at most once. The per-key handlers already gate on
+-- db().enable, so hooking is harmless while the feature is off and the hook
+-- never needs removing (HookScript can't be undone anyway).
+local hooksInstalled = false
+local function InstallHooks()
+	if hooksInstalled then return end
+	hooksInstalled = true
 
 	-- Both are core frames present at login; hook unconditionally and resolve
 	-- the dialog widgets on demand (see GetSkipParts).
@@ -73,6 +76,18 @@ function MovieSkip:OnEnable()
 	if CinematicFrame then
 		CinematicFrame:HookScript("OnKeyDown", skipOnKeyDown)
 		CinematicFrame:HookScript("OnKeyUp", skipOnKeyUp)
+	end
+end
+
+function MovieSkip:OnEnable()
+	InstallHooks()
+end
+
+-- OnEnable only fires for modules enabled at login, so a module toggled on
+-- later must install its hooks here (otherwise it would need a reload).
+function MovieSkip:OnSettingChanged(key, value)
+	if key == "enable" and value then
+		InstallHooks()
 	end
 end
 

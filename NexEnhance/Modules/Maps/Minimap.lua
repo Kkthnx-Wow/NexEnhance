@@ -391,7 +391,10 @@ local function CreateBorder()
 	borderFrame:SetPoint("TOPLEFT", Minimap, "TOPLEFT", -3, 3)
 	borderFrame:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", 3, -3)
 	borderFrame:SetFrameLevel(Minimap:GetFrameLevel() + 3)
-	borderFrame:SetBackdrop(MINIMAP_BACKDROP)
+	-- Edge-only NineSlice (no fill) so it frames the map without covering it.
+	if not F.CreateNineSlice(borderFrame, { layout = "TooltipDefaultLayout", bg = false }) then
+		borderFrame:SetBackdrop(MINIMAP_BACKDROP)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -430,7 +433,11 @@ local function UpdatePulse()
 	end
 
 	if r then
-		borderFrame:SetBackdropBorderColor(r, g, b)
+		if borderFrame.nexNineSlice then
+			F.SetNineSliceBorderColor(borderFrame, r, g, b)
+		else
+			borderFrame:SetBackdropBorderColor(r, g, b)
+		end
 		if not pulseAnim:IsPlaying() then
 			pulseAnim:Play()
 		end
@@ -440,7 +447,11 @@ local function UpdatePulse()
 		end
 		-- Restore the untinted gold border at full opacity.
 		borderFrame:SetAlpha(1)
-		borderFrame:SetBackdropBorderColor(1, 1, 1)
+		if borderFrame.nexNineSlice then
+			F.SetNineSliceBorderColor(borderFrame, 1, 1, 1)
+		else
+			borderFrame:SetBackdropBorderColor(1, 1, 1)
+		end
 	end
 end
 
@@ -702,6 +713,18 @@ local function ShowLandingPageMenu(button)
 	end)
 end
 
+-- Mail / crafting indicators -> bottom centre. When the Clock DataText is
+-- enabled it sits at the bottom centre too, so lift the indicator above it.
+-- Subscribed to the Time DataText setting below so live toggles repin cleanly.
+local function RefreshIndicatorPosition()
+	local indicator = MinimapCluster and MinimapCluster.IndicatorFrame
+	if indicator then
+		indicator:SetFrameLevel(Minimap:GetFrameLevel() + 5)
+		local clockOn = ns.db.timeText and ns.db.timeText.enable
+		Pin(indicator, "BOTTOM", "BOTTOM", 0, clockOn and 24 or 4)
+	end
+end
+
 local function ReskinRegions()
 	-- Expansion / garrison landing-page button -> bottom-left. Mirror KkthnxUI:
 	-- leave it under Blizzard's parent and only reposition + skin it; Blizzard
@@ -726,14 +749,7 @@ local function ReskinRegions()
 		end)
 	end
 
-	-- Mail / crafting indicators -> bottom centre. When the Clock DataText is
-	-- enabled it sits at the bottom centre too, so lift the mail icon above it.
-	local indicator = MinimapCluster and MinimapCluster.IndicatorFrame
-	if indicator then
-		indicator:SetFrameLevel(Minimap:GetFrameLevel() + 5)
-		local clockOn = ns.db.timeText and ns.db.timeText.enable
-		Pin(indicator, "BOTTOM", "BOTTOM", 0, clockOn and 24 or 4)
-	end
+	RefreshIndicatorPosition()
 
 	-- Instance difficulty flags -> top-left, reskinned with our Flag texture.
 	local difficulty = MinimapCluster and MinimapCluster.InstanceDifficulty
@@ -996,6 +1012,23 @@ local binCollected, binShown = {}, {}
 local binChildCount, binScanCount, binAutoCloseTimer = 0, 0, nil
 local OpenBin, CloseBin, LayoutBin, StartAutoClose, StopAutoClose
 
+local function RefreshButtonBinPosition()
+	if not binToggle then
+		return
+	end
+
+	local pos = ns.db.minimap.buttonBinPosition or 3
+	local tAnchor = binToggleAnchor[pos] or binToggleAnchor[3]
+	binToggle:ClearAllPoints()
+	binToggle:SetPoint(tAnchor[1], Minimap, tAnchor[1], tAnchor[2], tAnchor[3])
+
+	if binFrame then
+		local pAnchor = binPopAnchor[pos] or binPopAnchor[3]
+		binFrame:ClearAllPoints()
+		binFrame:SetPoint(pAnchor[1], binToggle, pAnchor[2], pAnchor[3], pAnchor[4])
+	end
+end
+
 local function BinIgnored(name)
 	for i = 1, #binIgnorePatterns do
 		if strmatch(name, binIgnorePatterns[i]) then
@@ -1017,9 +1050,12 @@ local function AddBinBorder(button)
 	button.nexBinBorder = border
 end
 
-local function SkinBinButton(button, name)
-	for i = 1, button:GetNumRegions() do
-		local region = select(i, button:GetRegions())
+-- Square + crop every texture region of `frame`, anchoring each to `button` so
+-- it fills the slot regardless of where it lived. Known background/border art is
+-- stripped instead.
+local function SkinBinRegions(frame, button, name)
+	for i = 1, frame:GetNumRegions() do
+		local region = select(i, frame:GetRegions())
 		if region and region.IsObjectType and region:IsObjectType("Texture") then
 			local tex = region:GetTexture()
 			if tex and (binRemovedTextures[tex] or (type(tex) == "string" and (strfind(tex, "Interface\\CharacterFrame") or strfind(tex, "Interface\\Minimap")))) then
@@ -1032,6 +1068,21 @@ local function SkinBinButton(button, name)
 					region:SetTexCoord(unpack(BIN_TEXCOORD))
 				end
 			end
+		end
+	end
+end
+
+local function SkinBinButton(button, name)
+	SkinBinRegions(button, button, name)
+
+	-- Some addons (e.g. AllTheThings) draw their icon on a child frame rather
+	-- than as a direct region, so walking the button alone misses it: the icon
+	-- keeps its native size and overflows the slot. Descend one level so those
+	-- nested icons are clamped to the button too.
+	for i = 1, button:GetNumChildren() do
+		local child = select(i, button:GetChildren())
+		if child and child.GetNumRegions then
+			SkinBinRegions(child, button, name)
 		end
 	end
 
@@ -1065,7 +1116,16 @@ local function ParkBinButtons()
 				button:SetScript("OnMouseDown", nil)
 				button:SetScript("OnMouseUp", nil)
 			elseif name == "WIM3MinimapButton" then
-				button.SetParent = F and F.Noop or function() end
+				button.SetParent = F.Noop
+			elseif name == "AllTheThings-Minimap" then
+				-- ATT re-anchors itself to the minimap centre on
+				-- LOADING_SCREEN_DISABLED (via its OnEvent/update), which would
+				-- yank it back out of the tray. Stop it self-positioning now that
+				-- we own its placement.
+				button:UnregisterAllEvents()
+				button:SetScript("OnEvent", nil)
+				button:SetScript("OnUpdate", nil)
+				button.update = F.Noop
 			end
 
 			button.nexParked = true
@@ -1096,6 +1156,10 @@ LayoutBin = function()
 		local row = floor((i - 1) / BIN_PER_ROW)
 		b:ClearAllPoints()
 		b:SetParent(binFrame)
+		-- Re-assert the slot size every layout: some addons (e.g. AllTheThings)
+		-- resize their button from their own settings after our one-time skin,
+		-- which would otherwise overflow the grid cell.
+		b:SetSize(BIN_ICON_SIZE, BIN_ICON_SIZE)
 		b:SetPoint("TOPLEFT", binFrame, "TOPLEFT", BIN_PAD + col * (BIN_ICON_SIZE + BIN_GAP), -(BIN_PAD + row * (BIN_ICON_SIZE + BIN_GAP)))
 	end
 end
@@ -1175,15 +1239,10 @@ local function CreateCollectButtons()
 		return
 	end
 
-	local pos = ns.db.minimap.buttonBinPosition or 3
-	local tAnchor = binToggleAnchor[pos] or binToggleAnchor[3]
-	local pAnchor = binPopAnchor[pos] or binPopAnchor[3]
-
 	binToggle = CreateFrame("Button", nil, Minimap)
 	binToggle:SetSize(16, 16)
 	binToggle:SetFrameLevel(Minimap:GetFrameLevel() + 6)
 	binToggle:SetAlpha(0.25)
-	binToggle:SetPoint(tAnchor[1], Minimap, tAnchor[1], tAnchor[2], tAnchor[3])
 	binToggle.icon = binToggle:CreateTexture(nil, "ARTWORK")
 	binToggle.icon:SetAllPoints()
 	binToggle.icon:SetTexture("Interface\\COMMON\\Indicator-Gray")
@@ -1193,16 +1252,18 @@ local function CreateCollectButtons()
 	binFrame = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
 	binFrame:SetFrameStrata("MEDIUM")
 	binFrame:SetClampedToScreen(true)
-	binFrame:SetPoint(pAnchor[1], binToggle, pAnchor[2], pAnchor[3], pAnchor[4])
 	binFrame:SetSize(BIN_ICON_SIZE + BIN_PAD * 2, BIN_ICON_SIZE + BIN_PAD * 2)
-	binFrame:SetBackdrop({
-		bgFile = C.Media.Textures.blank,
-		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-		edgeSize = 14,
-		insets = { left = 3, right = 3, top = 3, bottom = 3 },
-	})
-	binFrame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	if not F.CreateNineSlice(binFrame, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 } }) then
+		binFrame:SetBackdrop({
+			bgFile = C.Media.Textures.blank,
+			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+			edgeSize = 14,
+			insets = { left = 3, right = 3, top = 3, bottom = 3 },
+		})
+		binFrame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	end
 	binFrame:Hide()
+	RefreshButtonBinPosition()
 
 	binToggle:SetScript("OnClick", function()
 		if binFrame:IsShown() then
@@ -1293,6 +1354,7 @@ local function SetupEditModeSettings()
 			end,
 			set = function(_, value)
 				ns.db.minimap.buttonBinPosition = value
+				ns:TriggerCallback("SettingChanged.minimap.buttonBinPosition", value, Module)
 			end,
 			disabled = function()
 				return not ns.db.minimap.collectButtons
@@ -1356,12 +1418,14 @@ function Module:OnEnable()
 	Declutter()
 	CreateBorder()
 	ReskinRegions()
+	ns:RegisterCallback("SettingChanged.timeText.enable", RefreshIndicatorPosition)
 	ReskinQueueStatus()
 	CreatePulse()
 
 	if cfg.collectButtons then
 		CreateCollectButtons()
 	end
+	ns:RegisterCallback("SettingChanged.minimap.buttonBinPosition", RefreshButtonBinPosition)
 
 	-- Keep the Edit Mode selection box flush with the square minimap by hooking
 	-- the cluster's SetSize (re-applied on world enter as a safety kick).

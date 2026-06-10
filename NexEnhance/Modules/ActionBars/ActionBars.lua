@@ -83,6 +83,11 @@ local replaces = {
 	{ "SPACE", "Sp" },
 }
 
+-- raw keybind text -> abbreviated form. The set of possible keybind strings is
+-- tiny and bounded, so this memo turns the 19-rule gsub pass into a single
+-- table lookup on every refresh after the first sighting of each bind.
+local hotkeyCache = {}
+
 function ActionBars:UpdateHotKey(hotkey)
 	if not hotkey then
 		return
@@ -93,17 +98,25 @@ function ActionBars:UpdateHotKey(hotkey)
 		return
 	end
 
-	if text == RANGE_INDICATOR then
-		text = ""
-	else
-		for i = 1, #replaces do
-			local rule = replaces[i]
-			text = gsub(text, rule[1], rule[2])
+	local abbr = hotkeyCache[text]
+	if not abbr then
+		if text == RANGE_INDICATOR then
+			abbr = ""
+		else
+			abbr = text
+			for i = 1, #replaces do
+				local rule = replaces[i]
+				abbr = gsub(abbr, rule[1], rule[2])
+			end
 		end
+		hotkeyCache[text] = abbr
 	end
 
-	-- SetFormattedText does not fire the SetText hook, so no recursion.
-	hotkey:SetFormattedText("%s", text)
+	-- SetFormattedText does not fire the SetText hook, so no recursion. Skip the
+	-- write when the text already matches (nothing to abbreviate).
+	if abbr ~= text then
+		hotkey:SetFormattedText("%s", abbr)
+	end
 end
 
 -- Shared hook handler: hooksecurefunc passes the hooked object as the first

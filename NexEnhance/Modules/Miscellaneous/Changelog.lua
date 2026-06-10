@@ -10,13 +10,13 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local C, L = ns.C, ns.L
+local C, L, F = ns.C, ns.L, ns.F
 
 local _G = _G
 local ipairs = ipairs
+local max = math.max
 local format = string.format
 local tconcat = table.concat
-local tinsert = table.insert
 local CreateFrame = CreateFrame
 local C_Timer = C_Timer
 
@@ -31,19 +31,65 @@ ns:RegisterDefaults({ lastChangelog = false }, "global")
 local Changelog = ns:NewModule("Changelog", "changelog", { group = "misc", title = L["Changelog"], order = 90 })
 
 -- A Blizzard tooltip-style border (matches the rest of the UI).
-local BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
+local BACKDROP = C.Backdrops.window
 
 -- ---------------------------------------------------------------------------
 -- Notes (keep in sync with CHANGELOG.md)
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
+	{
+		version = "1.2.8",
+		date = "2026-06-10",
+		intro = "The Clock datatext catches up to Midnight - Stormarion Assault, Abundance and Void Incursion timers, the world boss that's up right now, Void Assault weeklies and a delve rework - with older world events tucked behind a toggle. Plus sharper rare alerts, item level and bind status on the warband bank, and more Secret-Value hardening: the rare popup is a click-to-track banner you can move in Edit Mode, faster loot is more reliable, the loot window can grow taller, known housing decor dims at vendors, and tooltip health text shows again even when health is a secret value.",
+		sections = {
+			{ "DataText", {
+				"Clock: the lockout tooltip now tracks current Midnight world content - Stormarion Assault, Abundance (e.g. Herbalism Grotto) and Void Incursions - reading live countdowns and progress straight from the POI/event widgets and labelling impending vs. active incursions.",
+				"Clock: detects the world boss that's up right now via a map POI scan, shown next to your saved world-boss lockout, and tracks the weekly Void Assault meta with a fail-safe when its quest data isn't available.",
+				"Clock: tracks Midnight's headline weekly - the Choose Your Path meta (Unity Against the Void from Lady Liadrin). The meta's flag drives Complete/Incomplete, and whichever path you picked (e.g. Midnight: Delves) shows its progress underneath while it's in your log; only shown once you're engaged with it.",
+				"Clock: delves are reworked for Midnight - it caps the bountiful-delve list to the four that can be up and de-duplicates them by name so a delve no longer shows twice across continent and zone maps (the old War Within coffer-key fragment line was dropped in favour of the weekly above).",
+				"Clock: every countdown now uses one compact format - 6d 10h, 10h 30m, 32m, 45s - in consistent white text, keeping status colours only for special states (Available, Active, Complete, percentages).",
+				"Clock: older expansion world events (Legion invasions, faction assaults, elemental storms, feasts) now sit behind a Show Legacy World Events toggle, off by default.",
+			} },
+			{ "Announcements", {
+				"Rare Alert: the alert can now show a movable click-to-track popup with a 2D portrait (falling back to the vignette icon). Left-click to drop a TomTom/Blizzard waypoint, optionally target the rare and place a raid marker.",
+				"Rare Alert: /nex rare toggles a sticky preview, and entering Edit Mode now reveals the banner automatically so you can move it without the preview command.",
+				"Rare Alert: stricter, cheaper detection - treasure/lore/non-rare vignettes are filtered out, the ignore list also matches the rare's NPC ID, and a per-rare cooldown stops repeat spam when flying in and out of range.",
+				"Rare Alert: the click-to-target now works even if you use key-down action casting - it forces ActionButtonUseKeyDown off for the click and restores it afterwards so /targetexact fires reliably. Cherry-picked from RareAlert.",
+				"Rare Alert: optional Sound While Alt-Tabbed - the alert sound can play while WoW is minimised or in the background, briefly overriding your background-sound setting and restoring it afterwards. Off by default.",
+			} },
+			{ "Inventory", {
+				"Loot Frame: new module that lets Blizzard's default loot window grow taller so more items fit on one page instead of scrolling, with a live toggle and a configurable max height. Inspired by Cybeloras' Improved Loot Frame.",
+				"Already Known: housing decor now dims green at vendors, the Auction House and the guild bank when you already own or have placed it, via the Midnight housing catalog.",
+			} },
+			{ "Automation", {
+				"Faster Loot: reworked into a paced slot-walker - it listens to both LOOT_READY and LOOT_OPENED, handles noisy auto-loot state, avoids duplicate work and stops cleanly when the loot window closes. Inspired by SpeedyAutoLoot by Yuyuli.",
+			} },
+			{ "Tooltip", {
+				"Health Bar Text: the unit health bar shows current / max again (with a current-only option). It now follows ElvUI's retail-safe approach - Blizzard drives the bar and we post-hook its health update.",
+				"Quality Border: dropped the old recipe item-name width tweak (fragile under Secret Values for no real gain); the item post-call now only tints Blizzard's default border by item quality.",
+			} },
+			{ "Fixed", {
+				"Item Level: fixed item level and bind status not appearing on bank and warband bank items - the slots now update off ItemButton:UpdateCooldown (matching Unusable Items), hook both the generate and refresh-all bank paths, and install on BANKFRAME_OPENED so the load-on-demand bank UI is covered.",
+				"Tooltip (secret values): fixed taint thrown from Blizzard's own tooltip widget code (GameTooltip_AddWidgetSet/ClearWidgetSet and EmbeddedItemTooltip_UpdateSize) when our hooks run while widget geometry is secret (e.g. map POI / world-event tooltips); those paths now swallow the secret-value error instead of erroring out.",
+				"Tooltip (secret values): health text no longer blanks out when UnitHealth is a 12.0 secret value (in combat or instances); secret numbers are shown safely via number abbreviation instead of being discarded.",
+				"Tooltip: health text no longer flickers or briefly shows the wrong values while the tooltip is refreshing (for example when jumping in-game); it now reads only the unit attached to the tooltip/status bar instead of guessing from mouseover.",
+				"Tooltip (secret values): hiding the status bar no longer tests IsShown() on a bar that can inherit secret aspects after Blizzard writes secret health into it, and tooltip cleanup no longer touches Blizzard state at unsafe times (fixes map POI/event tooltip taint).",
+				"Rare Alert: showing/hiding the secure click-to-target popup in combat is now safe - it skips showing in combat and defers hides until combat ends.",
+				"Rare Alert: fixed Edit Mode click/drag conflicts where the secure overlay could sit above the mover and block moving the banner.",
+				"Faster Loot: locked-slot handling now works across client variants of GetLootSlotInfo.",
+				"Minimap (Collect Buttons): the AllTheThings button no longer shows up oversized or escapes the tray - its icon is re-clamped to the slot on every open and its self-positioning is stopped once parked.",
+				"Faster Movie Skip: enabling it from the Settings panel now works live instead of needing a reload.",
+				"Social Colours: the friends/who lists no longer do O(n^2) work refreshing - the scroll rows are enumerated once per refresh.",
+			} },
+			{ "Performance", {
+				"Quick Quest now uses the shared addon event system instead of its own event frame, and only registers its quest events while enabled - so it no longer wakes on QUEST_LOG_UPDATE for players who leave it off (it defaults off).",
+				"Action Bars: hotkey abbreviation is memoised per keybind, so the substitution pass runs once per unique bind instead of on every text refresh.",
+				"Chat Channels: URL highlighting skips its link patterns entirely on lines with no link via a cheap pre-check.",
+				"Clock & Stats: while hovered, the heavy tooltips now rebuild on a throttle (clock every 30s, addon-memory every 5s) instead of every tick; the visible time/FPS/latency keep updating, and Shift still expands the memory list instantly.",
+				"Core: rebuilt the object pool (F.CreatePool) and added an internal pub/sub signal bus (adapted from Plumber's CallbackRegistry) so modules react to setting changes without hard references - the Settings landing count and minimap indicator/button-tray now update live.",
+			} },
+		},
+	},
 	{
 		version = "1.2.7",
 		date = "2026-06-08",
@@ -428,15 +474,22 @@ local function Build()
 	frame:SetFrameStrata("DIALOG")
 	frame:SetToplevel(true)
 	frame:Hide()
-	frame:SetBackdrop(BACKDROP)
-	frame:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
-	frame:SetBackdropBorderColor(1, 1, 1)
-	frame:EnableMouse(true)
-	frame:SetMovable(true)
-	frame:RegisterForDrag("LeftButton")
-	frame:SetScript("OnDragStart", frame.StartMoving)
-	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-	tinsert(_G.UISpecialFrames, "NexEnhanceChangelog") -- close on Escape
+	-- Prefer Blizzard's in-game tooltip NineSlice layout; fall back to the
+	-- classic tooltip backdrop if the layout isn't registered.
+	if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout" }) then
+		frame:SetBackdrop(BACKDROP)
+		frame:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
+		frame:SetBackdropBorderColor(1, 1, 1)
+	end
+
+	-- Outer glow halo (raw tutorial textures; drawn one level below the panel).
+	local glow = CreateFrame("Frame", nil, frame)
+	glow:SetAllPoints(frame)
+	glow:SetFrameLevel(max(frame:GetFrameLevel() - 1, 0))
+	glow:SetAlpha(0.18)
+	F.CreateGlowBorder(glow, { outset = 5, blend = "BLEND" })
+
+	F.MakeWindowMovable(frame, "NexEnhanceChangelog") -- draggable + Escape-close
 
 	local logo = frame:CreateTexture(nil, "ARTWORK")
 	logo:SetSize(56, 56)

@@ -13,7 +13,7 @@ local Tooltip = ns:GetModule("Tooltip")
 if not Tooltip then return end
 
 local _G = _G
-local gsub, strfind, unpack, select, next, pairs = string.gsub, string.find, unpack, select, next, pairs
+local gsub, strfind, unpack, select, next = string.gsub, string.find, unpack, select, next
 local hooksecurefunc = hooksecurefunc
 local C_MountJournal_GetMountInfoByID = C_MountJournal and C_MountJournal.GetMountInfoByID
 local C_Item_GetItemIconByID = C_Item.GetItemIconByID
@@ -41,14 +41,6 @@ function Tooltip:SetupTooltipIcon(icon)
 	end
 end
 
-local function HookTooltipCleared(self)
-	self.tipModified = false
-end
-
-local function HookTooltipMethod(self)
-	self:HookScript("OnTooltipCleared", HookTooltipCleared)
-end
-
 local function ReskinRewardIcon(frame)
 	if not frame or not frame.Icon then return end
 	frame.Icon:SetTexCoord(unpack(C.TexCoord))
@@ -71,10 +63,6 @@ function Tooltip:ReskinTooltipIcons()
 		[ShoppingTooltip1] = true,
 		[ShoppingTooltip2] = true,
 	}
-
-	for tip in pairs(tooltips) do
-		HookTooltipMethod(tip)
-	end
 
 	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall then
 		for tooltipType, getTex in next, GetTooltipTextureByType do

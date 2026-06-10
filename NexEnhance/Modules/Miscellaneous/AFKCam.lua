@@ -131,15 +131,6 @@ local function CancelTimer(handle)
 	end
 end
 
-local BLIZZARD_BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
-
 local IGNORE_KEYS = {
 	LALT = true,
 	LSHIFT = true,

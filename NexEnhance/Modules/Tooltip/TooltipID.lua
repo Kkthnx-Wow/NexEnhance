@@ -34,12 +34,8 @@ local types = {
 function Tooltip:AddLineForID(id, linkType, noadd)
 	if self:IsForbidden() then return end
 
-	for i = 1, self:NumLines() do
-		local line = _G[self:GetName() .. "TextLeft" .. i]
-		if not line then break end
-		local text = line:GetText()
-		if text and F.NotSecret(text) and text == linkType then return end
-	end
+	-- Don't append the ID line twice when the tooltip is rebuilt.
+	if F.TooltipHasLine(self, linkType) then return end
 
 	if self.__isHoverTip and linkType == types.spell and IsPlayerSpell(id) and C_MountJournal_GetMountFromSpell and C_MountJournal_GetMountFromSpell(id) then
 		self:AddLine(LEARNT_STRING)

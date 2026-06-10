@@ -23,7 +23,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local L = ns.L
+local F, L = ns.F, ns.L
 
 local _G = _G
 local max = math.max
@@ -69,8 +69,10 @@ local function ApplyBorder(frame)
 	-- Extend up 18 (to cover the Details toolbar/title) and out 1px each side.
 	bg:SetPoint("TOPLEFT", frame, "TOPLEFT", -4, 22)
 	bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 4, -4)
-	bg:SetBackdrop(DETAILS_BACKDROP)
-	bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	if not F.CreateNineSlice(bg, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 } }) then
+		bg:SetBackdrop(DETAILS_BACKDROP)
+		bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	end
 
 	frame.__nexDetailsBorder = bg
 	borders[#borders + 1] = bg

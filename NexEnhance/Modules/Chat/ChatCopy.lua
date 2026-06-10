@@ -10,7 +10,7 @@
 
 -- luacheck: globals ChatFontNormal
 local _, ns = ...
-local F, L = ns.F, ns.L
+local F, C, L = ns.F, ns.C, ns.L
 
 local _G = _G
 local gsub, format, tconcat, tostring = string.gsub, string.format, table.concat, tostring
@@ -25,14 +25,7 @@ local ChatCopy = ns:NewModule("ChatCopy", "chatCopy", { group = "chat", title = 
 
 -- A classic Blizzard tooltip-style border (gold edge + dark fill), matching the
 -- chat edit box so the copy window looks like a native dialog.
-local COPY_BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 16,
-	edgeSize = 16,
-	insets = { left = 4, right = 4, top = 4, bottom = 4 },
-}
+local COPY_BACKDROP = C.Backdrops.window
 
 local lines = {}
 local frame, editBox
@@ -76,9 +69,11 @@ local function CreateCopyFrame()
 	frame:RegisterForDrag("LeftButton")
 	frame:SetScript("OnDragStart", frame.StartMoving)
 	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-	frame:SetBackdrop(COPY_BACKDROP)
-	frame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-	frame:SetBackdropBorderColor(1, 1, 1)
+	if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 } }) then
+		frame:SetBackdrop(COPY_BACKDROP)
+		frame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+		frame:SetBackdropBorderColor(1, 1, 1)
+	end
 
 	frame.close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 	frame.close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
@@ -126,7 +121,6 @@ local function CreateCopyButton(chatFrame)
 	icon:SetAllPoints()
 	icon:SetTexture("Interface\\BUTTONS\\UI-GuildButton-PublicNote-Up")
 	icon:SetBlendMode("ADD")
-	-- icon:SetTexCoord(unpack(C.TexCoord)) -- We do not need this as we are using a custom texture
 	button.icon = icon
 
 	button:SetScript("OnEnter", function(self)

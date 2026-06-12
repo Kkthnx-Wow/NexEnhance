@@ -36,6 +36,8 @@ local C_Timer = C_Timer
 local C_Item = C_Item
 local C_Item_GetItemGem = C_Item.GetItemGem
 local C_Container = C_Container
+local C_Container_GetContainerItemInfo = C_Container.GetContainerItemInfo
+local C_Container_GetContainerItemLink = C_Container.GetContainerItemLink
 local UnitExists = UnitExists
 local UnitGUID = UnitGUID
 local GetInventoryItemLink = GetInventoryItemLink
@@ -477,7 +479,7 @@ function ItemLevel:FlyoutButton(button)
 		end
 		local quality = EquipmentManager_GetItemInfoByLocation and select(13, EquipmentManager_GetItemInfoByLocation(location))
 		if locationData.isBags then
-			SetSimpleLevel(button, C_Container.GetContainerItemLink(locationData.bag, locationData.slot), quality, locationData.bag, locationData.slot)
+			SetSimpleLevel(button, C_Container_GetContainerItemLink(locationData.bag, locationData.slot), quality, locationData.bag, locationData.slot)
 		else
 			SetSimpleLevel(button, GetInventoryItemLink("player", locationData.slot), quality)
 		end
@@ -489,7 +491,7 @@ function ItemLevel:FlyoutButton(button)
 		local quality = C_Item.GetItemQuality(itemLocation)
 		if itemLocation:IsBagAndSlot() then
 			local bag, slot = itemLocation:GetBagAndSlot()
-			SetSimpleLevel(button, C_Container.GetContainerItemLink(bag, slot), quality, bag, slot)
+			SetSimpleLevel(button, C_Container_GetContainerItemLink(bag, slot), quality, bag, slot)
 		elseif itemLocation:IsEquipmentSlot() then
 			local slot = itemLocation:GetEquipmentSlot()
 			SetSimpleLevel(button, GetInventoryItemLink("player", slot), quality)
@@ -588,7 +590,7 @@ local function UpdateBagSlot(button)
 		return
 	end
 
-	local info = C_Container.GetContainerItemInfo(bagID, slotID)
+	local info = C_Container_GetContainerItemInfo(bagID, slotID)
 	local quality = info and info.quality
 	local link = info and info.hyperlink
 

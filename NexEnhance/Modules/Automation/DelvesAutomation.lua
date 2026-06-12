@@ -60,14 +60,20 @@ local function OnPlayerChoice()
 	local info = C_PlayerChoice_GetCurrentPlayerChoiceInfo and C_PlayerChoice_GetCurrentPlayerChoiceInfo()
 	local options = info and info.options
 	-- Only auto-confirm a genuinely single, unambiguous choice.
-	if not options or #options ~= 1 then return end
+	if not options or #options ~= 1 then
+		return
+	end
 
 	local option = options[1]
 	local buttons = option and option.buttons
-	if not (option.spellID and buttons and #buttons == 1) then return end
+	if not (option.spellID and buttons and #buttons == 1) then
+		return
+	end
 
 	local responseID = buttons[1].id
-	if not responseID then return end
+	if not responseID then
+		return
+	end
 
 	C_PlayerChoice_SendPlayerChoiceResponse(responseID)
 	if C_PlayerChoice_OnUIClosed then
@@ -91,13 +97,17 @@ end
 local choiceSubscribed = false
 
 local function SubscribeChoice()
-	if choiceSubscribed then return end
+	if choiceSubscribed then
+		return
+	end
 	choiceSubscribed = true
 	ns:RegisterEvent("PLAYER_CHOICE_UPDATE", OnPlayerChoice)
 end
 
 local function UnsubscribeChoice()
-	if not choiceSubscribed then return end
+	if not choiceSubscribed then
+		return
+	end
 	choiceSubscribed = false
 	ns:UnregisterEvent("PLAYER_CHOICE_UPDATE", OnPlayerChoice)
 end
@@ -123,7 +133,9 @@ local function RunScheduledRefresh()
 end
 
 local function ScheduleRefresh()
-	if refreshPending then return end
+	if refreshPending then
+		return
+	end
 	refreshPending = true
 	if C_Timer_After then
 		C_Timer_After(0.5, RunScheduledRefresh)

@@ -2,7 +2,7 @@
 ## Title: |cff5C8BCFNex|rEnhance
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
-## Version: 1.2.8
+## Version: 1.2.9
 ## SavedVariables: NexEnhanceDB
 ## SavedVariablesPerCharacter: NexEnhanceCharDB
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64
@@ -15,6 +15,8 @@
 # Libraries (load before everything so the engine/modules can use them).
 # ----------------------------------------------------------------------------
 Libs\LibEditMode\LibStub\LibStub.lua
+Libs\LibSerialize\LibSerialize.lua
+Libs\LibDeflate\LibDeflate.lua
 Libs\LibEditMode\embed.xml
 
 # ----------------------------------------------------------------------------
@@ -47,13 +49,17 @@ Modules\Miscellaneous\UIScale.lua
 Modules\Miscellaneous\CameraZoom.lua
 Modules\Miscellaneous\ActionKeyDown.lua
 Modules\Miscellaneous\NumberFormat.lua
+Modules\Miscellaneous\HideHelpTips.lua
 
 # Action Bars
 Modules\ActionBars\ActionBars.lua
 Modules\ActionBars\Cooldowns.lua
+Modules\ActionBars\RangeColors.lua
 
 # Unit Frames
 Modules\UnitFrames\ClassColors.lua
+Modules\UnitFrames\LevelColors.lua
+Modules\UnitFrames\PlayerCastBar.lua
 
 # Auras
 Modules\Auras\Reminder.lua
@@ -65,6 +71,7 @@ Modules\Inventory\Mail.lua
 Modules\Inventory\AlreadyKnown.lua
 Modules\Inventory\JunkIcon.lua
 Modules\Inventory\UnusableItems.lua
+Modules\Inventory\DeleteCheapest.lua
 Modules\Inventory\LootFrame.lua
 
 # Chat
@@ -91,6 +98,7 @@ Modules\Skins\MissingStats.lua
 Modules\Skins\ChatBubbles.lua
 Modules\Skins\Details.lua
 Modules\Skins\QuestNavigation.lua
+Modules\Skins\ColorPicker.lua
 
 # DataText
 Modules\DataText\Stats.lua
@@ -112,6 +120,8 @@ Modules\Automation\MovieSkip.lua
 Modules\Automation\DeclineDuel.lua
 Modules\Automation\CancelBadBuffs.lua
 Modules\Automation\AutoInvite.lua
+Modules\Automation\GuildInviteFilter.lua
+Modules\Automation\QuickJoin.lua
 Modules\Automation\AutoGoodbye.lua
 Modules\Automation\AutoResurrect.lua
 Modules\Automation\AutoKeystone.lua
@@ -132,6 +142,7 @@ Modules\Miscellaneous\QueueTimer.lua
 Modules\Miscellaneous\TradeTargetInfo.lua
 Modules\Miscellaneous\QuickDelete.lua
 Modules\Miscellaneous\DragEmAll.lua
+Modules\Miscellaneous\WidgetMovers.lua
 Modules\Miscellaneous\AlertFrames.lua
 Modules\Miscellaneous\Animation.lua
 Modules\Miscellaneous\AchievementScreenshot.lua

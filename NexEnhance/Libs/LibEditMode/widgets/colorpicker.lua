@@ -4,7 +4,7 @@ if ns.LibEditMode then
 	lib = ns.LibEditMode
 else
 	local MINOR, prevMinor = 15
-	lib, prevMinor = LibStub('LibEditMode')
+	lib, prevMinor = LibStub("LibEditMode")
 	if prevMinor > MINOR then
 		return
 	end
@@ -12,8 +12,8 @@ end
 
 local function showTooltip(self)
 	if self.setting and self.setting.desc then
-		SettingsTooltip:SetOwner(self, 'ANCHOR_NONE')
-		SettingsTooltip:SetPoint('BOTTOMRIGHT', self, 'TOPLEFT')
+		SettingsTooltip:SetOwner(self, "ANCHOR_NONE")
+		SettingsTooltip:SetPoint("BOTTOMRIGHT", self, "TOPLEFT")
 		SettingsTooltip:SetText(self.setting.name, 1, 1, 1)
 		SettingsTooltip:AddLine(self.setting.desc)
 		SettingsTooltip:Show()
@@ -54,7 +54,7 @@ function colorPickerMixin:Setup(data)
 		g = g,
 		b = b,
 		opacity = a,
-		hasOpacity = data.hasOpacity
+		hasOpacity = data.hasOpacity,
 	}
 
 	self.Swatch:SetColorRGB(r, g, b)
@@ -62,13 +62,13 @@ end
 
 function colorPickerMixin:Refresh()
 	local data = self.setting
-	if type(data.disabled) == 'function' then
+	if type(data.disabled) == "function" then
 		self:SetEnabled(not data.disabled(lib:GetActiveLayoutName()))
 	else
 		self:SetEnabled(not data.disabled)
 	end
 
-	if type(data.hidden) == 'function' then
+	if type(data.hidden) == "function" then
 		self:SetShown(not data.hidden(lib:GetActiveLayoutName()))
 	else
 		self:SetShown(not data.hidden)
@@ -106,23 +106,23 @@ local function onSwatchClick(self)
 end
 
 lib.internal:CreatePool(lib.SettingType.ColorPicker, function()
-	local frame = CreateFrame('Frame', nil, UIParent, 'ResizeLayoutFrame')
+	local frame = CreateFrame("Frame", nil, UIParent, "ResizeLayoutFrame")
 	frame.fixedHeight = 32 -- default attribute
 	frame:Hide() -- default state
-	frame:SetScript('OnLeave', DefaultTooltipMixin.OnLeave)
-	frame:SetScript('OnEnter', showTooltip)
+	frame:SetScript("OnLeave", DefaultTooltipMixin.OnLeave)
+	frame:SetScript("OnEnter", showTooltip)
 
 	-- recreate EditModeSetting* widgets
-	local Label = frame:CreateFontString(nil, 'ARTWORK', 'GameFontHighlightMedium')
-	Label:SetPoint('LEFT')
+	local Label = frame:CreateFontString(nil, "ARTWORK", "GameFontHighlightMedium")
+	Label:SetPoint("LEFT")
 	Label:SetSize(100, 32)
-	Label:SetJustifyH('LEFT')
+	Label:SetJustifyH("LEFT")
 	frame.Label = Label
 
-	local Swatch = CreateFrame('Button', nil, frame, 'ColorSwatchTemplate')
+	local Swatch = CreateFrame("Button", nil, frame, "ColorSwatchTemplate")
 	Swatch:SetSize(32, 32)
-	Swatch:SetPoint('LEFT', Label, 'RIGHT', 5, 0)
-	Swatch:SetScript('OnClick', onSwatchClick)
+	Swatch:SetPoint("LEFT", Label, "RIGHT", 5, 0)
+	Swatch:SetScript("OnClick", onSwatchClick)
 	frame.Swatch = Swatch
 
 	return Mixin(frame, colorPickerMixin)

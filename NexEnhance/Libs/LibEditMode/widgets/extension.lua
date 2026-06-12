@@ -4,7 +4,7 @@ if ns.LibEditMode then
 	lib = ns.LibEditMode
 else
 	local MINOR, prevMinor = 15
-	lib, prevMinor = LibStub('LibEditMode')
+	lib, prevMinor = LibStub("LibEditMode")
 	if prevMinor > MINOR then
 		return
 	end
@@ -22,10 +22,10 @@ function extensionMixin:Update(systemID, subSystemID)
 	local numSettings = self:UpdateSettings()
 	if numSettings == 0 then
 		self.Buttons:ClearAllPoints()
-		self.Buttons:SetPoint('TOP', 0, -20)
+		self.Buttons:SetPoint("TOP", 0, -20)
 	else
 		self.Buttons:ClearAllPoints()
-		self.Buttons:SetPoint('TOP', self.Settings, 'BOTTOM', 0, -2)
+		self.Buttons:SetPoint("TOP", self.Settings, "BOTTOM", 0, -2)
 	end
 
 	self:UpdateButtons(numSettings)
@@ -84,7 +84,7 @@ function extensionMixin:UpdateButtons(numSettings)
 		end
 
 		for index, data in next, buttons do
-			local button = internal:GetPool('button'):Acquire(self.Buttons)
+			local button = internal:GetPool("button"):Acquire(self.Buttons)
 			button.layoutIndex = index
 			button:SetText(data.text)
 			button:SetOnClickHandler(data.click)
@@ -110,31 +110,31 @@ function extensionMixin:ResetSettings()
 end
 
 function internal:CreateExtension()
-	local extension = Mixin(CreateFrame('Frame', nil, UIParent, 'ResizeLayoutFrame'), extensionMixin)
+	local extension = Mixin(CreateFrame("Frame", nil, UIParent, "ResizeLayoutFrame"), extensionMixin)
 	extension:SetSize(64, 64)
-	extension:SetPoint('TOP', EditModeSystemSettingsDialog, 'BOTTOM', 0, 0)
-	extension:SetFrameStrata('DIALOG')
+	extension:SetPoint("TOP", EditModeSystemSettingsDialog, "BOTTOM", 0, 0)
+	extension:SetFrameStrata("DIALOG")
 	extension:SetFrameLevel(300)
 	extension:EnableMouse(true)
 	extension:Hide()
 	extension.widthPadding = 40
 	extension.heightPadding = 40
 
-	local extensionBorder = CreateFrame('Frame', nil, extension, 'DialogBorderTranslucentTemplate')
+	local extensionBorder = CreateFrame("Frame", nil, extension, "DialogBorderTranslucentTemplate")
 	extensionBorder.ignoreInLayout = true
 	extension.Border = extensionBorder
 
-	local extensionSettings = CreateFrame('Frame', nil, extension, 'VerticalLayoutFrame')
-	extensionSettings:SetPoint('TOP', 0, -15)
+	local extensionSettings = CreateFrame("Frame", nil, extension, "VerticalLayoutFrame")
+	extensionSettings:SetPoint("TOP", 0, -15)
 	extensionSettings.spacing = 2
 	extension.Settings = extensionSettings
 
-	local resetSettingsButton = CreateFrame('Button', nil, extensionSettings, 'EditModeSystemSettingsDialogButtonTemplate')
+	local resetSettingsButton = CreateFrame("Button", nil, extensionSettings, "EditModeSystemSettingsDialogButtonTemplate")
 	resetSettingsButton:SetText(RESET_TO_DEFAULT)
 	resetSettingsButton:SetOnClickHandler(GenerateClosure(extension.ResetSettings, extension))
 	extensionSettings.ResetButton = resetSettingsButton
 
-	local extensionButtons = CreateFrame('Frame', nil, extension, 'VerticalLayoutFrame')
+	local extensionButtons = CreateFrame("Frame", nil, extension, "VerticalLayoutFrame")
 	extensionButtons.spacing = 2
 	extension.Buttons = extensionButtons
 

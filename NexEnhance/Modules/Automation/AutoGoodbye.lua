@@ -41,15 +41,21 @@ local pendingGoodbye = false
 
 local function GetGroupChannel()
 	local _, instanceType = GetInstanceInfo()
-	if not instanceType or instanceType == "none" then return nil end
-	if not IsInGroup() then return nil end
+	if not instanceType or instanceType == "none" then
+		return nil
+	end
+	if not IsInGroup() then
+		return nil
+	end
 
 	-- LFD/LFR groups: use INSTANCE_CHAT so everyone queued can see it; walk-in
 	-- (manually formed) groups fall through to party/raid.
 	if IsPartyLFG() and not (C_PartyInfo_IsPartyWalkIn and C_PartyInfo_IsPartyWalkIn()) then
 		return "INSTANCE_CHAT"
 	end
-	if IsInRaid() then return "RAID" end
+	if IsInRaid() then
+		return "RAID"
+	end
 	return "PARTY"
 end
 
@@ -57,24 +63,36 @@ local function SendGoodbye()
 	pendingGoodbye = false
 
 	local now = GetTime()
-	if now > 0 and (now - lastGoodbyeAt) < 8 then return end
+	if now > 0 and (now - lastGoodbyeAt) < 8 then
+		return
+	end
 
 	local list = L["AutoGoodbyeMessages"]
-	if not list or #list == 0 then return end
+	if not list or #list == 0 then
+		return
+	end
 
 	local channel = GetGroupChannel()
-	if not channel then return end
+	if not channel then
+		return
+	end
 
 	local msg = list[math_random(#list)]
-	if not msg or msg == "" then return end
+	if not msg or msg == "" then
+		return
+	end
 
 	SendChatMessage(msg, channel)
 	lastGoodbyeAt = now
 end
 
 function AutoGoodbye:QueueGoodbye()
-	if not ns.db.autoGoodbye.enable then return end
-	if pendingGoodbye then return end
+	if not ns.db.autoGoodbye.enable then
+		return
+	end
+	if pendingGoodbye then
+		return
+	end
 
 	pendingGoodbye = true
 	-- Random delay so it doesn't fire the instant the rewards pop, feeling botty.
@@ -90,7 +108,9 @@ function AutoGoodbye:CHALLENGE_MODE_COMPLETED()
 end
 
 function AutoGoodbye:RegisterModuleEvents()
-	if self.eventsRegistered then return end
+	if self.eventsRegistered then
+		return
+	end
 	self.eventsRegistered = true
 
 	self:RegisterEvent("LFG_COMPLETION_REWARD")

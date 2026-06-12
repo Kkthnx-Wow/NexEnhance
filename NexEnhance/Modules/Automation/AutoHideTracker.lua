@@ -49,8 +49,7 @@ local DIFFICULTY_KEYSTONE = 8
 
 -- Resolve "hide" while any boss/arena unit exists, "show" otherwise. The bracket
 -- groups are OR-ed, so any match collapses the tracker.
-local STATE_CONDITION = "[@arena1,exists][@arena2,exists][@arena3,exists][@arena4,exists][@arena5,exists]"
-	.. "[@boss1,exists][@boss2,exists][@boss3,exists][@boss4,exists][@boss5,exists] hide;show"
+local STATE_CONDITION = "[@arena1,exists][@arena2,exists][@arena3,exists][@arena4,exists][@arena5,exists]" .. "[@boss1,exists][@boss2,exists][@boss3,exists][@boss4,exists][@boss5,exists] hide;show"
 
 ns:RegisterDefaults({
 	autoHideTracker = {
@@ -77,7 +76,9 @@ end
 
 -- Combat blocked the reparent earlier; apply it now that we're out of combat.
 local function ApplyPending()
-	if InCombatLockdown() then return end
+	if InCombatLockdown() then
+		return
+	end
 
 	local tracker = GetTracker()
 	if tracker and pendingAction then
@@ -117,9 +118,13 @@ local function SplashOnHide(self)
 end
 
 local function EnsureSplashGuard()
-	if splashGuarded then return end
+	if splashGuarded then
+		return
+	end
 	local splash = _G["SplashFrame"]
-	if not splash then return end
+	if not splash then
+		return
+	end
 
 	splashGuarded = true
 	splash:SetScript("OnHide", SplashOnHide)
@@ -129,11 +134,15 @@ end
 -- remember what we wanted and finish once combat ends. Any insecure reparent
 -- taints the tracker, so this is also where we arm the splash taint guard.
 local function SetParentSafe(tracker, parent, action)
-	if not tracker then return end
+	if not tracker then
+		return
+	end
 
 	EnsureSplashGuard()
 
-	if pcall(tracker.SetParent, tracker, parent) then return end
+	if pcall(tracker.SetParent, tracker, parent) then
+		return
+	end
 
 	pendingAction = action
 	if not waitingForCombat then
@@ -144,12 +153,16 @@ end
 
 local function Collapse()
 	local tracker = GetTracker()
-	if not tracker or IsCollapsed(tracker) then return end
+	if not tracker or IsCollapsed(tracker) then
+		return
+	end
 
 	-- Keep objectives visible during Mythic+ keystones unless asked otherwise.
 	if not ns.db.autoHideTracker.hideInKeystone then
 		local _, _, difficultyID = GetInstanceInfo()
-		if difficultyID == DIFFICULTY_KEYSTONE then return end
+		if difficultyID == DIFFICULTY_KEYSTONE then
+			return
+		end
 	end
 
 	SetParentSafe(tracker, ns.HiderFrame, "collapse")
@@ -164,14 +177,18 @@ end
 
 -- Re-run UpdateDriver once combat ends (a setting was toggled mid-fight).
 local function ReapplyDriverAfterCombat()
-	if InCombatLockdown() then return end
+	if InCombatLockdown() then
+		return
+	end
 	driverPending = nil
 	ns:UnregisterEvent("PLAYER_REGEN_ENABLED", ReapplyDriverAfterCombat)
 	AutoHideTracker:UpdateDriver()
 end
 
 function AutoHideTracker:UpdateDriver()
-	if not autoHider then return end
+	if not autoHider then
+		return
+	end
 
 	-- (Un)registering a state driver touches the secure environment, so keep it
 	-- out of combat. You can no longer /reload in combat, so Setup always runs
@@ -194,24 +211,33 @@ function AutoHideTracker:UpdateDriver()
 end
 
 function AutoHideTracker:Setup()
-	if self.setup or not GetTracker() then return end
+	if self.setup or not GetTracker() then
+		return
+	end
 
 	-- Boss mods drive the tracker during encounters; don't fight them.
-	if C_AddOns_IsAddOnLoaded("BigWigs") or C_AddOns_IsAddOnLoaded("DBM-Core") then return end
+	if C_AddOns_IsAddOnLoaded("BigWigs") or C_AddOns_IsAddOnLoaded("DBM-Core") then
+		return
+	end
 	-- Third-party quest trackers replace the default one entirely.
-	if C_AddOns_IsAddOnLoaded("KalielsTracker") or C_AddOns_IsAddOnLoaded("DugisGuideViewerZ") then return end
+	if C_AddOns_IsAddOnLoaded("KalielsTracker") or C_AddOns_IsAddOnLoaded("DugisGuideViewerZ") then
+		return
+	end
 
 	self.setup = true
 
 	autoHider = CreateFrame("Frame", "NexEnhanceTrackerAutoHider", UIParent, "SecureHandlerStateTemplate")
 	-- Secure trigger (fires in combat); the heavy lifting is in OnHide/OnShow.
-	autoHider:SetAttribute("_onstate-trackervis", [[
+	autoHider:SetAttribute(
+		"_onstate-trackervis",
+		[[
 		if newstate == "hide" then
 			self:Hide()
 		else
 			self:Show()
 		end
-	]])
+	]]
+	)
 	autoHider:SetScript("OnHide", Collapse)
 	autoHider:SetScript("OnShow", Expand)
 

@@ -8,6 +8,98 @@ All notable changes to this project are documented here. This project follows
 
 ---
 
+## [1.2.9] — 2026-06-11
+
+Adds a **Guild Invite Filter** that auto-declines guild invites from strangers
+while letting friends and guildmates through, with live statistics shown right
+in its options page, and a **Quick Join** module that smooths out Blizzard's
+Group Finder. Under the hood, all of NexEnhance's Midnight Secret-Value handling
+is consolidated behind one shared helper set (modelled on oUF's), so every
+module guards secrets the same way. This release also cleans up profile
+management with AceDB-style actions and compact compressed exports, and
+standardises UI frames on Blizzard's stock tooltip border art.
+
+### Added
+
+- **Automation — Guild Invite Filter:** new module (off by default) that
+  automatically declines guild invites from players who aren't trusted, while
+  letting invites from character friends, Battle.net friends and your current
+  guild members through. Each trusted source is its own toggle. Optional chat
+  announcement and a short sound play when an invite is declined, and a
+  **Statistics** section on its options page shows lifetime blocked/allowed
+  totals and the last blocked invite (refreshing each time the page opens, and
+  greying out while the module is off).
+- **Automation — Quick Join:** new module (off by default) for the Premade
+  Groups finder, adapted from NDui's QuickJoin:
+  - **Double-click to apply** to a search result (hold **Alt** to review the
+    sign-up note instead of sending it immediately), with a one-time HelpTip
+    pointing the shortcut out the first time the sign-up button appears.
+  - **Auto-accept** check on the applicant viewer that auto-invites applicants
+    while you're the group leader (its state is remembered). The check only
+    appears for the leader and stays out of the way of Blizzard's own
+    auto-accept toggle.
+  - **Auto-hide LFG popups** — dismisses the throwaway informational and
+    expired-listing popups, and closes the Group Finder once you accept an
+    invite to a listed group. (Toggle.)
+  - **Show Leader Rating** — prints the group leader's Mythic+/PvP rating on
+    each result with a cross-faction crest, and trims the long "Zone:" activity
+    prefix. (Toggle.) The Group Finder UI is load-on-demand, so the module waits
+  for it before hooking; ratings and result names are read through the shared
+  Secret-Value helpers so restricted-instance secrets never error.
+- **Commands — Abandon all quests:** new `/nex abandonquests` command that
+  clears every abandonable quest from your log in one go (skipping world quests
+  and party-sync–locked quests, which can't be abandoned). It collects the quest
+  IDs first and confirms with a yes/no popup before committing, since abandoning
+  also destroys any quest items.
+
+### Changed
+
+- **Miscellaneous — Profiles:** profile management now follows AceDB's clearer
+  workflow: create a new profile, switch to an existing one, copy settings from
+  another profile into the current one, copy the current profile as a new name,
+  reset the current profile to defaults, or delete unused profiles.
+- **UI chrome:** NexEnhance now standardises frames on Blizzard's stock
+  `UI-Tooltip-Border` / `UI-Tooltip-Background` art. The custom pixel-border and
+  addon NineSlice helper paths were removed, and the minimap, chat edit box,
+  chat bubbles, profile/install/changelog/credits/copy windows, Details skin,
+  Reminder icons, Rare Alert banner and tooltip status bar all use the same
+  tooltip-border family.
+- **Automation — Guild Invite Filter (Blizzard interop):** while enabled, the
+  module forces Blizzard's own "Block Guild Invites" (`SetAutoDeclineGuildInvites`)
+  off so invites actually reach the filter (Blizzard's option drops them
+  server-side before `GUILD_INVITE_REQUEST` fires). Your prior setting is
+  remembered per-character and restored when the module is disabled, even across
+  a reload.
+
+### Performance & Internals
+
+- **Miscellaneous — Profiles:** export strings now use bundled LibSerialize and
+  LibDeflate (`EncodeForPrint`) for compact printable backups, while still
+  accepting older `!NEX1!` Base64 exports.
+- **Core — Secret API:** consolidated all Midnight Secret-Value handling into a
+  single shared helper set on `F`, modelled on oUF's (by Simpy): `F.IsSecret`/
+  `F.NotSecret` (existing) plus `F.IsSecretUnit`/`F.NotSecretUnit`,
+  `F.IsSecretTable`/`F.NotSecretTable`, `F.CanAccessValue`/`F.CanNotAccessValue`
+  and `F.HasSecretValues`/`F.NoSecretValues`. The Tooltip module's local
+  `IsSecretUnit` and the Cooldowns module's private `canaccessvalue` check now
+  route through these, so there's one source of truth and no module rolls its
+  own raw primitive.
+- **Core — Settings builder:** added `builder:Description(text)`, a read-only
+  wrapped paragraph for option pages (used for the Guild Invite Filter stats),
+  and taught the shared description widget to honour `builder:DependsOn`, so
+  read-only text rows grey out with the setting they belong to just like
+  Blizzard's native controls.
+- **Core — HelpTip helper:** added `F.ShowHelpTip(owner, key, text[, opts])` for
+  one-shot, account-wide tutorial nudges on Blizzard's HelpTip frame (shown once
+  per account, then remembered in the global DB). Tips raised this way are
+  automatically spared by the Hide Help Tips feature. Used to surface NexEnhance's
+  less-obvious interactions the first time they're relevant: Quick Join's
+  double-click shortcut, the chat quick-scroll modifiers, the chat copy button,
+  Edit Mode movers, the invisible minimap click/scroll gestures, and the
+  bag-frame "delete cheapest" button.
+
+---
+
 ## [1.2.8] — 2026-06-10
 
 Brings the Clock (Time) datatext up to Midnight — Stormarion Assault, Abundance
@@ -44,6 +136,47 @@ text works with secret health values instead of blanking out.
 - **Inventory — Loot Frame:** new module that lets Blizzard's default loot
   window grow taller so more loot fits on one page without scrolling. Includes a
   live toggle and a configurable max height percentage.
+- **Inventory — Delete Cheapest:** new module that adds a goblin-head button to
+  the bag frame (left of the search box, styled to match Blizzard's cleanup
+  button). Left-click finds and (after a confirmation showing the item) destroys
+  the lowest vendor-value item in your bags; right-click just previews it in
+  chat. Per-item-class protection toggles guard whole categories, with quest
+  items protected by default.
+- **Action Bars — Range Coloring:** new module (tullaRange-style) that tints
+  action-button icons and hotkeys when an action is out of range, out of power,
+  or unusable. Driven by Blizzard's event-based range check (no per-frame
+  polling) and hardened for Midnight — secret usability/range values in combat
+  fall back to the neutral tint instead of erroring. Colors, hotkey tinting and
+  pet-bar coverage are all configurable; off by default.
+- **Skins — Enhanced Color Picker:** Blizzard's color picker gains R/G/B input
+  boxes (0-255) that drive the wheel and update live as you drag, plus a row of
+  click-to-apply class-color swatches with name tooltips. The native hex box is
+  reskinned and slotted in as the aligned 4th row of the column (swatch / R / G /
+  B / #), and the stacked color swatch becomes a single box-styled header.
+  Reworked from NDui against the current frame.
+- **General — Hide Help Tips:** new toggle (off by default) that suppresses
+  Blizzard's tutorial and help-tip pop-ups (micro-button alerts, new-player
+  pointers, panel hints) and the tutorial CVars, while leaving NexEnhance's own
+  tips (e.g. the low-durability nudge) intact.
+- **General — Widget Movers:** new toggle (off by default) that makes Blizzard's
+  below-minimap and top-center widget displays draggable in Edit Mode via our
+  mover, opting them out of the legacy frame-position manager so they stay where
+  you put them. The power-bar widget is intentionally left to Blizzard's native
+  Encounter Bar Edit Mode system. Ported from NDui's `UIWidgetFrameMover`.
+- **Unit Frames — Player Cast Bar:** new toggle (off by default) that mirrors
+  Blizzard's player cast bar icon above the bar and cast time beneath it, with a
+  configurable icon size. Purely cosmetic (Blizzard keeps ownership of cast
+  state/timing, so no secret-value concerns) and hides during Edit Mode.
+- **Unit Frames — Level Colours:** new module that colours the Target / Focus /
+  Boss level number by classic creature difficulty (red → grey vs your level)
+  via `GetCreatureDifficultyColor`, instead of Blizzard's newer trivial/easy
+  buckets. An **Always Show Level** sub-toggle replaces Blizzard's skull on
+  high-level targets with the actual number (or a red `??` when the game hides
+  it) and appends classification markers (`Boss` / `R+` / `+` / `R`), so you
+  always get info. Post-hooks `CheckLevel` (no fields written onto
+  the Edit Mode-managed frames), only touches the level FontString/skull
+  cosmetically, and is secret-value hardened — it leaves Blizzard's display when
+  level reads are restricted in combat or instances.
 - **Inventory — Already Known:** housing decor items now tint green when already
   owned. The check uses the Midnight housing catalog API when available and
   counts both stored decor and decor already placed in a house.
@@ -95,11 +228,24 @@ text works with secret health values instead of blanking out.
   Blizzard updates the bar, NexEnhance post-hooks the health refresh and displays
   secret health values through whitelisted number abbreviation instead of trying
   to inspect them.
+- **Tooltip (internal rewrite):** the core module was reworked against ElvUI's
+  Midnight Secret-Value model. The accumulated workarounds are gone — the global
+  `GameTooltip_AddWidgetSet`/`ClearWidgetSet`/`EmbeddedItemTooltip_UpdateSize`
+  pcall wrappers and the `OnSizeChanged`/`canaccessvalue` backdrop guards have
+  been removed (untainted Blizzard code may read secrets; we just stopped tainting
+  its layout path). Triple unit resolution collapsed to `GetDisplayedUnit` +
+  `GetUnitToken`, the health-text path was simplified, and the status-bar border
+  is now a stock tooltip backdrop with no Lua size maths. The look and options are
+  unchanged.
 - **Miscellaneous — Credits:** updated credits for recent inspiration and
   cherry-picks, including SpeedyAutoLoot, Improved Loot Frame and RareScanner.
 
 ### Fixed
 
+- **Maps — Minimap:** the instance-difficulty flag reskins with our Flag texture
+  again. It was targeting a non-existent `.Instance` child; the current
+  `InstanceDifficultyMixin` exposes the normal flag as `.Default` (alongside
+  `.Guild` and `.ChallengeMode`).
 - **Inventory — Item Level:** fixed item level and bind status not appearing on
   bank and warband bank items. The bag/bank slots now update off
   `ItemButton:UpdateCooldown` (matching Unusable Items), hook both the
@@ -108,9 +254,11 @@ text works with secret health values instead of blanking out.
 - **Tooltip (secret values):** fixed Secret-Value taint thrown from Blizzard's
   own tooltip widget code (`GameTooltip_AddWidgetSet`, `GameTooltip_ClearWidgetSet`
   and `EmbeddedItemTooltip_UpdateSize`) when our hooks run while widget geometry
-  is secret — for example on map POI / world-event tooltips. These paths are now
-  wrapped so a secret-value error is swallowed instead of bubbling up as a Lua
-  error.
+  is secret — for example on map POI / world-event tooltips. These paths now
+  swallow only secret-value errors (case-insensitive, covering both
+  `SetWidth(secret)` and secret height math), and `GameTooltip_AddWidgetSet`
+  preserves Blizzard's numeric overflow return contract so `AreaPoiUtil` does
+  not crash doing arithmetic on an error string.
 - **Tooltip:** fixed missing health text on `GameTooltipStatusBar`, including
   secret health values returned by Midnight combat/instance APIs. Secret values
   are displayed safely instead of being discarded by `F.NotSecret` guards.

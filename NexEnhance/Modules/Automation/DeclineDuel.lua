@@ -35,8 +35,12 @@ ns:RegisterDefaults({
 local DeclineDuel = ns:NewModule("DeclineDuel", "declineDuel", { group = "automation", title = L["Decline Duels"], order = 50 })
 
 function DeclineDuel:DUEL_REQUESTED(name)
-	if not ns.db.declineDuel.enable then return end
-	if not ns.db.declineDuel.declineDuels then return end
+	if not ns.db.declineDuel.enable then
+		return
+	end
+	if not ns.db.declineDuel.declineDuels then
+		return
+	end
 
 	CancelDuel()
 	StaticPopup_Hide("DUEL_REQUESTED")
@@ -44,8 +48,12 @@ function DeclineDuel:DUEL_REQUESTED(name)
 end
 
 function DeclineDuel:PET_BATTLE_PVP_DUEL_REQUESTED(name)
-	if not ns.db.declineDuel.enable then return end
-	if not ns.db.declineDuel.declinePetDuels then return end
+	if not ns.db.declineDuel.enable then
+		return
+	end
+	if not ns.db.declineDuel.declinePetDuels then
+		return
+	end
 
 	if C_PetBattles_CancelPVPDuel then
 		C_PetBattles_CancelPVPDuel()
@@ -55,7 +63,9 @@ function DeclineDuel:PET_BATTLE_PVP_DUEL_REQUESTED(name)
 end
 
 function DeclineDuel:RegisterModuleEvents()
-	if self.eventsRegistered then return end
+	if self.eventsRegistered then
+		return
+	end
 	self.eventsRegistered = true
 
 	self:RegisterEvent("DUEL_REQUESTED")

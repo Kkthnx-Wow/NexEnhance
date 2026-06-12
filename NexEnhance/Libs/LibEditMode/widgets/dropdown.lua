@@ -4,7 +4,7 @@ if ns.LibEditMode then
 	lib = ns.LibEditMode
 else
 	local MINOR, prevMinor = 15
-	lib, prevMinor = LibStub('LibEditMode')
+	lib, prevMinor = LibStub("LibEditMode")
 	if prevMinor > MINOR then
 		return
 	end
@@ -12,8 +12,8 @@ end
 
 local function showTooltip(self)
 	if self.setting and self.setting.desc then
-		SettingsTooltip:SetOwner(self, 'ANCHOR_NONE')
-		SettingsTooltip:SetPoint('BOTTOMRIGHT', self, 'TOPLEFT')
+		SettingsTooltip:SetOwner(self, "ANCHOR_NONE")
+		SettingsTooltip:SetPoint("BOTTOMRIGHT", self, "TOPLEFT")
 		SettingsTooltip:SetText(self.setting.name, 1, 1, 1)
 		SettingsTooltip:AddLine(self.setting.desc)
 		SettingsTooltip:Show()
@@ -24,7 +24,7 @@ local function get(data)
 	local value = data.get(lib:GetActiveLayoutName())
 	if value then
 		if data.multiple then
-			assert(type(value) == 'table', "multiple choice dropdowns expects a table from 'get'")
+			assert(type(value) == "table", "multiple choice dropdowns expects a table from 'get'")
 
 			for _, v in next, value do
 				if v == data.value then
@@ -61,7 +61,7 @@ function dropdownMixin:Setup(data)
 			end
 
 			local values = data.values
-			if type(values) == 'function' then
+			if type(values) == "function" then
 				values = values()
 			end
 
@@ -90,13 +90,13 @@ end
 
 function dropdownMixin:Refresh()
 	local data = self.setting
-	if type(data.disabled) == 'function' then
+	if type(data.disabled) == "function" then
 		self:SetEnabled(not data.disabled(lib:GetActiveLayoutName()))
 	else
 		self:SetEnabled(not data.disabled)
 	end
 
-	if type(data.hidden) == 'function' then
+	if type(data.hidden) == "function" then
 		self:SetShown(not data.hidden(lib:GetActiveLayoutName()))
 	else
 		self:SetShown(not data.hidden)
@@ -109,20 +109,20 @@ function dropdownMixin:SetEnabled(enabled)
 end
 
 lib.internal:CreatePool(lib.SettingType.Dropdown, function()
-	local frame = CreateFrame('Frame', nil, UIParent, 'ResizeLayoutFrame')
-	frame:SetScript('OnLeave', DefaultTooltipMixin.OnLeave)
-	frame:SetScript('OnEnter', showTooltip)
+	local frame = CreateFrame("Frame", nil, UIParent, "ResizeLayoutFrame")
+	frame:SetScript("OnLeave", DefaultTooltipMixin.OnLeave)
+	frame:SetScript("OnEnter", showTooltip)
 	frame.fixedHeight = 32
 	Mixin(frame, dropdownMixin)
 
-	local label = frame:CreateFontString(nil, nil, 'GameFontHighlightMedium')
-	label:SetPoint('LEFT')
+	local label = frame:CreateFontString(nil, nil, "GameFontHighlightMedium")
+	label:SetPoint("LEFT")
 	label:SetWidth(100)
-	label:SetJustifyH('LEFT')
+	label:SetJustifyH("LEFT")
 	frame.Label = label
 
-	local dropdown = CreateFrame('DropdownButton', nil, frame, 'WowStyle1DropdownTemplate')
-	dropdown:SetPoint('LEFT', label, 'RIGHT', 5, 0)
+	local dropdown = CreateFrame("DropdownButton", nil, frame, "WowStyle1DropdownTemplate")
+	dropdown:SetPoint("LEFT", label, "RIGHT", 5, 0)
 	dropdown:SetSize(200, 30)
 	frame.Dropdown = dropdown
 

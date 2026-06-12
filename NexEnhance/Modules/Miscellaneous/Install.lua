@@ -281,11 +281,9 @@ local function Build()
 	frame:SetFrameStrata("FULLSCREEN_DIALOG")
 	frame:SetToplevel(true)
 	frame:Hide()
-	if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout" }) then
-		frame:SetBackdrop(BACKDROP)
-		frame:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
-		frame:SetBackdropBorderColor(1, 1, 1)
-	end
+	frame:SetBackdrop(BACKDROP)
+	frame:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
+	frame:SetBackdropBorderColor(1, 1, 1)
 	F.MakeWindowMovable(frame, "NexEnhanceInstall") -- draggable + Escape-close
 
 	-- Any close (button, Escape, reload) marks the prompt as seen - except a

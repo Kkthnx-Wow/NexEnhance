@@ -19,7 +19,7 @@
 --]]
 
 local _, ns = ...
-local C, L = ns.C, ns.L
+local F, C, L = ns.F, ns.C, ns.L
 
 -- Localised globals.
 local C_StringUtil = C_StringUtil
@@ -28,12 +28,13 @@ local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
 local getmetatable = getmetatable
 local SetCVar = SetCVar
+local GetCVar = GetCVar
 local pairs = pairs
 local Enum = Enum
 local InCombatLockdown = InCombatLockdown
-local Round = Round or function(n) return math.floor(n + 0.5) end
--- Width can be a 12.0 secret value on some cooldown frames; gate reads on it.
-local canaccessvalue = _G["canaccessvalue"]
+local Round = Round or function(n)
+	return math.floor(n + 0.5)
+end
 
 local ROUNDING_UP = Enum.NumericRuleFormatRounding.Up
 local ROUNDING_NEAREST = Enum.NumericRuleFormatRounding.Nearest
@@ -97,8 +98,12 @@ local function BuildBreakpoints(colored, decimals, mmss)
 	-- mm:ss must stay above the integer-seconds tier (10s) and below the
 	-- 10-minute minutes tier, so a bad value can never reorder the rules.
 	mmss = mmss or MINUTE
-	if mmss < MINUTE then mmss = MINUTE end
-	if mmss > MINUTE * 9 then mmss = MINUTE * 9 end
+	if mmss < MINUTE then
+		mmss = MINUTE
+	end
+	if mmss > MINUTE * 9 then
+		mmss = MINUTE * 9
+	end
 
 	return {
 		{
@@ -136,7 +141,9 @@ end
 -- that end up too small (so 1-pixel aura cooldowns don't show unreadable text).
 local function UpdateCooldownTextScale(cooldown, width)
 	local fs = cooldown:GetCountdownFontString()
-	if not fs then return end
+	if not fs then
+		return
+	end
 
 	if not ns.db.cooldowns.scaleText or not Cooldowns:IsEnabled() then
 		fs:SetScale(1)
@@ -145,8 +152,11 @@ local function UpdateCooldownTextScale(cooldown, width)
 	end
 
 	local scale, alpha = 1, 1
-	if width == nil then width = cooldown:GetWidth() end
-	if (not canaccessvalue or canaccessvalue(width)) and width and width > 0 then
+	if width == nil then
+		width = cooldown:GetWidth()
+	end
+	-- Width can be a 12.0 secret value on some cooldown frames; gate reads on it.
+	if F.CanAccessValue(width) and width and width > 0 then
 		scale = Round(width) / SCALE_BASE
 		local minScale = ns.db.cooldowns.minScale or 0
 		alpha = (Round(scale * 100) >= Round(minScale * 100)) and 1 or 0
@@ -166,13 +176,19 @@ end
 -- buttons expose TextOverlayContainer, and reparenting is skipped in combat to
 -- stay taint-safe (it retries on the next out-of-combat SetCooldown).
 local function SetupTextContainer(cooldown)
-	if cooldown.nexTextContainer or InCombatLockdown() then return end
+	if cooldown.nexTextContainer or InCombatLockdown() then
+		return
+	end
 
 	local parent = cooldown:GetParent()
-	if not (parent and parent.TextOverlayContainer) then return end
+	if not (parent and parent.TextOverlayContainer) then
+		return
+	end
 
 	local fs = cooldown:GetCountdownFontString()
-	if not fs then return end
+	if not fs then
+		return
+	end
 
 	-- Park the countdown text on a very-high-level child so it always draws
 	-- above the cooldown swipe/edge and the icon's own overlay textures.
@@ -188,8 +204,12 @@ end
 --   `noCooldownCount` is the shared opt-out flag (OmniCC/tullaCTC convention):
 --   frames marked with it - e.g. percentage-display swipes - are left alone.
 local function OnCooldownSet(cooldown)
-	if not cooldown or cooldown.noCooldownCount then return end
-	if not Cooldowns:IsEnabled() then return end
+	if not cooldown or cooldown.noCooldownCount then
+		return
+	end
+	if not Cooldowns:IsEnabled() then
+		return
+	end
 
 	if not hookedCooldowns[cooldown] then
 		hookedCooldowns[cooldown] = true
@@ -211,11 +231,19 @@ end
 
 --- Toggle the native countdown CVar and (re)apply the formatter to every
 --- tracked cooldown. Called on enable and whenever a setting changes.
+-- Snapshot the player's own countdownForCooldowns choice the first time we
+-- touch it, so turning the module off restores their value instead of always
+-- forcing it to "0".
+local originalCountdownCVar
+
 function Cooldowns:UpdateFormat()
 	local enabled = self:IsEnabled()
 
 	-- This CVar drives Blizzard's built-in cooldown numbers.
-	SetCVar("countdownForCooldowns", enabled and "1" or "0")
+	if originalCountdownCVar == nil then
+		originalCountdownCVar = GetCVar("countdownForCooldowns") or "0"
+	end
+	SetCVar("countdownForCooldowns", enabled and "1" or originalCountdownCVar)
 
 	if enabled then
 		self:ApplyBreakpoints()
@@ -251,11 +279,15 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function Cooldowns:InstallHooks()
-	if self.hooksInstalled then return end
+	if self.hooksInstalled then
+		return
+	end
 
 	-- All cooldown frames share one metatable; hooking it covers them all.
 	local template = ActionButton1Cooldown
-	if not template then return end
+	if not template then
+		return
+	end
 
 	self.hooksInstalled = true
 
@@ -284,7 +316,9 @@ function Cooldowns:InstallHooks()
 	-- swipe, not a numeric countdown. Flag them so OnCooldownSet skips them and
 	-- hide any number Blizzard would otherwise draw.
 	hooksecurefunc("CooldownFrame_SetDisplayAsPercentage", function(cooldown)
-		if not cooldown or cooldown.noCooldownCount then return end
+		if not cooldown or cooldown.noCooldownCount then
+			return
+		end
 		cooldown.noCooldownCount = true
 		cooldown:SetHideCountdownNumbers(true)
 	end)

@@ -39,8 +39,12 @@ local function createTranslation(group, order, x, y, duration, smoothing, delay)
 	obj:SetOffset(x, y)
 	obj:SetDuration(duration)
 	obj:SetOrder(order)
-	if smoothing then obj:SetSmoothing(smoothing) end
-	if delay then obj:SetStartDelay(delay) end
+	if smoothing then
+		obj:SetSmoothing(smoothing)
+	end
+	if delay then
+		obj:SetStartDelay(delay)
+	end
 	return obj
 end
 
@@ -50,7 +54,9 @@ local function createAlpha(group, order, fromAlpha, toAlpha, duration, delay)
 	obj:SetToAlpha(toAlpha)
 	obj:SetDuration(duration)
 	obj:SetOrder(order)
-	if delay then obj:SetStartDelay(delay) end
+	if delay then
+		obj:SetStartDelay(delay)
+	end
 	return obj
 end
 
@@ -61,8 +67,12 @@ local function createScale(group, order, fromX, fromY, toX, toY, duration, smoot
 	obj:SetDuration(duration)
 	obj:SetOrder(order)
 	obj:SetOrigin("CENTER", 0, 0)
-	if smoothing then obj:SetSmoothing(smoothing) end
-	if delay then obj:SetStartDelay(delay) end
+	if smoothing then
+		obj:SetSmoothing(smoothing)
+	end
+	if delay then
+		obj:SetStartDelay(delay)
+	end
 	return obj
 end
 
@@ -72,7 +82,9 @@ end
 local logoFrame, needAnimation
 
 function Animation:CreateLogo()
-	if logoFrame then return end
+	if logoFrame then
+		return
+	end
 
 	local frame = CreateFrame("Frame", nil, UIParent)
 	frame:SetSize(220, 220)
@@ -94,15 +106,23 @@ function Animation:CreateLogo()
 	createTranslation(anim, 4, 480, 0, t1) -- fast exit right + fade out
 	createAlpha(anim, 4, 1, 0, t1)
 
-	frame:SetScript("OnShow", function() anim:Play() end)
-	anim:SetScript("OnFinished", function() frame:Hide() end)
-	fadeIn:SetScript("OnFinished", function() PlaySound(soundID) end)
+	frame:SetScript("OnShow", function()
+		anim:Play()
+	end)
+	anim:SetScript("OnFinished", function()
+		frame:Hide()
+	end)
+	fadeIn:SetScript("OnFinished", function()
+		PlaySound(soundID)
+	end)
 
 	logoFrame = frame
 end
 
 function Animation:PlayLogo()
-	if not logoFrame then self:CreateLogo() end
+	if not logoFrame then
+		self:CreateLogo()
+	end
 	logoFrame:Show()
 end
 
@@ -117,9 +137,15 @@ moveWatcher:SetScript("OnEvent", function(self)
 end)
 
 function Animation:PLAYER_ENTERING_WORLD(isInitialLogin)
-	if not ns.db.animation.loginLogo then return end
-	if not isInitialLogin then return end
-	if IsInInstance() and InCombatLockdown() then return end
+	if not ns.db.animation.loginLogo then
+		return
+	end
+	if not isInitialLogin then
+		return
+	end
+	if IsInInstance() and InCombatLockdown() then
+		return
+	end
 
 	needAnimation = true
 	self:CreateLogo()
@@ -132,7 +158,9 @@ end
 local combatFrame
 
 function Animation:SetupCombatText()
-	if combatFrame then return end
+	if combatFrame then
+		return
+	end
 
 	---@diagnostic disable-next-line: undefined-field
 	local ENTERING_COMBAT, LEAVING_COMBAT = _G.ENTERING_COMBAT, _G.LEAVING_COMBAT
@@ -171,12 +199,16 @@ function Animation:SetupCombatText()
 	createAlpha(anim, 4, 1, 0, cfg.outDuration)
 	createScale(anim, 4, 1.0, 1.0, cfg.minScale, cfg.minScale, cfg.outDuration)
 
-	anim:SetScript("OnFinished", function() frame:Hide() end)
+	anim:SetScript("OnFinished", function()
+		frame:Hide()
+	end)
 
 	combatFrame = frame
 
 	local function updateCombatState(event)
-		if not ns.db.animation.combatText then return end
+		if not ns.db.animation.combatText then
+			return
+		end
 		if event == "PLAYER_REGEN_DISABLED" then
 			text:SetText(ENTERING_COMBAT)
 			text:SetTextColor(1, 0.1, 0.1)

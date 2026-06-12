@@ -64,7 +64,9 @@ local function MigrateDatabase(root)
 	local version = root.schemaVersion or 1
 	for v = version + 1, DB_SCHEMA_VERSION do
 		local step = migrations[v]
-		if step then step(root) end
+		if step then
+			step(root)
+		end
 	end
 	root.schemaVersion = DB_SCHEMA_VERSION
 end
@@ -121,15 +123,49 @@ end
 --- Does not switch to it; callers typically follow with ns:SetProfile(newName).
 function ns:CopyProfileInto(newName)
 	local root = _G.NexEnhanceDB
-	if root.profiles[newName] then return false end
+	if root.profiles[newName] then
+		return false
+	end
 	root.profiles[newName] = DeepCopy(root.profiles[ns.profileName] or {})
+	return true
+end
+
+--- Overwrite the active profile with a deep copy of another existing profile.
+--- Mirrors AceDB's CopyProfile behavior: source stays untouched, destination is
+--- the profile this character is currently using.
+function ns:CopyProfileFrom(sourceName)
+	local root = _G.NexEnhanceDB
+	if sourceName == ns.profileName or type(root.profiles[sourceName]) ~= "table" then
+		return false
+	end
+
+	root.profiles[ns.profileName] = DeepCopy(root.profiles[sourceName])
+	ns.db = F.CopyDefaults(ns.defaults.profile, root.profiles[ns.profileName])
+
+	if ns.OnProfileChanged then
+		ns:OnProfileChanged(ns.profileName)
+	end
+	return true
+end
+
+--- Reset the active profile back to defaults.
+function ns:ResetProfile()
+	local root = _G.NexEnhanceDB
+	root.profiles[ns.profileName] = {}
+	ns.db = F.CopyDefaults(ns.defaults.profile, root.profiles[ns.profileName])
+
+	if ns.OnProfileChanged then
+		ns:OnProfileChanged(ns.profileName)
+	end
 	return true
 end
 
 --- Delete a profile. Refuses to delete the active profile (there must always be
 --- one). Any other character pointing at it falls back to "Default" next login.
 function ns:DeleteProfile(name)
-	if name == ns.profileName then return false end
+	if name == ns.profileName then
+		return false
+	end
 
 	local root = _G.NexEnhanceDB
 	root.profiles[name] = nil

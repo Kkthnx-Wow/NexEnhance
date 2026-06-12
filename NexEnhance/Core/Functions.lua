@@ -151,14 +151,23 @@ end
 --- metatable proxy). NOTE: this is a *merge*, not a clone - to duplicate a
 --- table outright (so the original is untouched) use the global CopyTable from
 --- SharedXML/TableUtil.lua instead.
+---
+--- Type-repair: a key whose saved value no longer matches the default's *type*
+--- is reset to the default. This heals schema drift - e.g. a setting that used
+--- to be a number and is now a table - so stale, wrong-typed saved data can't
+--- persist and blow up later. (All three Peterodox addons do exactly this on
+--- load.) Keys absent from `defaults` are never iterated, so genuinely dynamic
+--- saved data - movers, profiles, account caches - is always preserved.
 function F.CopyDefaults(defaults, target)
 	if type(target) ~= "table" then
 		target = {}
 	end
 	for key, value in pairs(defaults) do
 		if type(value) == "table" then
+			-- Recurse: a non-table saved value here is rebuilt into a fresh
+			-- table from the defaults by the type guard at the top.
 			target[key] = F.CopyDefaults(value, target[key])
-		elseif target[key] == nil then
+		elseif target[key] == nil or type(target[key]) ~= type(value) then
 			target[key] = value
 		end
 	end
@@ -232,9 +241,15 @@ function F.CreatePool(creator, onRemoved, onAcquired)
 	-- object on the free stack. Capability checks keep this safe for plain
 	-- tables (which have no Hide/ClearAllPoints).
 	local function reclaim(obj)
-		if obj.ClearAllPoints then obj:ClearAllPoints() end
-		if obj.Hide then obj:Hide() end
-		if onRemoved then onRemoved(obj) end
+		if obj.ClearAllPoints then
+			obj:ClearAllPoints()
+		end
+		if obj.Hide then
+			obj:Hide()
+		end
+		if onRemoved then
+			onRemoved(obj)
+		end
 		pool.numFree = pool.numFree + 1
 		pool.free[pool.numFree] = obj
 	end
@@ -258,8 +273,12 @@ function F.CreatePool(creator, onRemoved, onAcquired)
 		end
 
 		self.active[#self.active + 1] = obj
-		if obj.Show then obj:Show() end
-		if onAcquired then onAcquired(obj) end
+		if obj.Show then
+			obj:Show()
+		end
+		if onAcquired then
+			onAcquired(obj)
+		end
 		return obj
 	end
 
@@ -324,19 +343,70 @@ end
 --   Identity/health APIs can return "secret" values that tainted code may not
 --   boolean-test or compare. Gate any such read with these helpers first.
 -- ---------------------------------------------------------------------------
+-- Secret API modelled on oUF's (by Simpy): a small, complete set of guards so
+-- callers never boolean-test / compare / index a secret directly. Every helper
+-- is safe to call even on clients where the underlying primitive is absent.
 do
-	local issecretvalue = _G["issecretvalue"] or function(...)
-		return false
-	end
+	local issecretvalue = _G["issecretvalue"]
+	local issecrettable = _G["issecrettable"]
+	local canaccessvalue = _G["canaccessvalue"]
+	local C_Secrets = _G["C_Secrets"]
+	local ShouldUnitIdentityBeSecret = C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret
 
 	--- True when `value` is a secret value (always safe to call).
 	function F.IsSecret(value)
-		return issecretvalue(value)
+		return issecretvalue and issecretvalue(value)
 	end
 
 	--- True when `value` is a normal (non-secret) value.
 	function F.NotSecret(value)
-		return not issecretvalue(value)
+		return not F.IsSecret(value)
+	end
+
+	--- True when a unit's identity is currently hidden (instances / restricted).
+	--- pcall'd because the API can be absent or throw on some unit tokens.
+	function F.IsSecretUnit(unit)
+		if not (unit and ShouldUnitIdentityBeSecret) then
+			return false
+		end
+		local ok, value = pcall(ShouldUnitIdentityBeSecret, unit)
+		return ok and value
+	end
+
+	--- True when a unit's identity is readable.
+	function F.NotSecretUnit(unit)
+		return not F.IsSecretUnit(unit)
+	end
+
+	--- True when `object` is a secret table (its fields may not be indexed).
+	function F.IsSecretTable(object)
+		return issecrettable and issecrettable(object)
+	end
+
+	--- True when `object` is a normal (non-secret) table.
+	function F.NotSecretTable(object)
+		return not F.IsSecretTable(object)
+	end
+
+	--- True when tainted code may actually read `value` (some secrets are still
+	--- accessible). Defaults to true where the primitive is unavailable.
+	function F.CanAccessValue(value)
+		return not canaccessvalue or canaccessvalue(value)
+	end
+
+	--- True when tainted code may NOT read `value`.
+	function F.CanNotAccessValue(value)
+		return not F.CanAccessValue(value)
+	end
+
+	--- True when a widget/frame currently holds any secret values (aspects).
+	function F.HasSecretValues(object)
+		return object and object.HasSecretValues and object:HasSecretValues()
+	end
+
+	--- True when a widget/frame holds no secret values.
+	function F.NoSecretValues(object)
+		return not F.HasSecretValues(object)
 	end
 end
 
@@ -467,6 +537,64 @@ function F.SetFontSize(fontString, size)
 end
 
 -- ---------------------------------------------------------------------------
+-- HelpTip helpers
+--   One-shot, account-wide tutorial nudges built on Blizzard's HelpTip frame.
+--   F.ShowHelpTip(owner, key, text[, opts]) shows `text` anchored to `owner`
+--   exactly once per account: clicking the acknowledge button records `key` in
+--   ns.global.helpTips so it never returns. `key` is a short, stable id
+--   ("QuickJoinApply") kept separate from the (localised) text.
+--
+--   Every tip we raise on purpose is remembered in `ns.OwnHelpTips` (keyed by
+--   text) so the Hide Help Tips feature spares it - it only quiets Blizzard's
+--   noise, not ours. See Modules/Miscellaneous/HideHelpTips.lua.
+-- ---------------------------------------------------------------------------
+
+-- Texts NexEnhance raises on purpose; populated as tips are shown.
+ns.OwnHelpTips = ns.OwnHelpTips or {}
+
+--- Mark a one-shot HelpTip acknowledged. Wired as the HelpTip `callbackArg`, so
+--- WoW calls it with the `key` when the user clicks the acknowledge button.
+function F.AcknowledgeHelpTip(key)
+	if not (key and ns.global) then
+		return
+	end
+	ns.global.helpTips = ns.global.helpTips or {}
+	ns.global.helpTips[key] = true
+end
+
+--- Show a one-shot HelpTip once per account. No-ops if it's already been
+--- acknowledged, if the owner/HelpTip frame isn't available, or before the DB
+--- is built. `opts` may carry buttonStyle, targetPoint, alignment, offsetX/Y.
+function F.ShowHelpTip(owner, key, text, opts)
+	---@diagnostic disable-next-line: undefined-field
+	local HelpTip = _G.HelpTip
+	if not (owner and key and text and HelpTip and ns.global) then
+		return
+	end
+
+	local seen = ns.global.helpTips
+	if seen and seen[key] then
+		return
+	end
+
+	-- Register the text BEFORE Show, so the Hide Help Tips post-hook (which
+	-- fires from inside HelpTip:Show) recognises it as ours and leaves it be.
+	ns.OwnHelpTips[text] = true
+
+	opts = opts or {}
+	HelpTip:Show(owner, {
+		text = text,
+		buttonStyle = opts.buttonStyle or HelpTip.ButtonStyle.GotIt,
+		targetPoint = opts.targetPoint or HelpTip.Point.RightEdgeCenter,
+		alignment = opts.alignment,
+		offsetX = opts.offsetX,
+		offsetY = opts.offsetY,
+		onAcknowledgeCallback = F.AcknowledgeHelpTip,
+		callbackArg = key,
+	})
+end
+
+-- ---------------------------------------------------------------------------
 -- Tooltip helpers
 -- ---------------------------------------------------------------------------
 
@@ -476,7 +604,9 @@ end
 --- tainted execution.
 function F.TooltipHasLine(tip, matchText)
 	local name = tip and tip.GetName and tip:GetName()
-	if not name then return false end
+	if not name then
+		return false
+	end
 	for i = 1, tip:NumLines() do
 		local line = _G[name .. "TextLeft" .. i]
 		local text = line and line:GetText()

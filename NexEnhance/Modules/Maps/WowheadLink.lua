@@ -30,9 +30,22 @@ local function noop() end
 
 -- Map client locales to their Wowhead subdomain (default www).
 local subDomain = setmetatable({
-	ruRU = "ru", frFR = "fr", deDE = "de", esES = "es", esMX = "es",
-	ptBR = "pt", ptPT = "pt", itIT = "it", koKR = "ko", zhTW = "cn", zhCN = "cn",
-}, { __index = function() return "www" end })[GetLocale()]
+	ruRU = "ru",
+	frFR = "fr",
+	deDE = "de",
+	esES = "es",
+	esMX = "es",
+	ptBR = "pt",
+	ptPT = "pt",
+	itIT = "it",
+	koKR = "ko",
+	zhTW = "cn",
+	zhCN = "cn",
+}, {
+	__index = function()
+		return "www"
+	end,
+})[GetLocale()]
 
 local wowheadLoc = subDomain .. ".wowhead.com"
 local urlIcon = "|TInterface\\OptionsFrame\\UI-OptionsFrame-NewFeatureIcon:0:0:0:0|t"
@@ -80,8 +93,12 @@ end
 -- Achievement frame (load-on-demand: Blizzard_AchievementUI)
 -- ---------------------------------------------------------------------------
 local function InitAchievementLink()
-	if achievementEditBox then return end
-	if not _G.AchievementFrame or not _G.AchievementTemplateMixin then return end
+	if achievementEditBox then
+		return
+	end
+	if not _G.AchievementFrame or not _G.AchievementTemplateMixin then
+		return
+	end
 
 	local eb = CreateLinkEditBox(_G.AchievementFrame, "BOTTOMRIGHT", -50, 1, "GameFontNormalSmall")
 	eb:SetJustifyH("RIGHT")
@@ -95,7 +112,9 @@ local function InitAchievementLink()
 			eb:Hide()
 			return
 		end
-		if not achievementID then return end
+		if not achievementID then
+			return
+		end
 
 		local url = FormatLink(achievementID, "achievement")
 		eb:SetText(url)
@@ -138,9 +157,13 @@ end
 -- World Map (tracked / opened quest)
 -- ---------------------------------------------------------------------------
 local function InitQuestLink()
-	if questEditBox then return end
+	if questEditBox then
+		return
+	end
 	local wmf = _G.WorldMapFrame
-	if not wmf or not wmf.BorderFrame then return end
+	if not wmf or not wmf.BorderFrame then
+		return
+	end
 
 	local eb = CreateLinkEditBox(wmf.BorderFrame, "TOPLEFT", 100, -4, "GameFontNormal")
 	eb:SetFrameLevel(501)
@@ -153,8 +176,7 @@ local function InitQuestLink()
 			return
 		end
 
-		local questID = (_G.QuestMapFrame and _G.QuestMapFrame.DetailsFrame and _G.QuestMapFrame.DetailsFrame:IsShown() and _G.QuestMapFrame_GetDetailQuestID and _G.QuestMapFrame_GetDetailQuestID())
-			or (C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID())
+		local questID = (_G.QuestMapFrame and _G.QuestMapFrame.DetailsFrame and _G.QuestMapFrame.DetailsFrame:IsShown() and _G.QuestMapFrame_GetDetailQuestID and _G.QuestMapFrame_GetDetailQuestID()) or (C_SuperTrack and C_SuperTrack.GetSuperTrackedQuestID and C_SuperTrack.GetSuperTrackedQuestID())
 		if questID and questID ~= 0 then
 			local url = FormatLink(questID, "quest")
 			eb:SetText(url)
@@ -207,14 +229,20 @@ end
 -- engine's event API (not the module helper) so it can cleanly unregister
 -- itself by callback once the addon has loaded.
 local function OnAchievementUILoaded(_, addon)
-	if addon ~= "Blizzard_AchievementUI" then return end
+	if addon ~= "Blizzard_AchievementUI" then
+		return
+	end
 	InitAchievementLink()
 	ns:UnregisterEvent("ADDON_LOADED", OnAchievementUILoaded)
 end
 
 function WowheadLink:Setup()
-	if self.started then return end
-	if C_AddOns_IsAddOnLoaded and C_AddOns_IsAddOnLoaded("Leatrix_Maps") then return end
+	if self.started then
+		return
+	end
+	if C_AddOns_IsAddOnLoaded and C_AddOns_IsAddOnLoaded("Leatrix_Maps") then
+		return
+	end
 	self.started = true
 
 	if C_AddOns_IsAddOnLoaded and C_AddOns_IsAddOnLoaded("Blizzard_AchievementUI") then
@@ -252,7 +280,9 @@ function WowheadLink:OnEnable()
 end
 
 function WowheadLink:OnSettingChanged(key)
-	if key ~= "enable" then return end
+	if key ~= "enable" then
+		return
+	end
 	if ns.db.wowheadLink.enable then
 		self:Setup()
 	end

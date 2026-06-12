@@ -10,7 +10,9 @@
 local _, ns = ...
 local C, L = ns.C, ns.L
 local Tooltip = ns:GetModule("Tooltip")
-if not Tooltip then return end
+if not Tooltip then
+	return
+end
 
 -- luacheck: globals GameTooltip
 local _G = _G
@@ -22,10 +24,21 @@ local EJ_GetInstanceInfo, EJ_GetEncounterInfo, GetDifficultyInfo = EJ_GetInstanc
 
 local orig1, orig2, sectionInfo = {}, {}, {}
 local linkTypes = {
-	item = true, enchant = true, spell = true, quest = true, unit = true,
-	talent = true, achievement = true, glyph = true, instancelock = true,
-	currency = true, keystone = true, azessence = true, mawpower = true,
-	conduit = true, mount = true,
+	item = true,
+	enchant = true,
+	spell = true,
+	quest = true,
+	unit = true,
+	talent = true,
+	achievement = true,
+	glyph = true,
+	instancelock = true,
+	currency = true,
+	keystone = true,
+	azessence = true,
+	mawpower = true,
+	conduit = true,
+	mount = true,
 }
 
 local function HyperLink_SetPet(self, link)
@@ -47,7 +60,9 @@ end
 local function HyperLink_SetJournal(self, link)
 	local _, idType, idStr, diffStr = strsplit(":", link)
 	local id, diffID = tonumber(idStr), tonumber(diffStr) or 0
-	if not id then return end
+	if not id then
+		return
+	end
 	local name, description, icon, idString
 	if idType == "0" then
 		name, description = EJ_GetInstanceInfo(id)
@@ -63,11 +78,15 @@ local function HyperLink_SetJournal(self, link)
 		end
 		idString = L["Section"] .. "ID:"
 	end
-	if not name then return end
+	if not name then
+		return
+	end
 
 	GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT", -3, 5)
 	GameTooltip:AddDoubleLine(name, GetDifficultyInfo(diffID))
-	if description then GameTooltip:AddLine(description, 1, 1, 1, 1) end
+	if description then
+		GameTooltip:AddLine(description, 1, 1, 1, 1)
+	end
 	GameTooltip:AddLine(" ")
 	GameTooltip:AddDoubleLine(idString, C.InfoColor .. id)
 	GameTooltip:Show()
@@ -91,14 +110,20 @@ local function HyperLink_OnEnter(self, link, ...)
 			HyperLink_SetTypes(self, link)
 		end
 	end
-	if orig1[self] then return orig1[self](self, link, ...) end
+	if orig1[self] then
+		return orig1[self](self, link, ...)
+	end
 end
 
 local function HyperLink_OnLeave(self, ...)
-	if BattlePetTooltip then BattlePetTooltip:Hide() end
+	if BattlePetTooltip then
+		BattlePetTooltip:Hide()
+	end
 	GameTooltip:Hide()
 	GameTooltip.__isHoverTip = nil
-	if orig2[self] then return orig2[self](self, ...) end
+	if orig2[self] then
+		return orig2[self](self, ...)
+	end
 end
 
 function Tooltip:SetupHoverTips()

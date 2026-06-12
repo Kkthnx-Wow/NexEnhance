@@ -8,12 +8,13 @@
 	NexEnhance framework.
 --]]
 
--- luacheck: globals ChatFontNormal
+-- luacheck: globals ChatFontNormal ScrollUtil
 local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
 
 local _G = _G
 local gsub, format, tconcat, tostring = string.gsub, string.format, table.concat, tostring
+local ScrollUtil = ScrollUtil
 
 ns:RegisterDefaults({
 	chatCopy = {
@@ -31,7 +32,9 @@ local lines = {}
 local frame, editBox
 
 local function canChangeMessage(arg1, id)
-	if id and arg1 == "" then return id end
+	if id and arg1 == "" then
+		return id
+	end
 end
 
 local function isMessageProtected(msg)
@@ -69,18 +72,21 @@ local function CreateCopyFrame()
 	frame:RegisterForDrag("LeftButton")
 	frame:SetScript("OnDragStart", frame.StartMoving)
 	frame:SetScript("OnDragStop", frame.StopMovingOrSizing)
-	if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 } }) then
-		frame:SetBackdrop(COPY_BACKDROP)
-		frame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-		frame:SetBackdropBorderColor(1, 1, 1)
-	end
+	frame:SetBackdrop(COPY_BACKDROP)
+	frame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	frame:SetBackdropBorderColor(1, 1, 1)
 
 	frame.close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 	frame.close:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4)
 
-	local scrollArea = CreateFrame("ScrollFrame", "NexEnhanceChatCopyScroll", frame, "UIPanelScrollFrameTemplate")
+	local scrollArea = CreateFrame("ScrollFrame", "NexEnhanceChatCopyScroll", frame)
 	scrollArea:SetPoint("TOPLEFT", 12, -32)
-	scrollArea:SetPoint("BOTTOMRIGHT", -30, 12)
+	scrollArea:SetPoint("BOTTOMRIGHT", -28, 12)
+
+	local scrollBar = CreateFrame("EventFrame", nil, frame, "MinimalScrollBar")
+	scrollBar:SetPoint("TOPLEFT", scrollArea, "TOPRIGHT", 6, 0)
+	scrollBar:SetPoint("BOTTOMLEFT", scrollArea, "BOTTOMRIGHT", 6, 0)
+	ScrollUtil.InitScrollFrameWithScrollBar(scrollArea, scrollBar)
 
 	editBox = CreateFrame("EditBox", nil, frame)
 	editBox:SetMultiLine(true)
@@ -89,12 +95,16 @@ local function CreateCopyFrame()
 	editBox:SetAutoFocus(false)
 	editBox:SetFontObject(ChatFontNormal)
 	editBox:SetWidth(scrollArea:GetWidth())
-	editBox:SetScript("OnEscapePressed", function() frame:Hide() end)
+	editBox:SetScript("OnEscapePressed", function()
+		frame:Hide()
+	end)
 	scrollArea:SetScrollChild(editBox)
 end
 
 function ChatCopy:Toggle(chatFrame)
-	if not frame then CreateCopyFrame() end
+	if not frame then
+		CreateCopyFrame()
+	end
 	if frame:IsShown() then
 		frame:Hide()
 		return
@@ -138,6 +148,13 @@ local function CreateCopyButton(chatFrame)
 		ChatCopy:Toggle(self.chatFrame)
 	end)
 
+	-- It rides at 0.2 alpha in the corner and is trivially easy to miss, so the
+	-- first time it shows we point it out once (account-wide). Anchored to the
+	-- chat frame rather than the tiny button so the bubble can't clip the edge.
+	button:HookScript("OnShow", function(self)
+		F.ShowHelpTip(self.chatFrame, "ChatCopyButton", L["ChatCopyHelpTip"])
+	end)
+
 	return button
 end
 
@@ -145,7 +162,9 @@ end
 -- deselected (the dock hides the whole frame). Move it onto the newly selected
 -- window so a single, tidy button always rides the active tab.
 local function UpdateButtonOwner(chatFrame)
-	if not copyButton or not chatFrame then return end
+	if not copyButton or not chatFrame then
+		return
+	end
 	copyButton.chatFrame = chatFrame
 	copyButton:SetParent(chatFrame)
 	copyButton:ClearAllPoints()
@@ -154,7 +173,9 @@ local function UpdateButtonOwner(chatFrame)
 end
 
 function ChatCopy:OnEnable()
-	if not ns.db.chatCopy.enable then return end
+	if not ns.db.chatCopy.enable then
+		return
+	end
 	-- A single copy button on the primary chat window keeps things tidy.
 	copyButton = CreateCopyButton(_G["ChatFrame1"])
 

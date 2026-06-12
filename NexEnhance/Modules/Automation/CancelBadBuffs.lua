@@ -68,11 +68,17 @@ local CancelBadBuffs = ns:NewModule("CancelBadBuffs", "cancelBadBuffs", { group 
 local badIndices, badNames = {}, {}
 
 function CancelBadBuffs:Sweep()
-	if not ns.db.cancelBadBuffs.enable then return end
-	if not GetBuffDataByIndex or not CancelUnitBuff then return end
+	if not ns.db.cancelBadBuffs.enable then
+		return
+	end
+	if not GetBuffDataByIndex or not CancelUnitBuff then
+		return
+	end
 	-- Cancelling auras is a protected action that fails in combat; defer to the
 	-- PLAYER_REGEN_ENABLED sweep instead.
-	if InCombatLockdown() then return end
+	if InCombatLockdown() then
+		return
+	end
 
 	local announce = ns.db.cancelBadBuffs.announce
 	local count = 0
@@ -80,7 +86,9 @@ function CancelBadBuffs:Sweep()
 	local i = 1
 	while true do
 		local data = GetBuffDataByIndex("player", i, "HELPFUL")
-		if not data then break end
+		if not data then
+			break
+		end
 
 		-- spellId is a plain number in the open world, but can be a secret value
 		-- inside instances in 12.0; never use a secret as a table key.
@@ -97,7 +105,9 @@ function CancelBadBuffs:Sweep()
 		i = i + 1
 	end
 
-	if count == 0 then return end
+	if count == 0 then
+		return
+	end
 
 	-- Cancel from the highest index down so the lower indices we still need stay
 	-- valid as the aura list shifts.
@@ -120,8 +130,12 @@ function CancelBadBuffs:PLAYER_REGEN_ENABLED()
 end
 
 function CancelBadBuffs:RegisterModuleEvents()
-	if self.eventsRegistered then return end
-	if not GetBuffDataByIndex or not CancelUnitBuff then return end
+	if self.eventsRegistered then
+		return
+	end
+	if not GetBuffDataByIndex or not CancelUnitBuff then
+		return
+	end
 	self.eventsRegistered = true
 
 	self:RegisterUnitEvent("UNIT_AURA", nil, "player")
@@ -136,7 +150,9 @@ function CancelBadBuffs:OnSettingChanged(key, value)
 end
 
 function CancelBadBuffs:OnEnable()
-	if not ns.db.cancelBadBuffs.enable then return end
+	if not ns.db.cancelBadBuffs.enable then
+		return
+	end
 	self:RegisterModuleEvents()
 end
 

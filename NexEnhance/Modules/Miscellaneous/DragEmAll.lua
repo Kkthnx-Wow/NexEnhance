@@ -129,7 +129,9 @@ local function MouseUpHandler(frame, button)
 end
 
 local function HookScript(frame, script, handler)
-	if not frame.GetScript then return end
+	if not frame.GetScript then
+		return
+	end
 	local oldHandler = frame:GetScript(script)
 	if oldHandler then
 		frame:SetScript(script, function(...)
@@ -145,15 +147,23 @@ local function HookFrame(name, moveParent)
 	-- Resolve possibly-nested frame (dots walk into child keys).
 	local frame = _G ---@type any
 	for s in gmatch(name, "%w+") do
-		if frame then frame = frame[s] end
+		if frame then
+			frame = frame[s]
+		end
 	end
-	if frame == _G then frame = nil end
-	if not frame or hooked[name] then return end
+	if frame == _G then
+		frame = nil
+	end
+	if not frame or hooked[name] then
+		return
+	end
 
 	local parent
 	if moveParent then
 		parent = (type(moveParent) == "string") and _G[moveParent] or frame:GetParent()
-		if not parent then return end
+		if not parent then
+			return
+		end
 		parentFrame[frame] = parent
 		parent:SetMovable(true)
 		parent:SetClampedToScreen(false)
@@ -184,7 +194,9 @@ function DragEmAll:ADDON_LOADED(addon)
 end
 
 function DragEmAll:OnEnable()
-	if not ns.db.dragEmAll.enable then return end
+	if not ns.db.dragEmAll.enable then
+		return
+	end
 	HookFrames(frames)
 	self:RegisterEvent("ADDON_LOADED")
 end

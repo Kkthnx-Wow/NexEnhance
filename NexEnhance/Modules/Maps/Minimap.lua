@@ -5,15 +5,15 @@
 	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Maps/Minimap.lua
 
 	What we do (all gated behind the module toggle):
-	  - Square the minimap and frame it with a Blizzard tooltip-style gold border.
+	  - Square the minimap and frame it with the game's tooltip border.
 	  - Kill the cluster chrome outright (ring, zoom buttons, compass, clock,
 	    zone-text bar) since we replace it; the tracking button stays alive but
 	    invisible so right-click still opens its menu.
 	  - Re-home the landing-page button, indicator (mail), instance difficulty,
 	    calendar, streaming and queue-status regions to tidy minimap corners.
 	  - Spin a dungeon icon over the LFG/queue eye with a time-in-queue readout,
-	    draw the calendar day number, and pulse a coloured glow for combat /
-	    pending mail / calendar invites.
+	    draw the calendar day number, and pulse the border for pending mail /
+	    calendar invites.
 	  - Easy Volume (Ctrl + wheel) and a middle-click shortcut menu (unchanged).
 
 	We do NOT add our own mover: Blizzard's Edit Mode already moves the minimap
@@ -50,6 +50,8 @@ local hooksecurefunc = hooksecurefunc
 local GetTime = GetTime
 local UnitClass = UnitClass
 local RAID_CLASS_COLORS = RAID_CLASS_COLORS
+---@diagnostic disable-next-line: undefined-field
+local HelpTip = _G.HelpTip
 
 local DEFAULTS = {
 	enable = true,
@@ -372,13 +374,10 @@ local function Pin(frame, point, relPoint, x, y)
 end
 
 -- ---------------------------------------------------------------------------
--- Border: the classic Blizzard tooltip-style gold edge we use on chat bubbles,
--- drawn on top of the square minimap so it frames the edges cleanly.
+-- Border: the game's tooltip border (UI-Tooltip-Border) framed just outside the
+-- square minimap. Border-only (no fill) so the map stays visible.
 -- ---------------------------------------------------------------------------
-local MINIMAP_BACKDROP = {
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	edgeSize = 14,
-}
+local MINIMAP_BORDER_SIZE = 16
 local borderFrame
 
 local function CreateBorder()
@@ -386,31 +385,43 @@ local function CreateBorder()
 		return
 	end
 
-	borderFrame = CreateFrame("Frame", nil, Minimap, "BackdropTemplate")
-	-- Sit the gold edge just outside the map so it wraps the square.
-	borderFrame:SetPoint("TOPLEFT", Minimap, "TOPLEFT", -3, 3)
-	borderFrame:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", 3, -3)
+	borderFrame = CreateFrame("Frame", nil, Minimap)
+	borderFrame:SetAllPoints(Minimap)
 	borderFrame:SetFrameLevel(Minimap:GetFrameLevel() + 3)
-	-- Edge-only NineSlice (no fill) so it frames the map without covering it.
-	if not F.CreateNineSlice(borderFrame, { layout = "TooltipDefaultLayout", bg = false }) then
-		borderFrame:SetBackdrop(MINIMAP_BACKDROP)
-	end
+	F.CreateTooltipBackdrop(borderFrame, {
+		edgeSize = MINIMAP_BORDER_SIZE,
+		outset = 3,
+		noBackground = true,
+	})
 end
 
 -- ---------------------------------------------------------------------------
--- Status pulse (combat / pending mail / calendar invites)
---   Rather than draw a second frame, we tint and fade our gold border so the
---   whole frame pulses red (combat) or yellow (mail / calendar invites).
+-- Status pulse (pending mail / calendar invites)
+--   A second tooltip border overlaid on the static one. We fade it in/out
+--   (BOUNCE) and tint it yellow while mail / calendar invites are pending, then
+--   hide it so only the static border remains.
 -- ---------------------------------------------------------------------------
-local pulseAnim
+local pulseFrame, pulseAnim
 
 local function CreatePulse()
-	-- Needs the border to colour; bail if either the border or pulse is off.
+	-- Needs the border to overlay; bail if either the border or pulse is off.
 	if pulseAnim or not ns.db.minimap.mailPulse or not borderFrame then
 		return
 	end
 
-	pulseAnim = borderFrame:CreateAnimationGroup()
+	pulseFrame = CreateFrame("Frame", nil, Minimap)
+	pulseFrame:SetAllPoints(borderFrame)
+	pulseFrame:SetFrameLevel(borderFrame:GetFrameLevel() + 1)
+	-- Same tooltip border; UpdatePulse tints it yellow while active.
+	F.CreateTooltipBackdrop(pulseFrame, {
+		edgeSize = MINIMAP_BORDER_SIZE,
+		outset = 3,
+		noBackground = true,
+	})
+	pulseFrame:SetAlpha(0)
+	pulseFrame:Hide()
+
+	pulseAnim = pulseFrame:CreateAnimationGroup()
 	pulseAnim:SetLooping("BOUNCE")
 	local fader = pulseAnim:CreateAnimation("Alpha")
 	fader:SetFromAlpha(1)
@@ -420,7 +431,7 @@ local function CreatePulse()
 end
 
 local function UpdatePulse()
-	if not (borderFrame and pulseAnim) then
+	if not (pulseFrame and pulseAnim) then
 		return
 	end
 
@@ -433,11 +444,10 @@ local function UpdatePulse()
 	end
 
 	if r then
-		if borderFrame.nexNineSlice then
-			F.SetNineSliceBorderColor(borderFrame, r, g, b)
-		else
-			borderFrame:SetBackdropBorderColor(r, g, b)
+		if pulseFrame.nexBackdrop then
+			pulseFrame.nexBackdrop:SetBackdropBorderColor(r, g, b, 1)
 		end
+		pulseFrame:Show()
 		if not pulseAnim:IsPlaying() then
 			pulseAnim:Play()
 		end
@@ -445,13 +455,8 @@ local function UpdatePulse()
 		if pulseAnim:IsPlaying() then
 			pulseAnim:Stop()
 		end
-		-- Restore the untinted gold border at full opacity.
-		borderFrame:SetAlpha(1)
-		if borderFrame.nexNineSlice then
-			F.SetNineSliceBorderColor(borderFrame, 1, 1, 1)
-		else
-			borderFrame:SetBackdropBorderColor(1, 1, 1)
-		end
+		pulseFrame:SetAlpha(0)
+		pulseFrame:Hide()
 	end
 end
 
@@ -483,7 +488,7 @@ local function Declutter()
 		local tracking = MinimapCluster.Tracking
 		if tracking then
 			tracking:SetAlpha(0)
-			tracking:EnableMouse(false)
+			tracking:SetScale(0.0001)
 		end
 	end
 
@@ -755,9 +760,12 @@ local function ReskinRegions()
 	local difficulty = MinimapCluster and MinimapCluster.InstanceDifficulty
 	if difficulty then
 		difficulty:SetParent(Minimap)
-		difficulty:SetScale(0.85)
+		difficulty:SetScale(0.90)
 		Pin(difficulty, "TOPLEFT", "TOPLEFT", 2, -2)
-		ReskinDifficultyFlag(difficulty.Instance)
+		-- InstanceDifficultyMixin exposes three content-mode frames (Default = normal
+		-- instance, Guild, ChallengeMode), each with .Background/.Border. The normal
+		-- flag is .Default, NOT .Instance (.Instance is only a child of .Default/.Guild).
+		ReskinDifficultyFlag(difficulty.Default)
 		ReskinDifficultyFlag(difficulty.Guild)
 		ReskinDifficultyFlag(difficulty.ChallengeMode)
 	end
@@ -1253,15 +1261,13 @@ local function CreateCollectButtons()
 	binFrame:SetFrameStrata("MEDIUM")
 	binFrame:SetClampedToScreen(true)
 	binFrame:SetSize(BIN_ICON_SIZE + BIN_PAD * 2, BIN_ICON_SIZE + BIN_PAD * 2)
-	if not F.CreateNineSlice(binFrame, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 } }) then
-		binFrame:SetBackdrop({
-			bgFile = C.Media.Textures.blank,
-			edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-			edgeSize = 14,
-			insets = { left = 3, right = 3, top = 3, bottom = 3 },
-		})
-		binFrame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-	end
+	binFrame:SetBackdrop({
+		bgFile = C.Media.Textures.blank,
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		edgeSize = 14,
+		insets = { left = 3, right = 3, top = 3, bottom = 3 },
+	})
+	binFrame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
 	binFrame:Hide()
 	RefreshButtonBinPosition()
 
@@ -1341,7 +1347,7 @@ local function SetupEditModeSettings()
 	editMode:AddSystemSettings(_G.Enum.EditModeSystem.Minimap, {
 		MakeCheckbox("easyVolume", L["Easy Volume"], L["Hold Ctrl and scroll over the minimap to adjust the master volume (hold Alt for full range)."]),
 		MakeCheckbox("microMenu", L["Minimap Menu"], L["Middle-click the minimap to open a shortcut menu of Blizzard panels."]),
-		MakeCheckbox("border", L["Minimap Border"], L["Frame the minimap with a Blizzard tooltip-style border (reload to apply)."]),
+		MakeCheckbox("border", L["Minimap Border"], L["Frame the minimap with the game's tooltip border (reload to apply)."]),
 		MakeCheckbox("mailPulse", L["Status Pulse"], L["Pulse the minimap border for pending mail / calendar invites (yellow)."]),
 		MakeCheckbox("collectButtons", L["Collect Buttons"], L["Sweep stray addon minimap buttons into a pop-out tray behind a small corner toggle (reload to disable)."]),
 		{
@@ -1413,6 +1419,22 @@ function Module:OnEnable()
 				ShowTrackingMenu()
 			end
 		end)
+
+		-- These gestures are completely invisible (no button, no label), so a
+		-- first-hover nudge is the only way the player ever learns they exist.
+		-- Build the line list from cfg so we never promise a disabled gesture.
+		minimapClicker:SetScript("OnEnter", function(self)
+			local lines = { L["MinimapTipTracking"] }
+			if cfg.microMenu then
+				tinsert(lines, L["MinimapTipMenu"])
+			end
+			if cfg.easyVolume then
+				tinsert(lines, L["MinimapTipVolume"])
+			end
+			local text = L["Minimap shortcuts"] .. "\n" .. table.concat(lines, "\n")
+			local point = HelpTip and HelpTip.Point and HelpTip.Point.LeftEdgeCenter
+			F.ShowHelpTip(self, "MinimapGestures", text, { targetPoint = point })
+		end)
 	end
 
 	Declutter()
@@ -1448,7 +1470,7 @@ function Module:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Minimap"], L["Square the minimap, add a clean border and tidy its buttons (reload to apply)."])
 	local _, volumeInit = builder:Checkbox(category, self, "easyVolume", L["Easy Volume"], L["Hold Ctrl and scroll over the minimap to adjust the master volume (hold Alt for full range)."])
 	local _, menuInit = builder:Checkbox(category, self, "microMenu", L["Minimap Menu"], L["Middle-click the minimap to open a shortcut menu of Blizzard panels."])
-	local _, borderInit = builder:Checkbox(category, self, "border", L["Minimap Border"], L["Frame the minimap with a Blizzard tooltip-style border (reload to apply)."])
+	local _, borderInit = builder:Checkbox(category, self, "border", L["Minimap Border"], L["Frame the minimap with the game's tooltip border (reload to apply)."])
 	local _, pulseInit = builder:Checkbox(category, self, "mailPulse", L["Status Pulse"], L["Pulse the minimap border for pending mail / calendar invites (yellow)."])
 	local _, collectInit = builder:Checkbox(category, self, "collectButtons", L["Collect Buttons"], L["Sweep stray addon minimap buttons into a pop-out tray behind a small corner toggle (reload to disable)."])
 	local _, binPosInit = builder:Dropdown(category, self, "buttonBinPosition", L["Button Tray Position"], L["Which minimap corner the button tray toggle hugs."], {

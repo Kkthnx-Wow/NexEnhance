@@ -5,7 +5,7 @@ local lib
 if ns.LibEditMode then
 	lib = ns.LibEditMode
 else
-	lib = LibStub:NewLibrary('LibEditMode', MINOR)
+	lib = LibStub:NewLibrary("LibEditMode", MINOR)
 	if not lib then
 		-- this or a newer version is already loaded
 		return
@@ -39,7 +39,7 @@ lib.subSystemButtons = lib.subSystemButtons or {}
 
 lib.layoutCache = lib.layoutCache or {}
 
-local layoutNames = setmetatable({'Modern', 'Classic'}, {
+local layoutNames = setmetatable({ "Modern", "Classic" }, {
 	__index = function(t, key)
 		if key > 2 then
 			-- the first 2 indices are reserved for 'Modern' and 'Classic' layouts, and anything
@@ -53,7 +53,7 @@ local layoutNames = setmetatable({'Modern', 'Classic'}, {
 			-- also work for 'Modern' and 'Classic'
 			rawget(t, key)
 		end
-	end
+	end,
 })
 
 local function resetDialogs()
@@ -87,7 +87,7 @@ local function onDragStart(self)
 		return
 	end
 
-	self:RegisterEvent('PLAYER_REGEN_DISABLED')
+	self:RegisterEvent("PLAYER_REGEN_DISABLED")
 	self.parent:StartMoving()
 end
 
@@ -113,28 +113,28 @@ local function normalizePosition(frame)
 	local x, y, point
 	if left < (parentWidth - right) and left < math.abs((left + right) / 2 - parentWidth / 2) then
 		x = left
-		point = 'LEFT'
+		point = "LEFT"
 	elseif (parentWidth - right) < math.abs((left + right) / 2 - parentWidth / 2) then
 		x = right - parentWidth
-		point = 'RIGHT'
+		point = "RIGHT"
 	else
 		x = (left + right) / 2 - parentWidth / 2
-		point = ''
+		point = ""
 	end
 
 	if bottom < (parentHeight - top) and bottom < math.abs((bottom + top) / 2 - parentHeight / 2) then
 		y = bottom
-		point = 'BOTTOM' .. point
+		point = "BOTTOM" .. point
 	elseif (parentHeight - top) < math.abs((bottom + top) / 2 - parentHeight / 2) then
 		y = top - parentHeight
-		point = 'TOP' .. point
+		point = "TOP" .. point
 	else
 		y = (bottom + top) / 2 - parentHeight / 2
-		point = '' .. point
+		point = "" .. point
 	end
 
-	if point == '' then
-		point = 'CENTER'
+	if point == "" then
+		point = "CENTER"
 	end
 
 	return point, x / scale, y / scale
@@ -166,7 +166,7 @@ local function onDragStop(self)
 
 	local parent = self.parent
 	parent:StopMovingOrSizing()
-	self:UnregisterEvent('PLAYER_REGEN_DISABLED')
+	self:UnregisterEvent("PLAYER_REGEN_DISABLED")
 
 	-- TODO: snap position to grid
 	-- FrameXML/EditModeUtil.lua
@@ -180,7 +180,7 @@ local function onMouseDown(self) -- replacement for EditModeSystemMixin:SelectSy
 		return
 	end
 
-	EventRegistry:TriggerEvent('EditModeExternal.hideDialog')
+	EventRegistry:TriggerEvent("EditModeExternal.hideDialog")
 	EditModeManagerFrame:ClearSelectedSystem() -- taint
 
 	if not self.isSelected then
@@ -240,7 +240,7 @@ local function onEditModeChanged(_, layoutInfo)
 end
 
 local function onSpecChanged(_, unit)
-	if unit ~= 'player' then
+	if unit ~= "player" then
 		return
 	end
 
@@ -311,44 +311,44 @@ end
 
 do -- deal with hooks and events
 	-- listen for layout changes
-	EventRegistry:RegisterFrameEventAndCallback('EDIT_MODE_LAYOUTS_UPDATED', function(...)
+	EventRegistry:RegisterFrameEventAndCallback("EDIT_MODE_LAYOUTS_UPDATED", function(...)
 		if lib.hookVersion == MINOR then
 			onEditModeChanged(...)
 		end
 	end)
 
-	EventRegistry:RegisterFrameEventAndCallback('PLAYER_SPECIALIZATION_CHANGED', function(...)
+	EventRegistry:RegisterFrameEventAndCallback("PLAYER_SPECIALIZATION_CHANGED", function(...)
 		if lib.hookVersion == MINOR then
 			onSpecChanged(...)
 		end
 	end)
-	EventRegistry:RegisterCallback('EditMode.SavedLayouts', function(...)
+	EventRegistry:RegisterCallback("EditMode.SavedLayouts", function(...)
 		if lib.hookVersion == MINOR then
 			onEditModeLayoutChanged(...)
 		end
 	end)
 
 	-- hook EditMode shown state, since QuickKeybindMode will hide/show EditMode
-	EditModeManagerFrame:HookScript('OnShow', function(...)
+	EditModeManagerFrame:HookScript("OnShow", function(...)
 		if lib.hookVersion == MINOR then
 			onEditModeEnter(...)
 		end
 	end)
-	EditModeManagerFrame:HookScript('OnHide', function(...)
+	EditModeManagerFrame:HookScript("OnHide", function(...)
 		if lib.hookVersion == MINOR then
 			onEditModeExit(...)
 		end
 	end)
 
 	-- we don't want any custom frames dangling around
-	EditModeSystemSettingsDialog:HookScript('OnHide', function(...)
+	EditModeSystemSettingsDialog:HookScript("OnHide", function(...)
 		if lib.hookVersion == MINOR then
 			resetDialogs(...)
 		end
 	end)
 
 	-- unselect our selections whenever a system is selected and try to add an extension
-	hooksecurefunc(EditModeManagerFrame, 'SelectSystem', function(_, systemFrame)
+	hooksecurefunc(EditModeManagerFrame, "SelectSystem", function(_, systemFrame)
 		if lib.hookVersion == MINOR then
 			resetDialogs()
 			resetSelection()
@@ -367,7 +367,7 @@ do -- deal with hooks and events
 		end
 	end)
 
-	hooksecurefunc(EditModeManagerFrame, 'ShowNewLayoutDialog', function(_, sourceLayout)
+	hooksecurefunc(EditModeManagerFrame, "ShowNewLayoutDialog", function(_, sourceLayout)
 		if lib.hookVersion == MINOR then
 			lib._layoutCopySource = sourceLayout
 		end
@@ -375,7 +375,7 @@ do -- deal with hooks and events
 end
 
 -- custom global callback hook that all addons that add custom dialogs should respond to
-EventRegistry:RegisterCallback('EditModeExternal.hideDialog', function()
+EventRegistry:RegisterCallback("EditModeExternal.hideDialog", function()
 	resetDialogs()
 	resetSelection()
 end)
@@ -395,19 +395,19 @@ The `default` table must contain the following entries:
 * `y`: vertical offset from the anchor point _(number)_
 --]]
 function lib:AddFrame(frame, callback, default, name)
-	local selection = CreateFrame('Frame', nil, frame, 'EditModeSystemSelectionTemplate')
+	local selection = CreateFrame("Frame", nil, frame, "EditModeSystemSelectionTemplate")
 	selection:SetAllPoints()
-	selection:SetScript('OnMouseDown', onMouseDown)
-	selection:SetScript('OnDragStart', onDragStart)
-	selection:SetScript('OnDragStop', onDragStop)
-	selection:SetScript('OnEvent', onDragStop)
+	selection:SetScript("OnMouseDown", onMouseDown)
+	selection:SetScript("OnDragStart", onDragStart)
+	selection:SetScript("OnDragStop", onDragStop)
+	selection:SetScript("OnEvent", onDragStop)
 	selection:Hide()
 
 	-- as of 11.2 the template requires a system name to work correctly
 	selection.system = {
 		GetSystemName = function()
 			return name or frame.editModeName or frame:GetName()
-		end
+		end,
 	}
 
 	lib.frameSelections[frame] = selection
@@ -416,7 +416,7 @@ function lib:AddFrame(frame, callback, default, name)
 
 	if not internal.dialog then
 		internal.dialog = internal:CreateDialog()
-		internal.dialog:HookScript('OnHide', function()
+		internal.dialog:HookScript("OnHide", function()
 			resetSelection()
 		end)
 
@@ -435,7 +435,7 @@ Register extra settings that will be displayed in a dialog attached to the frame
 --]]
 function lib:AddFrameSettings(frame, settings)
 	if not lib.frameSelections[frame] then
-		error('frame must be registered')
+		error("frame must be registered")
 	end
 
 	lib.frameSettings[frame] = settings
@@ -679,25 +679,25 @@ end)
 ```
 --]]
 function lib:RegisterCallback(event, callback)
-	assert(event and type(event) == 'string', 'event must be a string')
-	assert(callback and type(callback) == 'function', 'callback must be a function')
+	assert(event and type(event) == "string", "event must be a string")
+	assert(callback and type(callback) == "function", "callback must be a function")
 
-	if event == 'enter' then
+	if event == "enter" then
 		table.insert(lib.anonCallbacksEnter, callback)
-	elseif event == 'exit' then
+	elseif event == "exit" then
 		table.insert(lib.anonCallbacksExit, callback)
-	elseif event == 'layout' then
+	elseif event == "layout" then
 		table.insert(lib.anonCallbacksLayout, callback)
 
 		-- if there's none, then onEditModeChanged will take care of it
 		if lib.activeLayout then
 			securecallfunction(callback, layoutNames[lib.activeLayout], lib.activeLayout)
 		end
-	elseif event == 'create' then
+	elseif event == "create" then
 		table.insert(lib.anonCallbacksCreate, callback)
-	elseif event == 'rename' then
+	elseif event == "rename" then
 		table.insert(lib.anonCallbacksRename, callback)
-	elseif event == 'delete' then
+	elseif event == "delete" then
 		table.insert(lib.anonCallbacksDelete, callback)
 	else
 		error('invalid callback event "' .. event .. '"')

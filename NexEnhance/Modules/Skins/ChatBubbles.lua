@@ -1,8 +1,8 @@
 --[[
 	NexEnhance - Chat Bubbles (skin)
 	-------------------------------------------------------------------------
-	Replaces the default chat-bubble art with a clean Blizzard tooltip-style
-	border (gold edge + dark fill), matching the chat edit box and copy frame.
+	Replaces the default chat-bubble art with the game's tooltip border and
+	dark fill, matching the chat edit box, tinted per channel.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
 	  https://github.com/Kkthnx-Wow/KkthnxUI
@@ -28,16 +28,6 @@ ns:RegisterDefaults({
 })
 
 local ChatBubbles = ns:NewModule("ChatBubbles", "chatBubbles", { group = "skins", title = L["Chat Bubbles"], order = 30 })
-
--- A classic Blizzard tooltip-style border, matching the chat edit box.
-local BUBBLE_BACKDROP = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile = true,
-	tileSize = 12,
-	edgeSize = 12,
-	insets = { left = 3, right = 3, top = 3, bottom = 3 },
-}
 
 -- Only chat (not nameplate) bubbles should be reskinned; these CVars say which
 -- chat-bubble types the user has enabled, and gate the polling worker.
@@ -66,11 +56,7 @@ local function UpdateBubbleBorder(chatBubble, frame)
 		r, g, b = tr or 1, tg or 1, tb or 1
 	end
 
-	if bg.nexNineSlice then
-		F.SetNineSliceBorderColor(bg, r, g, b)
-	else
-		bg:SetBackdropBorderColor(r, g, b)
-	end
+	bg:SetBackdropBorderColor(r, g, b)
 end
 
 local function ReskinBubble(chatBubble)
@@ -88,17 +74,15 @@ local function ReskinBubble(chatBubble)
 			frame.Tail:SetAlpha(0)
 		end
 
-		local bg = CreateFrame("Frame", nil, chatBubble, "BackdropTemplate")
+		local bg = CreateFrame("Frame", nil, chatBubble)
 		local level = frame:GetFrameLevel()
 		bg:SetFrameLevel(level > 0 and level - 1 or 0)
-		bg:SetPoint("TOPLEFT", frame, "TOPLEFT", 2, -2)
-		bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -2, 2)
-		if not F.CreateNineSlice(bg, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 } }) then
-			bg:SetBackdrop(BUBBLE_BACKDROP)
-			bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-		end
+		bg:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
+		bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)
+		-- Tooltip border + dark fill; tinted to the channel colour below.
+		F.CreateTooltipBackdrop(bg, { edgeSize = 8 })
 
-		chatBubble.__nexBG = bg
+		chatBubble.__nexBG = bg.nexBackdrop
 		chatBubble.__nexStyled = true
 	end
 
@@ -142,7 +126,7 @@ end
 
 -- Chat bubbles inherit the shared ChatBubbleFont object, so shrinking it once
 -- downsizes every (recycled) bubble's text without per-bubble bookkeeping.
-local FONT_REDUCTION = 2
+local FONT_REDUCTION = 4
 local function ShrinkBubbleFont()
 	local font = _G.ChatBubbleFont
 	if not font or ChatBubbles.fontResized then

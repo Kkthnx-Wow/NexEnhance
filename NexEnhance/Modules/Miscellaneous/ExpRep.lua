@@ -162,7 +162,9 @@ local function AddTooltipDivider()
 	local tt = _G.GameTooltip
 	tt:AddLine(" ")
 	local line = _G["GameTooltipTextLeft" .. tt:NumLines()]
-	if not line then return end
+	if not line then
+		return
+	end
 
 	local tex = AcquireDivider()
 	tex:ClearAllPoints()
@@ -174,8 +176,12 @@ end
 
 local function IsMaxLevel()
 	local level = UnitLevel("player")
-	if IsLevelAtEffectiveMaxLevel and IsLevelAtEffectiveMaxLevel(level) then return true end
-	if IsXPUserDisabled and IsXPUserDisabled() then return true end
+	if IsLevelAtEffectiveMaxLevel and IsLevelAtEffectiveMaxLevel(level) then
+		return true
+	end
+	if IsXPUserDisabled and IsXPUserDisabled() then
+		return true
+	end
 	if (IsRestrictedAccount() or IsTrialAccount() or IsVeteranTrialAccount()) and level == 20 then
 		return true
 	end
@@ -183,18 +189,28 @@ local function IsMaxLevel()
 end
 
 local function SetBarValues(statusbar, minValue, maxValue, value)
-	if maxValue <= minValue then maxValue = minValue + 1 end
+	if maxValue <= minValue then
+		maxValue = minValue + 1
+	end
 	statusbar:SetMinMaxValues(minValue, maxValue)
 	statusbar:SetValue(value)
 end
 
 local function Progress(minValue, maxValue, value)
-	if not maxValue or maxValue <= 0 then return 0, 1, 0, true, 0 end
+	if not maxValue or maxValue <= 0 then
+		return 0, 1, 0, true, 0
+	end
 
 	local current = (value or 0) - (minValue or 0)
 	local maximum = maxValue - (minValue or 0)
-	if maximum <= 0 then maximum = 1 end
-	if current < 0 then current = 0 elseif current > maximum then current = maximum end
+	if maximum <= 0 then
+		maximum = 1
+	end
+	if current < 0 then
+		current = 0
+	elseif current > maximum then
+		current = maximum
+	end
 
 	local percent = (current / maximum) * 100
 	return current, maximum, percent, (current >= maximum), (maximum - current)
@@ -202,7 +218,9 @@ end
 
 local function AddRemainingLine(state)
 	local remaining = state.remaining or ((state.max or 0) - (state.cur or 0))
-	if remaining < 0 then remaining = 0 end
+	if remaining < 0 then
+		remaining = 0
+	end
 
 	local percent = state.max and state.max > 0 and (remaining / state.max * 100) or 0
 	local bars = state.max and state.max > 0 and (remaining / state.max * 20) or 0
@@ -211,7 +229,9 @@ end
 
 local function ReactionColor(reaction)
 	local color = REACTION_COLOR[reaction] or (_G.FACTION_BAR_COLORS and _G.FACTION_BAR_COLORS[reaction])
-	if color then return color.r, color.g, color.b end
+	if color then
+		return color.r, color.g, color.b
+	end
 	return 1, 1, 1
 end
 
@@ -219,16 +239,22 @@ local function RenownLabel(level)
 	level = tonumber(level) or 0
 	local label = _G.RENOWN_LEVEL_LABEL
 	if type(label) == "string" then
-		if sfind(label, "%%d") then return format(label, level) end
+		if sfind(label, "%%d") then
+			return format(label, level)
+		end
 		return label .. " " .. level
 	end
 	return "Renown " .. level
 end
 
 local function AzeriteItem()
-	if not C_AzeriteItem_FindActiveAzeriteItem then return end
+	if not C_AzeriteItem_FindActiveAzeriteItem then
+		return
+	end
 	local loc = C_AzeriteItem_FindActiveAzeriteItem()
-	if loc and loc.IsEquipmentSlot and loc:IsEquipmentSlot() then return loc end
+	if loc and loc.IsEquipmentSlot and loc:IsEquipmentSlot() then
+		return loc
+	end
 end
 
 local function HideVisibleBar()
@@ -256,30 +282,46 @@ local isMouseOver = false
 -- Conditions (besides hover) that pin the bar fully visible.
 local function FadeForced()
 	local cfg = ns.db.expRep
-	if cfg.fadeCombat and InCombatLockdown() then return true end
-	if cfg.fadeTarget and (UnitExists("target") or UnitExists("focus")) then return true end
+	if cfg.fadeCombat and InCombatLockdown() then
+		return true
+	end
+	if cfg.fadeTarget and (UnitExists("target") or UnitExists("focus")) then
+		return true
+	end
 	return false
 end
 
 local function FadeBarIn()
-	if hideTimer then hideTimer:Cancel() end
+	if hideTimer then
+		hideTimer:Cancel()
+	end
 	hideTimer = nil
-	if bar then UIFrameFadeIn(bar, FADE_DURATION, bar:GetAlpha(), 1) end
+	if bar then
+		UIFrameFadeIn(bar, FADE_DURATION, bar:GetAlpha(), 1)
+	end
 end
 
 local function FadeBarOut()
 	hideTimer = nil
-	if bar then UIFrameFadeOut(bar, FADE_DURATION, bar:GetAlpha(), (ns.db.expRep.fadeOpacity or 0) / 100) end
+	if bar then
+		UIFrameFadeOut(bar, FADE_DURATION, bar:GetAlpha(), (ns.db.expRep.fadeOpacity or 0) / 100)
+	end
 end
 
 -- Snap the bar to the alpha its current state calls for (no scheduled delay).
 local function ApplyFadeState()
-	if not bar then return end
-	if hideTimer then hideTimer:Cancel() end
+	if not bar then
+		return
+	end
+	if hideTimer then
+		hideTimer:Cancel()
+	end
 	hideTimer = nil
 
 	if not ns.db.expRep.fade then
-		if UIFrameFadeRemoveFrame then UIFrameFadeRemoveFrame(bar) end
+		if UIFrameFadeRemoveFrame then
+			UIFrameFadeRemoveFrame(bar)
+		end
 		bar:SetAlpha(1)
 		return
 	end
@@ -325,7 +367,9 @@ local function BuildExperienceState()
 
 	local cur = UnitXP("player") or 0
 	local maxXP = UnitXPMax("player") or 1
-	if maxXP <= 0 then maxXP = 1 end
+	if maxXP <= 0 then
+		maxXP = 1
+	end
 	local rested = GetXPExhaustion() or 0
 	local percent = (cur / maxXP) * 100
 	local remaining = maxXP - cur
@@ -370,8 +414,7 @@ local function BuildReputationState(data)
 	local isMajor = factionID and C_Reputation_IsMajorFaction and C_Reputation_IsMajorFaction(factionID)
 	local majorMaxed = isMajor and C_MajorFactions_HasMaximumRenown and C_MajorFactions_HasMaximumRenown(factionID)
 
-	if not label and factionID and C_Reputation_IsFactionParagon and C_Reputation_GetFactionParagonInfo
-		and (not isMajor or majorMaxed) and C_Reputation_IsFactionParagon(factionID) then
+	if not label and factionID and C_Reputation_IsFactionParagon and C_Reputation_GetFactionParagonInfo and (not isMajor or majorMaxed) and C_Reputation_IsFactionParagon(factionID) then
 		local cur, thresh, _, pending = C_Reputation_GetFactionParagonInfo(factionID)
 		if cur and thresh and thresh > 0 then
 			label = L["Paragon"]
@@ -427,7 +470,9 @@ local function BuildHonorState()
 
 	local cur = UnitHonor("player") or 0
 	local maxHonor = UnitHonorMax("player") or 1
-	if maxHonor <= 0 then maxHonor = 1 end
+	if maxHonor <= 0 then
+		maxHonor = 1
+	end
 	local level = UnitHonorLevel("player") or 0
 	local percent = (cur / maxHonor) * 100
 
@@ -534,7 +579,9 @@ end
 -- Tooltip / scripts
 -- ---------------------------------------------------------------------------
 local function AddExperienceTooltip()
-	if not xpState.available then return false end
+	if not xpState.available then
+		return false
+	end
 
 	_G.GameTooltip:AddDoubleLine("|cff0070ff" .. (_G.COMBAT_XP_GAIN or "Experience") .. "|r", format("%s %d", _G.LEVEL or "Level", UnitLevel("player")))
 	_G.GameTooltip:AddLine(" ")
@@ -548,9 +595,13 @@ local function AddExperienceTooltip()
 end
 
 local function AddReputationTooltip(addSpacing)
-	if not repState.available then return false end
+	if not repState.available then
+		return false
+	end
 
-	if addSpacing then AddTooltipDivider() end
+	if addSpacing then
+		AddTooltipDivider()
+	end
 	_G.GameTooltip:AddDoubleLine("|cff00bdfc" .. (repState.name or "") .. "|r", repState.label or "", 1, 1, 1)
 	_G.GameTooltip:AddLine(" ")
 	if repState.capped then
@@ -566,9 +617,13 @@ local function AddReputationTooltip(addSpacing)
 end
 
 local function AddHonorTooltip(addSpacing)
-	if not honorState.available then return false end
+	if not honorState.available then
+		return false
+	end
 
-	if addSpacing then AddTooltipDivider() end
+	if addSpacing then
+		AddTooltipDivider()
+	end
 	_G.GameTooltip:AddDoubleLine("|cff00bdfc" .. (_G.HONOR or "Honor") .. "|r", (_G.LEVEL or "Level") .. " " .. (honorState.level or 0))
 	_G.GameTooltip:AddLine(" ")
 	_G.GameTooltip:AddDoubleLine(L["Honor XP"], format("%s - %s (%.1f%%)", F.ShortValue(honorState.cur), F.ShortValue(honorState.max), honorState.percent or 0), 1, 1, 1)
@@ -577,9 +632,13 @@ local function AddHonorTooltip(addSpacing)
 end
 
 local function AddAzeriteTooltip(addSpacing)
-	if not azeriteState.available then return false end
+	if not azeriteState.available then
+		return false
+	end
 
-	if addSpacing then AddTooltipDivider() end
+	if addSpacing then
+		AddTooltipDivider()
+	end
 	_G.GameTooltip:AddDoubleLine("|cff00bdfc" .. (_G.AZERITE_POWER or "Azerite") .. "|r", (_G.LEVEL or "Level") .. " " .. (azeriteState.level or 0))
 	_G.GameTooltip:AddLine(" ")
 	_G.GameTooltip:AddDoubleLine(L["XP"], format("%s - %s (%.1f%%)", F.ShortValue(azeriteState.cur), F.ShortValue(azeriteState.max), azeriteState.percent or 0), 1, 1, 1)
@@ -589,8 +648,12 @@ end
 
 local function OnEnter()
 	isMouseOver = true
-	if ns.db.expRep.fade then FadeBarIn() end
-	if _G.GameTooltip:IsForbidden() then return end
+	if ns.db.expRep.fade then
+		FadeBarIn()
+	end
+	if _G.GameTooltip:IsForbidden() then
+		return
+	end
 	_G.GameTooltip:ClearLines()
 	ReleaseDividers()
 	_G.GameTooltip:SetOwner(bar, "ANCHOR_CURSOR")
@@ -613,17 +676,27 @@ end
 local function OnLeave()
 	isMouseOver = false
 	if ns.db.expRep.fade and not FadeForced() then
-		if hideTimer then hideTimer:Cancel() end
+		if hideTimer then
+			hideTimer:Cancel()
+		end
 		hideTimer = C_Timer.NewTimer(FADE_OUT_DELAY, FadeBarOut)
 	end
 	ReleaseDividers()
-	if not _G.GameTooltip:IsForbidden() then _G.GameTooltip:Hide() end
+	if not _G.GameTooltip:IsForbidden() then
+		_G.GameTooltip:Hide()
+	end
 end
 
 local function OnMouseUp(_, button)
-	if not (IsAltKeyDown() and button == "RightButton") then return end
-	if displayText == "" then return end
-	if (GetTime() - lastReport) < REPORT_COOLDOWN then return end
+	if not (IsAltKeyDown() and button == "RightButton") then
+		return
+	end
+	if displayText == "" then
+		return
+	end
+	if (GetTime() - lastReport) < REPORT_COOLDOWN then
+		return
+	end
 	if not IsInGroup() then
 		F.Print(_G.ERR_QUEST_PUSH_NOT_IN_PARTY_S or "Not in a party.")
 		return
@@ -637,8 +710,12 @@ end
 -- Update / appearance
 -- ---------------------------------------------------------------------------
 local function UpdateBar(_, _, unit)
-	if not ns.db.expRep.enable or not bar then return end
-	if unit and unit ~= "player" then return end
+	if not ns.db.expRep.enable or not bar then
+		return
+	end
+	if unit and unit ~= "player" then
+		return
+	end
 
 	BuildExperienceState()
 	BuildReputationState()
@@ -663,8 +740,15 @@ local function UpdateBar(_, _, unit)
 	end
 end
 
+-- UPDATE_FACTION and PLAYER_EQUIPMENT_CHANGED arrive in bursts (a rep turn-in
+-- nudges every faction; a gear swap fires per slot). UpdateBar rebuilds all four
+-- states every time, so coalesce the storm into a single end-of-frame rebuild.
+local QueueBarUpdate = F.Debounce(0, UpdateBar)
+
 local function ApplyAppearance()
-	if not bar then return end
+	if not bar then
+		return
+	end
 	local cfg = ns.db.expRep
 
 	bar:SetSize(cfg.width, cfg.height)
@@ -696,7 +780,9 @@ local EVENTS = {
 -- Construction
 -- ---------------------------------------------------------------------------
 local function BuildBar()
-	if bar then return bar end
+	if bar then
+		return bar
+	end
 
 	local f = CreateFrame("Frame", nil, UIParent)
 	f:SetFrameStrata("LOW")
@@ -762,7 +848,7 @@ local function BuildBar()
 		-- registration of the rest.
 		pcall(f.RegisterEvent, f, EVENTS[i])
 	end
-	f:SetScript("OnEvent", UpdateBar)
+	f:SetScript("OnEvent", QueueBarUpdate)
 	f:SetScript("OnEnter", OnEnter)
 	f:SetScript("OnLeave", OnLeave)
 	f:SetScript("OnMouseUp", OnMouseUp)
@@ -775,12 +861,16 @@ end
 -- and hiding it avoids duplicate bars without tainting secure gameplay frames.
 local function HideBlizzard()
 	local mgr = _G.StatusTrackingBarManager
-	if not mgr or mgr.nexHidden then return end
+	if not mgr or mgr.nexHidden then
+		return
+	end
 	mgr.nexHidden = true
 	mgr:UnregisterAllEvents()
 	mgr:Hide()
 	hooksecurefunc(mgr, "Show", function(self)
-		if self.nexHidden then self:Hide() end
+		if self.nexHidden then
+			self:Hide()
+		end
 	end)
 end
 
@@ -805,8 +895,12 @@ local function MakeSlider(key, name, desc, minValue, maxValue)
 		minValue = minValue,
 		maxValue = maxValue,
 		valueStep = 1,
-		get = function() return ns.db.expRep[key] end,
-		set = function(_, value) ApplySetting(key, value) end,
+		get = function()
+			return ns.db.expRep[key]
+		end,
+		set = function(_, value)
+			ApplySetting(key, value)
+		end,
 	}
 end
 
@@ -816,14 +910,20 @@ local function MakeCheckbox(key, name, desc)
 		name = name,
 		desc = desc,
 		default = DEFAULTS[key],
-		get = function() return ns.db.expRep[key] end,
-		set = function(_, value) ApplySetting(key, value) end,
+		get = function()
+			return ns.db.expRep[key]
+		end,
+		set = function(_, value)
+			ApplySetting(key, value)
+		end,
 	}
 end
 
 local function SetupEditModeSettings()
 	editMode = _G.LibStub and _G.LibStub("LibEditMode", true)
-	if not editMode or not editMode.AddFrameSettings then return end
+	if not editMode or not editMode.AddFrameSettings then
+		return
+	end
 
 	editMode:AddFrameSettings(bar, {
 		MakeSlider("width", L["Bar Width"], L["Width of the experience bar."], 120, 600),
@@ -842,7 +942,9 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function ExpRep:Setup()
-	if self.setupDone then return end
+	if self.setupDone then
+		return
+	end
 	self.setupDone = true
 
 	BuildBar()
@@ -854,7 +956,9 @@ function ExpRep:Setup()
 end
 
 function ExpRep:OnEnable()
-	if not ns.db.expRep.enable then return end
+	if not ns.db.expRep.enable then
+		return
+	end
 	self:Setup()
 end
 

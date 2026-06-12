@@ -39,7 +39,9 @@ local originalMaxHeight
 
 local function Apply()
 	local frame = _G.LootFrame
-	if not frame then return end
+	if not frame then
+		return
+	end
 
 	if not ns.db.lootFrame.enable then
 		if originalMaxHeight ~= nil then

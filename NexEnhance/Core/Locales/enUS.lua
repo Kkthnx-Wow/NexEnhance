@@ -20,6 +20,7 @@ L["Modules"] = "Modules"
 L["Version"] = "Version"
 L["Author"] = "Author"
 L["Getting Started"] = "Getting Started"
+L["New This Update"] = "New This Update"
 L["%d modules, %d enabled"] = "%d modules, %d enabled"
 L["General"] = "General"
 L["Action Bars"] = "Action Bars"
@@ -53,6 +54,7 @@ L["DESC_MISC"] = "Everything else - smaller tweaks that don't fit neatly into th
 -- Module section titles (shown as headers in the options panel)
 L["Cooldown Text"] = "Cooldown Text"
 L["Class Colours"] = "Class Colours"
+L["Player Cast Bar"] = "Player Cast Bar"
 L["Social Colours"] = "Social Colours"
 L["Character Frames"] = "Character Frames"
 L["Missing Stats"] = "Missing Stats"
@@ -60,6 +62,7 @@ L["Item Level"] = "Item Level"
 L["Objective Tracker"] = "Objective Tracker"
 L["Chat Bubbles"] = "Chat Bubbles"
 L["Details"] = "Details"
+L["Color Picker"] = "Color Picker"
 L["Tooltip"] = "Tooltip"
 L["Chat"] = "Chat"
 L["Chat Copy"] = "Chat Copy"
@@ -187,6 +190,34 @@ L["Auto-accept invites from Battle.net and character friends."] = "Auto-accept i
 L["Accept From Guild"] = "Accept From Guild"
 L["Auto-accept invites from guild members."] = "Auto-accept invites from guild members."
 
+-- Guild Invite Filter
+L["Guild Invite Filter"] = "Guild Invite Filter"
+L["Enable Guild Invite Filter"] = "Enable Guild Invite Filter"
+L["Automatically decline guild invites from players who are not friends or guild members."] = "Automatically decline guild invites from players who are not friends or guild members."
+L["Allow From Friends"] = "Allow From Friends"
+L["Let guild invites from Battle.net and character friends through."] = "Let guild invites from Battle.net and character friends through."
+L["Allow From Guild"] = "Allow From Guild"
+L["Let guild invites from your current guild members through."] = "Let guild invites from your current guild members through."
+L["Announce Blocks"] = "Announce Blocks"
+L["Print a chat message whenever a guild invite is declined."] = "Print a chat message whenever a guild invite is declined."
+L["Play Sound"] = "Play Sound"
+L["Play a short sound whenever a guild invite is declined."] = "Play a short sound whenever a guild invite is declined."
+L["Blocked guild invite from %s to join <%s>."] = "Blocked guild invite from %s to join <%s>."
+L["Statistics"] = "Statistics"
+L["Blocked: %d    Allowed: %d"] = "Blocked: %d    Allowed: %d"
+L["Last blocked: %s to <%s> (%s)"] = "Last blocked: %s to <%s> (%s)"
+L["Last blocked: none yet."] = "Last blocked: none yet."
+
+-- Quick Join
+L["Quick Join"] = "Quick Join"
+L["Enable Quick Join"] = "Enable Quick Join"
+L["Double-click Group Finder results to apply, auto-invite applicants, hide throwaway LFG popups and show leader rating."] = "Double-click Group Finder results to apply, auto-invite applicants, hide throwaway LFG popups and show leader rating."
+L["Show Leader Rating"] = "Show Leader Rating"
+L["Show the group leader's Mythic+/PvP rating on each search result, with a cross-faction crest."] = "Show the group leader's Mythic+/PvP rating on each search result, with a cross-faction crest."
+L["Auto-hide LFG Popups"] = "Auto-hide LFG Popups"
+L["Automatically dismiss the throwaway informational and expired-listing LFG popups."] = "Automatically dismiss the throwaway informational and expired-listing LFG popups."
+L["QuickJoinHelpTip"] = "Double-click a group in the list to apply instantly. Hold Alt to review the sign-up note first."
+
 -- Auto Goodbye
 L["Auto Goodbye"] = "Auto Goodbye"
 L["Enable Auto Goodbye"] = "Enable Auto Goodbye"
@@ -282,6 +313,21 @@ L["Font size for stack counts and charges."] = "Font size for stack counts and c
 L["Hotkey Size"] = "Hotkey Size"
 L["Font size for keybind text."] = "Font size for keybind text."
 
+-- ActionBars: Range Coloring
+L["Range Coloring"] = "Range Coloring"
+L["Enable Range Coloring"] = "Enable Range Coloring"
+L["Tint action buttons when an action is out of range, out of power, or unusable."] = "Tint action buttons when an action is out of range, out of power, or unusable."
+L["Color Hotkeys"] = "Color Hotkeys"
+L["Also tint the keybind text red when the action is out of range."] = "Also tint the keybind text red when the action is out of range."
+L["Color Pet Actions"] = "Color Pet Actions"
+L["Apply range and usability coloring to pet action buttons too."] = "Apply range and usability coloring to pet action buttons too."
+L["Out Of Range Color"] = "Out Of Range Color"
+L["Color used when an action's target is out of range."] = "Color used when an action's target is out of range."
+L["Out Of Power Color"] = "Out Of Power Color"
+L["Color used when you lack the mana / energy / focus for an action."] = "Color used when you lack the mana / energy / focus for an action."
+L["Unusable Color"] = "Unusable Color"
+L["Color used when an action cannot be used (no target, wrong stance, etc.)."] = "Color used when an action cannot be used (no target, wrong stance, etc.)."
+
 -- Cooldowns
 L["Enable Cooldown Text"] = "Enable Cooldown Text"
 L["Show formatted countdown numbers on cooldowns."] = "Show formatted countdown numbers on cooldowns."
@@ -306,11 +352,32 @@ L["Restyle and resize the Character and Inspect frames (reload to disable)."] = 
 L["Enable Missing Stats"] = "Enable Missing Stats"
 L["Show the hidden character-sheet stats (attack power, weapon speed, spell power, regen, movement) and tidy the readouts (reload to disable)."] = "Show the hidden character-sheet stats (attack power, weapon speed, spell power, regen, movement) and tidy the readouts (reload to disable)."
 
+-- ColorPicker
+L["Enhance Color Picker"] = "Enhance Color Picker"
+L["Add R/G/B input boxes and class-color swatches to Blizzard's color picker (reload to fully remove)."] = "Add R/G/B input boxes and class-color swatches to Blizzard's color picker (reload to fully remove)."
+
 -- ClassColors
 L["Enable Class-Coloured Health"] = "Enable Class-Coloured Health"
 L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."] = "Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."
 L["Neutral Target Strip"] = "Neutral Target Strip"
 L["Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."] = "Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."
+
+-- LevelColors
+L["Level Colours"] = "Level Colours"
+L["Enable Level Colours"] = "Enable Level Colours"
+L["Colour the Target / Focus / Boss level number by classic difficulty (red to grey vs your level) instead of Blizzard's trivial/easy buckets."] = "Colour the Target / Focus / Boss level number by classic difficulty (red to grey vs your level) instead of Blizzard's trivial/easy buckets."
+L["Always Show Level"] = "Always Show Level"
+L["Replace the skull shown on high-level targets with the actual level number (or a red ?? when the game hides it), so you always get info."] = "Replace the skull shown on high-level targets with the actual level number (or a red ?? when the game hides it), so you always get info."
+
+-- Player Cast Bar
+L["Enable Player Cast Bar"] = "Enable Player Cast Bar"
+L["Mirror the player cast bar icon and time above/below the bar. Cosmetic only - Blizzard keeps ownership of the cast bar itself."] = "Mirror the player cast bar icon and time above/below the bar. Cosmetic only - Blizzard keeps ownership of the cast bar itself."
+L["Show Cast Icon"] = "Show Cast Icon"
+L["Show the spell icon above the cast bar."] = "Show the spell icon above the cast bar."
+L["Cast Time Below Bar"] = "Cast Time Below Bar"
+L["Mirror the cast time text beneath the cast bar."] = "Mirror the cast time text beneath the cast bar."
+L["Cast Icon Size"] = "Cast Icon Size"
+L["Size of the spell icon shown above the cast bar."] = "Size of the spell icon shown above the cast bar."
 
 -- SocialColors
 L["Enable Social Class Colours"] = "Enable Social Class Colours"
@@ -343,7 +410,7 @@ L["CONTROL"] = "Control"
 L["Block in Raids & Instances"] = "Block in Raids & Instances"
 L["Skip single-option gossip auto-selection while in raids and certain instances."] = "Skip single-option gossip auto-selection while in raids and certain instances."
 L["Auto-Skip Story Gossip"] = "Auto-Skip Story Gossip"
-L["Automatically click red \"<Skip ...>\" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read."] = "Automatically click red \"<Skip ...>\" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read."
+L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'] = 'Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'
 L["Alt-click to toggle Quick Quest for this NPC."] = "Alt-click to toggle Quick Quest for this NPC."
 
 -- UIScale
@@ -375,6 +442,18 @@ L["How far out the camera can zoom (Blizzard limit is 2.6)."] = "How far out the
 -- Cast On Key Down
 L["Cast On Key Down"] = "Cast On Key Down"
 L["Action buttons fire when a key is pressed instead of when it is released."] = "Action buttons fire when a key is pressed instead of when it is released."
+
+-- Hide Help Tips
+L["Hide Help Tips"] = "Hide Help Tips"
+L["Suppress Blizzard's tutorial and help-tip pop-ups (micro-button alerts, new-player pointers, panel hints). NexEnhance's own tips are kept."] = "Suppress Blizzard's tutorial and help-tip pop-ups (micro-button alerts, new-player pointers, panel hints). NexEnhance's own tips are kept."
+
+-- Widget Movers
+L["Widget Movers"] = "Widget Movers"
+L["Enable Widget Movers"] = "Enable Widget Movers"
+L["Make Blizzard's below-minimap and top-center widget displays draggable in Edit Mode (reload to disable)."] = "Make Blizzard's below-minimap and top-center widget displays draggable in Edit Mode (reload to disable)."
+L["Below-Minimap Widgets"] = "Below-Minimap Widgets"
+L["Top-Center Widgets"] = "Top-Center Widgets"
+L["EditModeMoversHelpTip"] = "NexEnhance widgets live here too - the experience bar, datatexts, buff reminder, rare alert popup and more can all be dragged to reposition them while Edit Mode is open."
 
 -- AlertFrames
 L["Alert Frames"] = "Alert Frames"
@@ -461,7 +540,7 @@ L["Minimap Menu"] = "Minimap Menu"
 L["Middle-click the minimap to open a shortcut menu of Blizzard panels."] = "Middle-click the minimap to open a shortcut menu of Blizzard panels."
 L["Square the minimap, add a clean border and tidy its buttons (reload to apply)."] = "Square the minimap, add a clean border and tidy its buttons (reload to apply)."
 L["Minimap Border"] = "Minimap Border"
-L["Frame the minimap with a Blizzard tooltip-style border (reload to apply)."] = "Frame the minimap with a Blizzard tooltip-style border (reload to apply)."
+L["Frame the minimap with the game's tooltip border (reload to apply)."] = "Frame the minimap with the game's tooltip border (reload to apply)."
 L["Status Pulse"] = "Status Pulse"
 L["Pulse the minimap border in combat (red) or for pending mail / calendar invites (yellow)."] = "Pulse the minimap border in combat (red) or for pending mail / calendar invites (yellow)."
 L["Collect Buttons"] = "Collect Buttons"
@@ -476,6 +555,10 @@ L["Minimap Buttons"] = "Minimap Buttons"
 L["Collect addon minimap buttons into a pop-out tray."] = "Collect addon minimap buttons into a pop-out tray."
 L["Calendar"] = "Calendar"
 L["Right Click to switch Summaries"] = "Right Click to switch Summaries"
+L["Minimap shortcuts"] = "Minimap shortcuts"
+L["MinimapTipTracking"] = "Right-click for tracking options."
+L["MinimapTipMenu"] = "Middle-click for a quick shortcut menu."
+L["MinimapTipVolume"] = "Hold Ctrl and scroll to set the master volume."
 
 -- Achievement Screenshot
 L["Achievement Screenshot"] = "Achievement Screenshot"
@@ -507,6 +590,21 @@ L["AFK Logout Timer"] = "Logout Timer:"
 L["Toggle AFK camera preview"] = "Toggle AFK camera preview"
 L["AFK test mode on - press any key to exit."] = "AFK test mode on - press any key to exit."
 L["AFK test mode off."] = "AFK test mode off."
+
+-- Abandon all quests
+L["Abandon every quest in your log"] = "Abandon every quest in your log"
+L["Abandon All Quests"] = "Abandon All Quests"
+L["Abandon all %d quest(s) in your log? This cannot be undone."] = "Abandon all %d quest(s) in your log? This cannot be undone."
+L["Abandoned %d quest(s)."] = "Abandoned %d quest(s)."
+L["No abandonable quests in your log."] = "No abandonable quests in your log."
+L["Quest log unavailable on this client."] = "Quest log unavailable on this client."
+
+-- Border preview
+L["Preview the tooltip border"] = "Preview the tooltip border"
+L["Border Preview"] = "Border Preview"
+L["Drag to move - /nex bordertest to toggle"] = "Drag to move - /nex bordertest to toggle"
+L["Default"] = "Default"
+L["Tinted"] = "Tinted"
 
 -- Experience / Reputation Bar
 L["Experience Bar"] = "Experience Bar"
@@ -622,6 +720,37 @@ L["Tint already-known recipes, pets, toys, cosmetics and housing decor green at 
 L["Junk Icon"] = "Junk Icon"
 L["Enable Junk Icon"] = "Enable Junk Icon"
 L["Always show the coin icon on Poor-quality bag items, not just when a merchant is open (reload to disable)."] = "Always show the coin icon on Poor-quality bag items, not just when a merchant is open (reload to disable)."
+
+-- Delete Cheapest
+L["Delete Cheapest"] = "Delete Cheapest"
+L["Enable Delete Cheapest"] = "Enable Delete Cheapest"
+L["Add a button to the bag frame that finds and deletes the cheapest sellable item. Left-click to delete (with a confirmation), right-click to preview."] = "Add a button to the bag frame that finds and deletes the cheapest sellable item. Left-click to delete (with a confirmation), right-click to preview."
+L["Protected Item Types"] = "Protected Item Types"
+L["Protect Consumables"] = "Protect Consumables"
+L["Never offer to delete consumable items."] = "Never offer to delete consumable items."
+L["Protect Containers"] = "Protect Containers"
+L["Never offer to delete bags and other containers."] = "Never offer to delete bags and other containers."
+L["Protect Weapons"] = "Protect Weapons"
+L["Never offer to delete weapons."] = "Never offer to delete weapons."
+L["Protect Armor"] = "Protect Armor"
+L["Never offer to delete armor."] = "Never offer to delete armor."
+L["Protect Reagents"] = "Protect Reagents"
+L["Never offer to delete reagents."] = "Never offer to delete reagents."
+L["Protect Trade Goods"] = "Protect Trade Goods"
+L["Never offer to delete trade goods / crafting materials."] = "Never offer to delete trade goods / crafting materials."
+L["Protect Quest Items"] = "Protect Quest Items"
+L["Never offer to delete quest items."] = "Never offer to delete quest items."
+L["Delete Cheapest Item"] = "Delete Cheapest Item"
+L["DeleteCheapestHelpTip"] = "NexEnhance added this button: left-click to destroy the cheapest sellable item in your bags (you'll get a confirmation first), or right-click to just preview it."
+L["Left-click: destroy the cheapest sellable item in your bags."] = "Left-click: destroy the cheapest sellable item in your bags."
+L["Right-click: show the cheapest item without deleting it."] = "Right-click: show the cheapest item without deleting it."
+L["No sellable items were found in your bags."] = "No sellable items were found in your bags."
+L["Cheapest item: %s x%d, worth %s."] = "Cheapest item: %s x%d, worth %s."
+L["Cheapest item: %s, worth %s."] = "Cheapest item: %s, worth %s."
+L["Delete the cheapest item in your bags?"] = "Delete the cheapest item in your bags?"
+L["The item moved before it could be deleted - nothing was destroyed."] = "The item moved before it could be deleted - nothing was destroyed."
+L["Deleted %s x%d, worth %s."] = "Deleted %s x%d, worth %s."
+L["Deleted %s, worth %s."] = "Deleted %s, worth %s."
 
 -- Unusable Items
 L["Unusable Items"] = "Unusable Items"
@@ -758,6 +887,8 @@ L["Changelog"] = "Changelog"
 L["Open the changelog"] = "Open the changelog"
 L["Auto-Show Changelog"] = "Auto-Show Changelog"
 L["Open the changelog automatically the first time you log in after an update."] = "Open the changelog automatically the first time you log in after an update."
+L["Show previous versions"] = "Show previous versions"
+L["Hide previous versions"] = "Hide previous versions"
 
 -- Profiles (management + import / export)
 L["Profiles"] = "Profiles"
@@ -766,19 +897,24 @@ L["Import / Export"] = "Import / Export"
 L["Current Profile: %s"] = "Current Profile: %s"
 L["Switch To"] = "Switch To"
 L["New"] = "New"
-L["Copy Current"] = "Copy Current"
+L["Copy Current As"] = "Copy Current As"
+L["Copy From"] = "Copy From"
+L["Reset Current"] = "Reset Current"
 L["Delete"] = "Delete"
 L["PROFILE_NEW_PROMPT"] = "Enter a name for the new profile (starts from defaults):"
 L["PROFILE_COPY_PROMPT"] = "Enter a name for the copy of your current profile:"
-L["PROFILE_SWITCH_CONFIRM"] = "Switch to profile \"%s\"? This reloads the UI."
-L["PROFILE_DELETE_CONFIRM"] = "Delete profile \"%s\"? This cannot be undone."
+L["PROFILE_SWITCH_CONFIRM"] = 'Switch to profile "%s"? This reloads the UI.'
+L["PROFILE_COPY_FROM_CONFIRM"] = 'Copy settings from "%s" into your current profile "%s"? This overwrites the current profile and reloads the UI.'
+L["PROFILE_RESET_CONFIRM"] = 'Reset profile "%s" to defaults? This cannot be undone and reloads the UI.'
+L["PROFILE_DELETE_CONFIRM"] = 'Delete profile "%s"? This cannot be undone.'
+L["PROFILE_NONE_TO_COPY"] = "No other profiles"
 L["PROFILE_NONE_TO_DELETE"] = "No other profiles"
-L["PROFILE_EXISTS"] = "A profile named \"%s\" already exists."
+L["PROFILE_EXISTS"] = 'A profile named "%s" already exists.'
 L["Export Current Profile"] = "Export Current Profile"
 L["Import Profile"] = "Import Profile"
 L["Open the profile import/export panel"] = "Open the profile import/export panel"
-L["PROFILE_IO_DESC"] = "Back up or share your settings. Click Export to generate a string for your current profile, then copy it. To load settings, paste a string into the box and click Import - this overwrites your current profile and reloads the UI."
-L["PROFILE_EXPORTED"] = "Exported \"%s\" - press Ctrl+C to copy the string below."
+L["PROFILE_IO_DESC"] = "Back up or share your settings. Click Export to generate a compressed profile string, then copy it. To load settings, paste a string into the box and click Import - this overwrites your current profile and reloads the UI."
+L["PROFILE_EXPORTED"] = 'Exported "%s" - press Ctrl+C to copy the string below.'
 L["PROFILE_IMPORT_EMPTY"] = "Paste a profile string into the box first."
 L["PROFILE_IMPORT_INVALID"] = "That doesn't look like a valid NexEnhance profile string."
 L["PROFILE_IMPORT_CONFIRM"] = "Importing will overwrite your current profile and reload the UI. Continue?"
@@ -815,6 +951,7 @@ L["Tab Channel Switch"] = "Tab Channel Switch"
 L["Press Tab in an empty edit box to cycle chat channels."] = "Press Tab in an empty edit box to cycle chat channels."
 L["Quick Scroll"] = "Quick Scroll"
 L["Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."] = "Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."
+L["ChatQuickScrollHelp"] = "Tip: Shift + Mouse Wheel jumps to the top or bottom of chat, and Ctrl + Mouse Wheel scrolls a page at a time."
 L["Sticky Whisper"] = "Sticky Whisper"
 L["Keep the edit box in whisper mode after replying."] = "Keep the edit box in whisper mode after replying."
 L["Whisper Sound"] = "Whisper Sound"
@@ -834,6 +971,7 @@ L["Invite keyword cleared."] = "Invite keyword cleared."
 -- Chat Copy
 L["Enable Chat Copy"] = "Enable Chat Copy"
 L["Add a button to copy the chat window's text (reload to disable)."] = "Add a button to copy the chat window's text (reload to disable)."
+L["ChatCopyHelpTip"] = "The faded button in the bottom-right corner of this chat window opens a copy box - click it to grab the chat text."
 
 -- Chat Channels
 L["Enable Chat Channels"] = "Enable Chat Channels"

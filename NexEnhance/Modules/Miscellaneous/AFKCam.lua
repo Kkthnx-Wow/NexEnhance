@@ -13,7 +13,7 @@
 	fades, edge-anchored elements, fixed model holders).
 --]]
 
--- luacheck: globals CloseAllWindows MoveViewLeftStart MoveViewLeftStop GetColoredName RemoveExtraSpaces
+-- luacheck: globals CloseAllWindows MoveViewLeftStart MoveViewLeftStop RemoveExtraSpaces
 -- luacheck: globals ChatTypeInfo Chat_GetChatCategory ChatHistory_GetAccessID ChatFrame_GetMobileEmbeddedTexture
 -- luacheck: globals CALENDAR_WEEKDAY_NAMES CALENDAR_FULLDATE_MONTH_NAMES TIMEMANAGER_TICKER_12HOUR TIMEMANAGER_TICKER_24HOUR
 -- luacheck: globals PVEFrame PVEFrame_ToggleFrame KEY_PRINTSCREEN_MAC NONE
@@ -39,6 +39,7 @@ local GetTime = GetTime
 local GetGameTime = GetGameTime
 local GetCVarBool = GetCVarBool
 local SetCVar = SetCVar
+local GetCVar = GetCVar
 local UIParent = UIParent
 local UnitIsAFK = UnitIsAFK
 local UnitCastingInfo = UnitCastingInfo
@@ -54,6 +55,7 @@ local GetClampedCurrentExpansionLevel = GetClampedCurrentExpansionLevel
 local GetExpansionDisplayInfo = GetExpansionDisplayInfo
 local Screenshot = Screenshot
 local IsMacClient = IsMacClient
+local GetPlayerInfoByGUID = GetPlayerInfoByGUID
 local C_Timer = C_Timer
 local C_Calendar = C_Calendar
 local C_DateAndTime = C_DateAndTime
@@ -650,8 +652,45 @@ local function OnKeyDown(frame, key)
 	end)
 end
 
+-- Patch 12.0 moved several chat helpers into the ChatFrameUtil namespace (the
+-- old globals are now nil on Midnight, which is what crashed OnChatEvent). Mirror
+-- ElvUI's AFK module: resolve each from ChatFrameUtil first, then fall back to the
+-- pre-12.0 global, and guard usage so a missing helper degrades quietly.
+local ChatFrameUtil = _G.ChatFrameUtil
+local GetColoredName = (ChatFrameUtil and ChatFrameUtil.GetColoredName) or _G.GetColoredName
+local GetChatCategory = (ChatFrameUtil and ChatFrameUtil.GetChatCategory) or _G.Chat_GetChatCategory
+local GetMobileEmbeddedTexture = (ChatFrameUtil and ChatFrameUtil.GetMobileEmbeddedTexture) or _G.ChatFrame_GetMobileEmbeddedTexture
+local GetAccessID = (ChatFrameUtil and ChatFrameUtil.GetAccessID) or _G.ChatHistory_GetAccessID
+local RemoveExtraSpaces = _G.RemoveExtraSpaces
+
+local function GetChatColoredName(event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
+	if GetColoredName then
+		local ok, coloredName = pcall(GetColoredName, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
+		if ok and coloredName then
+			return coloredName
+		end
+	end
+
+	if not arg2 then
+		return ""
+	end
+
+	-- Fallback: class-colour the sender from their GUID (secret-safe).
+	local guid = arg12
+	if guid and guid ~= "" and not F.IsSecret(guid) and GetPlayerInfoByGUID then
+		local _, classFileName = GetPlayerInfoByGUID(guid)
+		local classColors = _G.CUSTOM_CLASS_COLORS or _G.RAID_CLASS_COLORS
+		local color = classFileName and classColors and classColors[classFileName]
+		if color and color.colorStr then
+			return format("|c%s%s|r", color.colorStr, arg2)
+		end
+	end
+
+	return arg2
+end
+
 local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
-	local coloredName = _G.GetColoredName(event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
+	local coloredName = GetChatColoredName(event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
 	local chatType = sub(event, 10)
 	local chatInfo = _G.ChatTypeInfo[chatType]
 	if not chatInfo then
@@ -667,14 +706,23 @@ local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7
 		end
 	end
 
-	arg1 = _G.RemoveExtraSpaces(arg1)
+	if RemoveExtraSpaces then
+		arg1 = RemoveExtraSpaces(arg1)
+	end
 
-	local chatGroup = _G.Chat_GetChatCategory(chatType)
+	-- Without a chat-category resolver we can't build the player link safely.
+	if not GetChatCategory then
+		return
+	end
+
+	local chatGroup = GetChatCategory(chatType)
 	local chatTarget
 	if chatGroup == "BN_CONVERSATION" then
 		chatTarget = tostring(arg8)
 	elseif chatGroup == "WHISPER" or chatGroup == "BN_WHISPER" then
-		if sub(arg2, 1, 2) ~= "|K" then
+		-- arg2 (sender) can be a Secret string in instances; only upper-case it
+		-- when it is safe to inspect (mirrors ElvUI's NotSecretValue guard).
+		if F.NotSecret(arg2) and sub(arg2, 1, 2) ~= "|K" then
 			chatTarget = arg2:upper()
 		else
 			chatTarget = arg2
@@ -689,8 +737,8 @@ local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7
 	end
 
 	local message = arg1
-	if arg14 then
-		message = _G.ChatFrame_GetMobileEmbeddedTexture(chatInfo.r, chatInfo.g, chatInfo.b) .. message
+	if arg14 and GetMobileEmbeddedTexture then
+		message = GetMobileEmbeddedTexture(chatInfo.r, chatInfo.g, chatInfo.b) .. message
 	end
 	message = gsub(message, "%%", "%%%%")
 
@@ -704,8 +752,11 @@ local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7
 		return
 	end
 
-	local accessID = _G.ChatHistory_GetAccessID(chatGroup, chatTarget)
-	local typeID = _G.ChatHistory_GetAccessID(chatType, chatTarget, arg12 == "" and arg13 or arg12)
+	local accessID, typeID
+	if GetAccessID then
+		accessID = GetAccessID(chatGroup, chatTarget)
+		typeID = GetAccessID(chatType, chatTarget, arg12 == "" and arg13 or arg12)
+	end
 	self:AddMessage(body, chatInfo.r, chatInfo.g, chatInfo.b, chatInfo.id, false, accessID, typeID)
 end
 
@@ -930,12 +981,19 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+-- Stash the player's autoClearAFK choice before we force it on, so disabling the
+-- module puts it back the way they had it.
+local originalAutoClearAFK
+
 function AFKCam:InstallHooks()
 	if self.hooksInstalled then
 		return
 	end
 	self.hooksInstalled = true
 	BuildFrame()
+	if originalAutoClearAFK == nil then
+		originalAutoClearAFK = GetCVar("autoClearAFK") or "1"
+	end
 	SetCVar("autoClearAFK", "1")
 end
 
@@ -950,11 +1008,16 @@ function AFKCam:OnSettingChanged(key, value)
 	if key == "enable" then
 		if value then
 			self:InstallHooks()
-		elseif afkFrame and afkFrame.isAFK then
-			if manualPreview then
-				manualPreview = false
+		else
+			if afkFrame and afkFrame.isAFK then
+				if manualPreview then
+					manualPreview = false
+				end
+				SetAFKMode(afkFrame, false)
 			end
-			SetAFKMode(afkFrame, false)
+			if originalAutoClearAFK ~= nil then
+				SetCVar("autoClearAFK", originalAutoClearAFK)
+			end
 		end
 	end
 end

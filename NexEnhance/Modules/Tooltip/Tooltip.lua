@@ -7,13 +7,17 @@
 	fonts, and provides a registration table so per-addon tooltips get skinned
 	as they load.
 
-	Ported from NDui's Tooltip suite by siweia (Tip.lua / TooltipID.lua /
-	TooltipIcons.lua / ItemLevel.lua / HoverTips.lua), adapted to the NexEnhance
-	framework and hardened for Patch 12.0 Secret Values.
+	Originally ported from NDui's Tooltip suite by siweia, then reworked against
+	ElvUI's Patch 12.0 Secret-Value model: secret-safety is concentrated in a
+	couple of tiny primitives (F.IsSecret / IsSecretUnit) plus targeted checks at
+	the read sites that actually need them - no global function wrappers, no
+	OnSizeChanged backdrop guards. Untainted Blizzard code is allowed to read
+	secrets, so we simply avoid tainting its layout path (the status-bar border is
+	a stock tooltip backdrop, which needs no Lua size maths).
 
 	This file owns the module; the sibling files (TooltipID, TooltipIcons,
-	TooltipItemLevel, TooltipHoverTips) fetch it with ns:GetModule("Tooltip")
-	and add their own methods, all wired up from OnEnable.
+	TooltipItemLevel, TooltipHoverTips, TooltipMountSource) fetch it with
+	ns:GetModule("Tooltip") and add their own methods, all wired from OnEnable.
 --]]
 
 local _, ns = ...
@@ -26,12 +30,10 @@ local LBL = C.Colors.label
 -- Localised globals.
 local _G = _G
 local format, strfind, strupper, strlen = string.format, string.find, string.upper, string.len
-local floor = math.floor
 local gsub, pairs, pcall, select = string.gsub, pairs, pcall, select
+local C_Item_GetItemQualityByID = C_Item.GetItemQualityByID
 local unpack = unpack
 local hooksecurefunc = hooksecurefunc
-local issecretvalue = _G["issecretvalue"]
-local canaccessvalue = _G["canaccessvalue"]
 
 local UnitExists = UnitExists
 local UnitIsPlayer, UnitName, UnitPVPName, UnitClass = UnitIsPlayer, UnitName, UnitPVPName, UnitClass
@@ -40,110 +42,29 @@ local UnitIsAFK, UnitIsDND, UnitIsConnected, UnitIsDeadOrGhost = UnitIsAFK, Unit
 local UnitReaction, UnitIsPVP, UnitFactionGroup, UnitRealmRelationship = UnitReaction, UnitIsPVP, UnitFactionGroup, UnitRealmRelationship
 local UnitGroupRolesAssigned, GetRaidTargetIndex, GetGuildInfo, IsInGuild = UnitGroupRolesAssigned, GetRaidTargetIndex, GetGuildInfo, IsInGuild
 local UnitIsWildBattlePet, UnitIsBattlePetCompanion, UnitBattlePetLevel = UnitIsWildBattlePet, UnitIsBattlePetCompanion, UnitBattlePetLevel
-local UnitIsUnit, UnitTokenFromGUID, UnitGUID, UnitHealth = UnitIsUnit, UnitTokenFromGUID, UnitGUID, UnitHealth
-local UnitHealthMax = UnitHealthMax
+local UnitTokenFromGUID, UnitGUID, UnitHealth, UnitHealthMax = UnitTokenFromGUID, UnitGUID, UnitHealth, UnitHealthMax
+local UnitIsUnit = UnitIsUnit
 local UnitHealthPercent = _G["UnitHealthPercent"]
 local GetCreatureDifficultyColor = GetCreatureDifficultyColor
 local InCombatLockdown, IsShiftKeyDown = InCombatLockdown, IsShiftKeyDown
 
 local C_ChallengeMode_GetDungeonScoreRarityColor = C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor
 local C_PlayerInfo_GetPlayerMythicPlusRatingSummary = C_PlayerInfo and C_PlayerInfo.GetPlayerMythicPlusRatingSummary
-local C_Secrets = _G["C_Secrets"]
-local ShouldUnitIdentityBeSecret = C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret
 local CurveConstants = _G["CurveConstants"]
 local ScaleTo100 = CurveConstants and CurveConstants.ScaleTo100
 local GetDisplayedItem = TooltipUtil and TooltipUtil.GetDisplayedItem
 
--- GameTooltip cast for fields the type stubs don't expose (money/shopping/etc).
+-- GameTooltip cast for fields the type stubs don't expose (status bar/etc).
 local GT = GameTooltip ---@type any
 
 local ICON_LIST = ICON_LIST
 local HIGHLIGHT_FONT_COLOR = HIGHLIGHT_FONT_COLOR
 
--- Classic Blizzard tooltip skin, matching the chat edit box and copy frame.
--- Split into two pieces: the dark fill goes on a frame *behind* the bar (so it
--- backs the empty portion without covering the health texture), and the gold
--- edge goes on a frame *above* it (the border texture is transparent in the
--- centre, so it frames the bar without eating into the fill).
-local STATUSBAR_BG = {
-	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	tile = true,
-	tileSize = 16,
-	insets = { left = 3, right = 3, top = 3, bottom = 3 },
-}
-local STATUSBAR_BORDER = {
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	edgeSize = 14,
-}
-
-local function IsSecretSize(width, height)
-	if issecretvalue and (issecretvalue(width) or issecretvalue(height)) then
-		return true
-	end
-	return canaccessvalue and (not canaccessvalue(width) or not canaccessvalue(height))
-end
-
-local function GuardBackdropSize(frame)
-	local onSizeChanged = frame:GetScript("OnSizeChanged")
-	if not onSizeChanged then
-		return
-	end
-
-	frame:SetScript("OnSizeChanged", function(self, width, height)
-		if IsSecretSize(width, height) then
-			return
-		end
-		onSizeChanged(self, width, height)
-	end)
-end
-
-local function IsSecretTooltipError(err)
-	return err and strfind(err, "secret", 1, true)
-end
-
-local secretTooltipGuardsInstalled
-local function InstallSecretTooltipGuards()
-	if secretTooltipGuardsInstalled then
-		return
-	end
-	secretTooltipGuardsInstalled = true
-
-	-- Blizzard's map POI / world quest tooltip paths can do layout math on secret
-	-- widget or embedded reward dimensions after an addon has touched GameTooltip.
-	-- Catch only those known secret-value failures; let non-secret bugs continue
-	-- to surface normally.
-	local addWidgetSet = _G["GameTooltip_AddWidgetSet"]
-	if addWidgetSet then
-		_G["GameTooltip_AddWidgetSet"] = function(...)
-			local ok, result = pcall(addWidgetSet, ...)
-			if ok or IsSecretTooltipError(result) then
-				return result
-			end
-			error(result)
-		end
-	end
-
-	local clearWidgetSet = _G["GameTooltip_ClearWidgetSet"]
-	if clearWidgetSet then
-		_G["GameTooltip_ClearWidgetSet"] = function(...)
-			local ok, result = pcall(clearWidgetSet, ...)
-			if ok or IsSecretTooltipError(result) then
-				return result
-			end
-			error(result)
-		end
-	end
-
-	local updateEmbeddedItemSize = _G["EmbeddedItemTooltip_UpdateSize"]
-	if updateEmbeddedItemSize then
-		_G["EmbeddedItemTooltip_UpdateSize"] = function(...)
-			local ok, result = pcall(updateEmbeddedItemSize, ...)
-			if ok or IsSecretTooltipError(result) then
-				return result
-			end
-			error(result)
-		end
-	end
+-- A unit is "secret" to us when the token itself is a secret value or when its
+-- identity is currently hidden (instances / restricted). Both checks live in the
+-- shared F secret API (modelled on oUF's, by Simpy).
+local function IsSecretUnit(unit)
+	return F.IsSecret(unit) or F.IsSecretUnit(unit)
 end
 
 -- Retail unit-frame fill atlas, matching the experience bar. The "-Status"
@@ -185,10 +106,9 @@ local Tooltip = ns:NewModule("Tooltip", "tooltip", { group = "tooltip", title = 
 
 -- Active settings table; bound in OnEnable, read live everywhere.
 local cfg
-local statusBarUnit
 
--- Forward declaration: the health-text updater is defined further down but is
--- referenced by the unit post-call above it.
+-- Forward declaration: the health-text updater is defined below but referenced
+-- by the unit post-call above it.
 local UpdateHealthText
 
 local classification = {
@@ -206,7 +126,7 @@ local FACTION_COLORS = {
 }
 
 -- ---------------------------------------------------------------------------
--- Unit resolution (secret-safe, ElvUI-style fallbacks)
+-- Unit resolution (secret-safe, ElvUI-style)
 -- ---------------------------------------------------------------------------
 function Tooltip:GetDisplayedUnit(tt)
 	tt = tt or self
@@ -216,82 +136,48 @@ function Tooltip:GetDisplayedUnit(tt)
 		end
 		local data = tt:GetPrimaryTooltipData()
 		local guid = data and data.guid
-		if not guid or F.IsSecret(guid) then
-			return
+		if guid and F.NotSecret(guid) then
+			return UnitTokenFromGUID(guid)
 		end
-		return UnitTokenFromGUID(guid), guid
-	end
-
-	local data = tt.GetTooltipData and tt:GetTooltipData()
-	local guid = data and F.NotSecret(data.guid) and data.guid
-	if guid then
-		return UnitTokenFromGUID(guid), guid
-	end
-end
-
-function Tooltip:GetUnit(tt)
-	tt = tt or self
-	if tt:IsForbidden() then
 		return
 	end
 
-	local mouseover = UnitExists("mouseover") and "mouseover"
-	local unit, guid = Tooltip.GetDisplayedUnit(tt)
-	if unit and F.NotSecret(unit) and UnitExists(unit) then
-		return unit, guid
-	end
-
-	local owner = tt.GetOwner and tt:GetOwner()
-	if owner and owner.GetAttribute then
-		local ownerUnit = owner:GetAttribute("unit")
-		if ownerUnit and F.NotSecret(ownerUnit) and UnitExists(ownerUnit) then
-			return ownerUnit, UnitGUID(ownerUnit)
-		end
-	end
-
-	if mouseover then
-		return mouseover, UnitGUID("mouseover")
-	end
+	local _, unit = tt:GetUnit()
+	return unit
 end
 
--- Status-bar health updates can fire while the cursor/tooltip is moving (for
--- example when the player jumps and the world tooltip refreshes). For the health
--- text, never guess from a fresh `mouseover` lookup: use only the unit Blizzard
--- attached to this tooltip, or the owning unit frame. If neither is available,
--- blank the text instead of briefly showing another unit's values.
-local function GetStatusBarUnit(tt, data)
+function Tooltip:GetUnitToken(tt)
+	tt = tt or self
 	if not tt or tt:IsForbidden() then
 		return
 	end
 
-	local guid = data and data.guid
-	if guid and F.NotSecret(guid) then
-		local unit = UnitTokenFromGUID(guid)
-		if unit and F.NotSecret(unit) and UnitExists(unit) then
-			return unit, guid
-		end
-	end
+	local mouseoverExists = UnitExists("mouseover")
+	local mouseover = (F.NotSecret(mouseoverExists) and mouseoverExists) and "mouseover" or nil
 
-	local unit
-	unit, guid = Tooltip.GetDisplayedUnit(tt)
-	if unit and F.NotSecret(unit) and UnitExists(unit) then
-		return unit, guid
+	local unit = Tooltip.GetDisplayedUnit(tt)
+	if unit then
+		local exists = F.NotSecret(unit) and UnitExists(unit)
+		return (F.NotSecret(exists) and exists and unit) or mouseover
 	end
 
 	local owner = tt.GetOwner and tt:GetOwner()
-	if owner and owner.GetAttribute then
-		local ownerUnit = owner:GetAttribute("unit")
-		if ownerUnit and F.NotSecret(ownerUnit) and UnitExists(ownerUnit) then
-			return ownerUnit, UnitGUID(ownerUnit)
-		end
+	local ownerUnit = owner and owner.GetAttribute and owner:GetAttribute("unit")
+	if ownerUnit then
+		local exists = F.NotSecret(ownerUnit) and UnitExists(ownerUnit)
+		return (F.NotSecret(exists) and exists and ownerUnit) or mouseover
 	end
+
+	return mouseover
 end
 
+-- Kept for the sibling item-level module.
 function Tooltip:UnitExists(unit)
-	if ShouldUnitIdentityBeSecret and ShouldUnitIdentityBeSecret(unit) then
+	if not unit or IsSecretUnit(unit) then
 		return
 	end
-	return unit and UnitExists(unit)
+	local exists = UnitExists(unit)
+	return F.NotSecret(exists) and exists
 end
 
 local function replaceSpecInfo(str)
@@ -327,8 +213,8 @@ function Tooltip:GetTarget(unit)
 	if F.IsSecret(unit) then
 		return ""
 	end
-	local isYou = UnitIsUnit(unit, "player")
-	if F.NotSecret(isYou) and isYou then
+	local isPlayerTarget = UnitIsUnit(unit, "player")
+	if F.NotSecret(isPlayerTarget) and isPlayerTarget then
 		return format("|cffff0000%s|r", ">" .. strupper(YOU) .. "<")
 	end
 	local name = UnitName(unit)
@@ -375,19 +261,15 @@ end
 
 -- Faction line rewrite (AddLinePreCall) -------------------------------------
 function Tooltip:UpdateFactionLine(lineData)
-	if self:IsForbidden() then
-		return
-	end
-	if not self:IsTooltipType(Enum.TooltipDataType.Unit) then
+	if self:IsForbidden() or not self:IsTooltipType(Enum.TooltipDataType.Unit) then
 		return
 	end
 
-	local unit = Tooltip.GetUnit(self)
+	local unit = Tooltip.GetUnitToken(self)
 	if not unit then
 		return
 	end
-	-- Guard the secret check BEFORE boolean-testing the result (12.0.5 can make
-	-- UnitIsPlayer return a secret value under restricted identity).
+
 	local isPlayer = UnitIsPlayer(unit)
 	isPlayer = F.NotSecret(isPlayer) and isPlayer
 	local unitClass = isPlayer and UnitClass(unit)
@@ -424,12 +306,11 @@ local function SetDefaultBorderColor(tip, r, g, b)
 	end
 end
 
--- Cleared (ElvUI-style: reset transient tooltip state here, not on hide)
+-- Reset transient tooltip state here (ElvUI does the same on cleared, not hide).
 function Tooltip:OnTooltipCleared()
 	if self:IsForbidden() then
 		return
 	end
-	statusBarUnit = nil
 
 	if self.nexQualityBorder then
 		self.nexQualityBorder = nil
@@ -447,21 +328,14 @@ function Tooltip:OnTooltipCleared()
 	if bar and bar.Text then
 		bar.Text:SetText("")
 	end
-	local tooltipBar = GT.StatusBar
-	if tooltipBar and tooltipBar ~= bar and tooltipBar.Text then
-		tooltipBar.Text:SetText("")
-	end
 end
 
 local function OnGameTooltipHide()
 	if GameTooltip:IsForbidden() then
 		return
 	end
-	statusBarUnit = nil
-	-- Hide unconditionally: Hide() is a no-op when already hidden, and once
-	-- Blizzard pushes a secret health value into the bar, IsShown() can return a
-	-- secret boolean that we must not branch on (would error). See the secret-
-	-- values guide (object aspects).
+	-- Hide unconditionally: Hide() is a no-op when already hidden, and once a
+	-- secret health value is pushed into the bar IsShown() may itself be secret.
 	local bar = GameTooltipStatusBar
 	if bar then
 		bar:Hide()
@@ -500,7 +374,7 @@ local function CheckUnitStatus(func, unit, text)
 end
 
 -- The main unit tooltip rewrite ---------------------------------------------
-function Tooltip:OnTooltipSetUnit()
+function Tooltip:OnTooltipSetUnit(data)
 	if self:IsForbidden() or self ~= GameTooltip then
 		return
 	end
@@ -510,7 +384,7 @@ function Tooltip:OnTooltipSetUnit()
 		return
 	end
 
-	local unit, guid = Tooltip.GetUnit(self)
+	local unit = Tooltip.GetUnitToken(self)
 	if not unit then
 		return
 	end
@@ -577,7 +451,7 @@ function Tooltip:OnTooltipSetUnit()
 			if cfg.hideRank then
 				rank = ""
 			end
-			if guildRealm and isShiftKeyDown then
+			if guildRealm and F.NotSecret(guildRealm) and isShiftKeyDown then
 				guildName = guildName .. "-" .. guildRealm
 			end
 			if strlen(guildName) > 31 and not isShiftKeyDown then
@@ -601,7 +475,9 @@ function Tooltip:OnTooltipSetUnit()
 	local dead = UnitIsDeadOrGhost(unit)
 	local alive = F.NotSecret(dead) and not dead
 	local level
-	if UnitIsWildBattlePet(unit) or UnitIsBattlePetCompanion(unit) then
+	local isWildPet = UnitIsWildBattlePet(unit)
+	local isPetCompanion = UnitIsBattlePetCompanion(unit)
+	if (F.NotSecret(isWildPet) and isWildPet) or (F.NotSecret(isPetCompanion) and isPetCompanion) then
 		level = UnitBattlePetLevel(unit)
 	else
 		level = UnitLevel(unit)
@@ -621,23 +497,27 @@ function Tooltip:OnTooltipSetUnit()
 		if tiptextLevel then
 			local reaction = UnitReaction(unit, "player")
 			local standingText = (not isPlayer and reaction and F.NotSecret(reaction) and hexColor .. (_G["FACTION_STANDING_LABEL" .. reaction] or "") .. "|r ") or ""
-			local pvpFlag = (isPlayer and UnitIsPVP(unit) and format(" |cffff0000%s|r", PVP)) or ""
+			local pvp = UnitIsPVP(unit)
+			local pvpFlag = (isPlayer and F.NotSecret(pvp) and pvp and format(" |cffff0000%s|r", PVP)) or ""
 			local unitClassStr = (isPlayer and format("%s %s", UnitRace(unit) or "", hexColor .. (unitClass or "") .. "|r")) or UnitCreatureType(unit) or ""
 
 			tiptextLevel:SetFormattedText("%s%s %s %s", textLevel, pvpFlag, standingText .. unitClassStr, (not alive and "|cffCCCCCC" .. DEAD .. "|r" or ""))
 		end
 	end
 
-	if UnitExists(unit .. "target") then
-		local targetIcon = GetRaidTargetIndex(unit .. "target")
+	local targetUnit = unit .. "target"
+	local targetExists = UnitExists(targetUnit)
+	if F.NotSecret(targetExists) and targetExists then
+		local targetIcon = GetRaidTargetIndex(targetUnit)
 		local targetIconStr
 		if targetIcon and F.NotSecret(targetIcon) and targetIcon <= 8 then
 			targetIconStr = ICON_LIST[targetIcon] .. "10|t"
 		end
-		self:AddLine(TARGET .. ": " .. format("%s%s", targetIconStr or "", Tooltip.GetTarget(self, unit .. "target")))
+		self:AddLine(TARGET .. ": " .. format("%s%s", targetIconStr or "", Tooltip.GetTarget(self, targetUnit)))
 	end
 
 	if not isPlayer and isShiftKeyDown then
+		local guid = (data and data.guid) or UnitGUID(unit)
 		local npcID = F.GetNPCID(guid)
 		if npcID then
 			self:AddLine(format(npcIDstring, "NpcID:", npcID))
@@ -653,28 +533,25 @@ function Tooltip:OnTooltipSetUnit()
 end
 
 -- Status bar -----------------------------------------------------------------
-function Tooltip:UpdateStatusBarColor(data)
-	local unit = GetStatusBarUnit(self, data)
-	if not unit then
-		statusBarUnit = nil
-		UpdateHealthText(self.StatusBar)
+-- Colour the bar from the unit, and seed the health text. Runs as the Unit
+-- post-call, which gives us the exact tooltip Blizzard is updating.
+function Tooltip:UpdateStatusBarColor()
+	local bar = self.StatusBar or GameTooltipStatusBar
+	if not bar then
 		return
 	end
-	statusBarUnit = unit
-	if F.IsSecret(unit) then
-		self.StatusBar:SetStatusBarColor(0, 1, 0)
+
+	local unit = Tooltip.GetUnitToken(self)
+	if unit then
+		bar:SetStatusBarColor(F.UnitColor(unit))
 	else
-		self.StatusBar:SetStatusBarColor(F.UnitColor(unit))
+		bar:SetStatusBarColor(0.6, 0.6, 0.6)
 	end
 
-	-- Populate the health text here too: the Unit post-call has the exact
-	-- tooltip/bar Blizzard is updating, which avoids guessing from parentage.
-	UpdateHealthText(self.StatusBar)
+	UpdateHealthText(bar)
 end
 
--- Give the health/status bar our Blizzard tooltip border. Created once and
--- parented to the bar, so it follows the bar wherever it is anchored (top or
--- bottom) without any per-show work.
+-- Health text fontstring on the status bar.
 local function EnsureStatusBarText(bar)
 	if not bar or bar.Text then
 		return
@@ -686,41 +563,37 @@ local function EnsureStatusBarText(bar)
 	bar.Text:SetDrawLayer("OVERLAY", 7)
 end
 
+-- Frame the health/status bar with our classic look: a dark tooltip fill behind
+-- the bar and a tooltip border above it, on two child frames. Both are anchored
+-- to the bar with fixed offsets (no Lua size maths), so styling never errors when
+-- the bar holds a secret value - which is why this needs none of the old
+-- OnSizeChanged backdrop guards.
 local function StyleStatusBar(bar)
 	bar = bar or GameTooltipStatusBar
-	if not bar or bar.nexBorder then
+	if not bar or bar.nexStyled then
 		return
 	end
+	bar.nexStyled = true
 
 	ApplyBarTexture(bar)
 
 	local level = bar:GetFrameLevel()
 
-	-- Dark fill behind the bar (shows through the unfilled portion).
 	local bg = CreateFrame("Frame", nil, bar, "BackdropTemplate")
-	bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -3, 3)
-	bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 3, -3)
+	bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -0, 0)
+	bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
 	bg:SetFrameLevel(level > 0 and level - 1 or 0)
-	if not F.CreateNineSlice(bg, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 }, border = { 0, 0, 0, 0 } }) then
-		bg:SetBackdrop(STATUSBAR_BG)
-		bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-		GuardBackdropSize(bg)
-	end
+	bg:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16 })
+	bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
 	bar.nexBG = bg
 
-	-- Gold border on top of the bar.
 	local border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
 	border:SetPoint("TOPLEFT", bar, "TOPLEFT", -3, 3)
 	border:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 3, -3)
 	border:SetFrameLevel(level + 1)
-	if not F.CreateNineSlice(border, { layout = "TooltipDefaultLayout", bg = false }) then
-		border:SetBackdrop(STATUSBAR_BORDER)
-		border:SetBackdropBorderColor(1, 1, 1)
-		GuardBackdropSize(border)
-	end
+	border:SetBackdrop({ edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
 	bar.nexBorder = border
 
-	-- Health text centred on the bar (current / max), owned by us.
 	EnsureStatusBarText(bar)
 end
 
@@ -750,95 +623,69 @@ local function RepositionStatusBar()
 			bar:SetPoint(unpack(savedBarPoints[i]))
 		end
 	else
-		-- Fallback to Blizzard's standard bottom placement.
-		bar:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 0, 0)
-		bar:SetPoint("TOPRIGHT", GameTooltip, "BOTTOMRIGHT", 0, 0)
+		bar:SetPoint("TOPLEFT", GameTooltip, "BOTTOMLEFT", 2, -2)
+		bar:SetPoint("TOPRIGHT", GameTooltip, "BOTTOMRIGHT", -3, -2)
 	end
 
 	-- The bar is anchored on one edge only, so SetHeight drives its thickness.
-	bar:SetHeight((cfg and cfg.statusBarHeight) or 12)
+	bar:SetHeight((cfg and cfg.statusBarHeight) or 14)
 end
 
--- Health text on the status bar. Hooked onto the bar's UpdateUnitHealth (the
--- modern retail path; ElvUI does the same). Shows current / max, falling back
--- to a percent when only a normalised value is available and to DEAD for
--- corpses. Every unit read is secret-guarded so it blanks rather than erroring
--- in instances where health is a 12.0 secret value.
+-- Health text on the status bar (modelled on ElvUI's UpdateUnitHealth). Shows
+-- current / max via AbbreviateNumbers, which is whitelisted for secret values
+-- and returns a secret string SetText accepts, so we never inspect the number.
+-- Falls back to a normalised percent, and to DEAD for corpses.
 function UpdateHealthText(bar)
-	bar = bar or GameTooltipStatusBar or GT.StatusBar
+	bar = bar or GameTooltipStatusBar
+	if not bar then
+		return
+	end
 	EnsureStatusBarText(bar)
-	local text = bar and bar.Text
+	local text = bar.Text
 	if not text then
 		return
 	end
 
-	local unit = GetStatusBarUnit(bar:GetParent()) or statusBarUnit
-	statusBarUnit = unit
+	local unit = Tooltip.GetUnitToken(bar:GetParent())
 	if not unit then
 		text:SetText("")
 		return
 	end
 
 	-- Dead/ghost flag may itself be a secret boolean in combat; only act on it
-	-- when it is readable, otherwise fall through to the numeric display.
+	-- when readable, otherwise fall through to the numeric display.
 	local dead = UnitIsDeadOrGhost(unit)
 	if F.NotSecret(dead) and dead then
 		text:SetText(DEAD)
 		return
 	end
 
-	-- UnitHealth/UnitHealthMax are SecretWhenInCombat (and always secret inside
-	-- instances). We must NOT compare or do arithmetic on a secret value, but we
-	-- can still DISPLAY it: AbbreviateNumbers (via F.ShortValue) is whitelisted
-	-- and returns a secret string that SetText accepts; concatenating secret
-	-- strings keeps the result secret-safe. See wow-midnight-secret-values-guide.
 	local okCur, cur = pcall(UnitHealth, unit)
 	local okMax, maxHP = pcall(UnitHealthMax, unit)
-	local currentOnly = cfg and cfg.healthBarText == "current"
-
-	if not (okCur and okMax) then
-		if UnitHealthPercent then
-			local okPercent, percent = pcall(UnitHealthPercent, unit, true, ScaleTo100)
-			if okPercent and percent and F.NotSecret(percent) then
-				text:SetFormattedText("%d%%", percent)
-				return
-			end
-		end
-		text:SetText("")
-		return
-	end
-
-	if F.IsSecret(cur) or F.IsSecret(maxHP) then
-		if currentOnly then
-			text:SetText(F.ShortValue(cur))
-		else
-			text:SetText(F.ShortValue(cur) .. " / " .. F.ShortValue(maxHP))
-		end
-		return
-	end
-
-	-- Non-secret (e.g. out of combat in the open world): safe to inspect/branch.
-	if not cur or not maxHP then
-		text:SetText("")
-	elseif maxHP > 1 then
-		if currentOnly then
+	if okCur and okMax and cur and maxHP then
+		if cfg and cfg.healthBarText == "current" then
 			text:SetText(F.ShortValue(cur))
 		else
 			text:SetFormattedText("%s / %s", F.ShortValue(cur), F.ShortValue(maxHP))
 		end
-	elseif maxHP == 1 and cur > 0 then
-		-- Normalised bar (max == 1): show a percentage instead.
-		text:SetFormattedText("%d%%", floor(cur * 100 + 0.5))
-	else
-		text:SetText("")
+		return
 	end
+
+	if UnitHealthPercent then
+		local ok, percent = pcall(UnitHealthPercent, unit, true, ScaleTo100)
+		if ok and percent and F.NotSecret(percent) then
+			text:SetFormattedText("%d%%", percent)
+			return
+		end
+	end
+
+	text:SetText("")
 end
 
 -- Drive a status bar's health text. On modern clients the bar exposes
 -- UpdateUnitHealth (the path Blizzard calls reliably); we post-hook it and clear
 -- the default OnValueChanged handler that otherwise causes flicker. On older
--- clients we post-hook OnValueChanged instead (never replace it). The flag keeps
--- a single bar from being hooked twice if this runs more than once.
+-- clients we post-hook OnValueChanged instead (never replace it).
 local function HookBarHealth(bar)
 	if not bar or bar.nexHealthHooked then
 		return
@@ -855,14 +702,12 @@ end
 
 -- Quality border -------------------------------------------------------------
 -- We never reskin or reposition the tooltip; we only tint Blizzard's own
--- default (NineSlice) border by item quality. The old recipe-name width tweak
--- is intentionally gone: reading/writing tooltip line geometry is fragile under
--- Midnight Secret Values, and the cosmetic gain is not worth the taint risk.
+-- default (NineSlice) border by item quality.
 function Tooltip:UpdateItemQualityBorder()
 	if cfg.qualityBorder and GetDisplayedItem then
 		local _, link = GetDisplayedItem(self)
 		if link then
-			local quality = C_Item.GetItemQualityByID(link)
+			local quality = C_Item_GetItemQualityByID(link)
 			local color = C.QualityColors[quality or 1]
 			if color then
 				self.nexQualityBorder = true
@@ -905,7 +750,6 @@ end
 -- ---------------------------------------------------------------------------
 function Tooltip:OnEnable()
 	cfg = ns.db.tooltip
-	InstallSecretTooltipGuards()
 
 	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall then
 		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, Tooltip.OnTooltipSetUnit)
@@ -916,18 +760,14 @@ function Tooltip:OnEnable()
 		end
 	end
 
-	-- Frame the health/status bar and create its health-text fontstring, then
-	-- apply the chosen placement.
+	-- Frame the health/status bar and create its health-text fontstring.
 	StyleStatusBar()
 	if GT.StatusBar and GT.StatusBar ~= GameTooltipStatusBar then
 		StyleStatusBar(GT.StatusBar)
 	end
-	RepositionStatusBar()
 
-	-- Drive the health text the same way ElvUI does on retail. The Unit post-call
-	-- (UpdateStatusBarColor) also calls UpdateHealthText as a backstop for the
-	-- first frame. HookBarHealth is self-guarded, so passing the same bar twice
-	-- (when GT.StatusBar aliases the global) is a no-op.
+	-- Drive the health text the same way ElvUI does on retail. HookBarHealth is
+	-- self-guarded, so passing the same bar twice is a no-op.
 	HookBarHealth(GameTooltipStatusBar)
 	HookBarHealth(GT.StatusBar)
 

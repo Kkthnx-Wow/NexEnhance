@@ -30,25 +30,37 @@ ns:RegisterDefaults({
 
 local JunkIcon = ns:NewModule("JunkIcon", "junkIcon", { group = "inventory", title = L["Junk Icon"], order = 50 })
 
+-- One reusable ItemLocation, re-pointed each call, so the bag refresh hook
+-- doesn't allocate a throwaway location object for every Poor-quality slot.
+local scratchLocation = ItemLocation and ItemLocation.CreateEmpty and ItemLocation:CreateEmpty()
+
 -- Runs after Blizzard's own UpdateJunkItem. Blizzard hides the icon unless a
 -- merchant is open; we re-show it for Poor-quality, sellable items regardless.
 local function ForceJunkIcon(button, quality, noValue)
 	local icon = button.JunkIcon
-	if not icon or icon:IsShown() then return end -- already shown by Blizzard
+	if not icon or icon:IsShown() then
+		return
+	end -- already shown by Blizzard
 
 	-- Quality is a plain enum on bag items (not Secret), but guard anyway.
-	if F.IsSecret(quality) then return end
-	if quality ~= Enum.ItemQuality.Poor or noValue then return end
+	if F.IsSecret(quality) then
+		return
+	end
+	if quality ~= Enum.ItemQuality.Poor or noValue then
+		return
+	end
 
-	local itemLocation = ItemLocation:CreateFromBagAndSlot(button:GetBagID(), button:GetID())
-	if C_Item.DoesItemExist(itemLocation) then
+	scratchLocation:SetBagAndSlot(button:GetBagID(), button:GetID())
+	if C_Item.DoesItemExist(scratchLocation) then
 		icon:Show()
 	end
 end
 
 function JunkIcon:OnEnable()
 	local mixin = ContainerFrameItemButtonMixin
-	if not (mixin and type(mixin.UpdateJunkItem) == "function") then return end
+	if not (mixin and type(mixin.UpdateJunkItem) == "function") then
+		return
+	end
 
 	hooksecurefunc(mixin, "UpdateJunkItem", ForceJunkIcon)
 end

@@ -4,7 +4,7 @@ if ns.LibEditMode then
 	lib = ns.LibEditMode
 else
 	local MINOR, prevMinor = 15
-	lib, prevMinor = LibStub('LibEditMode')
+	lib, prevMinor = LibStub("LibEditMode")
 	if prevMinor > MINOR then
 		return
 	end
@@ -12,8 +12,8 @@ end
 
 local function showTooltip(self)
 	if self.setting and self.setting.desc then
-		SettingsTooltip:SetOwner(self, 'ANCHOR_NONE')
-		SettingsTooltip:SetPoint('BOTTOMRIGHT', self, 'TOPLEFT')
+		SettingsTooltip:SetOwner(self, "ANCHOR_NONE")
+		SettingsTooltip:SetPoint("BOTTOMRIGHT", self, "TOPLEFT")
 		SettingsTooltip:SetText(self.setting.name, 1, 1, 1)
 		SettingsTooltip:AddLine(self.setting.desc)
 		SettingsTooltip:Show()
@@ -37,13 +37,13 @@ end
 
 function checkboxMixin:Refresh()
 	local data = self.setting
-	if type(data.disabled) == 'function' then
+	if type(data.disabled) == "function" then
 		self:SetEnabled(not data.disabled(lib:GetActiveLayoutName()))
 	else
 		self:SetEnabled(not data.disabled)
 	end
 
-	if type(data.hidden) == 'function' then
+	if type(data.hidden) == "function" then
 		self:SetShown(not data.hidden(lib:GetActiveLayoutName()))
 	else
 		self:SetShown(not data.hidden)
@@ -64,9 +64,9 @@ function checkboxMixin:SetEnabled(enabled)
 end
 
 lib.internal:CreatePool(lib.SettingType.Checkbox, function()
-	local frame = CreateFrame('Frame', nil, UIParent, 'EditModeSettingCheckboxTemplate')
-	frame:SetScript('OnLeave', DefaultTooltipMixin.OnLeave)
-	frame:SetScript('OnEnter', showTooltip)
+	local frame = CreateFrame("Frame", nil, UIParent, "EditModeSettingCheckboxTemplate")
+	frame:SetScript("OnLeave", DefaultTooltipMixin.OnLeave)
+	frame:SetScript("OnEnter", showTooltip)
 	frame.Button:SetPropagateMouseMotion(true)
 	return Mixin(frame, checkboxMixin)
 end, function(_, frame)

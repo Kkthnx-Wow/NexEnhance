@@ -13,7 +13,7 @@
 --]]
 
 local _, ns = ...
-local F, C = ns.F, ns.C
+local F, C, L = ns.F, ns.C, ns.L
 
 -- Localised globals.
 local _G = _G
@@ -59,7 +59,9 @@ end
 -- mouse state instead of SetParent.
 -- ---------------------------------------------------------------------------
 function F.SetFrameHiddenTaintSafe(frame, hidden)
-	if not frame then return end
+	if not frame then
+		return
+	end
 
 	frame:SetAlpha(hidden and 0 or 1)
 	if frame.EnableMouse then
@@ -79,7 +81,9 @@ end
 -- frame's global name, registers it with UISpecialFrames so Escape closes it.
 -- ---------------------------------------------------------------------------
 function F.MakeWindowMovable(frame, escapeName)
-	if not frame then return end
+	if not frame then
+		return
+	end
 	frame:EnableMouse(true)
 	frame:SetMovable(true)
 	frame:RegisterForDrag("LeftButton")
@@ -92,11 +96,30 @@ end
 
 -- Common Blizzard texture/region child names to clear when stripping a frame.
 local BLIZZARD_TEXTURES = {
-	"Inset", "inset", "InsetFrame", "LeftInset", "RightInset",
-	"NineSlice", "BG", "Bg", "border", "Border", "Background",
-	"BorderFrame", "bottomInset", "BottomInset", "bgLeft", "bgRight",
-	"FilligreeOverlay", "PortraitOverlay", "ArtOverlayFrame", "Portrait",
-	"portrait", "ScrollFrameBorder", "ScrollUpBorder", "ScrollDownBorder",
+	"Inset",
+	"inset",
+	"InsetFrame",
+	"LeftInset",
+	"RightInset",
+	"NineSlice",
+	"BG",
+	"Bg",
+	"border",
+	"Border",
+	"Background",
+	"BorderFrame",
+	"bottomInset",
+	"BottomInset",
+	"bgLeft",
+	"bgRight",
+	"FilligreeOverlay",
+	"PortraitOverlay",
+	"ArtOverlayFrame",
+	"Portrait",
+	"portrait",
+	"ScrollFrameBorder",
+	"ScrollUpBorder",
+	"ScrollDownBorder",
 	"TitleWidgetContainer",
 }
 
@@ -174,7 +197,9 @@ local function setInside(self, anchor, x, y)
 end
 
 local function createBackdrop(frame, alpha)
-	if frame.nexBackdrop then return frame.nexBackdrop end
+	if frame.nexBackdrop then
+		return frame.nexBackdrop
+	end
 
 	local bg = CreateFrame("Frame", nil, frame, "BackdropTemplate")
 	local level = frame:GetFrameLevel()
@@ -197,159 +222,66 @@ F.CreateBackdrop = createBackdrop
 F.SetBorderColor = setBorderColor
 
 -- ---------------------------------------------------------------------------
--- NineSlice border skin (Blizzard atlas art)
---   Thin wrapper over Blizzard's own NineSliceUtil.ApplyLayout, driven by a
---   data table built from the glue/callout tooltip atlases. Unlike SetBackdrop
---   this uses the engine's nine-piece art (rounded corners, tiled edges) and
---   matches how Blizzard themes its own frames. The pieces are created on the
---   "BORDER" layer, so ARTWORK/OVERLAY content drawn on the frame stays on top.
+-- Tooltip backdrop (Blizzard UI-Tooltip art)
+--   Applies the game's classic tooltip fill (UI-Tooltip-Background) and border
+--   (UI-Tooltip-Border) to a frame the proper way: a BackdropTemplate child one
+--   level below the parent, pinned to its edges (optionally expanded by
+--   `outset`). The border is a tintable nine-patch; the fill is a tiled texture.
+--   These are stock game assets referenced by path, so nothing is bundled.
 --
---   Two ways to pick the art:
---     opts.layout : the name of a Blizzard-registered layout (recommended).
---                   "TooltipDefaultLayout" is what every in-game tooltip uses,
---                   so it is guaranteed present and has all four edges + center.
---     opts.kit    : one of our atlas tables below ("glue"/"glow"). These come
---                   from the glue/callout art; the glue set is NOT fully
---                   registered for in-game frames (its vertical edges live in a
---                   separate texture file), so we probe EVERY piece and bail out
---                   wholesale rather than draw a half border.
+--   opts.outset      : px the backdrop expands beyond the frame edges (default 0)
+--   opts.edgeSize    : tooltip border edge size in px (default 16)
+--   opts.bgColor     : {r, g, b[, a]} fill colour (default {0.06, 0.06, 0.06, 0.9})
+--   opts.borderColor : {r, g, b[, a]} border tint (default {1, 1, 1, 1})
+--   opts.frameLevel  : explicit frame level (default parent level - 1)
+--   opts.noBackground: true -> border only, no fill
 --
---   Either way the function returns nil when the requested art is unavailable,
---   so callers can fall back to F.CreateBackdrop.
---
---   Usage:
---     if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout",
---                                       bg = { 0.06, 0.06, 0.06, 0.95 } }) then
---         frame:SetBackdrop(...) -- classic fallback
---     end
---
---   opts.bg : optional {r, g, b, a}. Tints the layout's Center piece when one
---             exists (e.g. TooltipDefaultLayout), else paints a flat fill.
---             Defaults to NINESLICE_DEFAULT_BG (dark panel); pass false to skip.
---   opts.border : optional {r, g, b, a}. Tints all edge/corner pieces.
+--   Returns the backdrop frame (also stored as frame.nexBackdrop) carrying
+--   :SetInside, :SetBorderColor and the standard SetBackdrop* methods.
 -- ---------------------------------------------------------------------------
-local C_Texture = _G.C_Texture
-local NineSliceUtil = _G.NineSliceUtil ---@diagnostic disable-line: undefined-field
+local TOOLTIP_BG = "Interface\\Tooltips\\UI-Tooltip-Background"
+local TOOLTIP_EDGE = "Interface\\Tooltips\\UI-Tooltip-Border"
 
--- Standard dark panel fill applied to the Center piece when no colour is given.
-local NINESLICE_DEFAULT_BG = { 0.06, 0.06, 0.06, 0.95 }
-
--- Atlas element names (the data export's leading "_"/"!" tiling markers are not
--- part of the element name; the engine reads tiling from the atlas itself).
-local NINESLICE_KITS = {
-	glue = {
-		TopLeftCorner = { atlas = "Tooltip-Glues-NineSlice-CornerTopLeft" },
-		TopRightCorner = { atlas = "Tooltip-Glues-NineSlice-CornerTopRight" },
-		BottomLeftCorner = { atlas = "Tooltip-Glues-NineSlice-CornerBottomLeft" },
-		BottomRightCorner = { atlas = "Tooltip-Glues-NineSlice-CornerBottomRight" },
-		TopEdge = { atlas = "Tooltip-Glues-NineSlice-EdgeTop" },
-		BottomEdge = { atlas = "Tooltip-Glues-NineSlice-EdgeBottom" },
-		LeftEdge = { atlas = "Tooltip-Glues-NineSlice-EdgeLeft" },
-		RightEdge = { atlas = "Tooltip-Glues-NineSlice-EdgeRight" },
-	},
-	glow = {
-		TopLeftCorner = { atlas = "CalloutGlow-NineSlice-CornerTopLeft" },
-		TopRightCorner = { atlas = "CalloutGlow-NineSlice-CornerTopRight" },
-		BottomLeftCorner = { atlas = "CalloutGlow-NineSlice-CornerBottomLeft" },
-		BottomRightCorner = { atlas = "CalloutGlow-NineSlice-CornerBottomRight" },
-		TopEdge = { atlas = "CalloutGlow-NineSlice-EdgeTop" },
-		BottomEdge = { atlas = "CalloutGlow-NineSlice-EdgeBottom" },
-		LeftEdge = { atlas = "CalloutGlow-NineSlice-EdgeLeft" },
-		RightEdge = { atlas = "CalloutGlow-NineSlice-EdgeRight" },
-	},
-}
-
--- Probe each kit at most once (every piece must resolve), and named layouts
--- once each. The answer never changes within a session.
-local nineSliceKitOK = {}
-
-local function kitAvailable(kit)
-	local cached = nineSliceKitOK[kit]
-	if cached ~= nil then return cached end
-
-	local ok = false
-	local layout = NINESLICE_KITS[kit]
-	if layout and NineSliceUtil and NineSliceUtil.ApplyLayout and C_Texture and C_Texture.GetAtlasInfo then
-		ok = true
-		for _, piece in next, layout do
-			if not C_Texture.GetAtlasInfo(piece.atlas) then
-				ok = false
-				break
-			end
-		end
+function F.CreateTooltipBackdrop(frame, opts)
+	if not frame then
+		return
 	end
-
-	nineSliceKitOK[kit] = ok
-	return ok
-end
-
-local function namedLayoutAvailable(name)
-	return NineSliceUtil and NineSliceUtil.ApplyLayoutByName and NineSliceUtil.GetLayout
-		and NineSliceUtil.GetLayout(name) ~= nil
-end
-
-function F.CreateNineSlice(frame, opts)
-	if not frame then return end
-	if frame.nexNineSlice then return frame end
-
 	opts = opts or {}
 
-	if opts.layout then
-		if not namedLayoutAvailable(opts.layout) then return nil end
-		NineSliceUtil.ApplyLayoutByName(frame, opts.layout)
-	else
-		local kit = opts.kit or "glue"
-		if not kitAvailable(kit) then return nil end
-		NineSliceUtil.ApplyLayout(frame, NINESLICE_KITS[kit])
+	local bg = frame.nexBackdrop
+	if not bg then
+		bg = CreateFrame("Frame", nil, frame, "BackdropTemplate")
+		bg.__anchor = frame
+		bg.SetInside = setInside
+		frame.nexBackdrop = bg
 	end
 
-	-- Default to the standard dark panel fill so callers get a consistent look
-	-- without passing a colour every time; pass opts.bg = false to opt out.
-	local bgColor = opts.bg
-	if bgColor == nil then bgColor = NINESLICE_DEFAULT_BG end
-	if bgColor then
-		local r, g, b = bgColor[1], bgColor[2], bgColor[3]
-		local a = bgColor[4] or 1
-		-- Layouts like TooltipDefaultLayout supply a Center fill; tint it instead
-		-- of stacking a second texture behind it.
-		if frame.Center then
-			frame.Center:Show()
-			frame.Center:SetVertexColor(r, g, b, a)
-		else
-			local bg = frame.nexNineSliceBG or frame:CreateTexture(nil, "BACKGROUND")
-			bg:SetAllPoints(frame)
-			bg:SetColorTexture(r, g, b, a)
-			frame.nexNineSliceBG = bg
-		end
-	elseif frame.Center then
-		-- Edge-only border (bg = false): hide the layout's Center fill so the
-		-- frame is just the border art (e.g. framing the square minimap).
-		frame.Center:Hide()
+	local level = opts.frameLevel or (frame:GetFrameLevel() - 1)
+	bg:SetFrameLevel(level > 0 and level or 0)
+
+	-- Tooltip border art is a 16px nine-patch; the fill inset is a quarter of the
+	-- edge so the background sits just inside the border lip.
+	local edgeSize = opts.edgeSize or 16
+	local inset = edgeSize / 4
+	bg:SetBackdrop({
+		bgFile = (not opts.noBackground) and TOOLTIP_BG or nil,
+		edgeFile = TOOLTIP_EDGE,
+		tile = true,
+		tileSize = edgeSize,
+		edgeSize = edgeSize,
+		insets = { left = inset, right = inset, top = inset, bottom = inset },
+	})
+
+	local bc = opts.borderColor or { 1, 1, 1, 1 }
+	bg:SetBackdropBorderColor(bc[1], bc[2], bc[3], bc[4] or 1)
+	if not opts.noBackground then
+		local bgc = opts.bgColor or { 0.06, 0.06, 0.06, 0.9 }
+		bg:SetBackdropColor(bgc[1], bgc[2], bgc[3], bgc[4] or 1)
 	end
 
-	if opts.border then
-		local r, g, b = opts.border[1], opts.border[2], opts.border[3]
-		local a = opts.border[4] or 1
-		for _, pieceName in next, { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner", "TopEdge", "BottomEdge", "LeftEdge", "RightEdge" } do
-			local piece = frame[pieceName]
-			if piece then
-				piece:SetVertexColor(r, g, b, a)
-			end
-		end
-	end
-
-	frame.nexNineSlice = true
-	return frame
-end
-
-function F.SetNineSliceBorderColor(frame, r, g, b, a)
-	if not frame then return end
-	for _, pieceName in next, { "TopLeftCorner", "TopRightCorner", "BottomLeftCorner", "BottomRightCorner", "TopEdge", "BottomEdge", "LeftEdge", "RightEdge" } do
-		local piece = frame[pieceName]
-		if piece then
-			piece:SetVertexColor(r, g, b, a or 1)
-		end
-	end
+	local outset = opts.outset or 0
+	bg:SetInside(frame, outset, outset)
+	return bg
 end
 
 -- ---------------------------------------------------------------------------
@@ -371,11 +303,14 @@ local GLOW_TEX_H = "Interface/TutorialFrame/UIFrameTutorialGlow"
 local GLOW_TEX_V = "Interface/TutorialFrame/UIFrameTutorialGlowVertical"
 
 function F.CreateGlowBorder(frame, opts)
-	if not frame or frame.nexGlowBorder then return frame end
+	if not frame or frame.nexGlowBorder then
+		return frame
+	end
 
 	opts = opts or {}
 	local out = opts.outset or 8
 	local blend = opts.blend or "ADD"
+	local color = opts.color -- optional {r, g, b}; tints the glow halo
 
 	local topLeft = frame:CreateTexture(nil, "BORDER")
 	topLeft:SetTexture(GLOW_TEX_H)
@@ -427,10 +362,54 @@ function F.CreateGlowBorder(frame, opts)
 
 	for _, piece in next, { topLeft, topRight, bottomLeft, bottomRight, top, bottom, left, right } do
 		piece:SetBlendMode(blend)
+		if color then
+			-- The glow art is gold; SetVertexColor only *multiplies*, so tinting a
+			-- yellow texture blue yields mud (its blue channel is ~0). Desaturate to
+			-- greyscale first so the vertex colour actually takes.
+			piece:SetDesaturated(true)
+			piece:SetVertexColor(color[1], color[2], color[3])
+		end
 	end
 
 	frame.nexGlowBorder = true
 	return frame
+end
+
+-- ---------------------------------------------------------------------------
+-- "New!" feature badge
+--   Blizzard's animated, glowing "New!" label (NewFeatureLabelTemplate) - the
+--   same flair the default UI slaps on the Adventure Guide / Wardrobe tabs.
+--   Anchor the returned frame next to whatever you want to call out; the caller
+--   owns show/hide and persistence. Falls back to a plain brand-blue "New!"
+--   text if the template ever goes missing on a given client.
+-- ---------------------------------------------------------------------------
+function F.CreateNewFeatureBadge(parent, text)
+	local label = text or _G.NEW or "New!" ---@diagnostic disable-line: undefined-field
+
+	local ok, badge = pcall(CreateFrame, "Frame", nil, parent, "NewFeatureLabelTemplate")
+	if ok and badge then
+		-- The template doesn't always set its own text for us, so do it
+		-- defensively, then let it re-size to fit (method name guarded - it's
+		-- not present on every flavour).
+		local fs = badge.Label or badge.Text
+		if fs and fs.SetText then
+			fs:SetText(label)
+		end
+		if badge.Layout then
+			pcall(badge.Layout, badge)
+		end
+		badge:Show()
+		return badge
+	end
+
+	-- Fallback: a static brand-blue "New!" with no animation.
+	local fallback = CreateFrame("Frame", nil, parent)
+	local fs = fallback:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	fs:SetPoint("CENTER")
+	fs:SetText(label)
+	fs:SetTextColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3])
+	fallback:SetSize((fs:GetStringWidth() or 24) + 6, (fs:GetStringHeight() or 12) + 4)
+	return fallback
 end
 
 -- ---------------------------------------------------------------------------
@@ -443,6 +422,30 @@ end
 -- ---------------------------------------------------------------------------
 local function getEditMode()
 	return _G.LibStub and _G.LibStub("LibEditMode", true)
+end
+
+-- One-time Edit Mode nudge. Plenty of NexEnhance widgets (exp bar, datatexts,
+-- buff reminder, rare alert, ...) are movable in Edit Mode, but that's not at
+-- all obvious - so the first time the user opens Edit Mode we point it out once,
+-- account-wide. Registered a single time on the shared LibEditMode instance the
+-- first time any mover is created, so it costs nothing if no movers exist.
+---@diagnostic disable-next-line: undefined-field
+local HelpTip = _G.HelpTip
+local moverTipHooked = false
+
+local function ShowEditModeMoverTip()
+	---@diagnostic disable-next-line: undefined-field
+	local owner = _G.EditModeManagerFrame or UIParent
+	local point = HelpTip and HelpTip.Point and HelpTip.Point.LeftEdgeCenter
+	F.ShowHelpTip(owner, "EditModeMovers", L["EditModeMoversHelpTip"], { targetPoint = point })
+end
+
+local function HookEditModeMoverTip(lib)
+	if moverTipHooked or not (lib and lib.RegisterCallback) then
+		return
+	end
+	moverTipHooked = true
+	lib:RegisterCallback("enter", ShowEditModeMoverTip)
 end
 
 -- `onPlace` (optional) is invoked to position the frame whenever it has NOT been
@@ -486,9 +489,13 @@ function F.CreateMover(frame, key, label, point, x, y, onPlace)
 		return
 	end
 
+	HookEditModeMoverTip(lib)
+
 	frame.editModeName = label or key
 	lib:AddFrame(frame, function(_, _, newPoint, newX, newY)
-		if not ns.db then return end
+		if not ns.db then
+			return
+		end
 		ns.db.movers = ns.db.movers or {}
 		-- "Reset to default" re-applies exactly the default we registered below.
 		-- For onPlace movers that default is only a placeholder (the real anchor

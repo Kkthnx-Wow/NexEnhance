@@ -31,9 +31,6 @@ local UIParent = UIParent
 -- WoW chat messages are capped at 255 bytes.
 local MAX_CHAT_BYTES = 255
 
--- A classic Blizzard tooltip-style border (gold edge + dark fill) for the box.
-local EDITBOX_BACKDROP = C.Backdrops.window
-
 local IsInGroup, IsInRaid, IsInGuild = IsInGroup, IsInRaid, IsInGuild
 local IsShiftKeyDown, IsControlKeyDown = IsShiftKeyDown, IsControlKeyDown
 local IsPartyLFG = IsPartyLFG
@@ -120,6 +117,11 @@ end
 -- Per-frame setup (behaviour only, no skinning)
 -- ---------------------------------------------------------------------------
 function Chat:QuickMouseScroll(dir)
+	-- The modifier shortcuts below are invisible until someone stumbles on them,
+	-- so the first time the chat is wheeled we point them out (once, account-wide).
+	-- `self` here is the chat frame (this is hooked as its OnMouseWheel script).
+	F.ShowHelpTip(self, "ChatQuickScroll", L["ChatQuickScrollHelp"])
+
 	if dir > 0 then
 		if IsShiftKeyDown() then
 			self:ScrollToTop()
@@ -254,16 +256,13 @@ function Chat:SetupEditBox(frame)
 		-- typing. This mirrors NDui's StripTextures(editBox, 2).
 		F.StripTextures(editBox, 2)
 
-		local bg = CreateFrame("Frame", nil, editBox, "BackdropTemplate")
+		local bg = CreateFrame("Frame", nil, editBox)
 		bg:SetPoint("TOPLEFT", editBox, "TOPLEFT", 0, 0)
 		bg:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", 12, 0)
 		bg:SetFrameLevel(max(0, editBox:GetFrameLevel() - 1))
-		if not F.CreateNineSlice(bg, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 }, border = { 1, 1, 1, 1 } }) then
-			bg:SetBackdrop(EDITBOX_BACKDROP)
-			bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-			bg:SetBackdropBorderColor(1, 1, 1)
-		end
-		editBox.nexBackdrop = bg
+		-- Tooltip border + dark fill; ColorEditBox tints the border per channel.
+		F.CreateTooltipBackdrop(bg, { edgeSize = 12 })
+		editBox.nexBackdrop = bg.nexBackdrop
 	end
 
 	if cfg.editBoxTop then
@@ -377,11 +376,7 @@ function ColorEditBox(editBox)
 	end
 
 	if editBox.nexBackdrop then
-		if editBox.nexBackdrop.nexNineSlice then
-			F.SetNineSliceBorderColor(editBox.nexBackdrop, r, g, b)
-		else
-			editBox.nexBackdrop:SetBackdropBorderColor(r, g, b)
-		end
+		editBox.nexBackdrop:SetBackdropBorderColor(r, g, b)
 		return
 	end
 

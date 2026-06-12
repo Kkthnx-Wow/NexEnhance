@@ -16,7 +16,7 @@
 --]]
 
 local _, ns = ...
-local L = ns.L
+local F, L = ns.F, ns.L
 
 -- Localised globals / API.
 local _G = _G
@@ -69,10 +69,14 @@ end
 -- Accepts either a class token or a localised class name and returns the
 -- "|cffRRGGBB" escape, falling back to white if the class is unknown.
 local function ClassColorStr(class)
-	if not class then return "|cffffffff" end
+	if not class then
+		return "|cffffffff"
+	end
 	local token = classToken[class] or class
 	local color = CLASS_COLORS[token]
-	if not color then return "|cffffffff" end
+	if not color then
+		return "|cffffffff"
+	end
 	return "|c" .. color.colorStr
 end
 
@@ -80,27 +84,37 @@ end
 local function ClassColorRGB(class)
 	local token = class and (classToken[class] or class)
 	local color = token and CLASS_COLORS[token]
-	if not color then return 1, 1, 1 end
+	if not color then
+		return 1, 1, 1
+	end
 	return color.r, color.g, color.b
 end
 
 -- Difficulty colour for a level, as a "|cffRRGGBB" escape.
 local function DiffColor(level)
 	local color = GetQuestDifficultyColor(level)
-	return format("|cff%02x%02x%02x", color.r * 255, color.g * 255, color.b * 255)
+	return "|c" .. F.RGBToHex(color.r, color.g, color.b)
 end
 
 -- Linear gradient across a flat {r,g,b, r,g,b, ...} stop list (used for the
 -- guild rank / reputation columns). `cur` in [0, max] selects the position.
 local function GradientHex(cur, max, stops)
-	if max <= 0 then max = 1 end
+	if max <= 0 then
+		max = 1
+	end
 	local percent = cur / max
-	if percent < 0 then percent = 0 elseif percent > 1 then percent = 1 end
+	if percent < 0 then
+		percent = 0
+	elseif percent > 1 then
+		percent = 1
+	end
 
 	local segments = (#stops / 3) - 1
 	local segment = percent * segments
 	local index = floor(segment)
-	if index >= segments then index = segments - 1 end
+	if index >= segments then
+		index = segments - 1
+	end
 	local relative = segment - index
 
 	local i = index * 3
@@ -110,7 +124,7 @@ local function GradientHex(cur, max, stops)
 	local r = r1 + (r2 - r1) * relative
 	local g = g1 + (g2 - g1) * relative
 	local b = b1 + (b2 - b1) * relative
-	return format("|cff%02x%02x%02x", r * 255, g * 255, b * 255)
+	return "|c" .. F.RGBToHex(r, g, b)
 end
 
 local rankColor = { 1, 0, 0, 1, 1, 0, 0, 1, 0 }
@@ -145,7 +159,9 @@ local function GetRowFrames(scrollBox)
 		return scrollBox:GetFrames()
 	end
 	local target = scrollBox.ScrollTarget
-	if not target then return nil end
+	if not target then
+		return nil
+	end
 	wipe(enumScratch)
 	for i = 1, target:GetNumChildren() do
 		enumScratch[i] = select(i, target:GetChildren())
@@ -154,9 +170,13 @@ local function GetRowFrames(scrollBox)
 end
 
 local function UpdateFriendsList(self)
-	if not IsActive() then return end
+	if not IsActive() then
+		return
+	end
 	local buttons = GetRowFrames(self)
-	if not buttons then return end
+	if not buttons then
+		return
+	end
 	local playerArea = GetAreaText()
 
 	for i = 1, #buttons do
@@ -167,8 +187,7 @@ local function UpdateFriendsList(self)
 			if button.buttonType == _G["FRIENDS_BUTTON_TYPE_WOW"] then
 				local info = C_FriendList.GetFriendInfoByIndex(button.id)
 				if info and info.connected then
-					nameText = ClassColorStr(info.className) .. info.name .. "|r, "
-						.. format(GetLevelTemplate(), DiffColor(info.level) .. info.level .. "|r", info.className)
+					nameText = ClassColorStr(info.className) .. info.name .. "|r, " .. format(GetLevelTemplate(), DiffColor(info.level) .. info.level .. "|r", info.className)
 					if info.area == playerArea then
 						infoText = format("|cff00ff00%s|r", info.area)
 					end
@@ -193,8 +212,12 @@ local function UpdateFriendsList(self)
 				end
 			end
 
-			if nameText and button.name then button.name:SetText(nameText) end
-			if infoText and button.info then button.info:SetText(infoText) end
+			if nameText and button.name then
+				button.name:SetText(nameText)
+			end
+			if infoText and button.info then
+				button.info:SetText(infoText)
+			end
 		end
 	end
 end
@@ -206,9 +229,13 @@ local whoColumns = { zone = "", guild = "", race = "" }
 local whoSortType = "zone"
 
 local function UpdateWhoList(self)
-	if not IsActive() then return end
+	if not IsActive() then
+		return
+	end
 	local buttons = GetRowFrames(self)
-	if not buttons then return end
+	if not buttons then
+		return
+	end
 	local playerZone = GetAreaText()
 	local playerGuild = GetGuildInfo("player")
 	local playerRace = UnitRace("player")
@@ -219,17 +246,29 @@ local function UpdateWhoList(self)
 			local info = C_FriendList.GetWhoInfo(button.index)
 			if info then
 				local guild, level, race, zone, class = info.fullGuildName, info.level, info.raceStr, info.area, info.filename
-				if zone and zone == playerZone then zone = "|cff00ff00" .. zone end
-				if guild and guild == playerGuild then guild = "|cff00ff00" .. guild end
-				if race and race == playerRace then race = "|cff00ff00" .. race end
+				if zone and zone == playerZone then
+					zone = "|cff00ff00" .. zone
+				end
+				if guild and guild == playerGuild then
+					guild = "|cff00ff00" .. guild
+				end
+				if race and race == playerRace then
+					race = "|cff00ff00" .. race
+				end
 
 				whoColumns.zone = zone or ""
 				whoColumns.guild = guild or ""
 				whoColumns.race = race or ""
 
-				if button.Name then button.Name:SetTextColor(ClassColorRGB(class)) end
-				if button.Level then button.Level:SetText(DiffColor(level) .. level) end
-				if button.Variable then button.Variable:SetText(whoColumns[whoSortType] or "") end
+				if button.Name then
+					button.Name:SetTextColor(ClassColorRGB(class))
+				end
+				if button.Level then
+					button.Level:SetText(DiffColor(level) .. level)
+				end
+				if button.Variable then
+					button.Variable:SetText(whoColumns[whoSortType] or "")
+				end
 			end
 		end
 	end
@@ -244,9 +283,13 @@ local function SetGuildView(view)
 end
 
 local function UpdateGuildView()
-	if not IsActive() then return end
+	if not IsActive() then
+		return
+	end
 	local container = _G["GuildRosterContainer"]
-	if not container or not container.buttons then return end
+	if not container or not container.buttons then
+		return
+	end
 
 	guildView = guildView or (GetCVar and GetCVar("guildRosterView")) or "playerStatus"
 	local playerArea = GetAreaText()
@@ -261,7 +304,9 @@ local function UpdateGuildView()
 			else
 				local _, rank, rankIndex, level, _, zone, _, _, _, _, _, _, _, _, _, repStanding = GetGuildRosterInfo(button.guildIndex)
 				if guildView == "playerStatus" then
-					if button.string1 then button.string1:SetText(DiffColor(level) .. level) end
+					if button.string1 then
+						button.string1:SetText(DiffColor(level) .. level)
+					end
 					if zone == playerArea and button.string3 then
 						button.string3:SetText("|cff00ff00" .. zone)
 					end
@@ -270,9 +315,13 @@ local function UpdateGuildView()
 						button.string2:SetText(GradientHex(rankIndex, 10, rankColor) .. rank)
 					end
 				elseif guildView == "achievement" then
-					if button.string1 then button.string1:SetText(DiffColor(level) .. level) end
+					if button.string1 then
+						button.string1:SetText(DiffColor(level) .. level)
+					end
 				elseif guildView == "reputation" then
-					if button.string1 then button.string1:SetText(DiffColor(level) .. level) end
+					if button.string1 then
+						button.string1:SetText(DiffColor(level) .. level)
+					end
 					if repStanding and button.string3 then
 						local label = _G["FACTION_STANDING_LABEL" .. repStanding]
 						button.string3:SetText(GradientHex(repStanding - 4, 5, repColor) .. (label or ""))
@@ -326,7 +375,9 @@ function SocialColors:ADDON_LOADED(addon)
 end
 
 function SocialColors:OnEnable()
-	if self.hooksInstalled then return end
+	if self.hooksInstalled then
+		return
+	end
 	self.hooksInstalled = true
 
 	self:HookFriends()

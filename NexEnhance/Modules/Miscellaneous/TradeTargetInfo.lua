@@ -37,12 +37,16 @@ local infoText
 
 local function UpdateColor()
 	local nameText = _G.TradeFrameRecipientNameText
-	if not nameText then return end
+	if not nameText then
+		return
+	end
 
 	nameText:SetTextColor(F.UnitColor("NPC"))
 
 	local guid = UnitGUID("NPC")
-	if not guid or F.IsSecret(guid) then return end
+	if not guid or F.IsSecret(guid) then
+		return
+	end
 
 	local text = "|cffff0000" .. L["Stranger"]
 	if C_BattleNet_GetGameAccountInfoByGUID(guid) or C_FriendList_IsFriend(guid) then
@@ -54,7 +58,9 @@ local function UpdateColor()
 end
 
 function TradeTarget:Setup()
-	if self.done or not _G.TradeFrame then return end
+	if self.done or not _G.TradeFrame then
+		return
+	end
 	self.done = true
 
 	infoText = F.CreateFS(_G.TradeFrame, 16, "")
@@ -65,7 +71,9 @@ function TradeTarget:Setup()
 end
 
 function TradeTarget:OnEnable()
-	if not ns.db.tradeTarget.enable then return end
+	if not ns.db.tradeTarget.enable then
+		return
+	end
 	self:Setup()
 end
 

@@ -130,10 +130,10 @@ C.QualityColors = _G["ITEM_QUALITY_COLORS"]
 -- Backdrop presets
 --   Shared SetBackdrop tables for the standalone windows and input panels
 --   (Changelog, Credits, Profiles, Install, the chat edit box and copy frame).
---   These are the classic-backdrop fallback used when a NineSlice skin is not
---   available, kept here as one source of truth so every panel frames the same
---   way. SetBackdrop copies the values into the C++ backdrop, so sharing a
---   single read-only table across frames is safe.
+--   These use Blizzard's stock tooltip background/border art and are kept here
+--   as one source of truth so every panel frames the same way. SetBackdrop
+--   copies the values into the C++ backdrop, so sharing a single read-only table
+--   across frames is safe.
 -- ---------------------------------------------------------------------------
 C.Backdrops = {
 	window = {

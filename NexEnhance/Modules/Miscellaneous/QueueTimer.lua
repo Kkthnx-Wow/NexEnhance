@@ -93,10 +93,14 @@ end
 -- Custom labels on the ready dialog
 -- ---------------------------------------------------------------------------
 local function HideDefaultQueueTimers()
-	if not db().hideOtherTimers then return end
+	if not db().hideOtherTimers then
+		return
+	end
 
 	local popup = _G.LFGDungeonReadyPopup
-	if not popup then return end
+	if not popup then
+		return
+	end
 
 	for _, child in ipairs({ popup:GetChildren() }) do
 		if child.GetObjectType and child:GetObjectType() == "StatusBar" then
@@ -106,7 +110,9 @@ local function HideDefaultQueueTimers()
 end
 
 local function CreateLabels(dialog)
-	if not dialog or not dialog.label or dialog.nexQueueLabels then return end
+	if not dialog or not dialog.label or dialog.nexQueueLabels then
+		return
+	end
 
 	local width = dialog:GetWidth()
 
@@ -146,7 +152,9 @@ local function ExpiresText(seconds)
 end
 
 function QueueTimer:UpdateDisplay(timeRemaining, dialog, isPvP)
-	if not dialog then return end
+	if not dialog then
+		return
+	end
 	CreateLabels(dialog)
 
 	local remain = timeRemaining or 0
@@ -166,8 +174,12 @@ function QueueTimer:UpdateDisplay(timeRemaining, dialog, isPvP)
 		dialog.nexName:SetText(info.name:GetText() or "")
 		dialog.nexStatus:SetText(info.statusText and info.statusText:GetText() or "")
 	else
-		if dialog.nexName then dialog.nexName:SetText("") end
-		if dialog.nexStatus then dialog.nexStatus:SetText("") end
+		if dialog.nexName then
+			dialog.nexName:SetText("")
+		end
+		if dialog.nexStatus then
+			dialog.nexStatus:SetText("")
+		end
 	end
 end
 
@@ -175,11 +187,17 @@ end
 -- Warning sound
 -- ---------------------------------------------------------------------------
 local function WarnOnExpiration(seconds)
-	if not db().warning then return end
+	if not db().warning then
+		return
+	end
 	if seconds <= WARNING_THRESHOLD and not hasWarned then
 		PlaySoundFile(WARNING_SOUND_ID, "master")
-		C_Timer_After(0.1, function() PlaySoundFile(WARNING_SOUND_ID, "master") end)
-		C_Timer_After(0.2, function() PlaySoundFile(WARNING_SOUND_ID, "master") end)
+		C_Timer_After(0.1, function()
+			PlaySoundFile(WARNING_SOUND_ID, "master")
+		end)
+		C_Timer_After(0.2, function()
+			PlaySoundFile(WARNING_SOUND_ID, "master")
+		end)
 		hasWarned = true
 	end
 end
@@ -212,7 +230,9 @@ end
 
 local function OnUpdate(_, elapsed)
 	sinceLastUpdate = sinceLastUpdate + elapsed
-	if sinceLastUpdate < UPDATE_INTERVAL then return end
+	if sinceLastUpdate < UPDATE_INTERVAL then
+		return
+	end
 	sinceLastUpdate = 0
 
 	if remainingPvETime and remainingPvETime > 0 then
@@ -268,7 +288,9 @@ function QueueTimer:UPDATE_BATTLEFIELD_STATUS(index)
 end
 
 function QueueTimer:RegisterModuleEvents()
-	if self.eventsRegistered then return end
+	if self.eventsRegistered then
+		return
+	end
 	self.eventsRegistered = true
 
 	self:RegisterEvent("LFG_PROPOSAL_SHOW")
@@ -288,7 +310,9 @@ function QueueTimer:RegisterModuleEvents()
 end
 
 function QueueTimer:OnEnable()
-	if not db().enable then return end
+	if not db().enable then
+		return
+	end
 	self:RegisterModuleEvents()
 end
 

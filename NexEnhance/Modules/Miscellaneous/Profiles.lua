@@ -1,20 +1,17 @@
 --[[
 	NexEnhance - Profile Import / Export
 	-------------------------------------------------------------------------
-	Share a full settings profile as a single copy-paste string. The active
-	profile is serialised to a compact Lua-literal, Base64 encoded and tagged
-	with a short header. Importing decodes the blob, runs it in a *sandboxed*
-	(empty environment) chunk so it can only ever return data, writes the
-	result over the active profile and reloads.
+	Share a full settings profile as a single copy-paste string. New exports use
+	LibSerialize + LibDeflate to produce compact printable strings. Imports still
+	accept the older Base64/Lua-literal format for backwards compatibility.
 
 	Exposed as both a Settings canvas sub-page (NexEnhance -> Profiles) and a
 	standalone window via /nex profile.
 
-	No external libraries: the serialiser, Base64 codec and parser are all
-	self-contained here.
+	The legacy parser is retained only for old !NEX1! exports.
 --]]
 
--- luacheck: globals ChatFontNormal StaticPopupDialogs StaticPopup_Show ReloadUI YES NO ACCEPT CANCEL
+-- luacheck: globals ChatFontNormal StaticPopupDialogs StaticPopup_Show ReloadUI YES NO ACCEPT CANCEL ScrollUtil LibStub
 
 local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
@@ -26,10 +23,14 @@ local floor = math.floor
 local tconcat = table.concat
 local loadstring, setfenv, pcall = loadstring, setfenv, pcall
 local CreateFrame = CreateFrame
+local ScrollUtil = ScrollUtil
+local LibSerialize = LibStub and (LibStub:GetLibrary("LibSerialize-KkthnxUI", true) or LibStub:GetLibrary("LibSerialize", true))
+local LibDeflate = LibStub and (LibStub:GetLibrary("LibDeflate-KkthnxUI", true) or LibStub:GetLibrary("LibDeflate", true))
 
 -- A tag so we can sanity-check a pasted blob before trying to decode it, and so
 -- a future format change can bump the number without silently mis-parsing.
-local PREFIX = "!NEX1!"
+local LEGACY_PREFIX = "!NEX1!"
+local PREFIX = "!NEX2!"
 
 -- ---------------------------------------------------------------------------
 -- Serialiser (table -> Lua-literal string)
@@ -122,7 +123,9 @@ local function Base64Decode(data)
 		local s4 = B64_LOOKUP[ch4]
 		i = i + 4
 
-		if not s1 or not s2 then break end
+		if not s1 or not s2 then
+			break
+		end
 		out[#out + 1] = schar(s1 * 4 + floor(s2 / 16))
 		if ch3 ~= "=" and s3 then
 			out[#out + 1] = schar((s2 % 16) * 16 + floor(s3 / 4))
@@ -140,44 +143,115 @@ end
 local function ExportProfile()
 	local root = _G.NexEnhanceDB
 	local profile = root and root.profiles and root.profiles[ns.profileName]
-	if type(profile) ~= "table" then return nil end
+	if type(profile) ~= "table" then
+		return nil
+	end
 
-	local payload = "return " .. SerializeTable({
+	local payload = {
 		v = ns.version,
 		p = ns.profileName,
 		d = profile,
-	})
-	return PREFIX .. Base64Encode(payload)
+	}
+
+	if LibSerialize and LibDeflate then
+		local ok, serialized = pcall(LibSerialize.SerializeEx, LibSerialize, { stable = true }, payload)
+		if ok and type(serialized) == "string" then
+			local compressed = LibDeflate:CompressDeflate(serialized)
+			if type(compressed) == "string" then
+				return PREFIX .. LibDeflate:EncodeForPrint(compressed)
+			end
+		end
+	end
+
+	-- Legacy fallback, kept mostly as a failsafe if the bundled libraries fail
+	-- to load. ParseImport still accepts this format from older addon builds.
+	return LEGACY_PREFIX .. Base64Encode("return " .. SerializeTable(payload))
 end
 
 -- Returns (dataTable, profileName, version) on success, or (nil, errorCode) on
 -- failure. Performs no side effects so the caller can validate before applying.
-local function ParseImport(text)
-	if type(text) ~= "string" then return nil, "empty" end
+local function ParseLegacyImport(text)
+	if type(text) ~= "string" then
+		return nil, "empty"
+	end
 	text = gsub(text, "%s+", "")
-	if text == "" then return nil, "empty" end
+	if text == "" then
+		return nil, "empty"
+	end
 
-	if ssub(text, 1, #PREFIX) == PREFIX then
-		text = ssub(text, #PREFIX + 1)
+	if ssub(text, 1, #LEGACY_PREFIX) == LEGACY_PREFIX then
+		text = ssub(text, #LEGACY_PREFIX + 1)
 	end
 
 	local decoded = Base64Decode(text)
-	if not decoded or decoded == "" then return nil, "invalid" end
+	if not decoded or decoded == "" then
+		return nil, "invalid"
+	end
 
-	if not loadstring then return nil, "invalid" end
+	if not loadstring then
+		return nil, "invalid"
+	end
 	local chunk = loadstring(decoded)
-	if not chunk then return nil, "invalid" end
+	if not chunk then
+		return nil, "invalid"
+	end
 
 	-- Sandbox: run with an empty environment so the chunk can only build and
 	-- return a table; any attempt to call a global errors out under pcall.
-	if setfenv then setfenv(chunk, {}) end
+	if setfenv then
+		setfenv(chunk, {})
+	end
 	local ok, result = pcall(chunk)
-	if not ok or type(result) ~= "table" then return nil, "invalid" end
+	if not ok or type(result) ~= "table" then
+		return nil, "invalid"
+	end
 
 	local data = (type(result.d) == "table") and result.d or result
-	if type(data) ~= "table" or next(data) == nil then return nil, "invalid" end
+	if type(data) ~= "table" or next(data) == nil then
+		return nil, "invalid"
+	end
 
 	return data, result.p, result.v
+end
+
+local function ParseImport(text)
+	if type(text) ~= "string" then
+		return nil, "empty"
+	end
+	text = gsub(text, "%s+", "")
+	if text == "" then
+		return nil, "empty"
+	end
+
+	if ssub(text, 1, #PREFIX) == PREFIX then
+		if not (LibSerialize and LibDeflate) then
+			return nil, "invalid"
+		end
+
+		local encoded = ssub(text, #PREFIX + 1)
+		local compressed = LibDeflate:DecodeForPrint(encoded)
+		if not compressed then
+			return nil, "invalid"
+		end
+
+		local serialized = LibDeflate:DecompressDeflate(compressed)
+		if not serialized then
+			return nil, "invalid"
+		end
+
+		local ok, result = LibSerialize:Deserialize(serialized)
+		if not ok or type(result) ~= "table" then
+			return nil, "invalid"
+		end
+
+		local data = (type(result.d) == "table") and result.d or result
+		if type(data) ~= "table" or next(data) == nil then
+			return nil, "invalid"
+		end
+		return data, result.p, result.v
+	end
+
+	return ParseLegacyImport(text)
 end
 
 -- ---------------------------------------------------------------------------
@@ -188,7 +262,9 @@ StaticPopupDialogs["NEXENHANCE_PROFILE_IMPORT"] = {
 	button1 = _G.YES,
 	button2 = _G.NO,
 	OnAccept = function(_, data)
-		if type(data) ~= "table" then return end
+		if type(data) ~= "table" then
+			return
+		end
 		_G.NexEnhanceDB.profiles[ns.profileName] = data
 		ReloadUI()
 	end,
@@ -209,7 +285,9 @@ StaticPopupDialogs["NEXENHANCE_PROFILE_ACTION"] = {
 	button1 = _G.YES,
 	button2 = _G.NO,
 	OnAccept = function(_, data)
-		if data and data.func then data.func() end
+		if data and data.func then
+			data.func()
+		end
 	end,
 	timeout = 0,
 	whileDead = true,
@@ -286,6 +364,25 @@ local function DoCopy()
 	})
 end
 
+local function DoCopyFrom(name)
+	StaticPopup_Show("NEXENHANCE_PROFILE_ACTION", format(L["PROFILE_COPY_FROM_CONFIRM"], name, ns.profileName), nil, {
+		func = function()
+			if ns:CopyProfileFrom(name) then
+				ReloadUI()
+			end
+		end,
+	})
+end
+
+local function DoReset()
+	StaticPopup_Show("NEXENHANCE_PROFILE_ACTION", format(L["PROFILE_RESET_CONFIRM"], ns.profileName), nil, {
+		func = function()
+			ns:ResetProfile()
+			ReloadUI()
+		end,
+	})
+end
+
 local function DoDelete(name)
 	StaticPopup_Show("NEXENHANCE_PROFILE_ACTION", format(L["PROFILE_DELETE_CONFIRM"], name), nil, {
 		func = function()
@@ -301,15 +398,18 @@ local INPUT_BACKDROP = C.Backdrops.window
 
 local function CreateInputArea(parent)
 	local box = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	if not F.CreateNineSlice(box, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 }, border = { C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.7 } }) then
-		box:SetBackdrop(INPUT_BACKDROP)
-		box:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-		box:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.7)
-	end
+	box:SetBackdrop(INPUT_BACKDROP)
+	box:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	box:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.7)
 
-	local scroll = CreateFrame("ScrollFrame", nil, box, "UIPanelScrollFrameTemplate")
+	local scroll = CreateFrame("ScrollFrame", nil, box)
 	scroll:SetPoint("TOPLEFT", 8, -8)
 	scroll:SetPoint("BOTTOMRIGHT", -28, 8)
+
+	local scrollBar = CreateFrame("EventFrame", nil, box, "MinimalScrollBar")
+	scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 6, 0)
+	scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 6, 0)
+	ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
 
 	local editBox = CreateFrame("EditBox", nil, scroll)
 	editBox:SetMultiLine(true)
@@ -324,6 +424,18 @@ local function CreateInputArea(parent)
 			editBox:SetWidth(width)
 		end
 	end)
+
+	-- A multiline EditBox auto-sizes to its text, so when it's short or empty
+	-- only that sliver is actually clickable. Forward clicks anywhere in the
+	-- viewport (and the surrounding padding) to the box, matching Blizzard's
+	-- UIPanelInputScrollFrame behaviour, so the whole panel feels like one field.
+	local function FocusEditBox()
+		editBox:SetFocus()
+	end
+	scroll:EnableMouse(true)
+	scroll:SetScript("OnMouseDown", FocusEditBox)
+	box:EnableMouse(true)
+	box:SetScript("OnMouseDown", FocusEditBox)
 
 	return box, editBox
 end
@@ -342,7 +454,9 @@ end
 local function CreateMenuDropdown(parent, width, defaultText, populate)
 	local dd = CreateFrame("DropdownButton", nil, parent, "WowStyle1DropdownTemplate")
 	if not (dd and dd.SetupMenu) then
-		if dd then dd:Hide() end
+		if dd then
+			dd:Hide()
+		end
 		return nil
 	end
 	dd:SetWidth(width)
@@ -380,25 +494,67 @@ local function BuildProfileContent(container)
 	local copyBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
 	copyBtn:SetSize(140, 24)
 	copyBtn:SetPoint("LEFT", newBtn, "RIGHT", 10, 0)
-	copyBtn:SetText(L["Copy Current"])
+	copyBtn:SetText(L["Copy Current As"])
 	copyBtn:SetScript("OnClick", DoCopy)
+
+	local resetBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
+	resetBtn:SetSize(140, 24)
+	resetBtn:SetPoint("LEFT", copyBtn, "RIGHT", 10, 0)
+	resetBtn:SetText(L["Reset Current"])
+	resetBtn:SetScript("OnClick", DoReset)
 
 	local switchDD = CreateMenuDropdown(container, 220, ns.profileName, function(root)
 		local profiles = ns:GetProfiles()
 		for i = 1, #profiles do
 			local name = profiles[i]
-			root:CreateRadio(name, function() return ns.profileName == name end, function()
-				if name ~= ns.profileName then DoSwitch(name) end
+			root:CreateRadio(name, function()
+				return ns.profileName == name
+			end, function()
+				if name ~= ns.profileName then
+					DoSwitch(name)
+				end
 			end)
 		end
 	end)
-	if switchDD then switchDD:SetPoint("TOPLEFT", newBtn, "BOTTOMLEFT", 82, -16) end
+	if switchDD then
+		switchDD:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", -218, -16)
+	end
 
 	local switchLabel = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	switchLabel:SetWidth(72)
 	switchLabel:SetJustifyH("RIGHT")
 	switchLabel:SetText(L["Switch To"])
-	if switchDD then switchLabel:SetPoint("RIGHT", switchDD, "LEFT", -8, 0) end
+	if switchDD then
+		switchLabel:SetPoint("RIGHT", switchDD, "LEFT", -8, 0)
+	end
+
+	local copyFromDD = CreateMenuDropdown(container, 220, L["Copy From"], function(root)
+		local profiles = ns:GetProfiles()
+		local any = false
+		for i = 1, #profiles do
+			local name = profiles[i]
+			if name ~= ns.profileName then
+				any = true
+				root:CreateButton(name, function()
+					DoCopyFrom(name)
+				end)
+			end
+		end
+		if not any then
+			root:CreateTitle(L["PROFILE_NONE_TO_COPY"])
+		end
+	end)
+	if copyFromDD and switchDD then
+		copyFromDD:SetPoint("TOPLEFT", switchDD, "BOTTOMLEFT", 0, -10)
+	end
+
+	local copyFromLabel = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	copyFromLabel:SetWidth(72)
+	copyFromLabel:SetJustifyH("RIGHT")
+	copyFromLabel:SetText(L["Copy From"])
+	if copyFromDD then
+		copyFromLabel:SetPoint("RIGHT", copyFromDD, "LEFT", -8, 0)
+	end
 
 	local deleteDD = CreateMenuDropdown(container, 220, L["Delete"], function(root)
 		local profiles = ns:GetProfiles()
@@ -407,27 +563,31 @@ local function BuildProfileContent(container)
 			local name = profiles[i]
 			if name ~= ns.profileName then
 				any = true
-				root:CreateButton(name, function() DoDelete(name) end)
+				root:CreateButton(name, function()
+					DoDelete(name)
+				end)
 			end
 		end
 		if not any then
 			root:CreateTitle(L["PROFILE_NONE_TO_DELETE"])
 		end
 	end)
-	if deleteDD and switchDD then
-		deleteDD:SetPoint("TOPLEFT", switchDD, "BOTTOMLEFT", 0, -10)
+	if deleteDD then
+		deleteDD:SetPoint("TOPLEFT", (copyFromDD or switchDD or newBtn), "BOTTOMLEFT", 0, -10)
 	end
 
 	local deleteLabel = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 	deleteLabel:SetWidth(72)
 	deleteLabel:SetJustifyH("RIGHT")
 	deleteLabel:SetText(L["Delete"])
-	if deleteDD then deleteLabel:SetPoint("RIGHT", deleteDD, "LEFT", -8, 0) end
+	if deleteDD then
+		deleteLabel:SetPoint("RIGHT", deleteDD, "LEFT", -8, 0)
+	end
 
 	local divider = container:CreateTexture(nil, "ARTWORK")
 	divider:SetColorTexture(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.4)
 	divider:SetHeight(2)
-	divider:SetPoint("TOPLEFT", (deleteDD or newBtn), "BOTTOMLEFT", deleteDD and -82 or 0, -16)
+	divider:SetPoint("TOPLEFT", (deleteDD or copyFromDD or switchDD or newBtn), "BOTTOMLEFT", (deleteDD or copyFromDD or switchDD) and -82 or 0, -16)
 	divider:SetPoint("RIGHT", container, "RIGHT", -8, 0)
 
 	-- --- Import / export ---------------------------------------------------
@@ -495,13 +655,15 @@ local SIDEBAR_ICON = [[Interface\ICONS\INV_Inscription_Scroll]]
 local canvasBuilt = false
 
 local function BuildProfileCanvas(canvas)
-	if canvasBuilt then return end
+	if canvasBuilt then
+		return
+	end
 	canvasBuilt = true
 	BuildProfileContent(canvas)
 end
 
 local function ProfilesSidebarLabel()
-	return format("|T%s:16:16|t %s", SIDEBAR_ICON, L["Profiles"])
+	return format("|T%s:16:16|t |c%s%s|r", SIDEBAR_ICON, C.BrandHex, L["Profiles"])
 end
 
 ns:RegisterOptionsCanvas(L["Profiles"], BuildProfileCanvas, ProfilesSidebarLabel())
@@ -514,7 +676,9 @@ local WINDOW_BACKDROP = C.Backdrops.window
 local window
 
 local function BuildWindow()
-	if window then return window end
+	if window then
+		return window
+	end
 
 	window = CreateFrame("Frame", "NexEnhanceProfiles", UIParent, "BackdropTemplate")
 	window:SetSize(560, 600)
@@ -522,11 +686,9 @@ local function BuildWindow()
 	window:SetFrameStrata("DIALOG")
 	window:SetToplevel(true)
 	window:Hide()
-	if not F.CreateNineSlice(window, { layout = "TooltipDefaultLayout", bg = { 0.05, 0.05, 0.07, 0.97 }, border = { C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85 } }) then
-		window:SetBackdrop(WINDOW_BACKDROP)
-		window:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
-		window:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
-	end
+	window:SetBackdrop(WINDOW_BACKDROP)
+	window:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
+	window:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
 	F.MakeWindowMovable(window, "NexEnhanceProfiles") -- draggable + Escape-close
 
 	local logo = window:CreateTexture(nil, "ARTWORK")

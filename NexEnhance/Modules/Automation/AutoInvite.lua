@@ -41,12 +41,18 @@ local AutoInvite = ns:NewModule("AutoInvite", "autoInvite", { group = "automatio
 local previousInviterGUID
 
 local function IsTrustedInviter(guid)
-	if not guid or F.IsSecret(guid) then return false end
+	if not guid or F.IsSecret(guid) then
+		return false
+	end
 
 	local cfg = ns.db.autoInvite
 	if cfg.fromFriends then
-		if C_BattleNet_GetGameAccountInfoByGUID and C_BattleNet_GetGameAccountInfoByGUID(guid) then return true end
-		if C_FriendList_IsFriend and C_FriendList_IsFriend(guid) then return true end
+		if C_BattleNet_GetGameAccountInfoByGUID and C_BattleNet_GetGameAccountInfoByGUID(guid) then
+			return true
+		end
+		if C_FriendList_IsFriend and C_FriendList_IsFriend(guid) then
+			return true
+		end
 	end
 	if cfg.fromGuild and IsGuildMember(guid) then
 		return true
@@ -55,14 +61,22 @@ local function IsTrustedInviter(guid)
 end
 
 function AutoInvite:PARTY_INVITE_REQUEST(_, _, _, _, _, _, inviterGUID)
-	if not ns.db.autoInvite.enable then return end
+	if not ns.db.autoInvite.enable then
+		return
+	end
 
 	-- Don't hijack a deliberate manual decision: skip if already grouped, mid
 	-- queue, or this is the repeat fire for an invite we just handled. The GUID
 	-- can be a secret value in 12.0, so gate the equality/cache on F.NotSecret.
-	if IsInGroup() then return end
-	if QueueStatusButton and QueueStatusButton:IsShown() then return end
-	if F.NotSecret(inviterGUID) and inviterGUID == previousInviterGUID then return end
+	if IsInGroup() then
+		return
+	end
+	if QueueStatusButton and QueueStatusButton:IsShown() then
+		return
+	end
+	if F.NotSecret(inviterGUID) and inviterGUID == previousInviterGUID then
+		return
+	end
 
 	if IsTrustedInviter(inviterGUID) then
 		AcceptGroup()
@@ -79,7 +93,9 @@ function AutoInvite:GROUP_ROSTER_UPDATE()
 end
 
 function AutoInvite:RegisterModuleEvents()
-	if self.eventsRegistered then return end
+	if self.eventsRegistered then
+		return
+	end
 	self.eventsRegistered = true
 
 	self:RegisterEvent("PARTY_INVITE_REQUEST")

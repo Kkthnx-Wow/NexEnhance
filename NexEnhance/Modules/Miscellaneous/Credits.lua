@@ -6,12 +6,14 @@
 	panel (Credits canvas page).
 --]]
 
+-- luacheck: globals ScrollUtil
 local _, ns = ...
 local C, L, F = ns.C, ns.L, ns.F
 
 local _G = _G
 local format = string.format
 local CreateFrame = CreateFrame
+local ScrollUtil = ScrollUtil
 
 local BACKDROP = C.Backdrops.window
 
@@ -21,17 +23,6 @@ local CONTENT_WIDTH = 584
 local SETTINGS_ICON = [[Interface\ICONS\INV_Misc_Book_09]]
 
 local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or _G["RAID_CLASS_COLORS"]
-
--- Sidebar label only: rainbow letters like a Blizzard shop flair.
-local SIDEBAR_RAINBOW = {
-	{ 0.95, 0.25, 0.25 },
-	{ 1.00, 0.55, 0.12 },
-	{ 1.00, 0.88, 0.20 },
-	{ 0.25, 0.85, 0.35 },
-	{ 0.00, 0.68, 1.00 },
-	{ 0.58, 0.35, 0.95 },
-	{ 0.95, 0.35, 0.75 },
-}
 
 local CONTRIBUTORS = {
 	{
@@ -69,7 +60,7 @@ local CONTRIBUTORS = {
 		class = "MAGE",
 		project = "NDui",
 		url = "github.com/siweia/NDui",
-		thanks = "For NDui — a towering default-UI companion whose modules, polish, and restraint set the bar for what \"enhance, don't reskin\" can look like.",
+		thanks = 'For NDui — a towering default-UI companion whose modules, polish, and restraint set the bar for what "enhance, don\'t reskin" can look like.',
 		features = {
 			"Chat — Chat, Chat Filter, Chat Copy, Channel Rename",
 			"Automation — Auto Vendor, Quick Quest, Faster Loot, Movie Skip",
@@ -198,10 +189,10 @@ local CONTRIBUTORS = {
 		name = "Alteredcross",
 		class = "PALADIN",
 		project = "Chief Break-It Officer & Amateur Theorist",
-		thanks = "Our good friend and forever PTR buddy — the paladin who logs in, clicks everything twice, /reloads on principle, and reports bugs before we finish typing the commit message. Half QA legend, half conspiracy theorist; fully convinced Blizzard nerfs our AFK bar when the moon is in retrograde. NexEnhance would ship with twice as many \"wait, what?\" moments without you.",
+		thanks = 'Our good friend and forever PTR buddy — the paladin who logs in, clicks everything twice, /reloads on principle, and reports bugs before we finish typing the commit message. Half QA legend, half conspiracy theorist; fully convinced Blizzard nerfs our AFK bar when the moon is in retrograde. NexEnhance would ship with twice as many "wait, what?" moments without you.',
 		features = {
 			"Testing — if it can break, he will find it (lovingly)",
-			"Bug hunting — \"bro watch this\" followed by a perfect repro",
+			'Bug hunting — "bro watch this" followed by a perfect repro',
 			"Morale — unsolicited theories about who really moved the crest 6 pixels",
 		},
 	},
@@ -218,33 +209,20 @@ local LIBRARIES = {
 
 local function GetClassColor(classFile)
 	local color = CLASS_COLORS and CLASS_COLORS[classFile]
-	if not color then return 1, 1, 1 end
+	if not color then
+		return 1, 1, 1
+	end
 	return color.r, color.g, color.b
 end
 
 local function ColorHex(classFile)
 	local r, g, b = GetClassColor(classFile)
-	return format("|cff%02x%02x%02x", r * 255, g * 255, b * 255)
-end
-
-local function RainbowEscape(text, offset)
-	local parts = {}
-	local count = #SIDEBAR_RAINBOW
-	offset = offset or 0
-	for i = 1, #text do
-		local char = text:sub(i, i)
-		if char == " " then
-			parts[#parts + 1] = " "
-		else
-			local c = SIDEBAR_RAINBOW[((i - 1 + offset) % count) + 1]
-			parts[#parts + 1] = format("|cff%02x%02x%02x%s|r", c[1] * 255, c[2] * 255, c[3] * 255, char)
-		end
-	end
-	return table.concat(parts)
+	return "|c" .. F.RGBToHex(r, g, b)
 end
 
 local function CreditsSettingsLabel()
-	return format("|T%s:16:16|t %s", SETTINGS_ICON, RainbowEscape(L["Credits"], 0))
+	-- Brand-blue title (was rainbow) so the utility pages read as their own group.
+	return format("|T%s:16:16|t |c%s%s|r", SETTINGS_ICON, C.BrandHex, L["Credits"])
 end
 
 local function FormatBullets(lines)
@@ -301,10 +279,9 @@ local function CreateCreditCard(parent, entry, contentWidth)
 	local textWidth = contentWidth - CARD_PAD * 2 - 6
 
 	local card = CreateFrame("Frame", nil, parent, "BackdropTemplate")
-	if not F.CreateNineSlice(card, { layout = "TooltipDefaultLayout", bg = { 0.04, 0.04, 0.05, 0.92 }, border = { 0, 0, 0, 0 } }) then
-		card:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background" })
-		card:SetBackdropColor(0.04, 0.04, 0.05, 0.92)
-	end
+	-- Borderless dark fill (the accent stripe below is the only edge art).
+	card:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background" })
+	card:SetBackdropColor(0.04, 0.04, 0.05, 0.92)
 
 	local accent = card:CreateTexture(nil, "ARTWORK")
 	accent:SetColorTexture(r, g, b, 1)
@@ -353,8 +330,7 @@ local function CreateCreditCard(parent, entry, contentWidth)
 	features:SetSpacing(2)
 	features:SetText(FormatBullets(entry.features))
 
-	local cardHeight = CARD_PAD + name:GetStringHeight() + 3 + project:GetStringHeight()
-		+ (entry.url and 16 or 0) + 10 + thanks:GetStringHeight() + 10 + features:GetStringHeight() + CARD_PAD
+	local cardHeight = CARD_PAD + name:GetStringHeight() + 3 + project:GetStringHeight() + (entry.url and 16 or 0) + 10 + thanks:GetStringHeight() + 10 + features:GetStringHeight() + CARD_PAD
 	card:SetHeight(cardHeight)
 
 	return card, cardHeight
@@ -383,8 +359,7 @@ local function PopulateCreditsList(scrollChild, contentWidth)
 		line:SetWidth(contentWidth - 16)
 		line:SetJustifyH("LEFT")
 		line:SetWordWrap(true)
-		line:SetText(format("%s%s|r |cff888888by %s%s|r — %s",
-			ColorHex(lib.class), lib.name, ColorHex(lib.class), lib.author, lib.note))
+		line:SetText(format("%s%s|r |cff888888by %s%s|r — %s", ColorHex(lib.class), lib.name, ColorHex(lib.class), lib.author, lib.note))
 		y = y + line:GetStringHeight() + 6
 	end
 
@@ -401,9 +376,14 @@ local function PopulateCreditsList(scrollChild, contentWidth)
 end
 
 local function AttachCreditsScroll(parent, topInset, contentWidth)
-	local scroll = CreateFrame("ScrollFrame", nil, parent, "UIPanelScrollFrameTemplate")
+	local scroll = CreateFrame("ScrollFrame", nil, parent)
 	scroll:SetPoint("TOPLEFT", parent, "TOPLEFT", 4, topInset)
-	scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -26, 6)
+	scroll:SetPoint("BOTTOMRIGHT", parent, "BOTTOMRIGHT", -28, 6)
+
+	local scrollBar = CreateFrame("EventFrame", nil, parent, "MinimalScrollBar")
+	scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 6, 0)
+	scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 6, 0)
+	ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
 
 	local child = CreateFrame("Frame", nil, scroll)
 	child:SetWidth(contentWidth)
@@ -419,7 +399,9 @@ end
 local frame
 
 local function BuildStandalone()
-	if frame then return frame end
+	if frame then
+		return frame
+	end
 
 	frame = CreateFrame("Frame", "NexEnhanceCredits", UIParent, "BackdropTemplate")
 	frame:SetSize(640, 720)
@@ -427,11 +409,9 @@ local function BuildStandalone()
 	frame:SetFrameStrata("DIALOG")
 	frame:SetToplevel(true)
 	frame:Hide()
-	if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout", bg = { 0.05, 0.05, 0.07, 0.97 }, border = { C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85 } }) then
-		frame:SetBackdrop(BACKDROP)
-		frame:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
-		frame:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
-	end
+	frame:SetBackdrop(BACKDROP)
+	frame:SetBackdropColor(0.05, 0.05, 0.07, 0.97)
+	frame:SetBackdropBorderColor(C.Colors.brand[1], C.Colors.brand[2], C.Colors.brand[3], 0.85)
 	F.MakeWindowMovable(frame, "NexEnhanceCredits") -- draggable + Escape-close
 
 	local logo = frame:CreateTexture(nil, "ARTWORK")
@@ -480,7 +460,9 @@ end
 local canvasBuilt = false
 
 local function BuildCreditsCanvas(canvas)
-	if canvasBuilt then return end
+	if canvasBuilt then
+		return
+	end
 	canvasBuilt = true
 
 	local hero = CreateFrame("Frame", nil, canvas)

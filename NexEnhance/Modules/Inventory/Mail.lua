@@ -102,8 +102,12 @@ local function CollectGold()
 end
 
 local function CollectAllGold()
-	if isGoldCollecting then return end
-	if GetTotalInboxMoney() == 0 then return end
+	if isGoldCollecting then
+		return
+	end
+	if GetTotalInboxMoney() == 0 then
+		return
+	end
 
 	isGoldCollecting = true
 	mailIndex = GetInboxNumItems()
@@ -113,7 +117,9 @@ end
 
 local function GoldButton_OnEnter(self)
 	local total = GetTotalInboxMoney()
-	if total <= 0 then return end
+	if total <= 0 then
+		return
+	end
 
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
 	GameTooltip:AddLine(L["Total Gold"])
@@ -125,7 +131,9 @@ end
 local function CreateGoldButton()
 	local inbox = _G["InboxFrame"]
 	local openAll = _G["OpenAllMail"]
-	if not (inbox and openAll) then return end
+	if not (inbox and openAll) then
+		return
+	end
 
 	openAll:ClearAllPoints()
 	openAll:SetPoint("TOPLEFT", inbox, "TOPLEFT", 50, -35)
@@ -171,7 +179,9 @@ end
 local function CreateTakeAllButton()
 	local openMail = _G["OpenMailFrame"]
 	local replyButton = _G["OpenMailReplyButton"]
-	if not (openMail and replyButton) then return end
+	if not (openMail and replyButton) then
+		return
+	end
 
 	local button = CreateFrame("Button", nil, openMail, "UIPanelButtonTemplate")
 	button:SetSize(82, 22)
@@ -227,12 +237,16 @@ end
 -- ---------------------------------------------------------------------------
 local inboxItems = {}
 local function InboxItem_OnEnter(self)
-	if not self.index then return end -- ignore fake rows from other addons
+	if not self.index then
+		return
+	end -- ignore fake rows from other addons
 
 	wipe(inboxItems)
 
 	local itemAttached = select(8, GetInboxHeaderInfo(self.index))
-	if not (itemAttached and itemAttached > 1) then return end
+	if not (itemAttached and itemAttached > 1) then
+		return
+	end
 
 	for attachID = 1, 12 do
 		local _, itemID, _, itemCount = GetInboxItem(self.index, attachID)
@@ -258,7 +272,9 @@ end
 -- ---------------------------------------------------------------------------
 local function ApplyOpenAllMailFix()
 	local openAll = _G["OpenAllMail"]
-	if not (openAll and openAll.AdvanceToNextItem) then return end
+	if not (openAll and openAll.AdvanceToNextItem) then
+		return
+	end
 	local ATTACHMENTS_MAX = _G.ATTACHMENTS_MAX or MAX_RECEIVE
 
 	function openAll:AdvanceToNextItem()
@@ -296,7 +312,9 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function Mail:Setup()
-	if self.done then return end
+	if self.done then
+		return
+	end
 	self.done = true
 
 	CreateDeleteButtons()
@@ -311,7 +329,9 @@ function Mail:Setup()
 end
 
 function Mail:OnEnable()
-	if not ns.db.mail.enable then return end
+	if not ns.db.mail.enable then
+		return
+	end
 	self:Setup()
 end
 

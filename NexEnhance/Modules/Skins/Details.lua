@@ -23,7 +23,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local F, L = ns.F, ns.L
+local L = ns.L
 
 local _G = _G
 local max = math.max
@@ -61,7 +61,9 @@ end
 -- frame). Parented to the window's parent at a lower level so the fill sits
 -- behind the bars rather than covering them.
 local function ApplyBorder(frame)
-	if not frame or frame.__nexDetailsBorder then return end
+	if not frame or frame.__nexDetailsBorder then
+		return
+	end
 
 	local bg = CreateFrame("Frame", nil, frame:GetParent() or frame, "BackdropTemplate")
 	bg:SetFrameStrata(frame:GetFrameStrata())
@@ -69,10 +71,8 @@ local function ApplyBorder(frame)
 	-- Extend up 18 (to cover the Details toolbar/title) and out 1px each side.
 	bg:SetPoint("TOPLEFT", frame, "TOPLEFT", -4, 22)
 	bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 4, -4)
-	if not F.CreateNineSlice(bg, { layout = "TooltipDefaultLayout", bg = { 0.06, 0.06, 0.06, 0.9 } }) then
-		bg:SetBackdrop(DETAILS_BACKDROP)
-		bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
-	end
+	bg:SetBackdrop(DETAILS_BACKDROP)
+	bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
 
 	frame.__nexDetailsBorder = bg
 	borders[#borders + 1] = bg
@@ -82,17 +82,33 @@ end
 -- no wallpaper/own backdrop, desaturated menu, tidy toolbar) then frame it.
 -- Every Details call is guarded so we stay safe across Details versions.
 local function SetupInstance(instance)
-	if not instance or instance.__nexStyled then return end
+	if not instance or instance.__nexStyled then
+		return
+	end
 
-	if instance.ChangeSkin then instance:ChangeSkin("Minimalistic") end
-	if instance.InstanceWallpaper then instance:InstanceWallpaper(false) end
-	if instance.DesaturateMenu then instance:DesaturateMenu(true) end
-	if instance.HideMainIcon then instance:HideMainIcon(false) end
+	if instance.ChangeSkin then
+		instance:ChangeSkin("Minimalistic")
+	end
+	if instance.InstanceWallpaper then
+		instance:InstanceWallpaper(false)
+	end
+	if instance.DesaturateMenu then
+		instance:DesaturateMenu(true)
+	end
+	if instance.HideMainIcon then
+		instance:HideMainIcon(false)
+	end
 	-- Drops Details' own backdrop; upstream notes this can block resizing - set
 	-- back to "Details Ground" if that ever becomes an issue.
-	if instance.SetBackdropTexture then instance:SetBackdropTexture("None") end
-	if instance.MenuAnchor then instance:MenuAnchor(16, 3) end
-	if instance.ToolbarMenuButtonsSize then instance:ToolbarMenuButtonsSize(1) end
+	if instance.SetBackdropTexture then
+		instance:SetBackdropTexture("None")
+	end
+	if instance.MenuAnchor then
+		instance:MenuAnchor(16, 3)
+	end
+	if instance.ToolbarMenuButtonsSize then
+		instance:ToolbarMenuButtonsSize(1)
+	end
 
 	ApplyBorder(instance.baseframe)
 
@@ -101,9 +117,13 @@ end
 
 -- Hook Details' instance-open event so freshly shown windows get skinned too.
 local function HookInstanceOpen()
-	if DetailsSkin.listenerHooked then return end
+	if DetailsSkin.listenerHooked then
+		return
+	end
 	local Details = _G.Details
-	if not (Details and Details.CreateEventListener) then return end
+	if not (Details and Details.CreateEventListener) then
+		return
+	end
 	DetailsSkin.listenerHooked = true
 
 	local listener = Details:CreateEventListener()
@@ -119,9 +139,13 @@ local function HookInstanceOpen()
 end
 
 function DetailsSkin:Style()
-	if self.styled then return end
+	if self.styled then
+		return
+	end
 	local Details = _G.Details
-	if not (Details and Details.GetInstance) then return end
+	if not (Details and Details.GetInstance) then
+		return
+	end
 	self.styled = true
 
 	local index = 1
@@ -142,7 +166,9 @@ function DetailsSkin:ADDON_LOADED(addon)
 end
 
 function DetailsSkin:OnEnable()
-	if not ns.db.detailsSkin.enable then return end
+	if not ns.db.detailsSkin.enable then
+		return
+	end
 	if C_AddOns.IsAddOnLoaded("Details") then
 		self:Style()
 	else
@@ -152,7 +178,9 @@ end
 
 -- Live toggle: build (first enable) and show, or hide the borders.
 function DetailsSkin:OnSettingChanged(key)
-	if key ~= "enable" then return end
+	if key ~= "enable" then
+		return
+	end
 	if ns.db.detailsSkin.enable then
 		if C_AddOns.IsAddOnLoaded("Details") then
 			self:Style()

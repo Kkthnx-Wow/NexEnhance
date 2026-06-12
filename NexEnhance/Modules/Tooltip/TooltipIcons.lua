@@ -10,7 +10,9 @@
 local _, ns = ...
 local F, C = ns.F, ns.C
 local Tooltip = ns:GetModule("Tooltip")
-if not Tooltip then return end
+if not Tooltip then
+	return
+end
 
 local _G = _G
 local gsub, strfind, unpack, select, next = string.gsub, string.find, unpack, select, next
@@ -29,30 +31,46 @@ function Tooltip:SetupTooltipIcon(icon)
 
 	for i = 2, self:NumLines() do
 		local line = _G[self:GetName() .. "TextLeft" .. i]
-		if not line then break end
+		if not line then
+			break
+		end
 		local text = line:GetText()
 		-- Secret check FIRST: string ops (strfind/gsub) error on secret strings
 		-- (e.g. aura tooltips in instances). Only then the cheap |T pre-filter so
 		-- we skip the gsub on lines without a texture escape.
 		if text and F.NotSecret(text) and text ~= " " and strfind(text, "|T", 1, true) then
 			local newText, count = gsub(text, "|T([^:]-):[%d+:]+|t", "|T%1:14:14:" .. newString .. "|t")
-			if count > 0 then line:SetText(newText) end
+			if count > 0 then
+				line:SetText(newText)
+			end
 		end
 	end
 end
 
 local function ReskinRewardIcon(frame)
-	if not frame or not frame.Icon then return end
+	if not frame or not frame.Icon then
+		return
+	end
 	frame.Icon:SetTexCoord(unpack(C.TexCoord))
-	if frame.IconBorder then frame.IconBorder:SetAlpha(0) end
+	if frame.IconBorder then
+		frame.IconBorder:SetAlpha(0)
+	end
 end
 
 local GetTooltipTextureByType = {
-	[Enum.TooltipDataType.Item] = function(id) return C_Item_GetItemIconByID(id) end,
-	[Enum.TooltipDataType.Toy] = function(id) return C_Item_GetItemIconByID(id) end,
-	[Enum.TooltipDataType.Spell] = function(id) return C_Spell_GetSpellTexture(id) end,
+	[Enum.TooltipDataType.Item] = function(id)
+		return C_Item_GetItemIconByID(id)
+	end,
+	[Enum.TooltipDataType.Toy] = function(id)
+		return C_Item_GetItemIconByID(id)
+	end,
+	[Enum.TooltipDataType.Spell] = function(id)
+		return C_Spell_GetSpellTexture(id)
+	end,
 	[Enum.TooltipDataType.Mount] = function(id)
-		if C_MountJournal_GetMountInfoByID then return select(3, C_MountJournal_GetMountInfoByID(id)) end
+		if C_MountJournal_GetMountInfoByID then
+			return select(3, C_MountJournal_GetMountInfoByID(id))
+		end
 	end,
 }
 
@@ -81,17 +99,27 @@ function Tooltip:ReskinTooltipIcons()
 	-- These tooltip setters may be absent on some clients; guard each hook so a
 	-- missing method degrades quietly instead of erroring during setup.
 	if GameTooltip.SetUnitAura then
-		hooksecurefunc(GameTooltip, "SetUnitAura", function(tip) Tooltip.SetupTooltipIcon(tip) end)
+		hooksecurefunc(GameTooltip, "SetUnitAura", function(tip)
+			Tooltip.SetupTooltipIcon(tip)
+		end)
 	end
 	if GameTooltip.SetAzeriteEssence then
-		hooksecurefunc(GameTooltip, "SetAzeriteEssence", function(tip) Tooltip.SetupTooltipIcon(tip) end)
+		hooksecurefunc(GameTooltip, "SetAzeriteEssence", function(tip)
+			Tooltip.SetupTooltipIcon(tip)
+		end)
 	end
 	if GameTooltip.SetAzeriteEssenceSlot then
-		hooksecurefunc(GameTooltip, "SetAzeriteEssenceSlot", function(tip) Tooltip.SetupTooltipIcon(tip) end)
+		hooksecurefunc(GameTooltip, "SetAzeriteEssenceSlot", function(tip)
+			Tooltip.SetupTooltipIcon(tip)
+		end)
 	end
 
 	local gt = GameTooltip ---@type any
 	local eit = EmbeddedItemTooltip ---@type any
-	if gt.ItemTooltip then ReskinRewardIcon(gt.ItemTooltip) end
-	if eit and eit.ItemTooltip then ReskinRewardIcon(eit.ItemTooltip) end
+	if gt.ItemTooltip then
+		ReskinRewardIcon(gt.ItemTooltip)
+	end
+	if eit and eit.ItemTooltip then
+		ReskinRewardIcon(eit.ItemTooltip)
+	end
 end

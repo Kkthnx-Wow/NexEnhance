@@ -79,11 +79,15 @@ function MapReveal:MapData_RefreshOverlays(fullUpdate)
 
 	local WorldMapFrame = _G.WorldMapFrame
 	local mapID = WorldMapFrame and WorldMapFrame.mapID
-	if not mapID then return end
+	if not mapID then
+		return
+	end
 
 	local mapArtID = C_Map_GetMapArtID(mapID)
 	local mapData = mapArtID and C.WorldMapPlusData[mapArtID]
-	if not mapData then return end
+	if not mapData then
+		return
+	end
 
 	local exploredMapTextures = C_MapExplorationInfo_GetExploredMapTextures(mapID)
 	if exploredMapTextures then
@@ -97,7 +101,9 @@ function MapReveal:MapData_RefreshOverlays(fullUpdate)
 	end
 	local layers = C_Map_GetMapArtLayers(mapID)
 	local layerInfo = layers and layers[self.layerIndex]
-	if not layerInfo then return end
+	if not layerInfo then
+		return
+	end
 
 	local tileSizeWidth = layerInfo.tileWidth
 	local tileSizeHeight = layerInfo.tileHeight
@@ -172,10 +178,16 @@ function MapReveal:MapData_ResetTexturePool(texture)
 end
 
 function MapReveal:Setup()
-	if self.started then return end
+	if self.started then
+		return
+	end
 	local WorldMapFrame = _G.WorldMapFrame
-	if not WorldMapFrame then return end -- Blizzard_WorldMap not available yet
-	if C_AddOns_IsAddOnLoaded and C_AddOns_IsAddOnLoaded("Leatrix_Maps") then return end
+	if not WorldMapFrame then
+		return
+	end -- Blizzard_WorldMap not available yet
+	if C_AddOns_IsAddOnLoaded and C_AddOns_IsAddOnLoaded("Leatrix_Maps") then
+		return
+	end
 	self.started = true
 
 	for pin in WorldMapFrame:EnumeratePinsByTemplate("MapExplorationPinTemplate") do

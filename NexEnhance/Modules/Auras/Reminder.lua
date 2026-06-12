@@ -170,7 +170,9 @@ local function AddItemGroup()
 			if not value.texture then
 				value.texture = C_Item_GetItemIconByID(value.itemID)
 			end
-			if not groups then groups = {} end
+			if not groups then
+				groups = {}
+			end
 			tinsert(groups, value)
 		end
 	end
@@ -205,20 +207,36 @@ local function Reminder_Update(cfg)
 	local inInst, instType = IsInInstance()
 
 	if itemID then
-		if inGroup and GetNumGroupMembers() < 2 then isGrouped = false end
-		if equip and not C_Item_IsEquippedItem(itemID) then isEquipped = false end
+		if inGroup and GetNumGroupMembers() < 2 then
+			isGrouped = false
+		end
+		if equip and not C_Item_IsEquippedItem(itemID) then
+			isEquipped = false
+		end
 		if C_Item_GetItemCount(itemID) == 0 or not isEquipped or not isGrouped or C_Item_GetItemCooldown(itemID) > 0 then
 			frame:Hide()
 			return
 		end
 	end
 
-	if depend and not IsPlayerSpell(depend) then isPlayerSpell = false end
-	if spec and spec ~= GetSpecialization() then isRightSpec = false end
-	if combat and InCombatLockdown() then isInCombat = true end
-	if instance and inInst and (instType == "scenario" or instType == "party" or instType == "raid") then isInInst = true end
-	if pvp and (instType == "arena" or instType == "pvp" or GetZonePVPInfo() == "combat") then isInPVP = true end
-	if not combat and not instance and not pvp then isInCombat, isInInst, isInPVP = true, true, true end
+	if depend and not IsPlayerSpell(depend) then
+		isPlayerSpell = false
+	end
+	if spec and spec ~= GetSpecialization() then
+		isRightSpec = false
+	end
+	if combat and InCombatLockdown() then
+		isInCombat = true
+	end
+	if instance and inInst and (instType == "scenario" or instType == "party" or instType == "raid") then
+		isInInst = true
+	end
+	if pvp and (instType == "arena" or instType == "pvp" or GetZonePVPInfo() == "combat") then
+		isInPVP = true
+	end
+	if not combat and not instance and not pvp then
+		isInCombat, isInInst, isInPVP = true, true, true
+	end
 
 	frame:Hide()
 	if isPlayerSpell and isRightSpec and (isInCombat or isInInst or isInPVP) and not UnitInVehicle("player") and not UnitIsDeadOrGhost("player") then
@@ -231,7 +249,9 @@ local function Reminder_Update(cfg)
 		else
 			for i = 1, 40 do
 				local auraData = C_UnitAuras_GetBuffDataByIndex("player", i, "HELPFUL")
-				if not auraData then break end
+				if not auraData then
+					break
+				end
 				local spellId = auraData.spellId
 				if F.NotSecret(spellId) and spellId and cfg.spells[spellId] then
 					frame:Hide()
@@ -255,15 +275,12 @@ local function Reminder_BuildFrame(texture)
 	icon:SetTexture(texture)
 	frame.Icon = icon
 
-	-- Blizzard tooltip-style gold border, wrapping the icon just like the minimap.
+	-- Tooltip-style border (edge only, no fill) wrapping the icon like the minimap.
 	local border = CreateFrame("Frame", nil, frame, "BackdropTemplate")
 	border:SetPoint("TOPLEFT", frame, "TOPLEFT", -3, 3)
 	border:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", 3, -3)
 	border:SetFrameLevel(frame:GetFrameLevel() + 1)
-	-- Edge-only NineSlice (no fill) wrapping the icon, matching the minimap.
-	if not F.CreateNineSlice(border, { layout = "TooltipDefaultLayout", bg = false }) then
-		border:SetBackdrop(REMINDER_BORDER)
-	end
+	border:SetBackdrop(REMINDER_BORDER)
 	frame.Border = border
 
 	local text = F.CreateFS(frame, 13, L["Lack"])
@@ -280,7 +297,9 @@ local function Reminder_Create(cfg)
 	local texture = cfg.texture
 	if not texture then
 		local spellID = next(cfg.spells)
-		if spellID then texture = C_Spell_GetSpellTexture(spellID) end
+		if spellID then
+			texture = C_Spell_GetSpellTexture(spellID)
+		end
 	end
 
 	local frame = Reminder_BuildFrame(texture)
@@ -304,11 +323,17 @@ end
 local updatePending
 local function Reminder_RunUpdate()
 	updatePending = nil
-	if preview then return end
-	if not ns.db.reminder.enable or not groups then return end
+	if preview then
+		return
+	end
+	if not ns.db.reminder.enable or not groups then
+		return
+	end
 
 	for _, cfg in pairs(groups) do
-		if not cfg.frame then Reminder_Create(cfg) end
+		if not cfg.frame then
+			Reminder_Create(cfg)
+		end
 		Reminder_Update(cfg)
 	end
 	Reminder_UpdateAnchor()
@@ -318,7 +343,9 @@ end
 -- coalesce them into a single end-of-frame rescan instead of doing a full
 -- buff scan + visibility + reanchor pass per individual aura change.
 local function Reminder_OnEvent()
-	if updatePending then return end
+	if updatePending then
+		return
+	end
 	updatePending = true
 	C_Timer.After(0, Reminder_RunUpdate)
 end
@@ -327,7 +354,9 @@ end
 -- Sample icons (shown for /nex reminder and while Edit Mode is open)
 -- ---------------------------------------------------------------------------
 local function Reminder_BuildSamples()
-	if #testFrames > 0 then return end
+	if #testFrames > 0 then
+		return
+	end
 	-- Prefer the player's real reminder icons; fall back to placeholders for
 	-- classes/specs with nothing configured.
 	local textures = {}
@@ -336,7 +365,9 @@ local function Reminder_BuildSamples()
 			local tex = cfg.texture
 			if not tex then
 				local spellID = next(cfg.spells)
-				if spellID then tex = C_Spell_GetSpellTexture(spellID) end
+				if spellID then
+					tex = C_Spell_GetSpellTexture(spellID)
+				end
 			end
 			textures[#textures + 1] = tex
 		end
@@ -366,7 +397,9 @@ end
 -- always exists (even for classes without reminder buffs, or while disabled),
 -- which is what lets the mover show up in Edit Mode without test mode.
 function Reminder:CreateAnchor()
-	if parentFrame then return end
+	if parentFrame then
+		return
+	end
 	iconSize = (ns.db.reminder and ns.db.reminder.iconSize) or iconSize
 	parentFrame = CreateFrame("Frame", nil, UIParent)
 	parentFrame:SetSize(iconSize, iconSize)
@@ -397,7 +430,9 @@ function Reminder:CreateAnchor()
 end
 
 function Reminder:Setup()
-	if self.started then return end
+	if self.started then
+		return
+	end
 
 	-- Fold in usable consumables once (bags are ready by OnEnable).
 	if not self.itemsAdded then
@@ -405,7 +440,9 @@ function Reminder:Setup()
 		self.itemsAdded = true
 	end
 
-	if not groups then return end
+	if not groups then
+		return
+	end
 	self.started = true
 
 	self:CreateAnchor()
@@ -446,7 +483,9 @@ function Reminder:ApplyIconSize()
 		testFrames[i]:SetSize(iconSize, iconSize)
 	end
 
-	if not parentFrame then return end
+	if not parentFrame then
+		return
+	end
 	if preview then
 		Reminder_LayoutSamples()
 	else
@@ -461,7 +500,9 @@ function Reminder:RefreshPreview()
 
 	local shouldShow = manualTest or editPreview
 	if shouldShow == preview then
-		if shouldShow then Reminder_LayoutSamples() end
+		if shouldShow then
+			Reminder_LayoutSamples()
+		end
 		return
 	end
 	preview = shouldShow

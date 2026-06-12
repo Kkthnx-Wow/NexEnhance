@@ -77,7 +77,9 @@ local MISSING_STATS = {
 }
 
 local function HasRole(roles, role)
-	if not roles then return true end
+	if not roles then
+		return true
+	end
 
 	for i = 1, #roles do
 		if roles[i] == role then
@@ -99,15 +101,21 @@ local function ShouldShowMissingStat(stat, spec, role)
 end
 
 local function AddMissingStatRows()
-	if InCombatLockdown() then return end
+	if InCombatLockdown() then
+		return
+	end
 
 	local pane = CharacterStatsPane
 	local pool = pane and pane.statsFramePool
 	local enhancements = pane and pane.EnhancementsCategory
-	if not (pool and enhancements) then return end
+	if not (pool and enhancements) then
+		return
+	end
 
 	local _, anchor = enhancements:GetPoint()
-	if not anchor then return end
+	if not anchor then
+		return
+	end
 
 	local spec = C_SpecializationInfo.GetSpecialization()
 	local role = spec and GetSpecializationRoleEnum(spec)
@@ -152,7 +160,9 @@ end
 -- only fall back to Blizzard's value instead of erroring.
 -- ---------------------------------------------------------------------------
 local function EnhanceItemLevel(statFrame, unit)
-	if unit ~= "player" then return end
+	if unit ~= "player" then
+		return
+	end
 
 	local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel()
 	local minItemLevel = C_PaperDollInfo.GetMinItemLevel()
@@ -174,10 +184,14 @@ end
 -- Rating percentages: Blizzard rounds to a whole number; show two decimals.
 -- ---------------------------------------------------------------------------
 local function EnhancePercentage(statFrame, label, _, isPercentage)
-	if not (isPercentage or label == STAT_HASTE) then return end
+	if not (isPercentage or label == STAT_HASTE) then
+		return
+	end
 
 	local value = statFrame.numericValue
-	if F.IsSecret(value) then return end -- 12.0: leave Blizzard's rounded text
+	if F.IsSecret(value) then
+		return
+	end -- 12.0: leave Blizzard's rounded text
 
 	statFrame.Value:SetFormattedText("%.2f%%", value)
 end
@@ -212,10 +226,14 @@ end
 -- gold and leave Blizzard's coloured cases alone.
 local function ColorItemLevel()
 	local value = CharacterStatsPane.ItemLevelFrame and CharacterStatsPane.ItemLevelFrame.Value
-	if not (value and GetItemLevelColor) then return end
+	if not (value and GetItemLevelColor) then
+		return
+	end
 
 	local r, g, b = GetItemLevelColor()
-	if not (r and g and b) or F.IsSecret(r) or F.IsSecret(g) or F.IsSecret(b) then return end
+	if not (r and g and b) or F.IsSecret(r) or F.IsSecret(g) or F.IsSecret(b) then
+		return
+	end
 
 	if r > 0.99 and g > 0.99 and b > 0.99 then
 		value:SetTextColor(ARTIFACT_R, ARTIFACT_G, ARTIFACT_B)

@@ -121,9 +121,13 @@ end
 -- ---------------------------------------------------------------------------
 local talkingHeadHidden
 local function NoTalkingHeads()
-	if not ns.db.alertFrames.hideTalkingHead then return end
+	if not ns.db.alertFrames.hideTalkingHead then
+		return
+	end
 	local frame = _G.TalkingHeadFrame
-	if not frame or talkingHeadHidden then return end
+	if not frame or talkingHeadHidden then
+		return
+	end
 
 	talkingHeadHidden = true
 	frame:UnregisterAllEvents()
@@ -142,7 +146,9 @@ function AlertFrames:ADDON_LOADED(addon)
 end
 
 function AlertFrames:OnEnable()
-	if not ns.db.alertFrames.enable then return end
+	if not ns.db.alertFrames.enable then
+		return
+	end
 
 	parentFrame = CreateFrame("Frame", nil, UIParent)
 	parentFrame:SetSize(200, 30)

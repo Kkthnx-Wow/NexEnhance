@@ -59,7 +59,9 @@ local cannotDual = false
 local function BuildUnusable()
 	local W = Enum and Enum.ItemWeaponSubclass
 	local A = Enum and Enum.ItemArmorSubclass
-	if not (W and A and Enum.ItemClass) then return end
+	if not (W and A and Enum.ItemClass) then
+		return
+	end
 
 	local byClass = {
 		DEATHKNIGHT = { weapons = { W.Bows, W.Guns, W.Warglaive, W.Staff, W.Unarmed, W.Dagger, W.Thrown, W.Crossbow, W.Wand }, armor = { A.Shield } },
@@ -78,7 +80,9 @@ local function BuildUnusable()
 	}
 
 	local entry = byClass[UnitClassBase("player")]
-	if not entry then return end
+	if not entry then
+		return
+	end
 
 	local lookup = { [Enum.ItemClass.Weapon] = {}, [Enum.ItemClass.Armor] = {} }
 	local weapons, armor = lookup[Enum.ItemClass.Weapon], lookup[Enum.ItemClass.Armor]
@@ -103,10 +107,14 @@ local playerLevel = 1
 local classCache = {}
 
 local function IsClassUnusable(itemID)
-	if not (playerUnusable and itemID) then return false end
+	if not (playerUnusable and itemID) then
+		return false
+	end
 
 	local cached = classCache[itemID]
-	if cached ~= nil then return cached end
+	if cached ~= nil then
+		return cached
+	end
 
 	local _, _, _, equipSlot, _, classID, subClassID = C_Item_GetItemInfoInstant(itemID)
 	local result = false
@@ -123,11 +131,15 @@ local function IsClassUnusable(itemID)
 end
 
 local function IsUnusable(link, itemID)
-	if itemID and IsClassUnusable(itemID) then return true end
+	if itemID and IsClassUnusable(itemID) then
+		return true
+	end
 
 	if link then
 		local reqLevel = select(5, C_Item_GetItemInfo(link))
-		if reqLevel and reqLevel > playerLevel then return true end
+		if reqLevel and reqLevel > playerLevel then
+			return true
+		end
 	end
 
 	return false
@@ -150,7 +162,9 @@ end
 -- for both bag buttons (GetBagID/GetID) and bank buttons (GetBankTabID/
 -- GetContainerSlotID). bagID 0 (backpack) is valid, so test against nil.
 local function UpdateBagSlot(button)
-	if not button then return end
+	if not button then
+		return
+	end
 
 	local bagID = button.GetBankTabID and button:GetBankTabID() or (button.GetBagID and button:GetBagID())
 	local slotID = button.GetContainerSlotID and button:GetContainerSlotID() or (button.GetID and button:GetID())
@@ -167,7 +181,9 @@ end
 
 local function RefreshBagSlots()
 	local function ScanFrame(frame)
-		if not (frame and frame.itemButtonPool) then return end
+		if not (frame and frame.itemButtonPool) then
+			return
+		end
 		for button in frame.itemButtonPool:EnumerateActive() do
 			UpdateBagSlot(button)
 		end
@@ -191,7 +207,9 @@ end
 -- triggers like IconBorder:SetShown gets silently overwritten by this.)
 local function HandleBagSlots(frame)
 	local pool = frame.itemButtonPool
-	if not pool then return end
+	if not pool then
+		return
+	end
 	for button in pool:EnumerateActive() do
 		if not button.nexUnfitHooked and type(button.UpdateCooldown) == "function" then
 			hooksecurefunc(button, "UpdateCooldown", UpdateBagSlot)
@@ -202,7 +220,9 @@ local function HandleBagSlots(frame)
 end
 
 function UnusableItems:HookBags()
-	if self.bagsHooked then return end
+	if self.bagsHooked then
+		return
+	end
 	self.bagsHooked = true
 
 	local numFrames = _G.NUM_CONTAINER_FRAMES or 13
@@ -239,7 +259,9 @@ function UnusableItems:PLAYER_LEVEL_UP(level)
 end
 
 function UnusableItems:OnEnable()
-	if not ns.db.unusableItems.enable then return end
+	if not ns.db.unusableItems.enable then
+		return
+	end
 
 	BuildUnusable()
 	playerLevel = UnitLevel("player") or 1

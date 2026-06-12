@@ -11,7 +11,9 @@
 local _, ns = ...
 local F, C = ns.F, ns.C
 local Tooltip = ns:GetModule("Tooltip")
-if not Tooltip then return end
+if not Tooltip then
+	return
+end
 
 local _G = _G
 local wipe = wipe
@@ -40,10 +42,14 @@ end
 
 -- Scan equipped slots and compute an effective item level for `unit`.
 local function GetUnitItemLevel(unit)
-	if not unit or checkUnitGUID(unit) ~= currentGUID then return end
+	if not unit or checkUnitGUID(unit) ~= currentGUID then
+		return
+	end
 
 	local class = select(2, UnitClass(unit))
-	if F.IsSecret(class) then class = nil end
+	if F.IsSecret(class) then
+		class = nil
+	end
 
 	local boa, total, haveWeapon, twohand = 0, 0, 0, 0
 	local ilvl
@@ -59,7 +65,7 @@ local function GetUnitItemLevel(unit)
 					delay = true
 				else
 					local _, _, quality, level, _, _, _, _, slot = C_Item.GetItemInfo(itemLink)
-					if (not quality) or (not level) then
+					if (not quality) or not level then
 						delay = true
 					else
 						if quality == Enum.ItemQuality.Heirloom then
@@ -83,7 +89,9 @@ local function GetUnitItemLevel(unit)
 							end
 
 							if i == 16 then
-								if quality == Enum.ItemQuality.Artifact then hasArtifact = true end
+								if quality == Enum.ItemQuality.Artifact then
+									hasArtifact = true
+								end
 								weapon[1] = level
 								haveWeapon = haveWeapon + 1
 								if slot == "INVTYPE_2HWEAPON" or slot == "INVTYPE_RANGED" or (slot == "INVTYPE_RANGEDRIGHT" and class == "HUNTER") then
@@ -105,7 +113,9 @@ local function GetUnitItemLevel(unit)
 		end
 	end
 
-	if delay then return end
+	if delay then
+		return
+	end
 
 	if unit == "player" then
 		ilvl = select(2, GetAverageItemLevel())
@@ -128,16 +138,24 @@ local function GetUnitItemLevel(unit)
 		ilvl = total / 16
 	end
 
-	if ilvl > 0 then ilvl = format("%.1f", ilvl) end
-	if boa > 0 then ilvl = ilvl .. " |cff00ccff(" .. boa .. (HEIRLOOMS or "") .. ")" end
+	if ilvl > 0 then
+		ilvl = format("%.1f", ilvl)
+	end
+	if boa > 0 then
+		ilvl = ilvl .. " |cff00ccff(" .. boa .. (HEIRLOOMS or "") .. ")"
+	end
 	return ilvl
 end
 
 -- Write (or refresh) the item-level line on the mouseover tooltip.
 local function SetupItemLevelLine(level)
-	if not Tooltip:UnitExists("mouseover") then return end
+	if not Tooltip:UnitExists("mouseover") then
+		return
+	end
 	local guid = UnitGUID("mouseover")
-	if F.IsSecret(guid) or guid ~= currentGUID then return end
+	if F.IsSecret(guid) or guid ~= currentGUID then
+		return
+	end
 
 	local levelLine
 	for i = 2, GameTooltip:NumLines() do
@@ -172,29 +190,45 @@ end)
 
 local function InspectUnit(unit, forced)
 	local level
-	if UnitIsUnit(unit, "player") then
+	local isPlayerUnit = UnitIsUnit(unit, "player")
+	if F.NotSecret(isPlayerUnit) and isPlayerUnit then
 		level = GetUnitItemLevel("player")
 		SetupItemLevelLine(level)
 		return
 	end
 
-	if not unit or checkUnitGUID(unit) ~= currentGUID then return end
+	if not unit or checkUnitGUID(unit) ~= currentGUID then
+		return
+	end
 	local isPlayer = UnitIsPlayer(unit)
-	if F.IsSecret(isPlayer) or not isPlayer then return end
+	if F.IsSecret(isPlayer) or not isPlayer then
+		return
+	end
 
 	local currentDB = cache[currentGUID]
-	if not currentDB then return end
+	if not currentDB then
+		return
+	end
 
 	level = currentDB.level
 	SetupItemLevelLine(level)
 
-	if not ns.db.tooltip.itemLevelByShift and IsShiftKeyDown() then forced = true end
+	if not ns.db.tooltip.itemLevelByShift and IsShiftKeyDown() then
+		forced = true
+	end
 	if level and not forced and (GetTime() - (currentDB.getTime or 0) < resetTime) then
 		updater.elapsed = frequency
 		return
 	end
-	if not UnitIsVisible(unit) or UnitIsDeadOrGhost("player") or UnitOnTaxi("player") then return end
-	if InspectFrame and InspectFrame:IsShown() then return end
+	local isVisible = UnitIsVisible(unit)
+	local playerDead = UnitIsDeadOrGhost("player")
+	local playerOnTaxi = UnitOnTaxi("player")
+	if F.IsSecret(isVisible) or not isVisible or F.IsSecret(playerDead) or playerDead or F.IsSecret(playerOnTaxi) or playerOnTaxi then
+		return
+	end
+	if InspectFrame and InspectFrame:IsShown() then
+		return
+	end
 
 	SetupItemLevelLine()
 	updater:Show()
@@ -203,7 +237,9 @@ end
 function Tooltip:INSPECT_READY(guid)
 	if F.NotSecret(guid) and guid == currentGUID then
 		local db = cache[currentGUID]
-		if not db then return end
+		if not db then
+			return
+		end
 		local level = GetUnitItemLevel(currentUNIT)
 		db.level = level
 		db.getTime = GetTime()
@@ -216,7 +252,9 @@ function Tooltip:INSPECT_READY(guid)
 end
 
 function Tooltip:UNIT_INVENTORY_CHANGED(unit)
-	if InCombatLockdown() then return end
+	if InCombatLockdown() then
+		return
+	end
 	local thisTime = GetTime()
 	if thisTime - lastTime > 0.1 then
 		lastTime = thisTime
@@ -228,11 +266,17 @@ end
 
 -- Entry point called from the unit tooltip rewrite.
 function Tooltip:InspectUnitItemLevel(unit)
-	if ns.db.tooltip.itemLevelByShift and not IsShiftKeyDown() then return end
+	if ns.db.tooltip.itemLevelByShift and not IsShiftKeyDown() then
+		return
+	end
 
-	if not unit or not CanInspect(unit) then return end
+	if not unit or not CanInspect(unit) then
+		return
+	end
 	currentUNIT, currentGUID = unit, checkUnitGUID(unit)
-	if not currentGUID then return end
+	if not currentGUID then
+		return
+	end
 	if not cache[currentGUID] then
 		if cacheCount >= CACHE_MAX then
 			wipe(cache)

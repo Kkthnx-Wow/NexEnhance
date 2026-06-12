@@ -56,7 +56,9 @@ local currentMapID, cursorCoords, playerCoords, coordsUpdater, fadeFrame, mapAnc
 --   position - we simply re-anchor whenever the windowed state is restored.
 -- ---------------------------------------------------------------------------
 local function GetAnchor()
-	if mapAnchor then return mapAnchor end
+	if mapAnchor then
+		return mapAnchor
+	end
 	mapAnchor = CreateFrame("Frame", nil, UIParent)
 	mapAnchor:SetSize(700, 466)
 	F.CreateMover(mapAnchor, "worldMap", L["World Map"], "TOPLEFT", 16, -94)
@@ -79,19 +81,27 @@ end
 -- Coordinates
 -- ---------------------------------------------------------------------------
 local function GetPlayerMapPos(mapID)
-	if not mapID then return end
+	if not mapID then
+		return
+	end
 	local pos = C_Map_GetPlayerMapPosition(mapID, "player")
-	if not pos then return end
+	if not pos then
+		return
+	end
 	return pos:GetXY()
 end
 
 local function GetCursorCoords()
 	local wmf = _G.WorldMapFrame
 	local scroll = wmf and wmf.ScrollContainer
-	if not scroll or not scroll:IsMouseOver() then return end
+	if not scroll or not scroll:IsMouseOver() then
+		return
+	end
 
 	local x, y = scroll:GetNormalizedCursorPosition()
-	if x < 0 or x > 1 or y < 0 or y > 1 then return end
+	if x < 0 or x > 1 or y < 0 or y > 1 then
+		return
+	end
 	return x, y
 end
 
@@ -104,10 +114,14 @@ local playerCoordsFmt = PLAYER .. classColorStr .. ": %.1f, %.1f"
 local playerNoneFmt = PLAYER .. classColorStr .. ": --, --"
 
 local function UpdateCoords(self, elapsed)
-	if not _G.WorldMapFrame:IsShown() then return end
+	if not _G.WorldMapFrame:IsShown() then
+		return
+	end
 
 	self.elapsed = (self.elapsed or 0) + elapsed
-	if self.elapsed < 0.2 then return end
+	if self.elapsed < 0.2 then
+		return
+	end
 	self.elapsed = 0
 
 	local cursorX, cursorY = GetCursorCoords()
@@ -132,7 +146,9 @@ end
 -- ---------------------------------------------------------------------------
 local function SetLargeWorldMap()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap then return end
+	if not cfg.smallMap then
+		return
+	end
 
 	wmf:SetParent(UIParent)
 	wmf:SetScale(1)
@@ -140,7 +156,9 @@ local function SetLargeWorldMap()
 		wmf.ScrollContainer.Child:SetScale(cfg.smallMapScale)
 	end
 
-	if wmf.OnFrameSizeChanged then wmf:OnFrameSizeChanged() end
+	if wmf.OnFrameSizeChanged then
+		wmf:OnFrameSizeChanged()
+	end
 	if wmf:GetMapID() and wmf.NavBar and wmf.NavBar.Refresh then
 		wmf.NavBar:Refresh()
 	end
@@ -148,7 +166,9 @@ end
 
 local function UpdateMaximizedSize()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap then return end
+	if not cfg.smallMap then
+		return
+	end
 
 	local width, height = wmf:GetSize()
 	local magicNumber = (1 - cfg.smallMapScale) * 100
@@ -157,7 +177,9 @@ end
 
 local function SynchronizeDisplayState()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap then return end
+	if not cfg.smallMap then
+		return
+	end
 
 	if wmf:IsMaximized() then
 		wmf:ClearAllPoints()
@@ -170,7 +192,9 @@ end
 
 local function SetSmallWorldMap()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap or wmf:IsMaximized() then return end
+	if not cfg.smallMap or wmf:IsMaximized() then
+		return
+	end
 	AnchorMapToMover(wmf)
 end
 
@@ -183,7 +207,9 @@ end
 
 local function MapFadeOnUpdate(self, elapsed)
 	self.elapsed = (self.elapsed or 0) + elapsed
-	if self.elapsed < 0.1 then return end
+	if self.elapsed < 0.1 then
+		return
+	end
 	self.elapsed = 0
 
 	local wmf = _G.WorldMapFrame
@@ -198,7 +224,9 @@ local function MapFadeOnUpdate(self, elapsed)
 
 	local fadeObject = self.FadeObject
 	local settings = fadeObject and fadeObject.FadeSettings
-	if not settings then return end
+	if not settings then
+		return
+	end
 
 	local isFadingOut = IsPlayerMoving() and (not settings.fadePredicate or settings.fadePredicate())
 	local endAlpha = (isFadingOut and (settings.minAlpha or 0.5)) or settings.maxAlpha or 1
@@ -214,7 +242,9 @@ local function MapFadeOnUpdate(self, elapsed)
 end
 
 local function StopMapFromFading()
-	if fadeFrame then fadeFrame:Hide() end
+	if fadeFrame then
+		fadeFrame:Hide()
+	end
 end
 
 local function EnableMapFading(frame)
@@ -272,11 +302,15 @@ end
 -- Coordinate widgets
 -- ---------------------------------------------------------------------------
 local function BuildCoords()
-	if coordsUpdater then return end
+	if coordsUpdater then
+		return
+	end
 
 	local wmf = _G.WorldMapFrame
 	local scroll = wmf.ScrollContainer
-	if not scroll then return end
+	if not scroll then
+		return
+	end
 
 	local bar = CreateFrame("Frame", nil, scroll)
 	bar:SetSize(wmf:GetWidth(), 17)
@@ -308,7 +342,9 @@ local function BuildCoords()
 end
 
 local function SetCoordsShown(shown)
-	if not coordsUpdater then return end
+	if not coordsUpdater then
+		return
+	end
 	cursorCoords:SetShown(shown)
 	playerCoords:SetShown(shown)
 	coordsUpdater:SetScript("OnUpdate", shown and UpdateCoords or nil)
@@ -318,9 +354,13 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function WorldMap:Setup()
-	if self.started then return end
+	if self.started then
+		return
+	end
 	local wmf = _G.WorldMapFrame
-	if not wmf then return end -- Blizzard_WorldMap not available yet
+	if not wmf then
+		return
+	end -- Blizzard_WorldMap not available yet
 	self.started = true
 
 	if cfg.coordinates then
@@ -346,9 +386,13 @@ end
 -- through it) so the world shows through the smaller map. Irreversible without
 -- a reload, so only done while the smaller map is enabled.
 function WorldMap:ClearBlackout()
-	if self.blackoutCleared or not cfg.smallMap then return end
+	if self.blackoutCleared or not cfg.smallMap then
+		return
+	end
 	local blackout = _G.WorldMapFrame and _G.WorldMapFrame.BlackoutFrame
-	if not blackout then return end
+	if not blackout then
+		return
+	end
 
 	if blackout.Blackout and blackout.Blackout.SetTexture then
 		blackout.Blackout:SetTexture()
@@ -360,7 +404,9 @@ end
 -- Re-apply the current scale/position to an already-open map.
 function WorldMap:Apply()
 	local wmf = _G.WorldMapFrame
-	if not wmf then return end
+	if not wmf then
+		return
+	end
 
 	if cfg.smallMap then
 		if wmf:IsMaximized() then
@@ -371,18 +417,24 @@ function WorldMap:Apply()
 	elseif wmf.ScrollContainer and wmf.ScrollContainer.Child then
 		-- Restore Blizzard's full-size map if the option was turned off.
 		wmf.ScrollContainer.Child:SetScale(1)
-		if wmf.OnFrameSizeChanged then wmf:OnFrameSizeChanged() end
+		if wmf.OnFrameSizeChanged then
+			wmf:OnFrameSizeChanged()
+		end
 	end
 end
 
 function WorldMap:OnEnable()
 	cfg = ns.db.worldMap
-	if cfg.enable then self:Setup() end
+	if cfg.enable then
+		self:Setup()
+	end
 end
 
 function WorldMap:OnSettingChanged()
 	cfg = ns.db.worldMap
-	if not cfg.enable then return end
+	if not cfg.enable then
+		return
+	end
 
 	self:Setup()
 	if self.started then

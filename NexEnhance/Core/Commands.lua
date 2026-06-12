@@ -19,6 +19,7 @@ local C_Map = C_Map
 local C_AreaPoiInfo = C_AreaPoiInfo
 local C_VignetteInfo = C_VignetteInfo
 local C_UIWidgetManager = C_UIWidgetManager
+local C_QuestLog = C_QuestLog
 
 -- POI fields (names/descriptions) can be Secret in instanced content; guard every
 -- value before tostring so the scan never errors on a secret. See the Midnight
@@ -55,15 +56,7 @@ local function DumpWidgetSet(widgetSet)
 		end
 		local detail = "-"
 		if info then
-			detail = format(
-				"text=%s timer=%s/%s bar=%s/%s/%s",
-				SafeStr(info.text or info.headerText or info.overrideBarText),
-				SafeStr(info.timerValue),
-				SafeStr(info.timerMin),
-				SafeStr(info.barValue),
-				SafeStr(info.barMin),
-				SafeStr(info.barMax)
-			)
+			detail = format("text=%s timer=%s/%s bar=%s/%s/%s", SafeStr(info.text or info.headerText or info.overrideBarText), SafeStr(info.timerValue), SafeStr(info.timerMin), SafeStr(info.barValue), SafeStr(info.barMin), SafeStr(info.barMax))
 		end
 		F.Print(format("      w:%s type:%s | %s", SafeStr(w.widgetID), SafeStr(w.widgetType), detail))
 	end
@@ -92,18 +85,7 @@ local function ScanPoiList(mapID, poiIDs, label)
 				local widgets = C_UIWidgetManager.GetAllWidgetsBySetID(widgetSet)
 				widgetCount = widgets and #widgets or 0
 			end
-			F.Print(format(
-				"  %d | %s | %s | poi:%s | widget:%s (%s) | locked:%s event:%s suppress:%s",
-				poiID,
-				SafeStr(poi.name),
-				SafeStr(poi.atlasName),
-				secs and SafeStr(secs) or "-",
-				SafeStr(widgetSet),
-				widgetCount and tostring(widgetCount) or "-",
-				SafeStr(rawget(poi, "isLocked")),
-				SafeStr(rawget(poi, "isCurrentEvent")),
-				SafeStr(rawget(poi, "isSuppressible"))
-			))
+			F.Print(format("  %d | %s | %s | poi:%s | widget:%s (%s) | locked:%s event:%s suppress:%s", poiID, SafeStr(poi.name), SafeStr(poi.atlasName), secs and SafeStr(secs) or "-", SafeStr(widgetSet), widgetCount and tostring(widgetCount) or "-", SafeStr(rawget(poi, "isLocked")), SafeStr(rawget(poi, "isCurrentEvent")), SafeStr(rawget(poi, "isSuppressible"))))
 			DumpWidgetSet(widgetSet)
 			printed = printed + 1
 		end
@@ -133,6 +115,8 @@ handlers.help = function(_)
 	F.Print("  /nex reminder      -", L["Toggle buff reminder test icons"])
 	F.Print("  /nex rare          -", L["Toggle rare alert popup preview"])
 	F.Print("  /nex afk           -", L["Toggle AFK camera preview"])
+	F.Print("  /nex abandonquests -", L["Abandon every quest in your log"])
+	F.Print("  /nex bordertest    -", L["Preview the tooltip border"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
 	F.Print("  /nex credits       -", L["Open the credits panel"])
 	F.Print("  /nex profile       -", L["Open the profile import/export panel"])
@@ -220,6 +204,163 @@ handlers.afk = function(_)
 	else
 		F.Print(F.Colorize(L["AFK Camera"] .. ": ", "brand") .. L["Module unavailable."])
 	end
+end
+
+-- Collect every quest the player is allowed to abandon. We gather questIDs up
+-- front rather than abandoning while walking the log: AbandonQuest() removes the
+-- entry, which reshuffles every index after it, so iterating-and-abandoning by
+-- index would skip quests. World quests and session-locked quests are filtered
+-- by CanAbandonQuest, but we guard the API surface in case a flavor lacks it.
+local function CollectAbandonableQuests()
+	local quests = {}
+	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries and C_QuestLog.GetInfo) then
+		return quests
+	end
+
+	local numEntries = C_QuestLog.GetNumQuestLogEntries()
+	for index = 1, numEntries do
+		local info = C_QuestLog.GetInfo(index)
+		if info and not info.isHeader and info.questID and info.questID > 0 then
+			local canAbandon = true
+			if C_QuestLog.CanAbandonQuest then
+				canAbandon = C_QuestLog.CanAbandonQuest(info.questID)
+			end
+			if canAbandon then
+				quests[#quests + 1] = info.questID
+			end
+		end
+	end
+
+	return quests
+end
+
+-- Abandon a list of questIDs. The modern flow selects the quest, caches it as the
+-- abandon target (SetAbandonQuest reads GetSelectedQuest), then commits with
+-- AbandonQuest(). Returns how many were actually removed.
+local function AbandonQuestList(quests)
+	if not (C_QuestLog and C_QuestLog.SetSelectedQuest and C_QuestLog.SetAbandonQuest and C_QuestLog.AbandonQuest) then
+		return 0
+	end
+
+	local removed = 0
+	for i = 1, #quests do
+		local questID = quests[i]
+		-- Re-check: a previous abandon (shared/chained quests) may have removed
+		-- this one already, and CanAbandonQuest state can change mid-loop.
+		local stillHave = not C_QuestLog.GetLogIndexForQuestID or C_QuestLog.GetLogIndexForQuestID(questID)
+		if stillHave then
+			C_QuestLog.SetSelectedQuest(questID)
+			C_QuestLog.SetAbandonQuest()
+			C_QuestLog.AbandonQuest()
+			removed = removed + 1
+		end
+	end
+
+	return removed
+end
+
+-- Confirm before wiping the quest log: AbandonQuest also destroys any quest items
+-- tied to those quests, so this is destructive and gated behind a yes/no popup.
+_G.StaticPopupDialogs["NEXENHANCE_ABANDON_ALL_QUESTS"] = {
+	text = "%s",
+	button1 = _G.YES,
+	button2 = _G.NO,
+	OnAccept = function(_, data)
+		local quests = (data and data.quests) or CollectAbandonableQuests()
+		local removed = AbandonQuestList(quests)
+		F.Print(F.Colorize(L["Abandon All Quests"] .. ": ", "brand") .. format(L["Abandoned %d quest(s)."], removed))
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	showAlert = true,
+	preferredIndex = 3,
+}
+
+handlers.abandonquests = function(_)
+	if not (C_QuestLog and C_QuestLog.GetNumQuestLogEntries) then
+		F.Print(F.Colorize(L["Abandon All Quests"] .. ": ", "brand") .. L["Quest log unavailable on this client."])
+		return
+	end
+
+	local quests = CollectAbandonableQuests()
+	local count = #quests
+	if count == 0 then
+		F.Print(F.Colorize(L["Abandon All Quests"] .. ": ", "brand") .. L["No abandonable quests in your log."])
+		return
+	end
+
+	_G.StaticPopup_Show("NEXENHANCE_ABANDON_ALL_QUESTS", format(L["Abandon all %d quest(s) in your log? This cannot be undone."], count), nil, { quests = quests })
+end
+
+-- Border preview: a movable grid showing the tooltip border at several outsets
+-- and edge sizes, in a default (white) and brand-tinted column. Toggle to close.
+local borderTestFrame
+handlers.bordertest = function(_)
+	if borderTestFrame then
+		borderTestFrame:SetShown(not borderTestFrame:IsShown())
+		return
+	end
+
+	local f = CreateFrame("Frame", "NexEnhanceBorderTest", UIParent)
+	f:SetSize(380, 392)
+	f:SetPoint("CENTER")
+	f:SetFrameStrata("DIALOG")
+	local bg = f:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints(f)
+	-- Pink main backdrop + white inner panels so border edge alignment is obvious.
+	bg:SetColorTexture(1, 0.2, 0.6, 0.95)
+	F.MakeWindowMovable(f, "NexEnhanceBorderTest")
+
+	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+	title:SetPoint("TOP", 0, -8)
+	title:SetText(F.Colorize(L["Border Preview"], "brand"))
+
+	local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+	hint:SetPoint("BOTTOM", 0, 8)
+	hint:SetText(L["Drag to move - /nex bordertest to toggle"])
+
+	-- Two columns: a neutral (white) border tint and a brand-tinted border.
+	local cols = {
+		{ label = L["Default"], color = { 1, 1, 1, 1 } },
+		{ label = L["Tinted"], color = C.Colors.brand },
+	}
+	for c, col in ipairs(cols) do
+		local hdr = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+		hdr:SetPoint("TOPLEFT", f, "TOPLEFT", 24 + (c - 1) * 178 + 56, -36)
+		hdr:SetText(F.Colorize(col.label, "brand"))
+	end
+
+	-- Rows: outset 0 pins the border on the panel edge; positive outset frames
+	-- the panel from just outside it. edgeSize controls the tooltip border scale.
+	local rows = {
+		{ label = "outset 0", outset = 0, edgeSize = 16 },
+		{ label = "outset 4", outset = 4, edgeSize = 16 },
+		{ label = "edge 12", outset = 0, edgeSize = 12 },
+		{ label = "edge 24", outset = 0, edgeSize = 24 },
+	}
+	for r, v in ipairs(rows) do
+		for c, col in ipairs(cols) do
+			local panel = CreateFrame("Frame", nil, f)
+			panel:SetSize(150, 64)
+			panel:SetPoint("TOPLEFT", f, "TOPLEFT", 24 + (c - 1) * 178, -56 - (r - 1) * 78)
+			local pbg = panel:CreateTexture(nil, "BACKGROUND")
+			pbg:SetAllPoints(panel)
+			pbg:SetColorTexture(1, 1, 1, 1)
+			F.CreateTooltipBackdrop(panel, {
+				outset = v.outset,
+				edgeSize = v.edgeSize,
+				borderColor = col.color,
+				noBackground = true,
+			})
+			local lbl = panel:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+			lbl:SetPoint("CENTER")
+			lbl:SetText(v.label)
+			lbl:SetTextColor(0, 0, 0)
+		end
+	end
+
+	borderTestFrame = f
 end
 
 -- Dev/setup helper: dump every Area POI on the current map (or a passed map id)
@@ -358,7 +499,9 @@ end
 
 -- `choices` is an array of { value = number, label = string, tooltip = string }.
 function OptionBuilder:Dropdown(category, module, key, name, tooltip, choices)
-	if not Settings.CreateDropdown then return end
+	if not Settings.CreateDropdown then
+		return
+	end
 
 	local setting = RegisterSetting(category, module, key, name)
 
@@ -380,7 +523,9 @@ end
 -- so the module's default for `key` must be a hex string. Use F.HexToRGBA /
 -- F.RGBAToHex to convert in the module's apply callback.
 function OptionBuilder:Color(category, module, key, name, tooltip)
-	if not Settings.CreateColorSwatch then return end
+	if not Settings.CreateColorSwatch then
+		return
+	end
 
 	local setting = RegisterSetting(category, module, key, name)
 	local initializer = Settings.CreateColorSwatch(category, setting, tooltip)
@@ -389,7 +534,9 @@ end
 
 function OptionBuilder:EditBox(category, module, key, name, tooltip, width, onCommit)
 	local layout = self.layout
-	if not (layout and F.CreateSettingsEditBox) then return end
+	if not (layout and F.CreateSettingsEditBox) then
+		return
+	end
 
 	local setting = RegisterSetting(category, module, key, name)
 	local initializer = F.CreateSettingsEditBox(name, tooltip, function()
@@ -415,6 +562,23 @@ function OptionBuilder:Header(text)
 	end
 end
 
+-- Add a read-only, wrapped description paragraph (e.g. live statistics). Returns
+-- the initializer so callers can later update initializer:GetData().text; the
+-- description template re-reads that text every time the page is displayed, so a
+-- refreshed value shows the next time the user opens/returns to the page. Keep
+-- the line count stable, as the reserved row height is measured once up front.
+function OptionBuilder:Description(text)
+	local layout = self.layout
+	if not (layout and F.CreateSettingsDescription) then
+		return
+	end
+	local initializer = F.CreateSettingsDescription(text)
+	if initializer then
+		layout:AddInitializer(initializer)
+	end
+	return initializer
+end
+
 -- Make `child` depend on a parent toggle. `child` and `parent` are the
 -- *initializers* (the 2nd return value from the builder methods above). The
 -- child is automatically greyed out and disabled whenever the parent toggle is
@@ -429,7 +593,9 @@ end
 -- luacheck: globals CreateFont
 local childFont
 local function GetChildFont()
-	if childFont then return childFont end
+	if childFont then
+		return childFont
+	end
 	childFont = CreateFont("NexEnhanceSettingChildFont")
 	childFont:CopyFontObject("GameFontNormalSmall")
 	local file, size, flags = childFont:GetFont()
@@ -450,7 +616,9 @@ if elementMixin and not ns.__settingsChildFontHooked then
 end
 
 function OptionBuilder:DependsOn(child, parent)
-	if not (child and parent and child.SetParentInitializer) then return end
+	if not (child and parent and child.SetParentInitializer) then
+		return
+	end
 	child.nexBumpFont = true
 	child:SetParentInitializer(parent, function()
 		local setting = parent:GetSetting()
@@ -461,9 +629,13 @@ end
 -- Nest `child` under `parent` for purely visual grouping (indented) without
 -- ever disabling it.
 function OptionBuilder:Indent(child, parent)
-	if not (child and parent and child.SetParentInitializer) then return end
+	if not (child and parent and child.SetParentInitializer) then
+		return
+	end
 	child.nexBumpFont = true
-	child:SetParentInitializer(parent, function() return true end)
+	child:SetParentInitializer(parent, function()
+		return true
+	end)
 end
 
 -- Themed option groups, in display order. Modules declare a `group` key (see
@@ -494,15 +666,23 @@ local GROUP_ORDER = {
 -- backslash) use a |T|t escape; otherwise the value is treated as an atlas name.
 -- The icon is prefixed for display only - sorting still uses the clean title.
 local CreateAtlasMarkup = _G["CreateAtlasMarkup"]
-local function GroupLabel(g)
-	if not g.icon then return g.title end
+-- Sidebar category buttons are Blizzard's pooled/recycled frames, so we can't
+-- reliably anchor a glow template onto them. The label is plain text we own,
+-- though, so groups containing a freshly-added module get a brand-blue "New"
+-- suffix - enough to draw the eye to which section to open.
+local NEW_MARKER = "  " .. Brand(_G.NEW or "New") ---@diagnostic disable-line: undefined-field
+local function GroupLabel(g, isNew)
+	local suffix = isNew and NEW_MARKER or ""
+	if not g.icon then
+		return g.title .. suffix
+	end
 	if g.icon:find("\\", 1, true) then
-		return format("|T%s:16:16:0:0|t %s", g.icon, g.title)
+		return format("|T%s:16:16:0:0|t %s%s", g.icon, g.title, suffix)
 	end
 	if CreateAtlasMarkup then
-		return CreateAtlasMarkup(g.icon, 16, 16) .. " " .. g.title
+		return CreateAtlasMarkup(g.icon, 16, 16) .. " " .. g.title .. suffix
 	end
-	return g.title
+	return g.title .. suffix
 end
 
 local GROUP_INDEX = {}
@@ -514,18 +694,137 @@ end
 local function SortModules(a, b)
 	local ga = GROUP_INDEX[a.group or "misc"] or math.huge
 	local gb = GROUP_INDEX[b.group or "misc"] or math.huge
-	if ga ~= gb then return ga < gb end
+	if ga ~= gb then
+		return ga < gb
+	end
 
 	local oa, ob = a.order or 100, b.order or 100
-	if oa ~= ob then return oa < ob end
+	if oa ~= ob then
+		return oa < ob
+	end
 
 	return a.name < b.name
 end
 
-local function AddSectionHeader(layout, text)
-	if layout and _G["CreateSettingsListSectionHeaderInitializer"] then
-		layout:AddInitializer(_G["CreateSettingsListSectionHeaderInitializer"](text))
+-- Account-wide record of module names already shown to the player, so the
+-- landing page can flag genuinely new modules after an update with a glowing
+-- "New!" badge. Seeded wholesale the first time we ever run (and during the
+-- install flow) so brand-new and first-upgrade users don't get the whole list
+-- lit up - only modules added in *later* updates light up.
+local function GetNewModules()
+	if not ns.global then
+		return {}
 	end
+	local known = ns.global.knownModules
+	-- "Bootstrap" = the first time auto-detection runs (empty record), a fresh
+	-- install, or mid-install. In that state we seed the existing line-up silently
+	-- so untagged modules don't all light up at once.
+	local bootstrap = (known == nil) or (next(known) == nil) or not ns.global.installed
+	if not known then
+		known = {}
+		ns.global.knownModules = known
+	end
+
+	-- Modules explicitly tagged as added in the *current* version glow until the
+	-- player dismisses this version's callout. This is tracked separately from the
+	-- baseline `knownModules`, so a baseline that already lists them (e.g. seeded
+	-- by an earlier build of this feature) can't wrongly suppress the badge.
+	local dismissed = (ns.global.newSeen == ns.version)
+
+	local result = {}
+	for i = 1, #ns.modules do
+		local m = ns.modules[i]
+		if m.title then -- only user-facing modules (those shown in the options)
+			if (m.since ~= nil) and (m.since == ns.version) then
+				if not dismissed then
+					result[#result + 1] = m
+				end
+			elseif not known[m.name] and bootstrap then
+				known[m.name] = true -- seed silently
+			elseif not known[m.name] then
+				result[#result + 1] = m -- auto-detected addition from a later update
+			end
+		end
+	end
+	table.sort(result, SortModules)
+	return result
+end
+
+-- True when a module is explicitly tagged as added in the running version and the
+-- player hasn't yet acknowledged this version's "new" callout.
+local function IsTaggedNew(module)
+	return ns.global ~= nil and module.since ~= nil and module.since == ns.version and ns.global.newSeen ~= ns.version
+end
+
+-- Acknowledge the current version's new features: stamp the version (so the
+-- landing callout and section-header badges stop showing next session) and fold
+-- this version's tagged-new modules into the baseline, so a later version - where
+-- the `since` tag is inert - doesn't re-flag them via auto-detection.
+local function AcknowledgeNewVersion()
+	if not ns.global or ns.global.newSeen == ns.version then
+		return
+	end
+	ns.global.newSeen = ns.version
+	local known = ns.global.knownModules
+	if not known then
+		known = {}
+		ns.global.knownModules = known
+	end
+	for i = 1, #ns.modules do
+		local m = ns.modules[i]
+		if m.title and m.since == ns.version then
+			known[m.name] = true
+		end
+	end
+end
+
+-- Section-header "New!" badge
+--   Tag a section header initializer's data with `nexNew`, then a one-time hook on
+--   the shared SettingsListSectionHeaderMixin:Init shows/hides a glowing badge on
+--   the (pooled, recycled) header frame whenever it's bound to a tagged
+--   initializer. Doing it in Init keeps it pooling-safe: the same frame is reused
+--   for many headers, so we explicitly show OR hide every time it's initialised.
+local CreateSettingsListSectionHeaderInitializer = _G["CreateSettingsListSectionHeaderInitializer"]
+local SettingsListSectionHeaderMixin = _G["SettingsListSectionHeaderMixin"]
+local sectionBadgeHooked = false
+
+local function InstallSectionHeaderBadges()
+	if sectionBadgeHooked or not SettingsListSectionHeaderMixin then
+		return
+	end
+	sectionBadgeHooked = true
+	hooksecurefunc(SettingsListSectionHeaderMixin, "Init", function(headerFrame, initializer)
+		local data = initializer and initializer.GetData and initializer:GetData()
+		local badge = headerFrame.nexNewBadge
+		if data and data.nexNew then
+			if not badge then
+				badge = F.CreateNewFeatureBadge(headerFrame)
+				if headerFrame.Title then
+					badge:SetPoint("LEFT", headerFrame.Title, "RIGHT", 8, 0)
+				else
+					badge:SetPoint("LEFT", headerFrame, "LEFT", 4, 0)
+				end
+				headerFrame.nexNewBadge = badge
+			end
+			badge:Show()
+		elseif badge then
+			badge:Hide()
+		end
+	end)
+end
+
+local function AddSectionHeader(layout, text, isNew)
+	if not (layout and CreateSettingsListSectionHeaderInitializer) then
+		return
+	end
+	local init = CreateSettingsListSectionHeaderInitializer(text)
+	if isNew and init and init.GetData then
+		local data = init:GetData()
+		if data then
+			data.nexNew = true
+		end
+	end
+	layout:AddInitializer(init)
 end
 
 -- ---------------------------------------------------------------------------
@@ -593,6 +892,34 @@ local function CreateLandingFrame()
 		row:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", i == 1 and 6 or 0, i == 1 and -8 or -5)
 		row:SetText(format("%s  |cffaaaaaa%s|r", Brand(lines[i][1]), lines[i][2]))
 		anchor = row
+	end
+
+	-- New-feature callout: flag modules added since the player last looked, with
+	-- Blizzard's glowing "New!" badge so fresh modules are easy to spot. Dismissal
+	-- is centralised (AcknowledgeNewVersion, fired when any NexEnhance page is
+	-- opened), so this just renders.
+	local newModules = GetNewModules()
+	if #newModules > 0 then
+		local block = CreateFrame("Frame", nil, frame)
+		block:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -18)
+		block:SetPoint("RIGHT", frame, "RIGHT", -24, 0)
+
+		local nheading = MakeFontString(block, "GameFontNormalLarge")
+		nheading:SetPoint("TOPLEFT")
+		nheading:SetText(Brand(L["New This Update"]))
+
+		local badge = F.CreateNewFeatureBadge(block)
+		badge:SetPoint("LEFT", nheading, "RIGHT", 10, 1)
+
+		local rowAnchor, totalH = nheading, nheading:GetStringHeight() or 16
+		for i = 1, #newModules do
+			local row = MakeFontString(block, "GameFontHighlight")
+			row:SetPoint("TOPLEFT", rowAnchor, "BOTTOMLEFT", i == 1 and 6 or 0, i == 1 and -8 or -5)
+			row:SetText("|cff888888• |r" .. (newModules[i].title or newModules[i].name))
+			rowAnchor = row
+			totalH = totalH + (row:GetStringHeight() or 12) + (i == 1 and 8 or 5)
+		end
+		block:SetHeight(totalH)
 	end
 
 	function frame:OnRefresh()
@@ -685,10 +1012,14 @@ local function InstallHeaderDividerNudge(ourCategories)
 	-- The divider texture has no parentKey, so locate it once (cached) by atlas.
 	local divider
 	local function GetDivider()
-		if divider then return divider end
+		if divider then
+			return divider
+		end
 		local list = panel:GetSettingsList()
 		local header = list and list.Header
-		if not header then return nil end
+		if not header then
+			return nil
+		end
 		local regions = { header:GetRegions() }
 		for i = 1, #regions do
 			local region = regions[i]
@@ -702,7 +1033,9 @@ local function InstallHeaderDividerNudge(ourCategories)
 
 	hooksecurefunc(panel, "DisplayCategory", function(_, category)
 		local tex = GetDivider()
-		if not tex then return end
+		if not tex then
+			return
+		end
 		tex:ClearAllPoints()
 		tex:SetPoint("TOP", 0, ourCategories[category] and NATIVE_DIVIDER_Y or -50)
 	end)
@@ -724,7 +1057,11 @@ function ns:RegisterOptionsCanvas(name, builder, sidebarLabel)
 end
 
 local function BuildOptions()
-	if not (Settings and Settings.RegisterVerticalLayoutCategory) then return end
+	if not (Settings and Settings.RegisterVerticalLayoutCategory) then
+		return
+	end
+
+	InstallSectionHeaderBadges()
 
 	local category
 	if Settings.RegisterCanvasLayoutCategory then
@@ -733,6 +1070,16 @@ local function BuildOptions()
 		category = Settings.RegisterVerticalLayoutCategory(ns.title)
 	end
 	ns.settingsCategory = category
+
+	-- Which groups contain a module flagged new this version, so the sidebar entry
+	-- can carry a "New" marker pointing the user at the right section.
+	local groupHasNew = {}
+	for i = 1, #ns.modules do
+		local m = ns.modules[i]
+		if m.title and IsTaggedNew(m) then
+			groupHasNew[m.group or "misc"] = true
+		end
+	end
 
 	-- One subcategory (with its own layout) per themed group, listed
 	-- alphabetically by (localised) title so the sidebar reads A, B, C...
@@ -743,11 +1090,13 @@ local function BuildOptions()
 		for i = 1, #GROUP_ORDER do
 			sortedGroups[i] = GROUP_ORDER[i]
 		end
-		table.sort(sortedGroups, function(a, b) return a.title < b.title end)
+		table.sort(sortedGroups, function(a, b)
+			return a.title < b.title
+		end)
 
 		for i = 1, #sortedGroups do
 			local g = sortedGroups[i]
-			local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, GroupLabel(g))
+			local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, GroupLabel(g, groupHasNew[g.key]))
 			groupCategory[g.key] = sub
 			groupLayout[g.key] = layout
 			ourCategories[sub] = true
@@ -755,7 +1104,9 @@ local function BuildOptions()
 			-- Intro blurb at the top of the subcategory page.
 			if g.desc and F.CreateSettingsDescription then
 				local desc = F.CreateSettingsDescription(g.desc)
-				if desc then layout:AddInitializer(desc) end
+				if desc then
+					layout:AddInitializer(desc)
+				end
 			end
 		end
 	end
@@ -772,7 +1123,7 @@ local function BuildOptions()
 		if module.RegisterOptions then
 			local key = groupCategory[module.group] and module.group or "misc"
 			local moduleCategory = groupCategory[key] or category
-			AddSectionHeader(groupLayout[key], module.title or module.name)
+			AddSectionHeader(groupLayout[key], module.title or module.name, IsTaggedNew(module))
 			OptionBuilder.layout = groupLayout[key]
 			module:RegisterOptions(moduleCategory, OptionBuilder)
 			OptionBuilder.layout = nil
@@ -783,7 +1134,9 @@ local function BuildOptions()
 	-- can only be registered after the modules run (that's when they're queued),
 	-- so they trail the themed groups; sort them alphabetically among themselves.
 	if Settings.RegisterCanvasLayoutSubcategory then
-		table.sort(optionsCanvases, function(a, b) return a.name < b.name end)
+		table.sort(optionsCanvases, function(a, b)
+			return a.name < b.name
+		end)
 		local panel = _G["SettingsPanel"]
 		for i = 1, #optionsCanvases do
 			local entry = optionsCanvases[i]
@@ -808,6 +1161,21 @@ local function BuildOptions()
 	Settings.RegisterAddOnCategory(category)
 
 	InstallHeaderDividerNudge(ourCategories)
+
+	-- Acknowledge "New This Update" badges (landing callout + section headers)
+	-- once the player actually opens any NexEnhance page; they then clear from the
+	-- next session on.
+	do
+		local panel = _G["SettingsPanel"]
+		if panel and panel.DisplayCategory and not panel.nexNewSeenHooked then
+			panel.nexNewSeenHooked = true
+			hooksecurefunc(panel, "DisplayCategory", function(_, cat)
+				if cat == category or ourCategories[cat] then
+					AcknowledgeNewVersion()
+				end
+			end)
+		end
+	end
 
 	function ns:OpenOptions()
 		if Settings.OpenToCategory then

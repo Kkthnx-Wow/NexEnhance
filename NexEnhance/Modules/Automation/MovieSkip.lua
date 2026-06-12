@@ -39,7 +39,9 @@ local function GetSkipParts(self)
 end
 
 local function skipOnKeyDown(self, key)
-	if not db().enable then return end
+	if not db().enable then
+		return
+	end
 	if key == "ESCAPE" then
 		local dialog = GetSkipParts(self)
 		if self:IsShown() and dialog then
@@ -49,7 +51,9 @@ local function skipOnKeyDown(self, key)
 end
 
 local function skipOnKeyUp(self, key)
-	if not db().enable then return end
+	if not db().enable then
+		return
+	end
 	if key == "SPACE" or key == "ESCAPE" or key == "ENTER" then
 		local _, confirmButton = GetSkipParts(self)
 		if self:IsShown() and confirmButton then
@@ -63,7 +67,9 @@ end
 -- never needs removing (HookScript can't be undone anyway).
 local hooksInstalled = false
 local function InstallHooks()
-	if hooksInstalled then return end
+	if hooksInstalled then
+		return
+	end
 	hooksInstalled = true
 
 	-- Both are core frames present at login; hook unconditionally and resolve

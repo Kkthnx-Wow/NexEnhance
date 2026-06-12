@@ -414,11 +414,9 @@ local function BuildPopup()
 	f:Hide()
 	f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 
-	-- Blizzard tooltip-style border over a dark fill.
-	if not F.CreateNineSlice(f, { layout = "TooltipDefaultLayout", bg = { 0.05, 0.05, 0.05, 0.9 }, border = { 1, 0.82, 0, 1 } }) then
-		f:SetBackdrop(BANNER_BACKDROP)
-		f:SetBackdropColor(0.05, 0.05, 0.05, 0.9)
-	end
+	-- Tooltip-style border over a dark fill.
+	f:SetBackdrop(BANNER_BACKDROP)
+	f:SetBackdropColor(0.05, 0.05, 0.05, 0.9)
 
 	-- Portrait holder keeps the face + ring aligned as one block.
 	f.portraitHolder = CreateFrame("Frame", nil, f)
@@ -470,18 +468,10 @@ local function BuildPopup()
 	secure:SetScript("PostClick", Popup_PostClick)
 	secure:SetScript("OnEnter", function()
 		local b = C.Colors.brand
-		if f.nexNineSlice then
-			F.SetNineSliceBorderColor(f, b[1], b[2], b[3], 1)
-		else
-			f:SetBackdropBorderColor(b[1], b[2], b[3], 1)
-		end
+		f:SetBackdropBorderColor(b[1], b[2], b[3], 1)
 	end)
 	secure:SetScript("OnLeave", function()
-		if f.nexNineSlice then
-			F.SetNineSliceBorderColor(f, 1, 0.82, 0, 1)
-		else
-			f:SetBackdropBorderColor(1, 0.82, 0, 1)
-		end
+		f:SetBackdropBorderColor(1, 0.82, 0, 1)
 	end)
 	f.secure = secure
 
@@ -492,9 +482,7 @@ local function BuildPopup()
 	close:SetScript("OnClick", Popup_Hide)
 	f.close = close
 
-	if not f.nexNineSlice then
-		f:SetBackdropBorderColor(1, 0.82, 0, 1)
-	end
+	f:SetBackdropBorderColor(1, 0.82, 0, 1)
 
 	F.CreateMover(f, "rareAlert", L["Rare Alert"], "TOP", 0, -240)
 

@@ -74,14 +74,20 @@ ns:RegisterDefaults({
 local AutoResurrect = ns:NewModule("AutoResurrect", "autoResurrect", { group = "automation", title = L["Auto Resurrect"], order = 80 })
 
 function AutoResurrect:RESURRECT_REQUEST(name)
-	if not ns.db.autoResurrect.enable then return end
+	if not ns.db.autoResurrect.enable then
+		return
+	end
 
 	-- Skip item-cast resurrects (pylon/brazier) - those are strategic. The
 	-- caster name can be a secret value in 12.0, so gate the lookup.
-	if F.NotSecret(name) and name and blacklist[name] then return end
+	if F.NotSecret(name) and name and blacklist[name] then
+		return
+	end
 
 	-- Only accept while safe; taking a rez mid-fight can pull aggro or waste it.
-	if UnitAffectingCombat("player") then return end
+	if UnitAffectingCombat("player") then
+		return
+	end
 
 	AcceptResurrect()
 	StaticPopup_Hide("RESURRECT_NO_TIMER")
@@ -97,7 +103,9 @@ function AutoResurrect:RESURRECT_REQUEST(name)
 end
 
 function AutoResurrect:RegisterModuleEvents()
-	if self.eventsRegistered then return end
+	if self.eventsRegistered then
+		return
+	end
 	self.eventsRegistered = true
 
 	self:RegisterEvent("RESURRECT_REQUEST")

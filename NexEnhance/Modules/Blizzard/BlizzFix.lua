@@ -45,11 +45,17 @@ end
 -- Fix: AddonList tooltip errors on header/blank rows (GetID() < 1).
 -- ---------------------------------------------------------------------------
 local function FixAddonTooltip()
-	if type(AddonTooltip_Update) ~= "function" then return end
+	if type(AddonTooltip_Update) ~= "function" then
+		return
+	end
 	local orig = AddonTooltip_Update
 	AddonTooltip_Update = function(owner)
-		if not owner then return end
-		if owner.GetID and owner:GetID() < 1 then return end
+		if not owner then
+			return
+		end
+		if owner.GetID and owner:GetID() < 1 then
+			return
+		end
 		orig(owner)
 	end
 end
@@ -58,10 +64,14 @@ end
 -- Fix: guild news hyperlink error on entries with no whatText.
 -- ---------------------------------------------------------------------------
 local function FixGuildNews()
-	if type(GuildNewsButton_OnEnter) ~= "function" then return end
+	if type(GuildNewsButton_OnEnter) ~= "function" then
+		return
+	end
 	local orig = GuildNewsButton_OnEnter
 	GuildNewsButton_OnEnter = function(self)
-		if not (self.newsInfo and self.newsInfo.whatText) then return end
+		if not (self.newsInfo and self.newsInfo.whatText) then
+			return
+		end
 		orig(self)
 	end
 end
@@ -86,10 +96,14 @@ end
 -- ---------------------------------------------------------------------------
 local function FixBackdropSecret()
 	local mixin = BackdropTemplateMixin
-	if not mixin or type(mixin.SetupTextureCoordinates) ~= "function" then return end
+	if not mixin or type(mixin.SetupTextureCoordinates) ~= "function" then
+		return
+	end
 	local orig = mixin.SetupTextureCoordinates
 	function mixin:SetupTextureCoordinates()
-		if F.IsSecret(self:GetWidth()) then return end
+		if F.IsSecret(self:GetWidth()) then
+			return
+		end
 		orig(self)
 	end
 end
@@ -152,8 +166,12 @@ function BlizzFix:OnEnable()
 	-- LoadOnDemand UIs may already be present; otherwise wait for them.
 	local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
 	if isLoaded then
-		if isLoaded("Blizzard_GuildUI") then FixGuildNews() end
-		if isLoaded("Blizzard_RaidUI") then self:SetupRaidFix() end
+		if isLoaded("Blizzard_GuildUI") then
+			FixGuildNews()
+		end
+		if isLoaded("Blizzard_RaidUI") then
+			self:SetupRaidFix()
+		end
 	end
 
 	self:RegisterEvent("ADDON_LOADED")

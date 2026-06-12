@@ -79,8 +79,12 @@ local button -- the tab widget (created lazily on enable)
 -- 3-stop gradient (red @ 0% -> yellow @ 50% -> green @ 100%). `percent` is 0-100.
 local function DurabilityColor(percent)
 	local p = percent / 100
-	if p <= 0 then return 1, 0, 0 end
-	if p >= 1 then return 0, 1, 0 end
+	if p <= 0 then
+		return 1, 0, 0
+	end
+	if p >= 1 then
+		return 0, 1, 0
+	end
 	if p <= 0.5 then
 		return 1, p / 0.5, 0
 	end
@@ -96,9 +100,13 @@ end
 -- Pull the repair cost for a slot out of its structured tooltip data. Handles
 -- both the flattened (`data.args`) and per-line (`data.lines[i].args`) shapes.
 local function GetSlotRepairCost(slot)
-	if not C_TooltipInfo_GetInventoryItem then return 0 end
+	if not C_TooltipInfo_GetInventoryItem then
+		return 0
+	end
 	local data = C_TooltipInfo_GetInventoryItem("player", slot)
-	if not data then return 0 end
+	if not data then
+		return 0
+	end
 
 	if data.args then
 		for _, arg in ipairs(data.args) do
@@ -240,13 +248,18 @@ end
 -- ---------------------------------------------------------------------------
 function Durability:Create()
 	if button then
+		-- Re-arm after a previous disable left the events unregistered.
+		button:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
+		button:RegisterEvent("PLAYER_ENTERING_WORLD")
 		button:Show()
 		OnEvent(button, "UPDATE_INVENTORY_DURABILITY")
 		return
 	end
 
 	local PaperDollFrame = _G.PaperDollFrame
-	if not PaperDollFrame then return end
+	if not PaperDollFrame then
+		return
+	end
 
 	button = CreateFrame("Button", "NexEnhanceDurability", PaperDollFrame, "PanelTabButtonTemplate")
 	button:SetPoint("TOP", PaperDollFrame, "BOTTOM", 214, 3)
@@ -270,15 +283,21 @@ function Durability:Create()
 end
 
 function Durability:OnEnable()
-	if not ns.db.durability.enable then return end
+	if not ns.db.durability.enable then
+		return
+	end
 	self:Create()
 end
 
 function Durability:OnSettingChanged(key, value)
-	if key ~= "enable" then return end
+	if key ~= "enable" then
+		return
+	end
 	if value then
 		self:Create()
 	elseif button then
+		-- Go fully idle: a hidden tab shouldn't keep processing durability events.
+		button:UnregisterAllEvents()
 		button:Hide()
 		_G.HelpTip:Hide(button, L["DurabilityHelpTip"])
 	end

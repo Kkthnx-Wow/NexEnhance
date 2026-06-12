@@ -87,7 +87,9 @@ local AlreadyKnown = ns:NewModule("AlreadyKnown", "alreadyKnown", { group = "inv
 -- Detection
 -- ---------------------------------------------------------------------------
 local function IsPetCollected(speciesID)
-	if not speciesID or speciesID == 0 then return end
+	if not speciesID or speciesID == 0 then
+		return
+	end
 	local numOwned = C_PetJournal_GetNumCollectedInfo(speciesID)
 	return numOwned and numOwned > 0
 end
@@ -113,10 +115,10 @@ end
 -- a copy in storage (quantity), a copy placed in a house (numPlaced), an
 -- unredeemed copy (remainingRedeemable), or an "owned stack" subtype.
 local function EntryInfoOwned(info)
-	if not info then return false end
-	if (info.quantity and info.quantity > 0)
-		or (info.numPlaced and info.numPlaced > 0)
-		or (info.remainingRedeemable and info.remainingRedeemable > 0) then
+	if not info then
+		return false
+	end
+	if (info.quantity and info.quantity > 0) or (info.numPlaced and info.numPlaced > 0) or (info.remainingRedeemable and info.remainingRedeemable > 0) then
 		return true
 	end
 
@@ -132,7 +134,9 @@ end
 local entryQuery = {}
 
 local function QueryOwnedEntryInfo(entryType, recordID, subtype)
-	if not subtype then return false end
+	if not subtype then
+		return false
+	end
 
 	entryQuery.entryType = entryType
 	entryQuery.entrySubtype = subtype
@@ -166,8 +170,7 @@ local function IsDecorCollected(link)
 	if entryID and C_HousingCatalog_GetCatalogEntryInfo then
 		local entryType, recordID = entryID.entryType, entryID.recordID
 		if entryType and recordID then
-			if QueryOwnedEntryInfo(entryType, recordID, OWNED_UNMODIFIED_STACK)
-				or QueryOwnedEntryInfo(entryType, recordID, OWNED_MODIFIED_STACK) then
+			if QueryOwnedEntryInfo(entryType, recordID, OWNED_UNMODIFIED_STACK) or QueryOwnedEntryInfo(entryType, recordID, OWNED_MODIFIED_STACK) then
 				return true
 			end
 		end
@@ -177,7 +180,9 @@ local function IsDecorCollected(link)
 end
 
 local function IsAlreadyKnown(link, index)
-	if not link then return end
+	if not link then
+		return
+	end
 
 	local linkType, linkID = strmatch(link, "|H(%a+):(%d+)")
 	linkID = tonumber(linkID)
@@ -186,13 +191,19 @@ local function IsAlreadyKnown(link, index)
 		return IsPetCollected(linkID)
 	elseif linkType == "item" then
 		local name, _, _, _, _, _, _, _, _, _, _, itemClassID = C_Item_GetItemInfo(link)
-		if not name then return end
+		if not name then
+			return
+		end
 
-		if knowns[link] then return true end
+		if knowns[link] then
+			return true
+		end
 
 		local decorCollected = IsDecorCollected(link)
 		if decorCollected ~= nil then
-			if decorCollected then F.CacheSet(knowns, link, true) end
+			if decorCollected then
+				F.CacheSet(knowns, link, true)
+			end
 			return decorCollected
 		end
 
@@ -210,12 +221,16 @@ local function IsAlreadyKnown(link, index)
 		if C_Item_IsCosmeticItem(link) then
 			local collected = IsCosmeticCollected(link)
 			if collected ~= nil then
-				if collected then F.CacheSet(knowns, link, true) end
+				if collected then
+					F.CacheSet(knowns, link, true)
+				end
 				return collected
 			end
 		end
 
-		if not knowables[itemClassID] and not C_Item_IsCosmeticItem(link) then return end
+		if not knowables[itemClassID] and not C_Item_IsCosmeticItem(link) then
+			return
+		end
 
 		local data = C_TooltipInfo_GetHyperlink(link, nil, nil, true)
 		if data then
@@ -238,7 +253,9 @@ local function UpdateMerchantInfo()
 	local numItems = GetMerchantNumItems()
 	for i = 1, MERCHANT_ITEMS_PER_PAGE do
 		local index = (MerchantFrame.page - 1) * MERCHANT_ITEMS_PER_PAGE + i
-		if index > numItems then return end
+		if index > numItems then
+			return
+		end
 
 		local button = _G["MerchantItem" .. i .. "ItemButton"]
 		if button and button:IsShown() then
@@ -259,7 +276,9 @@ end
 local function UpdateBuybackInfo()
 	local numItems = GetNumBuybackItems()
 	for index = 1, BUYBACK_ITEMS_PER_PAGE do
-		if index > numItems then return end
+		if index > numItems then
+			return
+		end
 
 		local button = _G["MerchantItem" .. index .. "ItemButton"]
 		if button and button:IsShown() then
@@ -308,12 +327,16 @@ end
 -- Guild Bank (load-on-demand)
 -- ---------------------------------------------------------------------------
 local function GuildBankFrame_Update(self)
-	if self.mode ~= "bank" then return end
+	if self.mode ~= "bank" then
+		return
+	end
 
 	local tab = GetCurrentGuildBankTab()
 	for i = 1, MAX_GUILDBANK_SLOTS_PER_TAB do
 		local index = i % NUM_SLOTS_PER_GUILDBANK_GROUP
-		if index == 0 then index = NUM_SLOTS_PER_GUILDBANK_GROUP end
+		if index == 0 then
+			index = NUM_SLOTS_PER_GUILDBANK_GROUP
+		end
 
 		local column = ceil((i - 0.5) / NUM_SLOTS_PER_GUILDBANK_GROUP)
 		local button = self.Columns[column].Buttons[index]
@@ -350,7 +373,9 @@ local function RefreshVisibleItems()
 end
 
 function AlreadyKnown:WarmHousingData()
-	if self.housingWarmed or not C_HousingCatalog_GetCatalogEntryInfoByItem then return end
+	if self.housingWarmed or not C_HousingCatalog_GetCatalogEntryInfoByItem then
+		return
+	end
 
 	-- Blizzard lazy-loads owned decor counts; opening the catalog does this too.
 	if C_AddOns and C_AddOns.LoadAddOn then
@@ -381,7 +406,9 @@ local function FlushHousingRefresh()
 end
 
 function AlreadyKnown:RefreshHousingItems()
-	if self.housingRefreshQueued then return end
+	if self.housingRefreshQueued then
+		return
+	end
 	self.housingRefreshQueued = true
 	if C_Timer then
 		C_Timer.After(0.1, FlushHousingRefresh)
@@ -394,7 +421,9 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function AlreadyKnown:HookAuctionHouse()
-	if self.auctionHooked then return end
+	if self.auctionHooked then
+		return
+	end
 	local list = AuctionHouseFrame and AuctionHouseFrame.BrowseResultsFrame and AuctionHouseFrame.BrowseResultsFrame.ItemList
 	if list and list.ScrollBox then
 		hooksecurefunc(list.ScrollBox, "Update", UpdateAuctionItems)
@@ -403,7 +432,9 @@ function AlreadyKnown:HookAuctionHouse()
 end
 
 function AlreadyKnown:HookGuildBank()
-	if self.guildBankHooked then return end
+	if self.guildBankHooked then
+		return
+	end
 	if GuildBankFrame then
 		hooksecurefunc(GuildBankFrame, "Update", GuildBankFrame_Update)
 		self.guildBankHooked = true
@@ -435,7 +466,9 @@ function AlreadyKnown:HOUSE_DECOR_ADDED_TO_CHEST()
 end
 
 function AlreadyKnown:OnEnable()
-	if not ns.db.alreadyKnown.enable then return end
+	if not ns.db.alreadyKnown.enable then
+		return
+	end
 
 	-- Merchant + Buyback live in base FrameXML, so hook straight away.
 	hooksecurefunc("MerchantFrame_UpdateMerchantInfo", UpdateMerchantInfo)

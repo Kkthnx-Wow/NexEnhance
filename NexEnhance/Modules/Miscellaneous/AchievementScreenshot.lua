@@ -38,8 +38,12 @@ local function CountdownOnUpdate(self, elapsed)
 end
 
 function AchievementScreenshot:ACHIEVEMENT_EARNED(_, alreadyEarnedOnAccount)
-	if not ns.db.achievementScreenshot.enable then return end
-	if alreadyEarnedOnAccount then return end
+	if not ns.db.achievementScreenshot.enable then
+		return
+	end
+	if alreadyEarnedOnAccount then
+		return
+	end
 
 	if not captureFrame then
 		captureFrame = CreateFrame("Frame")
@@ -52,7 +56,9 @@ function AchievementScreenshot:ACHIEVEMENT_EARNED(_, alreadyEarnedOnAccount)
 end
 
 function AchievementScreenshot:Setup()
-	if self.registered then return end
+	if self.registered then
+		return
+	end
 	self.registered = true
 	self:RegisterEvent("ACHIEVEMENT_EARNED")
 end

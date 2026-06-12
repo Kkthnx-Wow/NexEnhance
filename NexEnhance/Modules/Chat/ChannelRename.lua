@@ -53,7 +53,9 @@ local function AbbrChannelName(channelArg, channelName)
 	if strsub(channelArg, 1, 8) == "channel:" then
 		-- Numbered custom channel: keep just the number.
 		local id = strmatch(channelArg, "channel:(%d+)")
-		if id then return "|Hchannel:" .. channelArg .. "|h[" .. id .. "]|h" end
+		if id then
+			return "|Hchannel:" .. channelArg .. "|h[" .. id .. "]|h"
+		end
 	end
 
 	local abbr = groupAbbr[strupper(channelArg)]
@@ -122,7 +124,9 @@ local function WrappedAddMessage(frame, text, ...)
 end
 
 local function HookFrame(frame)
-	if not frame or frame.__nexMsgHooked then return end
+	if not frame or frame.__nexMsgHooked then
+		return
+	end
 	frame.__nexOldAddMessage = frame.AddMessage
 	frame.AddMessage = WrappedAddMessage
 	frame.__nexMsgHooked = true
@@ -132,7 +136,9 @@ end
 -- URL click -> copy popup
 -- ---------------------------------------------------------------------------
 local function SetupURLCopy()
-	if StaticPopupDialogs["NEXENHANCE_COPY_URL"] then return end
+	if StaticPopupDialogs["NEXENHANCE_COPY_URL"] then
+		return
+	end
 	StaticPopupDialogs["NEXENHANCE_COPY_URL"] = {
 		text = L["Copy the link below:"],
 		button1 = OKAY or "Okay",
@@ -150,7 +156,9 @@ local function SetupURLCopy()
 				eb:SetFocus()
 			end
 		end,
-		EditBoxOnEscapePressed = function(eb) eb:GetParent():Hide() end,
+		EditBoxOnEscapePressed = function(eb)
+			eb:GetParent():Hide()
+		end,
 	}
 
 	hooksecurefunc("SetItemRef", function(link)
@@ -166,7 +174,9 @@ end
 -- ---------------------------------------------------------------------------
 function ChatChannels:OnEnable()
 	cfg = ns.db.chatChannels
-	if not cfg.enable then return end
+	if not cfg.enable then
+		return
+	end
 
 	for _, chatFrameName in ipairs(CHAT_FRAMES) do
 		HookFrame(_G[chatFrameName])

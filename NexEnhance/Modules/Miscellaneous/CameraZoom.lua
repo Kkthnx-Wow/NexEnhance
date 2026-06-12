@@ -15,6 +15,7 @@ local L = ns.L
 local tonumber = tonumber
 local min, max = math.min, math.max
 local SetCVar = SetCVar
+local GetCVar = GetCVar
 
 ns:RegisterDefaults({
 	cameraZoom = {
@@ -27,8 +28,20 @@ local CameraZoom = ns:NewModule("CameraZoom", "cameraZoom", { group = "general",
 
 local MIN_ZOOM, MAX_ZOOM = 1.0, 2.6
 
+-- Remember the player's pre-addon zoom factor so disabling the module hands it
+-- back instead of stranding them at whatever we raised it to until the next /reload.
+local originalZoom
+
 local function Apply()
-	if not ns.db.cameraZoom.enable then return end
+	if originalZoom == nil then
+		originalZoom = GetCVar("cameraDistanceMaxZoomFactor")
+	end
+	if not ns.db.cameraZoom.enable then
+		if originalZoom then
+			SetCVar("cameraDistanceMaxZoomFactor", originalZoom)
+		end
+		return
+	end
 	local value = tonumber(ns.db.cameraZoom.value) or MAX_ZOOM
 	value = min(max(value, MIN_ZOOM), MAX_ZOOM)
 	SetCVar("cameraDistanceMaxZoomFactor", value)

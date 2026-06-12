@@ -42,14 +42,14 @@
 	  *secret* values. Tainted addon code is NOT allowed to run a boolean test
 	  or comparison on a secret boolean, so `if not UnitIsPlayer(unit)` throws
 	  "attempt to ... a secret value", which silently aborted our hook and left
-	  the bar Blizzard-green. We now probe each result with issecretvalue() and
+	  the bar Blizzard-green. We now probe each result with F.IsSecret and
 	  bail (leaving Blizzard's colour) whenever the answer is secret. Player and
 	  group members are never identity-restricted, so they always colour; an
 	  arbitrary target/focus colours out of combat and falls back in combat.
 --]]
 
 local _, ns = ...
-local L = ns.L
+local F, L = ns.F, ns.L
 
 -- Localised globals.
 local _G = _G
@@ -64,10 +64,9 @@ local strfind = string.find
 
 local FACTION_BAR_COLORS = _G["FACTION_BAR_COLORS"]
 
--- issecretvalue accepts any value (secret or not) and never errors, so it is
--- the safe gate to check before we branch on a possibly-secret result. Fall
--- back to a stub on pre-12.0 clients where the global does not exist.
-local issecretvalue = _G["issecretvalue"] or function(...) return false end
+-- Shared secret-value gate (Core/Functions.lua). It accepts any value and never
+-- errors, so it is safe to call before we branch on a possibly-secret result.
+local IsSecret = F.IsSecret
 
 local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS
 
@@ -82,19 +81,27 @@ local ClassColors = ns:NewModule("ClassColors", "classColors", { group = "unitfr
 
 -- Returns the class colour for a unit, or nil if it should keep Blizzard's
 -- default colour (NPC, disconnected, classless, or identity-restricted/secret).
--- Each identity read is gated by issecretvalue() *before* we boolean-test it,
+-- Each identity read is gated by F.IsSecret *before* we boolean-test it,
 -- so this never errors on a secret value under tainted execution.
 local function GetPlayerClassColor(unit)
-	if not unit then return nil end
+	if not unit then
+		return nil
+	end
 
 	local isPlayer = UnitIsPlayer(unit)
-	if issecretvalue(isPlayer) or not isPlayer then return nil end
+	if IsSecret(isPlayer) or not isPlayer then
+		return nil
+	end
 
 	local connected = UnitIsConnected(unit)
-	if issecretvalue(connected) or not connected then return nil end
+	if IsSecret(connected) or not connected then
+		return nil
+	end
 
 	local _, class = UnitClass(unit)
-	if issecretvalue(class) or not class then return nil end
+	if IsSecret(class) or not class then
+		return nil
+	end
 
 	return CLASS_COLORS[class] or nil
 end
@@ -104,30 +111,46 @@ end
 -- F.UnitColor and Blizzard's own reaction strip. Returns r, g, b, or nil when
 -- it cannot decide (classless, disconnected, or identity-restricted/secret) so
 -- the caller can fall back to Blizzard's default atlas instead of guessing.
--- Every identity read is gated by issecretvalue() before it is boolean-tested.
+-- Every identity read is gated by F.IsSecret before it is boolean-tested.
 local function GetUnitHealthColor(unit)
-	if not unit then return nil end
+	if not unit then
+		return nil
+	end
 
 	local isPlayer = UnitIsPlayer(unit)
-	if issecretvalue(isPlayer) then return nil end
+	if IsSecret(isPlayer) then
+		return nil
+	end
 
 	if isPlayer then
 		local connected = UnitIsConnected(unit)
-		if issecretvalue(connected) or not connected then return nil end
+		if IsSecret(connected) or not connected then
+			return nil
+		end
 		local _, class = UnitClass(unit)
-		if issecretvalue(class) or not class then return nil end
+		if IsSecret(class) or not class then
+			return nil
+		end
 		local color = CLASS_COLORS[class]
-		if color then return color.r, color.g, color.b end
+		if color then
+			return color.r, color.g, color.b
+		end
 		return nil
 	end
 
 	-- Non-player: reaction colour. Leave the default atlas if we have no
 	-- reaction table or the reaction is secret/unknown.
-	if not FACTION_BAR_COLORS then return nil end
+	if not FACTION_BAR_COLORS then
+		return nil
+	end
 	local reaction = UnitReaction(unit, "player")
-	if issecretvalue(reaction) or not reaction then return nil end
+	if IsSecret(reaction) or not reaction then
+		return nil
+	end
 	local color = FACTION_BAR_COLORS[reaction]
-	if color then return color.r, color.g, color.b end
+	if color then
+		return color.r, color.g, color.b
+	end
 	return nil
 end
 
@@ -146,8 +169,12 @@ end
 -- Standard HUD frames (atlas + lockColor -> StatusBar desaturation API)
 -- ---------------------------------------------------------------------------
 local function ColorStandardHealth(statusbar, unit)
-	if not statusbar then return end
-	if not ns.db.classColors.enable then return end
+	if not statusbar then
+		return
+	end
+	if not ns.db.classColors.enable then
+		return
+	end
 
 	unit = unit or statusbar.unit
 	local r, g, b = GetUnitHealthColor(unit)
@@ -166,19 +193,27 @@ end
 -- Compact frames (plain texture -> straight colour, no desaturation)
 -- ---------------------------------------------------------------------------
 local function ColorCompactHealth(frame)
-	if not frame or not ns.db.classColors.enable then return end
+	if not frame or not ns.db.classColors.enable then
+		return
+	end
 
 	-- Nameplates also route through CompactUnitFrame_UpdateHealthColor. Their
 	-- frames can be forbidden and, on 12.0, their healthBar is handed back as a
 	-- secret value, so calling SetStatusBarColor on it throws "bad self". We
 	-- only colour the party/raid compact frames, never nameplates.
-	if frame.IsForbidden and frame:IsForbidden() then return end
+	if frame.IsForbidden and frame:IsForbidden() then
+		return
+	end
 
 	local healthBar = frame.healthBar
-	if not healthBar or issecretvalue(healthBar) then return end
+	if not healthBar or IsSecret(healthBar) then
+		return
+	end
 
 	local unit = frame.displayedUnit or frame.unit
-	if not unit or issecretvalue(unit) or strfind(unit, "nameplate") then return end
+	if not unit or IsSecret(unit) or strfind(unit, "nameplate") then
+		return
+	end
 
 	local color = GetPlayerClassColor(unit)
 	if color then
@@ -199,10 +234,14 @@ end
 -- exactly like the player frame (which has no such strip at all).
 local function NeutralizeReputationStrip(frame)
 	-- Independent of the health-bar toggle: only act when the user opted in.
-	if not frame or not ns.db.classColors.colorReputation then return end
+	if not frame or not ns.db.classColors.colorReputation then
+		return
+	end
 
 	local strip = GetReputationColor(frame)
-	if not strip then return end
+	if not strip then
+		return
+	end
 
 	strip:SetAlpha(0)
 end
@@ -212,13 +251,19 @@ end
 local function RestoreReputationStrip(frame)
 	local unit = frame and frame.unit
 	local strip = GetReputationColor(frame)
-	if not strip then return end
+	if not strip then
+		return
+	end
 
 	strip:SetAlpha(1)
 
-	if not unit then return end
+	if not unit then
+		return
+	end
 	local r, g, b = UnitSelectionColor(unit)
-	if issecretvalue(r) then return end
+	if IsSecret(r) then
+		return
+	end
 	if r then
 		strip:SetVertexColor(r, g, b)
 	end
@@ -252,9 +297,13 @@ local standardFrames = {
 local function ForEachBossFrame(callback)
 	local container = _G["BossTargetFrameContainer"]
 	local frames = container and container.BossTargetFrames
-	if not frames then return end
+	if not frames then
+		return
+	end
 	for _, frame in ipairs(frames) do
-		if frame then callback(frame) end
+		if frame then
+			callback(frame)
+		end
 	end
 end
 
@@ -263,7 +312,9 @@ end
 -- health values, and running it under addon-tainted execution can poison
 -- statusbar.currValue and break Blizzard's TextStatusBar/OnUpdate paths.
 local function RefreshBar(bar)
-	if not bar then return end
+	if not bar then
+		return
+	end
 
 	if ns.db.classColors.enable then
 		ColorStandardHealth(bar, bar.unit)
@@ -312,8 +363,12 @@ end
 -- hook and wipes the class colour straight back to green. We post-hook the
 -- per-frame method so we re-tint immediately after the atlas is reapplied.
 local function HookClassification(frame)
-	if not frame or frame.nexClassColorHooked then return end
-	if type(frame.CheckClassification) ~= "function" then return end
+	if not frame or frame.nexClassColorHooked then
+		return
+	end
+	if type(frame.CheckClassification) ~= "function" then
+		return
+	end
 	frame.nexClassColorHooked = true
 	hooksecurefunc(frame, "CheckClassification", function(f)
 		ColorStandardHealth(f.healthbar, f.unit)
@@ -321,8 +376,12 @@ local function HookClassification(frame)
 end
 
 local function HookFaction(frame)
-	if not frame or frame.nexFactionHooked then return end
-	if type(frame.CheckFaction) ~= "function" then return end
+	if not frame or frame.nexFactionHooked then
+		return
+	end
+	if type(frame.CheckFaction) ~= "function" then
+		return
+	end
 	frame.nexFactionHooked = true
 	hooksecurefunc(frame, "CheckFaction", function(f)
 		NeutralizeReputationStrip(f)
@@ -330,7 +389,9 @@ local function HookFaction(frame)
 end
 
 function ClassColors:InstallHooks()
-	if self.hooksInstalled then return end
+	if self.hooksInstalled then
+		return
+	end
 	self.hooksInstalled = true
 
 	-- Value / max-health / initial updates for every standard bar.
@@ -399,31 +460,29 @@ end
 -- the colour we computed, the bar's current colour, desaturation, secrets).
 -- ---------------------------------------------------------------------------
 local function fmt(r, g, b)
-	if not r then return "nil" end
+	if not r then
+		return "nil"
+	end
 	return string.format("%.2f,%.2f,%.2f", r, g, b)
 end
 
 local function DumpFrame(label, frame)
-	if not frame then ns.F.Print(label, "= <frame missing>"); return end
+	if not frame then
+		ns.F.Print(label, "= <frame missing>")
+		return
+	end
 	local bar = frame.healthbar
-	if not bar then ns.F.Print(label, "= <healthbar missing>"); return end
+	if not bar then
+		ns.F.Print(label, "= <healthbar missing>")
+		return
+	end
 
 	local unit = bar.unit or frame.unit
 	local r, g, b = bar:GetStatusBarColor()
 	local color = GetPlayerClassColor(unit)
 	local isPlayer = unit and UnitIsPlayer(unit)
 	local desat = bar.IsStatusBarDesaturated and bar:IsStatusBarDesaturated() or nil
-	ns.F.Print(string.format(
-		"%s unit=%s lockColor=%s isPlayer=%s secret=%s computed=[%s] barColor=[%s] desat=%s",
-		label,
-		tostring(unit),
-		tostring(bar.lockColor),
-		tostring(issecretvalue(isPlayer) and "SECRET" or isPlayer),
-		tostring(issecretvalue(isPlayer)),
-		color and fmt(color.r, color.g, color.b) or "nil",
-		fmt(r, g, b),
-		tostring(desat)
-	))
+	ns.F.Print(string.format("%s unit=%s lockColor=%s isPlayer=%s secret=%s computed=[%s] barColor=[%s] desat=%s", label, tostring(unit), tostring(bar.lockColor), tostring(IsSecret(isPlayer) and "SECRET" or isPlayer), tostring(IsSecret(isPlayer)), color and fmt(color.r, color.g, color.b) or "nil", fmt(r, g, b), tostring(desat)))
 end
 
 function ClassColors:Debug()
@@ -441,5 +500,7 @@ end
 -- Expose a stable entry point for the slash/`/run` diagnostic.
 function ns:DebugClassColors()
 	local m = ns:GetModule("ClassColors")
-	if m then m:Debug() end
+	if m then
+		m:Debug()
+	end
 end

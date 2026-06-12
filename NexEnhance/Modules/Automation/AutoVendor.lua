@@ -53,8 +53,15 @@ local VENDOR_DOESNT_BUY = LE_GAME_ERR_VENDOR_DOESNT_BUY
 -- Grey-looking items that double as a currency or are otherwise worth keeping;
 -- protected from the junk sweep when "keepPetTrash" is on (mirrors NDui).
 local petTrashCurrencies = {
-	[3300] = true, [3670] = true, [6150] = true, [11406] = true, [11944] = true,
-	[25402] = true, [36812] = true, [62072] = true, [67410] = true,
+	[3300] = true,
+	[3670] = true,
+	[6150] = true,
+	[11406] = true,
+	[11944] = true,
+	[25402] = true,
+	[36812] = true,
+	[62072] = true,
+	[67410] = true,
 }
 
 -- Repair-on-gossip NPCs (select their repair option automatically).
@@ -90,21 +97,22 @@ local function IsPetTrash(itemID)
 end
 
 local function StartSelling()
-	if sellStop then return end
+	if sellStop then
+		return
+	end
 
 	local junkList = ns.global.autoVendor.junkList
 	for bag = BACKPACK_CONTAINER, NUM_BAG_SLOTS do
 		for slot = 1, C_Container_GetContainerNumSlots(bag) do
-			if sellStop then return end
+			if sellStop then
+				return
+			end
 
 			local info = C_Container_GetContainerItemInfo(bag, slot)
 			if info and not info.hasNoValue then
 				local itemID = info.itemID
 				local key = bag * 100 + slot
-				if not sellCache[key]
-					and (info.quality == POOR_QUALITY or junkList[itemID])
-					and not IsPetTrash(itemID)
-				then
+				if not sellCache[key] and (info.quality == POOR_QUALITY or junkList[itemID]) and not IsPetTrash(itemID) then
 					sellCache[key] = true
 					C_Container_UseContainerItem(bag, slot)
 					-- One item per tick; the server credits the gold for us.
@@ -142,13 +150,19 @@ end
 
 function AutoVendor:Repair(override)
 	local db = ns.db.autoVendor
-	if not db.autoRepair then return end
-	if repairShown and not override then return end
+	if not db.autoRepair then
+		return
+	end
+	if repairShown and not override then
+		return
+	end
 	repairShown = true
 	isBankEmpty = false
 
 	repairAllCost, canRepair = GetRepairAllCost()
-	if not canRepair or repairAllCost <= 0 then return end
+	if not canRepair or repairAllCost <= 0 then
+		return
+	end
 
 	-- GetGuildBankWithdrawMoney() returns -1 for ranks with unlimited
 	-- withdrawal (e.g. guild master); treat that as "can always cover it".
@@ -170,8 +184,12 @@ end
 -- Events
 -- ---------------------------------------------------------------------------
 function AutoVendor:MERCHANT_SHOW()
-	if not self:IsEnabled() then return end
-	if IsShiftKeyDown() then return end
+	if not self:IsEnabled() then
+		return
+	end
+	if IsShiftKeyDown() then
+		return
+	end
 
 	if CanMerchantRepair() then
 		self:Repair()
@@ -198,9 +216,15 @@ function AutoVendor:UI_ERROR_MESSAGE(errorType)
 end
 
 function AutoVendor:GOSSIP_SHOW()
-	if not self:IsEnabled() then return end
-	if not ns.db.autoVendor.autoRepair then return end
-	if IsShiftKeyDown() or not NeedToRepair() then return end
+	if not self:IsEnabled() then
+		return
+	end
+	if not ns.db.autoVendor.autoRepair then
+		return
+	end
+	if IsShiftKeyDown() or not NeedToRepair() then
+		return
+	end
 
 	local options = C_GossipInfo.GetOptions()
 	for i = 1, #options do
@@ -216,9 +240,13 @@ end
 -- Custom junk list (/nexjunk)
 -- ---------------------------------------------------------------------------
 local function ResolveItemID(arg)
-	if not arg or arg == "" then return end
+	if not arg or arg == "" then
+		return
+	end
 	local id = tonumber(arg)
-	if id then return id end
+	if id then
+		return id
+	end
 	return GetItemInfoFromHyperlink(arg)
 end
 
@@ -281,7 +309,9 @@ function AutoVendor:RegisterOptions(category, builder)
 end
 
 function AutoVendor:RegisterModuleEvents()
-	if self.eventsRegistered then return end
+	if self.eventsRegistered then
+		return
+	end
 	self.eventsRegistered = true
 
 	self:RegisterEvent("MERCHANT_SHOW")

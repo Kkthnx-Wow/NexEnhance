@@ -34,7 +34,11 @@ ns.version = C_AddOns.GetAddOnMetadata(addonName, "Version") or "0.0.0"
 -- order never produces a nil index.
 ns.C = ns.C or {} -- Constants
 ns.F = ns.F or {} -- Functions
-ns.L = ns.L or setmetatable({}, { __index = function(_, key) return key end }) -- Locale (fallback to key)
+ns.L = ns.L or setmetatable({}, {
+	__index = function(_, key)
+		return key
+	end,
+}) -- Locale (fallback to key)
 
 -- ---------------------------------------------------------------------------
 -- Module registry
@@ -58,7 +62,9 @@ function moduleMeta:RegisterEvent(event, handler)
 	assert(type(handler) == "function", ("NexEnhance: no handler for event '%s' on module '%s'"):format(event, self.name))
 
 	-- Bind `self` once at registration time so the dispatch path stays cheap.
-	ns:RegisterEvent(event, function(_, ...) handler(self, ...) end)
+	ns:RegisterEvent(event, function(_, ...)
+		handler(self, ...)
+	end)
 end
 
 --- Register a unit-filtered event (UNIT_AURA, UNIT_HEALTH, ...). Far cheaper
@@ -70,13 +76,17 @@ function moduleMeta:RegisterUnitEvent(event, handler, ...)
 	end
 	assert(type(handler) == "function", ("NexEnhance: no handler for unit event '%s' on module '%s'"):format(event, self.name))
 
-	ns:RegisterUnitEvent(event, function(_, ...) handler(self, ...) end, ...)
+	ns:RegisterUnitEvent(event, function(_, ...)
+		handler(self, ...)
+	end, ...)
 end
 
 --- Returns whether this module is enabled in the active profile. Modules that
 --- opt into the toggle convention store `enable` under `db[moduleKey]`.
 function moduleMeta:IsEnabled()
-	if not ns.db then return false end
+	if not ns.db then
+		return false
+	end
 	local settings = self.dbKey and ns.db[self.dbKey]
 	if settings and settings.enable ~= nil then
 		return settings.enable
@@ -98,6 +108,11 @@ function ns:NewModule(name, dbKey, opts)
 		module.group = opts.group
 		module.title = opts.title
 		module.order = opts.order
+		-- Version this module first shipped in. When it matches the running
+		-- addon version, the landing page flags it with a glowing "New!" badge;
+		-- the tag goes inert automatically on later versions (auto-detection via
+		-- the account-wide knownModules record takes over from there).
+		module.since = opts.since
 	end
 	moduleByName[name] = module
 	tinsert(modules, module)
@@ -119,7 +134,9 @@ local eventCallbacks = {} -- event -> { callback, callback, ... }
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)
 	local callbacks = eventCallbacks[event]
-	if not callbacks then return end
+	if not callbacks then
+		return
+	end
 	-- Slots may be tombstoned (set to false) by UnregisterEvent, including by a
 	-- callback unregistering itself mid-dispatch, so skip any falsy entry. We
 	-- never table.remove during a fire, which keeps indices stable and avoids
@@ -164,7 +181,9 @@ end
 
 function ns:UnregisterEvent(event, callback)
 	local callbacks = eventCallbacks[event]
-	if not callbacks then return end
+	if not callbacks then
+		return
+	end
 
 	-- Tombstone (don't table.remove) so this is safe to call mid-dispatch: the
 	-- OnEvent loop keeps stable indices and just skips falsy slots.
@@ -218,7 +237,9 @@ end
 --- Allocation-free on the hot path (no varargs repacking).
 function ns:TriggerCallback(signal, ...)
 	local list = signalCallbacks[signal]
-	if not list then return end
+	if not list then
+		return
+	end
 	-- Tombstoned slots are skipped, so subscribers can unregister mid-fire
 	-- without shifting the callback that follows them.
 	for i = 1, #list do
@@ -239,7 +260,9 @@ end
 --- method name) and `owner`. Safe to call from within a fired callback.
 function ns:UnregisterCallback(signal, callback, owner)
 	local list = signalCallbacks[signal]
-	if not list then return end
+	if not list then
+		return
+	end
 
 	local anyLive = false
 	for i = 1, #list do
@@ -269,7 +292,9 @@ local initialized, enabled = false, false
 
 local function RunCallback(module, method)
 	local fn = module[method]
-	if type(fn) ~= "function" then return end
+	if type(fn) ~= "function" then
+		return
+	end
 
 	-- Isolate module faults so one broken module cannot abort the rest.
 	local ok, err = pcall(fn, module)
@@ -279,7 +304,9 @@ local function RunCallback(module, method)
 end
 
 local function Enable()
-	if enabled or not initialized then return end
+	if enabled or not initialized then
+		return
+	end
 	enabled = true
 
 	for i = 1, #modules do
@@ -291,7 +318,9 @@ local function Enable()
 end
 
 local function Initialize()
-	if initialized then return end
+	if initialized then
+		return
+	end
 	initialized = true
 
 	-- Saved variables are guaranteed to exist by ADDON_LOADED, so the DB is
@@ -312,7 +341,9 @@ end
 
 local onAddonLoaded
 onAddonLoaded = function(_, loadedAddon)
-	if loadedAddon ~= addonName then return end
+	if loadedAddon ~= addonName then
+		return
+	end
 	ns:UnregisterEvent("ADDON_LOADED", onAddonLoaded) -- one-shot
 	Initialize()
 end

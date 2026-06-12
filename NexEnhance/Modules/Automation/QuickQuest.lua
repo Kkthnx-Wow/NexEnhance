@@ -92,13 +92,19 @@ end
 -- ---------------------------------------------------------------------------
 local function IsOverrideKeyDown()
 	local key = db().overrideKey
-	if key == OVERRIDE_ALT then return IsAltKeyDown() end
-	if key == OVERRIDE_CONTROL then return IsControlKeyDown() end
+	if key == OVERRIDE_ALT then
+		return IsAltKeyDown()
+	end
+	if key == OVERRIDE_CONTROL then
+		return IsControlKeyDown()
+	end
 	return IsShiftKeyDown()
 end
 
 local function Automating()
-	if not db().enable then return false end
+	if not db().enable then
+		return false
+	end
 	local keyDown = IsOverrideKeyDown()
 	if db().requireOverride then
 		return keyDown
@@ -117,7 +123,9 @@ local regenRetryRegistered = false
 local regenRetryCallback
 
 local function CancelRegenRetry()
-	if not regenRetryRegistered then return end
+	if not regenRetryRegistered then
+		return
+	end
 	regenRetryRegistered = false
 	ns:UnregisterEvent("PLAYER_REGEN_ENABLED", regenRetryCallback)
 end
@@ -141,7 +149,9 @@ end
 local eventsActive = false
 local function SetEventsActive(state)
 	if state then
-		if eventsActive then return end
+		if eventsActive then
+			return
+		end
 		eventsActive = true
 		for i = 1, #registeredEvents do
 			local entry = registeredEvents[i]
@@ -172,7 +182,9 @@ end
 local questDataQueue = {}
 
 local function WaitForQuestData(questID, callback)
-	if not (questID and C_QuestLog_RequestLoadQuestByID) then return false end
+	if not (questID and C_QuestLog_RequestLoadQuestByID) then
+		return false
+	end
 	questDataQueue[questID] = callback
 	C_QuestLog_RequestLoadQuestByID(questID)
 	return true
@@ -180,7 +192,9 @@ end
 
 Register("QUEST_DATA_LOAD_RESULT", function(questID, success)
 	local callback = questDataQueue[questID]
-	if not callback then return end
+	if not callback then
+		return
+	end
 	questDataQueue[questID] = nil
 	if success ~= false then
 		callback()
@@ -191,37 +205,37 @@ end)
 -- Ignore list (built-in NPCs + per-character overrides)
 -- ---------------------------------------------------------------------------
 local ignoreQuestNPC = {
-	[88570] = true,   -- Fate-Twister Tiklal
-	[87391] = true,   -- Fate-Twister Seress
-	[111243] = true,  -- Archmage Lan'dalock
-	[108868] = true,  -- Hunter's order hall
-	[101462] = true,  -- Reaves
-	[43929] = true,   -- 4000
-	[14847] = true,   -- DarkMoon
-	[119388] = true,  -- Chieftain Hatuun
-	[114719] = true,  -- Merchant Selina
-	[121263] = true,  -- Grand Artificer Romuul
-	[126954] = true,  -- Turalyon
-	[124312] = true,  -- Turalyon
-	[103792] = true,  -- Griftah
-	[101880] = true,  -- Tech-Tock
-	[141584] = true,  -- Zul'wen
-	[142063] = true,  -- Tzane
-	[143388] = true,  -- Druza
-	[98489] = true,   -- Shipwreck Captive
-	[135690] = true,  -- Undead Captain
-	[105387] = true,  -- Andus
-	[93538] = true,   -- Darethy
-	[154534] = true,  -- Chang the Camp Cook
-	[150987] = true,  -- Sean Wilkers, Stratholme
-	[150563] = true,  -- Sparkit, Mechagon daily
-	[143555] = true,  -- Shandai Silverman, Zuldazar PvP QM
-	[168430] = true,  -- Disciplinarian Fane, Bastion challenge
-	[160248] = true,  -- Archivist Fane, Sinstone shards
-	[127037] = true,  -- Nabiru
-	[326027] = true,  -- Reclamation Rig DX-82
-	[162804] = true,  -- Vinaly
-	[195935] = true,  -- Taveouo, walrus fishing item
+	[88570] = true, -- Fate-Twister Tiklal
+	[87391] = true, -- Fate-Twister Seress
+	[111243] = true, -- Archmage Lan'dalock
+	[108868] = true, -- Hunter's order hall
+	[101462] = true, -- Reaves
+	[43929] = true, -- 4000
+	[14847] = true, -- DarkMoon
+	[119388] = true, -- Chieftain Hatuun
+	[114719] = true, -- Merchant Selina
+	[121263] = true, -- Grand Artificer Romuul
+	[126954] = true, -- Turalyon
+	[124312] = true, -- Turalyon
+	[103792] = true, -- Griftah
+	[101880] = true, -- Tech-Tock
+	[141584] = true, -- Zul'wen
+	[142063] = true, -- Tzane
+	[143388] = true, -- Druza
+	[98489] = true, -- Shipwreck Captive
+	[135690] = true, -- Undead Captain
+	[105387] = true, -- Andus
+	[93538] = true, -- Darethy
+	[154534] = true, -- Chang the Camp Cook
+	[150987] = true, -- Sean Wilkers, Stratholme
+	[150563] = true, -- Sparkit, Mechagon daily
+	[143555] = true, -- Shandai Silverman, Zuldazar PvP QM
+	[168430] = true, -- Disciplinarian Fane, Bastion challenge
+	[160248] = true, -- Archivist Fane, Sinstone shards
+	[127037] = true, -- Nabiru
+	[326027] = true, -- Reclamation Rig DX-82
+	[162804] = true, -- Vinaly
+	[195935] = true, -- Taveouo, walrus fishing item
 }
 
 local ignoreList = {}
@@ -270,16 +284,24 @@ local selectOnlyIgnoreNPC = {
 -- ---------------------------------------------------------------------------
 local function FrequencyAllowed(frequency)
 	local cfg = db()
-	if frequency == QF_Daily then return cfg.acceptDaily end
-	if frequency == QF_Weekly then return cfg.acceptWeekly end
+	if frequency == QF_Daily then
+		return cfg.acceptDaily
+	end
+	if frequency == QF_Weekly then
+		return cfg.acceptWeekly
+	end
 	return cfg.acceptRegular
 end
 
 -- QUEST_DETAIL has no frequency field, so fall back to the quest-frame globals.
 local function DetailFrequencyAllowed()
 	local cfg = db()
-	if QuestIsDaily and QuestIsDaily() then return cfg.acceptDaily end
-	if QuestIsWeekly and QuestIsWeekly() then return cfg.acceptWeekly end
+	if QuestIsDaily and QuestIsDaily() then
+		return cfg.acceptDaily
+	end
+	if QuestIsWeekly and QuestIsWeekly() then
+		return cfg.acceptWeekly
+	end
 	return cfg.acceptRegular
 end
 
@@ -291,7 +313,9 @@ local accountBoundLines = {}
 do
 	local labels = { ITEM_BNETACCOUNTBOUND, ITEM_BIND_TO_BNETACCOUNT, ITEM_BIND_TO_ACCOUNT, ITEM_ACCOUNTBOUND }
 	for i = 1, 4 do
-		if labels[i] then accountBoundLines[labels[i]] = true end
+		if labels[i] then
+			accountBoundLines[labels[i]] = true
+		end
 	end
 end
 
@@ -300,10 +324,14 @@ local function IsCraftingReagent(itemID)
 end
 
 local function IsItemAccountBound(itemID)
-	if not C_TooltipInfo_GetItemByID then return false end
+	if not C_TooltipInfo_GetItemByID then
+		return false
+	end
 	local data = C_TooltipInfo_GetItemByID(itemID)
 	local lines = data and data.lines
-	if not lines then return false end
+	if not lines then
+		return false
+	end
 	for i = 1, #lines do
 		local line = lines[i]
 		if line and line.leftText and accountBoundLines[line.leftText] then
@@ -315,9 +343,13 @@ end
 
 -- Reads the QUEST_PROGRESS frame; only meaningful while that stage is shown.
 local function TurnInHasCost()
-	if not db().protectTurnIns then return false end
+	if not db().protectTurnIns then
+		return false
+	end
 
-	if GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then return true end
+	if GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then
+		return true
+	end
 
 	for i = 1, MAX_REQUIRED_ITEMS do
 		local item = _G["QuestProgressItem" .. i]
@@ -341,7 +373,9 @@ end
 -- ---------------------------------------------------------------------------
 Register("QUEST_GREETING", function()
 	local npcID = GetNPCID()
-	if ignoreList[npcID] then return end
+	if ignoreList[npcID] then
+		return
+	end
 
 	local active = GetNumActiveQuests()
 	if active > 0 then
@@ -378,14 +412,21 @@ local ignoreGossipNPC = {
 	[86964] = true, -- Leorajh
 	[86946] = true, -- Talonpriest Ishaal
 	-- Sassy Imps
-	[95139] = true, [95141] = true, [95142] = true, [95143] = true, [95144] = true,
-	[95145] = true, [95146] = true, [95200] = true, [95201] = true,
+	[95139] = true,
+	[95141] = true,
+	[95142] = true,
+	[95143] = true,
+	[95144] = true,
+	[95145] = true,
+	[95146] = true,
+	[95200] = true,
+	[95201] = true,
 	-- Misc NPCs
-	[79740] = true,  -- Warmaster Zog (Horde)
-	[79953] = true,  -- Lieutenant Thorn (Alliance)
-	[84268] = true,  -- Lieutenant Thorn (Alliance)
-	[84511] = true,  -- Lieutenant Thorn (Alliance)
-	[84684] = true,  -- Lieutenant Thorn (Alliance)
+	[79740] = true, -- Warmaster Zog (Horde)
+	[79953] = true, -- Lieutenant Thorn (Alliance)
+	[84268] = true, -- Lieutenant Thorn (Alliance)
+	[84511] = true, -- Lieutenant Thorn (Alliance)
+	[84684] = true, -- Lieutenant Thorn (Alliance)
 	[117871] = true, -- War Councilor Victoria (Class Challenges @ Broken Shore)
 	[155101] = true, -- Elemental Essence Fuser
 	[155261] = true, -- Sean Wilkers, Stratholme
@@ -407,9 +448,9 @@ local ignoreGossipNPC = {
 }
 
 local autoSelectFirstOptionList = {
-	[97004] = true,  -- "Red" Jack Findle, Rogue ClassHall
-	[96782] = true,  -- Lucian Trias, Rogue ClassHall
-	[93188] = true,  -- Mongar, Rogue ClassHall
+	[97004] = true, -- "Red" Jack Findle, Rogue ClassHall
+	[96782] = true, -- Lucian Trias, Rogue ClassHall
+	[93188] = true, -- Mongar, Rogue ClassHall
 	[107486] = true, -- Stellagosa
 	[167839] = true, -- Soul Remnant, Torghast
 }
@@ -439,7 +480,7 @@ local questGossipOptions = {
 
 local ignoreGossipOptions = {
 	[122442] = true, -- Leave the dungeon in Remix
-	[44733] = true,  -- Teleport
+	[44733] = true, -- Teleport
 	[125350] = true, -- Siren Isle teleport
 	[125351] = true, -- Siren Isle teleport
 	[131324] = true, -- Winter Veil Hillsbrad teleport
@@ -455,7 +496,9 @@ local QUEST_STRING = "cFF0000FF.-" .. TRANSMOG_SOURCE_2
 local SKIP_GOSSIP_PREFIX, SKIP_GOSSIP_PREFIX_UPPER = "|cFFFF0000<", "|CFFFF0000<"
 
 local function IsQuestLabelPrepend(flags)
-	if not flags then return false end
+	if not flags then
+		return false
+	end
 	if FlagsUtil_IsSet then
 		return FlagsUtil_IsSet(flags, QuestLabelPrepend)
 	end
@@ -481,10 +524,16 @@ end
 
 Register("GOSSIP_SHOW", function()
 	local npcID = GetNPCID()
-	if ignoreList[npcID] then return end
-	if C_PlayerInteractionManager_IsInteractingWithNpcOfType and C_PlayerInteractionManager_IsInteractingWithNpcOfType(TaxiNodeInteraction) then return end
+	if ignoreList[npcID] then
+		return
+	end
+	if C_PlayerInteractionManager_IsInteractingWithNpcOfType and C_PlayerInteractionManager_IsInteractingWithNpcOfType(TaxiNodeInteraction) then
+		return
+	end
 	local wormholes = _G["InteractiveWormholes"]
-	if wormholes and wormholes.IsActive and wormholes:IsActive() then return end
+	if wormholes and wormholes.IsActive and wormholes:IsActive() then
+		return
+	end
 
 	local active = C_GossipInfo_GetNumActiveQuests()
 	if active > 0 then
@@ -519,7 +568,9 @@ Register("GOSSIP_SHOW", function()
 	end
 
 	local gossipInfoTable = C_GossipInfo_GetOptions()
-	if not gossipInfoTable then return end
+	if not gossipInfoTable then
+		return
+	end
 
 	local numOptions = #gossipInfoTable
 	local firstOptionID = gossipInfoTable[1] and gossipInfoTable[1].gossipOptionID
@@ -530,7 +581,9 @@ Register("GOSSIP_SHOW", function()
 		end
 
 		if available == 0 and active == 0 and numOptions == 1 and not ignoreGossipNPC[npcID] and not HasUnsafeGossipOption(gossipInfoTable) then
-			if ignoreGossipOptions[firstOptionID] then return end
+			if ignoreGossipOptions[firstOptionID] then
+				return
+			end
 			local allow = true
 			-- Optional safety: skip the single-option walk inside raids and the
 			-- blacklisted instances. Off by default, so it auto-walks everywhere.
@@ -598,7 +651,9 @@ end)
 
 Register("QUEST_DETAIL", function()
 	local questID = GetQuestID()
-	if not questID or questID == 0 then return end
+	if not questID or questID == 0 then
+		return
+	end
 
 	local questLevel = C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
 	if not questLevel or questLevel == 0 then
@@ -612,9 +667,15 @@ Register("QUEST_DETAIL", function()
 		AcknowledgeAutoAcceptQuest()
 		RemoveAutoQuestPopUp(questID)
 	elseif not C_QuestLog_IsQuestTrivial(questID) or C_Minimap_IsTrackingHiddenQuests() then
-		if ignoreList[GetNPCID()] then return end
-		if blockQuestID[questID] then return end
-		if not DetailFrequencyAllowed() then return end
+		if ignoreList[GetNPCID()] then
+			return
+		end
+		if blockQuestID[questID] then
+			return
+		end
+		if not DetailFrequencyAllowed() then
+			return
+		end
 		AcceptQuest()
 	end
 end)
@@ -641,21 +702,52 @@ end)
 
 local itemBlacklist = {
 	-- Inscription weapons
-	[31690] = 79343, [31691] = 79340, [31692] = 79341,
+	[31690] = 79343,
+	[31691] = 79340,
+	[31692] = 79341,
 	-- Darkmoon Faire artifacts
-	[29443] = 71635, [29444] = 71636, [29445] = 71637, [29446] = 71638,
-	[29451] = 71715, [29456] = 71951, [29457] = 71952, [29458] = 71953, [29464] = 71716,
+	[29443] = 71635,
+	[29444] = 71636,
+	[29445] = 71637,
+	[29446] = 71638,
+	[29451] = 71715,
+	[29456] = 71951,
+	[29457] = 71952,
+	[29458] = 71953,
+	[29464] = 71716,
 	-- Tiller gifts
-	["progress_79264"] = 79264, ["progress_79265"] = 79265, ["progress_79266"] = 79266,
-	["progress_79267"] = 79267, ["progress_79268"] = 79268,
+	["progress_79264"] = 79264,
+	["progress_79265"] = 79265,
+	["progress_79266"] = 79266,
+	["progress_79267"] = 79267,
+	["progress_79268"] = 79268,
 	-- Garrison scouting missives
-	["38180"] = 122424, ["38193"] = 122423, ["38182"] = 122418, ["38196"] = 122417,
-	["38179"] = 122400, ["38192"] = 122404, ["38194"] = 122420, ["38202"] = 122419,
-	["38178"] = 122402, ["38191"] = 122406, ["38184"] = 122413, ["38198"] = 122414,
-	["38177"] = 122403, ["38190"] = 122399, ["38181"] = 122421, ["38195"] = 122422,
-	["38185"] = 122411, ["38199"] = 122409, ["38187"] = 122412, ["38201"] = 122410,
-	["38186"] = 122408, ["38200"] = 122407, ["38183"] = 122416, ["38197"] = 122415,
-	["38176"] = 122405, ["38189"] = 122401,
+	["38180"] = 122424,
+	["38193"] = 122423,
+	["38182"] = 122418,
+	["38196"] = 122417,
+	["38179"] = 122400,
+	["38192"] = 122404,
+	["38194"] = 122420,
+	["38202"] = 122419,
+	["38178"] = 122402,
+	["38191"] = 122406,
+	["38184"] = 122413,
+	["38198"] = 122414,
+	["38177"] = 122403,
+	["38190"] = 122399,
+	["38181"] = 122421,
+	["38195"] = 122422,
+	["38185"] = 122411,
+	["38199"] = 122409,
+	["38187"] = 122412,
+	["38201"] = 122410,
+	["38186"] = 122408,
+	["38200"] = 122407,
+	["38183"] = 122416,
+	["38197"] = 122415,
+	["38176"] = 122405,
+	["38189"] = 122401,
 	-- Misc
 	[31664] = 88604, -- Nat's Fishing Journal
 }
@@ -663,10 +755,14 @@ local itemBlacklist = {
 Register("QUEST_PROGRESS", function()
 	if IsQuestCompletable() then
 		local info = C_QuestLog_GetQuestTagInfo(GetQuestID())
-		if info and (info.tagID == 153 or info.worldQuestType) then return end
+		if info and (info.tagID == 153 or info.worldQuestType) then
+			return
+		end
 
 		local npcID = GetNPCID()
-		if ignoreList[npcID] then return end
+		if ignoreList[npcID] then
+			return
+		end
 
 		local requiredItems = GetNumQuestItems()
 		if requiredItems > 0 then
@@ -688,7 +784,9 @@ Register("QUEST_PROGRESS", function()
 			end
 		end
 
-		if TurnInHasCost() then return end
+		if TurnInHasCost() then
+			return
+		end
 
 		CompleteQuest()
 	end
@@ -698,16 +796,25 @@ local cashRewards = {
 	[45724] = 1e5, -- Champion's Purse
 	[64491] = 2e6, -- Royal Reward
 	-- Sixtrigger brothers chain (Stormheim)
-	[138127] = 15, [138129] = 11, [138131] = 24, [138123] = 15, [138125] = 16, [138133] = 27,
+	[138127] = 15,
+	[138129] = 11,
+	[138131] = 24,
+	[138123] = 15,
+	[138125] = 16,
+	[138133] = 27,
 }
 
 Register("QUEST_COMPLETE", function()
 	-- Blingtron 6000 only!
 	local npcID = GetNPCID()
-	if npcID == 43929 or npcID == 77789 then return end
+	if npcID == 43929 or npcID == 77789 then
+		return
+	end
 
 	-- Guard against any quest that still wants gold to hand in at this stage.
-	if db().protectTurnIns and GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then return end
+	if db().protectTurnIns and GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then
+		return
+	end
 
 	local choices = GetNumQuestChoices()
 	if choices <= 1 then
@@ -739,14 +846,18 @@ Register("QUEST_COMPLETE", function()
 end)
 
 local function RegisterRegenRetry()
-	if regenRetryRegistered then return end
+	if regenRetryRegistered then
+		return
+	end
 	regenRetryRegistered = true
 	ns:RegisterEvent("PLAYER_REGEN_ENABLED", regenRetryCallback)
 end
 
 local function AttemptAutoComplete()
 	local numPopUps = GetNumAutoQuestPopUps()
-	if numPopUps == 0 then return end
+	if numPopUps == 0 then
+		return
+	end
 
 	-- Avoid stomping the map/quest UI while the player is already interacting
 	-- with it (p3lim/QuickQuest#45).
@@ -819,13 +930,21 @@ local function UnitQuickQuestStatus(self)
 end
 
 local function ToggleQuickQuestStatus(self)
-	if not self.__ignore then return end
-	if not db().enable then return end
-	if not IsAltKeyDown() then return end
+	if not self.__ignore then
+		return
+	end
+	if not db().enable then
+		return
+	end
+	if not IsAltKeyDown() then
+		return
+	end
 
 	self.__ignore:SetShown(not self.__ignore:IsShown())
 	local npcID = GetNPCID()
-	if not npcID then return end
+	if not npcID then
+		return
+	end
 
 	if self.__ignore:IsShown() then
 		if ignoreQuestNPC[npcID] then
@@ -886,7 +1005,7 @@ function QuickQuest:RegisterOptions(category, builder)
 	local _, protectInit = builder:Checkbox(category, self, "protectTurnIns", L["Protect Costly Turn-Ins"], L["Skip turn-ins that would consume gold, currency, crafting reagents, or account-bound items."])
 	local _, requireInit = builder:Checkbox(category, self, "requireOverride", L["Require Override Key"], L["Only automate while the override key is held, instead of using it to pause."])
 	local _, blockInit = builder:Checkbox(category, self, "blockInInstances", L["Block in Raids & Instances"], L["Skip single-option gossip auto-selection while in raids and certain instances."])
-	local _, skipInit = builder:Checkbox(category, self, "autoSkipGossip", L["Auto-Skip Story Gossip"], L["Automatically click red \"<Skip ...>\" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read."])
+	local _, skipInit = builder:Checkbox(category, self, "autoSkipGossip", L["Auto-Skip Story Gossip"], L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'])
 
 	local _, keyInit = builder:Dropdown(category, self, "overrideKey", L["Override Key"], L["The modifier that pauses (or, with Require Override Key, enables) automation."], {
 		{ value = OVERRIDE_SHIFT, label = L["SHIFT"] },

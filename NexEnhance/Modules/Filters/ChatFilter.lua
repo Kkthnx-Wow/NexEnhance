@@ -84,7 +84,9 @@ local function AcquireChatLine(name, timestamp)
 end
 
 local function ReleaseChatLine(row)
-	if not row then return end
+	if not row then
+		return
+	end
 	row[1], row[3] = nil, nil
 	wipe(row[2])
 	rowPool[#rowPool + 1] = row
@@ -94,7 +96,9 @@ end
 -- different). Reuses module-level rows to avoid GC churn.
 local function CompareStrDiff(sA, sB)
 	local lenA, lenB = #sA, #sB
-	if lenA == 0 or lenB == 0 then return 1 end
+	if lenA == 0 or lenB == 0 then
+		return 1
+	end
 
 	for j = 0, lenB do
 		last[j + 1] = j
@@ -132,7 +136,9 @@ local function GetFilterResult(event, msg, name, flag, guid)
 		return true
 	end
 
-	if not cfg.spamFilter then return end
+	if not cfg.spamFilter then
+		return
+	end
 
 	-- Strip hyperlinks and colour codes down to plain text for matching.
 	local filterMsg = gsub(msg, "|H.-|h(.-)|h", "%1")
@@ -151,24 +157,34 @@ local function GetFilterResult(event, msg, name, flag, guid)
 				found = true
 				-- Plain (literal) substring match so keywords containing Lua
 				-- magic characters (%, [, ], -, ...) can't error or over-match.
-				if strfind(filterMsg, keyword, 1, true) then matches = matches + 1 end
+				if strfind(filterMsg, keyword, 1, true) then
+					matches = matches + 1
+				end
 			end
 		end
-		if matches == 0 and found then return 0 end
+		if matches == 0 and found then
+			return 0
+		end
 	end
 
 	-- Keyword blacklist.
 	local matches = 0
 	for keyword in pairs(keywords) do
 		if keyword ~= "" then
-			if strfind(filterMsg, keyword, 1, true) then matches = matches + 1 end
+			if strfind(filterMsg, keyword, 1, true) then
+				matches = matches + 1
+			end
 		end
 	end
-	if matches >= cfg.matches then return true end
+	if matches >= cfg.matches then
+		return true
+	end
 
 	-- Repeat filter: compare against recent lines from the same sender.
 	local msgTable = AcquireChatLine(name, GetTime())
-	if filterMsg == "" then filterMsg = msg end
+	if filterMsg == "" then
+		filterMsg = msg
+	end
 	for i = 1, #filterMsg do
 		msgTable[2][i] = filterMsg:byte(i)
 	end
@@ -182,11 +198,15 @@ local function GetFilterResult(event, msg, name, flag, guid)
 			return true
 		end
 	end
-	if size >= 30 then ReleaseChatLine(tremove(chatLines, 1)) end
+	if size >= 30 then
+		ReleaseChatLine(tremove(chatLines, 1))
+	end
 end
 
 local function UpdateChatFilter(_, event, msg, author, _, _, _, flag, _, _, _, _, lineID, guid)
-	if not ns.db.chatFilter.enable or F.IsSecret(msg) then return end
+	if not ns.db.chatFilter.enable or F.IsSecret(msg) then
+		return
+	end
 
 	-- One result per chat line, shared across all chat frames showing it.
 	if lineID ~= prevLineID then
@@ -196,7 +216,9 @@ local function UpdateChatFilter(_, event, msg, author, _, _, _, flag, _, _, _, _
 		if filterResult and filterResult ~= 0 then
 			BadBoys[name] = (BadBoys[name] or 0) + 1
 		end
-		if filterResult == 0 then filterResult = true end
+		if filterResult == 0 then
+			filterResult = true
+		end
 	end
 
 	return filterResult
@@ -206,9 +228,18 @@ end
 -- Item level on chat hyperlinks
 -- ---------------------------------------------------------------------------
 local socketWatchList = {
-	BLUE = true, RED = true, YELLOW = true, COGWHEEL = true, HYDRAULIC = true,
-	META = true, PRISMATIC = true, PUNCHCARDBLUE = true, PUNCHCARDRED = true,
-	PUNCHCARDYELLOW = true, DOMINATION = true, PRIMORDIAL = true,
+	BLUE = true,
+	RED = true,
+	YELLOW = true,
+	COGWHEEL = true,
+	HYDRAULIC = true,
+	META = true,
+	PRISMATIC = true,
+	PUNCHCARDBLUE = true,
+	PUNCHCARDRED = true,
+	PUNCHCARDYELLOW = true,
+	DOMINATION = true,
+	PRIMORDIAL = true,
 }
 
 local function GetSocketTexture(socket, count)
@@ -223,7 +254,9 @@ local function ItemGemText(link)
 		for stat, count in pairs(stats) do
 			local socket = strmatch(stat, "EMPTY_SOCKET_(%S+)")
 			if socket and socketWatchList[socket] then
-				if socket == "PRIMORDIAL" then socket = "META" end -- texture missing; reuse meta
+				if socket == "PRIMORDIAL" then
+					socket = "META"
+				end -- texture missing; reuse meta
 				socketParts[#socketParts + 1] = GetSocketTexture(socket, count)
 			end
 		end
@@ -240,10 +273,16 @@ end
 
 local itemCache = {}
 local function ReplaceChatHyperlink(link, linkType)
-	if not link then return end
-	if linkType ~= "item" then return link end
+	if not link then
+		return
+	end
+	if linkType ~= "item" then
+		return link
+	end
 
-	if itemCache[link] then return itemCache[link] end
+	if itemCache[link] then
+		return itemCache[link]
+	end
 	local name, itemLevel = ItemHasLevel(link)
 	if name and itemLevel then
 		local new = gsub(link, "|h%[(.-)%]|h", "|h[" .. name .. "(" .. itemLevel .. ")]|h" .. ItemGemText(link))
@@ -253,7 +292,14 @@ local function ReplaceChatHyperlink(link, linkType)
 end
 
 local function UpdateChatItemLevel(_, _, msg, ...)
-	if not ns.db.chatFilter.enable or not ns.db.chatFilter.chatItemLevel or F.IsSecret(msg) then return end
+	if not ns.db.chatFilter.enable or not ns.db.chatFilter.chatItemLevel or F.IsSecret(msg) then
+		return
+	end
+	-- No hyperlink, no work: skip the (relatively expensive) gsub entirely on the
+	-- vast majority of chat lines that carry no item link. Cheap probe first.
+	if not strfind(msg, "|H", 1, true) then
+		return
+	end
 	msg = gsub(msg, "(|H([^:]+):(%d+):.-|h.-|h)", ReplaceChatHyperlink)
 	return false, msg, ...
 end
@@ -262,23 +308,39 @@ end
 -- Registration
 -- ---------------------------------------------------------------------------
 local FILTER_EVENTS = {
-	"CHAT_MSG_CHANNEL", "CHAT_MSG_SAY", "CHAT_MSG_YELL", "CHAT_MSG_WHISPER",
-	"CHAT_MSG_EMOTE", "CHAT_MSG_TEXT_EMOTE",
+	"CHAT_MSG_CHANNEL",
+	"CHAT_MSG_SAY",
+	"CHAT_MSG_YELL",
+	"CHAT_MSG_WHISPER",
+	"CHAT_MSG_EMOTE",
+	"CHAT_MSG_TEXT_EMOTE",
 }
 
 local ITEMLEVEL_EVENTS = {
-	"CHAT_MSG_LOOT", "CHAT_MSG_CHANNEL", "CHAT_MSG_SAY", "CHAT_MSG_YELL",
-	"CHAT_MSG_WHISPER", "CHAT_MSG_WHISPER_INFORM", "CHAT_MSG_BN_WHISPER",
-	"CHAT_MSG_RAID", "CHAT_MSG_RAID_LEADER", "CHAT_MSG_PARTY",
-	"CHAT_MSG_PARTY_LEADER", "CHAT_MSG_GUILD", "CHAT_MSG_BATTLEGROUND",
-	"CHAT_MSG_INSTANCE_CHAT", "CHAT_MSG_INSTANCE_CHAT_LEADER",
+	"CHAT_MSG_LOOT",
+	"CHAT_MSG_CHANNEL",
+	"CHAT_MSG_SAY",
+	"CHAT_MSG_YELL",
+	"CHAT_MSG_WHISPER",
+	"CHAT_MSG_WHISPER_INFORM",
+	"CHAT_MSG_BN_WHISPER",
+	"CHAT_MSG_RAID",
+	"CHAT_MSG_RAID_LEADER",
+	"CHAT_MSG_PARTY",
+	"CHAT_MSG_PARTY_LEADER",
+	"CHAT_MSG_GUILD",
+	"CHAT_MSG_BATTLEGROUND",
+	"CHAT_MSG_INSTANCE_CHAT",
+	"CHAT_MSG_INSTANCE_CHAT_LEADER",
 }
 
 -- Filters are installed once; each behaviour is gated live by its cfg flag so
 -- the individual toggles apply without a reload (ChatFrame message filters
 -- cannot be cleanly toggled per-flag, so we gate inside the callbacks instead).
 function ChatFilter:Install()
-	if self.installed then return end
+	if self.installed then
+		return
+	end
 	self.installed = true
 
 	for i = 1, #FILTER_EVENTS do

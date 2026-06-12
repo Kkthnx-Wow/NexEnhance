@@ -62,11 +62,15 @@ end
 
 local function SetCollapsed(header, collapsed)
 	local minimize = header and header.MinimizeButton
-	if not minimize then return end
+	if not minimize then
+		return
+	end
 
 	local normal = minimize:GetNormalTexture()
 	local pushed = minimize:GetPushedTexture()
-	if not (normal and pushed) then return end
+	if not (normal and pushed) then
+		return
+	end
 
 	if collapsed then
 		normal:SetAtlas("UI-QuestTrackerButton-Secondary-Expand", true)
@@ -108,10 +112,14 @@ end
 -- Styling
 -- ---------------------------------------------------------------------------
 function ObjectiveTracker:Style()
-	if self.styled then return end
+	if self.styled then
+		return
+	end
 
 	local TrackerFrame = _G["ObjectiveTrackerFrame"]
-	if not TrackerFrame then return end
+	if not TrackerFrame then
+		return
+	end
 
 	self.styled = true
 

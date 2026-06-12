@@ -51,7 +51,9 @@ local function HideTime(self)
 end
 
 local function UpdateArrival(self, elapsed)
-	if not GetDistance then return end
+	if not GetDistance then
+		return
+	end
 
 	-- No reliable distance while the arrow is clamped to the screen edge.
 	if WasClampedToScreen and WasClampedToScreen() then
@@ -61,7 +63,9 @@ local function UpdateArrival(self, elapsed)
 	end
 
 	lastUpdate = lastUpdate + (elapsed or 0)
-	if lastUpdate < 0.5 then return end
+	if lastUpdate < 0.5 then
+		return
+	end
 
 	local distance = GetDistance() or 0
 	if distance <= 0 then
@@ -91,16 +95,22 @@ local function UpdateArrival(self, elapsed)
 end
 
 local function UpdateAlpha(self)
-	if not (WasClampedToScreen and GetDistance) then return end
+	if not (WasClampedToScreen and GetDistance) then
+		return
+	end
 	if not WasClampedToScreen() and (GetDistance() or 0) > 0 then
 		self:SetAlpha(1)
 	end
 end
 
 function QuestNavigation:Style()
-	if self.styled then return end
+	if self.styled then
+		return
+	end
 	local frame = _G.SuperTrackedFrame
-	if not (frame and frame.DistanceText) then return end
+	if not (frame and frame.DistanceText) then
+		return
+	end
 	self.styled = true
 
 	-- Match the addon font on the existing distance text.

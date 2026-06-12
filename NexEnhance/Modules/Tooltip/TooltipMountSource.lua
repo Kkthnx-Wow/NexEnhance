@@ -16,7 +16,9 @@
 local _, ns = ...
 local F = ns.F
 local Tooltip = ns:GetModule("Tooltip")
-if not Tooltip then return end
+if not Tooltip then
+	return
+end
 
 local select = select
 local hooksecurefunc = hooksecurefunc
@@ -60,7 +62,9 @@ end
 
 -- Append the Source/collection lines once (skip if we've already added them).
 local function AddSourceLine(tip, info)
-	if F.TooltipHasLine(tip, SOURCE) then return end
+	if F.TooltipHasLine(tip, SOURCE) then
+		return
+	end
 
 	tip:AddLine(" ")
 	tip:AddDoubleLine(SOURCE, IsCollected(info) and COLLECTED or NOT_COLLECTED)
@@ -70,9 +74,17 @@ end
 
 -- Only annotate while Shift is held over another player (not yourself).
 local function HandleAura(tip, spellID)
-	if not spellID or F.IsSecret(spellID) then return end
-	if not IsShiftKeyDown() then return end
-	if not UnitIsPlayer("target") or UnitIsUnit("target", "player") then return end
+	if not spellID or F.IsSecret(spellID) then
+		return
+	end
+	if not IsShiftKeyDown() then
+		return
+	end
+	local isPlayer = UnitIsPlayer("target")
+	local isSelf = UnitIsUnit("target", "player")
+	if F.IsSecret(isPlayer) or not isPlayer or F.IsSecret(isSelf) or isSelf then
+		return
+	end
 
 	local info = GetMountInfoBySpell(spellID)
 	if info then
@@ -82,21 +94,31 @@ end
 
 function Tooltip:SetupMountSource()
 	-- Defer to the dedicated addon if the user runs it.
-	if C_AddOns.IsAddOnLoaded("MountsSource") then return end
-	if not (C_MountJournal and AuraUtil and C_UnitAuras) then return end
+	if C_AddOns.IsAddOnLoaded("MountsSource") then
+		return
+	end
+	if not (C_MountJournal and AuraUtil and C_UnitAuras) then
+		return
+	end
 
 	hooksecurefunc(GameTooltip, "SetUnitAura", function(tip, ...)
-		if tip:IsForbidden() then return end
+		if tip:IsForbidden() then
+			return
+		end
 		local data = C_UnitAuras.GetAuraDataByIndex(...)
 		-- A secret data table (e.g. another unit's auras under Patch 12.0) would
 		-- crash AuraUtil.UnpackAuraData, so read the spellId field directly and
 		-- let HandleAura's IsSecret guard sort out the rest.
-		if not data or F.IsSecret(data) then return end
+		if not data or F.IsSecret(data) then
+			return
+		end
 		HandleAura(tip, data.spellId)
 	end)
 
 	hooksecurefunc(GameTooltip, "SetUnitBuffByAuraInstanceID", function(tip, unit, auraInstanceID)
-		if tip:IsForbidden() then return end
+		if tip:IsForbidden() then
+			return
+		end
 		local data = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, auraInstanceID)
 		if data then
 			HandleAura(tip, data.spellId)

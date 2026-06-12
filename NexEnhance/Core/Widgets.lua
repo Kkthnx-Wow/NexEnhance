@@ -49,7 +49,9 @@ local function initialize(scroll)
 		local width = scroll:GetWidth() - scroll.bar:GetWidth() - (scroll._insetLeft or 0) - (scroll._insetRight or 0)
 		local spacing = scroll._spacingHorizontal or 0
 		local stride = floor((width - spacing) / (scroll._elementWidth + spacing))
-		if stride < 1 then stride = 1 end
+		if stride < 1 then
+			stride = 1
+		end
 
 		view = CreateScrollBoxListGridView(stride, scroll._insetTop or 0, scroll._insetBottom or 0, scroll._insetLeft or 0, scroll._insetRight or 0, spacing, scroll._spacingVertical or 0)
 		view:SetStrideExtent(scroll._elementWidth)
@@ -275,10 +277,14 @@ local ENTRYBOX_RIGHT_WIDTH = 314
 --- Skin `frame` with the gray entry-box three-slice, scaled to the frame's
 --- current height (keeping the caps' aspect ratio). Returns the cached pieces.
 function F.CreateEntryBoxSkin(frame)
-	if frame.nexEntryBox then return frame.nexEntryBox end
+	if frame.nexEntryBox then
+		return frame.nexEntryBox
+	end
 
 	local h = frame:GetHeight()
-	if not h or h <= 0 then h = 24 end
+	if not h or h <= 0 then
+		h = 24
+	end
 	local scale = h / ENTRYBOX_NATIVE_HEIGHT
 
 	local left = frame:CreateTexture(nil, "BACKGROUND")
@@ -339,10 +345,42 @@ end
 
 NexEnhanceSettingsDescriptionMixin = {}
 
+function NexEnhanceSettingsDescriptionMixin:EvaluateState()
+	local initializer = self.initializer
+	local enabled = true
+	if initializer and initializer.EvaluateModifyPredicates then
+		enabled = initializer:EvaluateModifyPredicates()
+	end
+
+	local d = enabled and 0.85 or 0.45
+	self.Text:SetTextColor(d, d, d)
+end
+
 function NexEnhanceSettingsDescriptionMixin:Init(initializer)
 	local data = initializer:GetData()
+	self.initializer = initializer
+
+	-- Support builder:DependsOn for read-only text rows, so stats/notes dim with
+	-- the setting they belong to just like Blizzard's native controls.
+	if self.cbrHandles then
+		self.cbrHandles:Unregister()
+	elseif Settings and Settings.CreateCallbackHandleContainer then
+		self.cbrHandles = Settings.CreateCallbackHandleContainer()
+	end
+	local parentInitializer = initializer.GetParentInitializer and initializer:GetParentInitializer()
+	local parentSetting = parentInitializer and parentInitializer:GetSetting()
+	if self.cbrHandles and parentSetting then
+		self.cbrHandles:SetOnValueChangedCallback(parentSetting:GetVariable(), self.EvaluateState, self)
+	end
+
 	self.Text:SetText(data and data.text or "")
-	self.Text:SetTextColor(0.85, 0.85, 0.85)
+	self:EvaluateState()
+end
+
+function NexEnhanceSettingsDescriptionMixin:Release()
+	if self.cbrHandles then
+		self.cbrHandles:Unregister()
+	end
 end
 
 -- Measure wrapped text height off-screen. We measure at a slightly narrower
@@ -367,10 +405,14 @@ end
 --- ready for layout:AddInitializer(...). Returns nil if the Settings API is
 --- unavailable. Height is computed from the text so it never clips.
 function F.CreateSettingsDescription(text)
-	if not (Settings and Settings.CreateElementInitializer) then return end
+	if not (Settings and Settings.CreateElementInitializer) then
+		return
+	end
 	local initializer = Settings.CreateElementInitializer("NexEnhanceSettingsDescriptionTemplate", { text = text })
 	local height = MeasureDescriptionHeight(text)
-	initializer.GetExtent = function() return height end
+	initializer.GetExtent = function()
+		return height
+	end
 	return initializer
 end
 
@@ -418,7 +460,9 @@ function NexEnhanceSettingsEditBoxMixin:EvaluateState()
 	local box = self.EditBox
 	if box then
 		box:SetEnabled(enabled)
-		if not enabled then box:ClearFocus() end
+		if not enabled then
+			box:ClearFocus()
+		end
 		box:SetTextColor(enabled and 1 or 0.5, enabled and 1 or 0.5, enabled and 1 or 0.5)
 		if box.nexEntryBox then
 			local g = enabled and 1 or 0.5
@@ -473,7 +517,9 @@ function NexEnhanceSettingsEditBoxMixin:Init(initializer)
 	-- the description's BOTTOMLEFT proved unreliable, so we derive the offset
 	-- from its measured height instead.
 	local descHeight = self.Description:GetStringHeight()
-	if not descHeight or descHeight <= 0 then descHeight = 12 end
+	if not descHeight or descHeight <= 0 then
+		descHeight = 12
+	end
 	self.EditBox:ClearAllPoints()
 	self.EditBox:SetPoint("TOPLEFT", self.Text, "BOTTOMLEFT", 0, -(descHeight + 11))
 
@@ -492,7 +538,9 @@ end
 --- Create an initializer for an inline Settings edit box row. The value is owned
 --- by the caller through getValue/setValue so it can write to any saved table.
 function F.CreateSettingsEditBox(name, tooltip, getValue, setValue, width)
-	if not (Settings and Settings.CreateElementInitializer) then return end
+	if not (Settings and Settings.CreateElementInitializer) then
+		return
+	end
 	local initializer = Settings.CreateElementInitializer("NexEnhanceSettingsEditBoxTemplate", {
 		name = name,
 		tooltip = tooltip,
@@ -500,6 +548,8 @@ function F.CreateSettingsEditBox(name, tooltip, getValue, setValue, width)
 		setValue = setValue,
 		width = width or 200,
 	})
-	initializer.GetExtent = function() return 74 end
+	initializer.GetExtent = function()
+		return 74
+	end
 	return initializer
 end

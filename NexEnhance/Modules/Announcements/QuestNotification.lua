@@ -72,7 +72,9 @@ local function completeText(questID)
 end
 
 local function sendQuestMsg(msg)
-	if db().onlyCompleteRing then return end
+	if db().onlyCompleteRing then
+		return
+	end
 
 	if IsPartyLFG() or (C_PartyInfo and C_PartyInfo.IsPartyWalkIn and C_PartyInfo.IsPartyWalkIn()) then
 		SendChatMessage(msg, "INSTANCE_CHAT")
@@ -104,7 +106,14 @@ local questMatches = {
 -- Event handlers (signatures match ns:RegisterEvent -> (event, ...))
 -- ---------------------------------------------------------------------------
 local function FindQuestProgress(_, _, msg)
-	if not db().progress or db().onlyCompleteRing then return end
+	if not db().progress or db().onlyCompleteRing then
+		return
+	end
+	-- UI_INFO_MESSAGE fires mid-combat (kill credit, objective progress). On 12.0
+	-- that text can be a secret in instances; bail before we strmatch/tonumber/mod it.
+	if F.IsSecret(msg) then
+		return
+	end
 
 	for _, pattern in pairs(questMatches) do
 		if strmatch(msg, pattern) then
@@ -124,12 +133,18 @@ end
 
 local WQcache = {}
 local function FindQuestAccept(_, questID)
-	if not questID then return end
-	if C_QuestLog_IsWorldQuest(questID) and WQcache[questID] then return end
+	if not questID then
+		return
+	end
+	if C_QuestLog_IsWorldQuest(questID) and WQcache[questID] then
+		return
+	end
 	WQcache[questID] = true
 
 	local tagInfo = C_QuestLog_GetQuestTagInfo(questID)
-	if tagInfo and tagInfo.worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION then return end
+	if tagInfo and tagInfo.worldQuestType == LE_QUEST_TAG_TYPE_PROFESSION then
+		return
+	end
 
 	local questLogIndex = C_QuestLog_GetLogIndexForQuestID(questID)
 	if questLogIndex then

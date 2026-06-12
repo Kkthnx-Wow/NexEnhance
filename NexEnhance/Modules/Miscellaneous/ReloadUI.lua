@@ -23,7 +23,9 @@ ns:RegisterDefaults({
 local ReloadUI = ns:NewModule("ReloadUI", "reloadUI", { group = "misc", title = L["Reload UI"], order = 80 })
 
 function ReloadUI:OnEnable()
-	if not ns.db.reloadUI.enable then return end
+	if not ns.db.reloadUI.enable then
+		return
+	end
 
 	_G.SLASH_NEXRELOADUI1 = "/rl"
 	_G.SLASH_NEXRELOADUI2 = "/reloadui"

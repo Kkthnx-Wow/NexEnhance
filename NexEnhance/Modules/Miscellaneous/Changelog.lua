@@ -9,6 +9,7 @@
 --]]
 
 ---@diagnostic disable: undefined-field
+-- luacheck: globals ScrollUtil
 local _, ns = ...
 local C, L, F = ns.C, ns.L, ns.F
 
@@ -16,9 +17,9 @@ local _G = _G
 local ipairs = ipairs
 local max = math.max
 local format = string.format
-local tconcat = table.concat
 local CreateFrame = CreateFrame
 local C_Timer = C_Timer
+local ScrollUtil = ScrollUtil
 
 ns:RegisterDefaults({
 	changelog = {
@@ -26,7 +27,11 @@ ns:RegisterDefaults({
 		autoShow = true,
 	},
 })
-ns:RegisterDefaults({ lastChangelog = false }, "global")
+-- Stores the version string whose notes were last auto-shown. Must default to a
+-- string (not false): it always holds a version at runtime, and CopyDefaults'
+-- type-repair would otherwise reset the saved string back to the boolean every
+-- load - making the changelog pop on every reload.
+ns:RegisterDefaults({ lastChangelog = "" }, "global")
 
 local Changelog = ns:NewModule("Changelog", "changelog", { group = "misc", title = L["Changelog"], order = 90 })
 
@@ -37,6 +42,33 @@ local BACKDROP = C.Backdrops.window
 -- Notes (keep in sync with CHANGELOG.md)
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
+	{
+		version = "1.2.9",
+		date = "2026-06-11",
+		intro = "A new Guild Invite Filter auto-declines guild invites from strangers while letting friends and guildmates through, with live statistics right on its options page, plus a Quick Join module that smooths out Blizzard's Group Finder. Under the hood, all of NexEnhance's Midnight Secret-Value handling now lives behind one shared helper set (modelled on oUF's) so every module guards secrets the same way. Profiles gained AceDB-style actions with compact compressed exports, and frames now standardise on Blizzard's stock tooltip border art.",
+		sections = {
+			{ "Automation", {
+				"Guild Invite Filter: new module (off by default) that auto-declines guild invites from players who aren't trusted, while letting character friends, Battle.net friends and your current guild members through. Each trusted source is its own toggle, with an optional chat announcement and sound when an invite is declined.",
+				"Guild Invite Filter: a Statistics section on its options page shows lifetime blocked/allowed totals and the last blocked invite, refreshing whenever you open the page and greying out while the module is off.",
+				"Guild Invite Filter: while enabled it forces Blizzard's own Block Guild Invites off so invites actually reach the filter (Blizzard's option drops them before the addon sees them), remembers your prior setting per-character, and restores it when you disable the module - even across a reload.",
+				"Quick Join: new module (off by default) for the Premade Groups finder, adapted from NDui. Double-click a search result to apply (hold Alt to review the sign-up note instead of sending it), with a one-time tip pointing the shortcut out.",
+				"Quick Join: an Auto-accept check on the applicant viewer auto-invites applicants while you're the group leader; it only appears for the leader, stays out of the way of Blizzard's own auto-accept toggle, and remembers its state.",
+				"Quick Join: Auto-hide LFG Popups dismisses the throwaway informational and expired-listing popups and closes the Group Finder once you accept an invite to a listed group (toggle).",
+				"Quick Join: Show Leader Rating prints the group leader's Mythic+/PvP rating on each result with a cross-faction crest and trims the long activity prefix (toggle).",
+			} },
+			{ "Miscellaneous", {
+				"Profiles: profile management now follows AceDB's clearer workflow - create, switch, copy from another profile into the current one, copy current as a new name, reset current to defaults, or delete unused profiles.",
+				"Profiles: export strings now use bundled LibSerialize and LibDeflate for compact printable backups, while still accepting older !NEX1! Base64 exports.",
+				"UI chrome: frames now standardise on Blizzard's stock UI-Tooltip-Border / UI-Tooltip-Background art. The custom pixel-border and addon NineSlice helper paths were removed, covering the minimap, chat edit box, chat bubbles, profile/install/changelog/credits/copy windows, Details, Reminder, Rare Alert and tooltip status bar.",
+				"Commands: /nex abandonquests clears every abandonable quest from your log at once (skipping world quests and party-sync-locked quests), confirming with a yes/no popup first since abandoning also destroys quest items.",
+			} },
+			{ "Performance", {
+				"Core: consolidated all Midnight Secret-Value handling into one shared helper set on F (modelled on oUF's by Simpy) - IsSecretUnit, IsSecretTable, CanAccessValue and HasSecretValues alongside the existing IsSecret/NotSecret. The Tooltip and Cooldowns modules now route through these, so there's a single source of truth and no module rolls its own raw secret check.",
+				"Core: option pages gained a read-only description row that can grey out with the setting it belongs to (used for the Guild Invite Filter statistics).",
+				"Core: added a one-shot HelpTip helper (F.ShowHelpTip) for account-wide tutorial nudges shown once and then remembered; tips raised this way are automatically spared by the Hide Help Tips feature. Used to point out Quick Join's double-click, chat quick-scroll, the chat copy button, Edit Mode movers, the hidden minimap click/scroll gestures, and the bag delete-cheapest button.",
+			} },
+		},
+	},
 	{
 		version = "1.2.8",
 		date = "2026-06-10",
@@ -50,6 +82,9 @@ local CHANGELOG = {
 				"Clock: every countdown now uses one compact format - 6d 10h, 10h 30m, 32m, 45s - in consistent white text, keeping status colours only for special states (Available, Active, Complete, percentages).",
 				"Clock: older expansion world events (Legion invasions, faction assaults, elemental storms, feasts) now sit behind a Show Legacy World Events toggle, off by default.",
 			} },
+			{ "Action Bars", {
+				"Range Coloring: new tullaRange-style module tints action-button icons and hotkeys when an action is out of range, out of power, or unusable. Driven by Blizzard's event-based range check (no per-frame polling) and Midnight-hardened - secret usability/range values in combat fall back to the neutral tint instead of erroring. Colors, hotkey tinting and pet-bar coverage are configurable; off by default.",
+			} },
 			{ "Announcements", {
 				"Rare Alert: the alert can now show a movable click-to-track popup with a 2D portrait (falling back to the vignette icon). Left-click to drop a TomTom/Blizzard waypoint, optionally target the rare and place a raid marker.",
 				"Rare Alert: /nex rare toggles a sticky preview, and entering Edit Mode now reveals the banner automatically so you can move it without the preview command.",
@@ -59,28 +94,45 @@ local CHANGELOG = {
 			} },
 			{ "Inventory", {
 				"Loot Frame: new module that lets Blizzard's default loot window grow taller so more items fit on one page instead of scrolling, with a live toggle and a configurable max height. Inspired by Cybeloras' Improved Loot Frame.",
+				"Delete Cheapest: new module adds a goblin-head button to the bag frame (left of the search box, styled like Blizzard's cleanup button). Left-click finds and (after a confirmation showing the item) destroys the lowest vendor-value item in your bags; right-click previews it in chat. Per-item-class protection toggles guard whole categories, with quest items protected by default.",
 				"Already Known: housing decor now dims green at vendors, the Auction House and the guild bank when you already own or have placed it, via the Midnight housing catalog.",
 			} },
 			{ "Automation", {
 				"Faster Loot: reworked into a paced slot-walker - it listens to both LOOT_READY and LOOT_OPENED, handles noisy auto-loot state, avoids duplicate work and stops cleanly when the loot window closes. Inspired by SpeedyAutoLoot by Yuyuli.",
 			} },
+			{ "Skins", {
+				"Enhanced Color Picker: Blizzard's color picker gains R/G/B input boxes (0-255) that drive the wheel and update live as you drag, plus a row of click-to-apply class-color swatches with name tooltips. The native hex box is reskinned and aligned as the 4th row of the column (swatch / R / G / B / #), and the stacked swatch becomes a single box-styled header. Reworked from NDui against the current frame.",
+			} },
+			{ "General", {
+				"Hide Help Tips: new toggle (off by default) that suppresses Blizzard's tutorial and help-tip pop-ups (micro-button alerts, new-player pointers, panel hints) and the tutorial CVars, while leaving NexEnhance's own tips (such as the low-durability nudge) intact.",
+				"Widget Movers: new toggle (off by default) that makes Blizzard's below-minimap and top-center widget displays draggable in Edit Mode via our mover, opting them out of the legacy frame-position manager so they stay where you put them. The power-bar widget is intentionally left to Blizzard's native Encounter Bar Edit Mode system. Ported from NDui's UIWidgetFrameMover.",
+			} },
+			{ "Unit Frames", {
+				"Player Cast Bar: new toggle (off by default) that mirrors Blizzard's player cast bar icon above the bar and cast time beneath it, with a configurable icon size. Purely cosmetic: Blizzard keeps full ownership of cast state and timing, so there are no Secret-value concerns; the overlay hides during Edit Mode.",
+				"Level Colours: new module that colours the Target / Focus / Boss level number by classic creature difficulty (red to grey vs your level) via GetCreatureDifficultyColor, instead of Blizzard's newer trivial/easy buckets. An Always Show Level sub-toggle replaces Blizzard's skull on high-level targets with the actual number (or a red ?? when the game hides it) and appends classification markers (Boss / R+ / + / R). Post-hooks CheckLevel without writing onto the Edit Mode-managed frames, touches only the level FontString/skull cosmetically, and is Secret-value hardened - it leaves Blizzard's display when level reads are restricted in combat or instances.",
+			} },
 			{ "Tooltip", {
 				"Health Bar Text: the unit health bar shows current / max again (with a current-only option). It now follows ElvUI's retail-safe approach - Blizzard drives the bar and we post-hook its health update.",
 				"Quality Border: dropped the old recipe item-name width tweak (fragile under Secret Values for no real gain); the item post-call now only tints Blizzard's default border by item quality.",
+				"Internal rewrite: the core was reworked against ElvUI's Midnight Secret-Value model. The pile of workarounds is gone (global tooltip-function pcall wrappers and OnSizeChanged backdrop guards removed), unit resolution and health text are simplified, and the status-bar border is now a stock tooltip backdrop. Same look and options.",
 			} },
-			{ "Fixed", {
-				"Item Level: fixed item level and bind status not appearing on bank and warband bank items - the slots now update off ItemButton:UpdateCooldown (matching Unusable Items), hook both the generate and refresh-all bank paths, and install on BANKFRAME_OPENED so the load-on-demand bank UI is covered.",
-				"Tooltip (secret values): fixed taint thrown from Blizzard's own tooltip widget code (GameTooltip_AddWidgetSet/ClearWidgetSet and EmbeddedItemTooltip_UpdateSize) when our hooks run while widget geometry is secret (e.g. map POI / world-event tooltips); those paths now swallow the secret-value error instead of erroring out.",
-				"Tooltip (secret values): health text no longer blanks out when UnitHealth is a 12.0 secret value (in combat or instances); secret numbers are shown safely via number abbreviation instead of being discarded.",
-				"Tooltip: health text no longer flickers or briefly shows the wrong values while the tooltip is refreshing (for example when jumping in-game); it now reads only the unit attached to the tooltip/status bar instead of guessing from mouseover.",
-				"Tooltip (secret values): hiding the status bar no longer tests IsShown() on a bar that can inherit secret aspects after Blizzard writes secret health into it, and tooltip cleanup no longer touches Blizzard state at unsafe times (fixes map POI/event tooltip taint).",
-				"Rare Alert: showing/hiding the secure click-to-target popup in combat is now safe - it skips showing in combat and defers hides until combat ends.",
-				"Rare Alert: fixed Edit Mode click/drag conflicts where the secure overlay could sit above the mover and block moving the banner.",
-				"Faster Loot: locked-slot handling now works across client variants of GetLootSlotInfo.",
-				"Minimap (Collect Buttons): the AllTheThings button no longer shows up oversized or escapes the tray - its icon is re-clamped to the slot on every open and its self-positioning is stopped once parked.",
-				"Faster Movie Skip: enabling it from the Settings panel now works live instead of needing a reload.",
-				"Social Colours: the friends/who lists no longer do O(n^2) work refreshing - the scroll rows are enumerated once per refresh.",
-			} },
+			{
+				"Fixed",
+				{
+					"Minimap: the instance-difficulty flag now reskins with our Flag texture again - it was targeting a non-existent .Instance child, but the current InstanceDifficultyMixin exposes the normal flag as .Default (alongside .Guild and .ChallengeMode).",
+					"Item Level: fixed item level and bind status not appearing on bank and warband bank items - the slots now update off ItemButton:UpdateCooldown (matching Unusable Items), hook both the generate and refresh-all bank paths, and install on BANKFRAME_OPENED so the load-on-demand bank UI is covered.",
+					"Tooltip (secret values): fixed taint thrown from Blizzard's own tooltip widget code (GameTooltip_AddWidgetSet/ClearWidgetSet and EmbeddedItemTooltip_UpdateSize) when our hooks run while widget geometry is secret (e.g. map POI / world-event tooltips). The guard now detects secret-value errors case-insensitively (covering both SetWidth(secret) and secret height math), and GameTooltip_AddWidgetSet preserves Blizzard's numeric overflow return contract when suppressing them.",
+					"Tooltip (secret values): health text no longer blanks out when UnitHealth is a 12.0 secret value (in combat or instances); secret numbers are shown safely via number abbreviation instead of being discarded.",
+					"Tooltip: health text no longer flickers or briefly shows the wrong values while the tooltip is refreshing (for example when jumping in-game); it now reads only the unit attached to the tooltip/status bar instead of guessing from mouseover.",
+					"Tooltip (secret values): hiding the status bar no longer tests IsShown() on a bar that can inherit secret aspects after Blizzard writes secret health into it, and tooltip cleanup no longer touches Blizzard state at unsafe times (fixes map POI/event tooltip taint).",
+					"Rare Alert: showing/hiding the secure click-to-target popup in combat is now safe - it skips showing in combat and defers hides until combat ends.",
+					"Rare Alert: fixed Edit Mode click/drag conflicts where the secure overlay could sit above the mover and block moving the banner.",
+					"Faster Loot: locked-slot handling now works across client variants of GetLootSlotInfo.",
+					"Minimap (Collect Buttons): the AllTheThings button no longer shows up oversized or escapes the tray - its icon is re-clamped to the slot on every open and its self-positioning is stopped once parked.",
+					"Faster Movie Skip: enabling it from the Settings panel now works live instead of needing a reload.",
+					"Social Colours: the friends/who lists no longer do O(n^2) work refreshing - the scroll rows are enumerated once per refresh.",
+				},
+			},
 			{ "Performance", {
 				"Quick Quest now uses the shared addon event system instead of its own event frame, and only registers its quest events while enabled - so it no longer wakes on QUEST_LOG_UPDATE for players who leave it off (it defaults off).",
 				"Action Bars: hotkey abbreviation is memoised per keybind, so the substitution pass runs once per unique bind instead of on every text refresh.",
@@ -170,18 +222,21 @@ local CHANGELOG = {
 				"Tooltip Icons: the inline-texture resize pass now skips tooltip lines without a texture escape, avoiding needless pattern work on every line.",
 				"Unusable Items: the per-item class-restriction cache is now size-capped like the other inventory caches, keeping memory flat over long sessions.",
 			} },
-			{ "Fixed", {
-				"Tooltip Hover Tips: hovering item/spell links in the Communities (guild/community) chat no longer replaces Blizzard's own link handlers.",
-				"Edit Mode - Reset Position: Reset to default position on our relative anchors (Battle.net toast, Quick Join button, Buff Reminder) no longer drops the frame at the bottom-left corner of the screen; it restores the proper live anchor.",
-				"World Map fade: turning off Fade When Moving while the map is open now restores full opacity and stops the fader immediately instead of leaving it running.",
-				"Chat Filter: disabling the filter now stops it filtering right away (the per-message handlers respect the master toggle) instead of staying active until reload.",
-				"Tooltip Icons (secret values): hovering auras whose tooltip lines are secret (e.g. inside instances) no longer throws a string conversion on a secret value error; the secret check now runs before any string search.",
-				"AFK Camera (secret values): UnitIsAFK returning a secret boolean (e.g. inside instances) no longer throws a boolean test on a secret value error; the AFK camera safely treats it as not-AFK.",
-				"Tooltip Status Bar: hovering world objects with 12.0 secret values (rare vignettes, Delve doors and similar) no longer throws a Backdrop secret-number error; the status-bar border keeps Blizzard's styling but skips the resize pass on secret dimensions.",
-				"Delves Automation: the borrowed-power popup is now auto-confirmed reliably - Delve status is re-checked a beat after zoning in (the walk-in flag is stale at that exact moment), so entering a Delve arms the handler.",
-				"Already Known: cosmetic/transmog items now tint correctly by checking the appearance collection directly instead of the tooltip 'collected' line, which cosmetics don't use.",
-				"Pet Frame: tightened the PetFrame click area and added a taint-safe hide helper for protected/managed frames, using alpha and mouse state instead of reparenting. Pattern from BetterBlizzFrames.",
-			} },
+			{
+				"Fixed",
+				{
+					"Tooltip Hover Tips: hovering item/spell links in the Communities (guild/community) chat no longer replaces Blizzard's own link handlers.",
+					"Edit Mode - Reset Position: Reset to default position on our relative anchors (Battle.net toast, Quick Join button, Buff Reminder) no longer drops the frame at the bottom-left corner of the screen; it restores the proper live anchor.",
+					"World Map fade: turning off Fade When Moving while the map is open now restores full opacity and stops the fader immediately instead of leaving it running.",
+					"Chat Filter: disabling the filter now stops it filtering right away (the per-message handlers respect the master toggle) instead of staying active until reload.",
+					"Tooltip Icons (secret values): hovering auras whose tooltip lines are secret (e.g. inside instances) no longer throws a string conversion on a secret value error; the secret check now runs before any string search.",
+					"AFK Camera (secret values): UnitIsAFK returning a secret boolean (e.g. inside instances) no longer throws a boolean test on a secret value error; the AFK camera safely treats it as not-AFK.",
+					"Tooltip Status Bar: hovering world objects with 12.0 secret values (rare vignettes, Delve doors and similar) no longer throws a Backdrop secret-number error; the status-bar border keeps Blizzard's styling but skips the resize pass on secret dimensions.",
+					"Delves Automation: the borrowed-power popup is now auto-confirmed reliably - Delve status is re-checked a beat after zoning in (the walk-in flag is stale at that exact moment), so entering a Delve arms the handler.",
+					"Already Known: cosmetic/transmog items now tint correctly by checking the appearance collection directly instead of the tooltip 'collected' line, which cosmetics don't use.",
+					"Pet Frame: tightened the PetFrame click area and added a taint-safe hide helper for protected/managed frames, using alpha and mouse state instead of reparenting. Pattern from BetterBlizzFrames.",
+				},
+			},
 			{ "Internal", {
 				"Saved variables now carry a schema version so future updates can migrate stored data safely.",
 				"Removed unnecessary global frame names and tidied unused locals across several modules.",
@@ -426,47 +481,96 @@ local frame
 -- CHANGELOG is always the most recent.
 local PALETTE_NEW = {
 	version = "ffffff",
-	date = "888888",
-	intro = "b0b0b0",
+	date = "8a8a8a",
+	intro = "c8c8c8",
 	heading = "|c" .. C.BrandHex,
-	bullet = "909090",
-	body = "e6e6e6",
+	bullet = "8a8a8a",
+	body = "e2e2e2",
 }
+-- History is still dimmed so the newest entry reads as "what's new", but lifted
+-- well above the old near-black greys so older notes stay legible.
 local PALETTE_OLD = {
-	version = "9d9d9d",
-	date = "5f5f5f",
-	intro = "707070",
-	heading = "|cff8a8a8a",
-	bullet = "555555",
-	body = "808080",
+	version = "bcbcbc",
+	date = "6a6a6a",
+	intro = "8e8e8e",
+	heading = "|cffa6a6a6",
+	bullet = "6f6f6f",
+	body = "9c9c9c",
 }
 
-local function BuildText()
-	local buf = {}
-	for index, entry in ipairs(CHANGELOG) do
-		local isLatest = index == 1
-		local p = isLatest and PALETTE_NEW or PALETTE_OLD
+local CONTENT_WIDTH = 496
 
-		local tag = isLatest and format("  |c%sNEW|r", C.BrandHex) or ""
-		buf[#buf + 1] = format("|cff%sVersion %s|r  |cff%s%s|r%s", p.version, entry.version, p.date, entry.date, tag)
-		if entry.intro then
-			buf[#buf + 1] = format("|cff%s%s|r", p.intro, entry.intro)
-		end
-		buf[#buf + 1] = " "
-		for _, section in ipairs(entry.sections) do
-			buf[#buf + 1] = format("%s%s|r", p.heading, section[1])
-			local lines = section[2]
-			for i = 1, #lines do
-				buf[#buf + 1] = format("|cff%s-|r |cff%s%s|r", p.bullet, p.body, lines[i])
-			end
-			buf[#buf + 1] = " "
-		end
+-- Vertical rhythm (pixels) between stacked rows.
+local GAP_AFTER_TITLE = 6
+local GAP_AFTER_INTRO = 12
+local GAP_AFTER_HEADER = 6
+local GAP_BETWEEN_BULLETS = 6
+local GAP_AFTER_SECTION = 14
+local GAP_BETWEEN_VERSIONS = 16
+
+-- Bullets are two columns - a "•" glyph and the wrapping text body - so every
+-- wrapped line hangs under the text instead of falling back to the margin.
+-- (A single FontString with indented word wrap does NOT hang reliably here.)
+local BULLET_GLYPH_X = 2
+local BULLET_TEXT_X = 16
+
+-- A left-justified, word-wrapped row in the given font object at the given width.
+local function NewRow(parent, fontObject, width)
+	local fs = parent:CreateFontString(nil, "OVERLAY", fontObject)
+	fs:SetWidth(width)
+	fs:SetJustifyH("LEFT")
+	fs:SetJustifyV("TOP")
+	fs:SetSpacing(5)
+	return fs
+end
+
+-- Render one version entry into `parent` as a stack of FontStrings, top-anchored
+-- at vertical offset `y`. Returns the new cursor position below the block.
+-- Section headers use a larger font than the body so the hierarchy reads at a
+-- glance instead of relying on colour alone.
+local function RenderVersion(parent, entry, isLatest, y)
+	local p = isLatest and PALETTE_NEW or PALETTE_OLD
+
+	local title = NewRow(parent, "GameFontNormalLarge", CONTENT_WIDTH)
+	local tag = isLatest and format("  |c%sNEW|r", C.BrandHex) or ""
+	title:SetText(format("|cff%sVersion %s|r  |cff%s%s|r%s", p.version, entry.version, p.date, entry.date, tag))
+	title:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
+	y = y + title:GetStringHeight() + GAP_AFTER_TITLE
+
+	if entry.intro then
+		local intro = NewRow(parent, "GameFontHighlight", CONTENT_WIDTH)
+		intro:SetText(format("|cff%s%s|r", p.intro, entry.intro))
+		intro:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
+		y = y + intro:GetStringHeight() + GAP_AFTER_INTRO
 	end
-	return tconcat(buf, "\n")
+
+	for _, section in ipairs(entry.sections) do
+		local header = NewRow(parent, "GameFontNormalMed1", CONTENT_WIDTH)
+		header:SetText(format("%s%s|r", p.heading, section[1]))
+		header:SetPoint("TOPLEFT", parent, "TOPLEFT", 0, -y)
+		y = y + header:GetStringHeight() + GAP_AFTER_HEADER
+
+		local lines = section[2]
+		for i = 1, #lines do
+			local glyph = NewRow(parent, "GameFontHighlight", 12)
+			glyph:SetText(format("|cff%s•|r", p.bullet))
+			glyph:SetPoint("TOPLEFT", parent, "TOPLEFT", BULLET_GLYPH_X, -y)
+
+			local text = NewRow(parent, "GameFontHighlight", CONTENT_WIDTH - BULLET_TEXT_X)
+			text:SetText(format("|cff%s%s|r", p.body, lines[i]))
+			text:SetPoint("TOPLEFT", parent, "TOPLEFT", BULLET_TEXT_X, -y)
+			y = y + text:GetStringHeight() + GAP_BETWEEN_BULLETS
+		end
+		y = y + (GAP_AFTER_SECTION - GAP_BETWEEN_BULLETS)
+	end
+
+	return y
 end
 
 local function Build()
-	if frame then return frame end
+	if frame then
+		return frame
+	end
 
 	frame = CreateFrame("Frame", "NexEnhanceChangelog", UIParent, "BackdropTemplate")
 	frame:SetSize(560, 600)
@@ -474,20 +578,18 @@ local function Build()
 	frame:SetFrameStrata("DIALOG")
 	frame:SetToplevel(true)
 	frame:Hide()
-	-- Prefer Blizzard's in-game tooltip NineSlice layout; fall back to the
-	-- classic tooltip backdrop if the layout isn't registered.
-	if not F.CreateNineSlice(frame, { layout = "TooltipDefaultLayout" }) then
-		frame:SetBackdrop(BACKDROP)
-		frame:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
-		frame:SetBackdropBorderColor(1, 1, 1)
-	end
+	-- Classic tooltip backdrop (UI-Tooltip-Border + dark fill).
+	frame:SetBackdrop(BACKDROP)
+	frame:SetBackdropColor(0.06, 0.06, 0.06, 0.95)
+	frame:SetBackdropBorderColor(1, 1, 1)
 
-	-- Outer glow halo (raw tutorial textures; drawn one level below the panel).
+	-- Outer glow halo (raw tutorial textures; drawn one level below the panel),
+	-- tinted to the NexEnhance brand blue to match the window's accents.
 	local glow = CreateFrame("Frame", nil, frame)
 	glow:SetAllPoints(frame)
 	glow:SetFrameLevel(max(frame:GetFrameLevel() - 1, 0))
-	glow:SetAlpha(0.18)
-	F.CreateGlowBorder(glow, { outset = 5, blend = "BLEND" })
+	glow:SetAlpha(0.90)
+	F.CreateGlowBorder(glow, { outset = 6, blend = "BLEND", color = C.Colors.brand })
 
 	F.MakeWindowMovable(frame, "NexEnhanceChangelog") -- draggable + Escape-close
 
@@ -513,23 +615,90 @@ local function Build()
 	divider:SetPoint("TOPLEFT", logo, "BOTTOMLEFT", 0, -12)
 	divider:SetPoint("RIGHT", frame, "RIGHT", -16, 0)
 
-	local scroll = CreateFrame("ScrollFrame", "NexEnhanceChangelogScroll", frame, "UIPanelScrollFrameTemplate")
+	-- A plain ScrollFrame paired with Blizzard's modern MinimalScrollBar, instead
+	-- of UIPanelScrollFrameTemplate's dated square-arrow bar. InitScrollFrameWithScrollBar
+	-- wires the two together (mouse wheel + bidirectional sync) for free-form
+	-- content - the ScrollBox/list API doesn't fit our single tall child.
+	local scroll = CreateFrame("ScrollFrame", "NexEnhanceChangelogScroll", frame)
 	scroll:SetPoint("TOPLEFT", divider, "BOTTOMLEFT", 0, -12)
-	scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -30, 16)
+	scroll:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -28, 16)
+
+	local scrollBar = CreateFrame("EventFrame", nil, frame, "MinimalScrollBar")
+	scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 6, 0)
+	scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 6, 0)
+	ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
 
 	local child = CreateFrame("Frame", nil, scroll)
-	child:SetSize(500, 1)
+	child:SetSize(CONTENT_WIDTH, 1)
 	scroll:SetScrollChild(child)
 
-	local body = child:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-	body:SetPoint("TOPLEFT", 0, 0)
-	body:SetWidth(496)
-	body:SetJustifyH("LEFT")
-	body:SetJustifyV("TOP")
-	body:SetSpacing(4)
-	body:SetText(BuildText())
+	-- Latest version is always rendered and expanded.
+	local y = RenderVersion(child, CHANGELOG[1], true, 0)
 
-	child:SetSize(500, body:GetStringHeight() + 12)
+	-- Older versions live in a collapsible container, hidden by default so the
+	-- window opens on "what's new" instead of the whole history wall.
+	local older = CreateFrame("Frame", nil, child)
+	older:SetWidth(CONTENT_WIDTH)
+	older:Hide()
+
+	local oy = 0
+	for i = 2, #CHANGELOG do
+		if i > 2 then
+			oy = oy + GAP_BETWEEN_VERSIONS
+		end
+		oy = RenderVersion(older, CHANGELOG[i], false, oy)
+	end
+	older:SetHeight(max(oy, 1))
+
+	local toggle, collapsedHeight
+	if oy > 0 then
+		toggle = CreateFrame("Button", nil, child)
+		toggle:SetSize(CONTENT_WIDTH, 24)
+		toggle:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -(y + 2))
+
+		local label = toggle:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+		label:SetPoint("LEFT")
+		toggle.label = label
+
+		-- Blizzard's minimal-scrollbar arrow atlas instead of a text glyph; it
+		-- points down when collapsed and is rotated to point up when expanded.
+		local arrow = toggle:CreateTexture(nil, "OVERLAY")
+		arrow:SetAtlas("minimal-scrollbar-arrow-bottom-down", true)
+		arrow:SetPoint("LEFT", label, "RIGHT", 6, -2)
+		toggle.arrow = arrow
+
+		older:SetPoint("TOPLEFT", child, "TOPLEFT", 0, -(y + 2 + 24 + 6))
+		collapsedHeight = y + 2 + 24 + 12
+
+		local br = C.Colors.brand
+		-- Plain text + SetTextColor (no embedded |c codes) so the hover-to-white
+		-- highlight actually takes effect - embedded colour escapes would win.
+		local function Tint(r, g, b)
+			toggle.label:SetTextColor(r, g, b)
+			toggle.arrow:SetVertexColor(r, g, b)
+		end
+		local function Refresh()
+			local shown = older:IsShown()
+			toggle.label:SetText(shown and L["Hide previous versions"] or L["Show previous versions"])
+			toggle.arrow:SetRotation(shown and math.pi or 0)
+			Tint(br[1], br[2], br[3])
+			child:SetHeight((shown and (collapsedHeight + oy) or collapsedHeight) + 8)
+		end
+
+		toggle:SetScript("OnEnter", function()
+			Tint(1, 1, 1)
+		end)
+		toggle:SetScript("OnLeave", function()
+			Tint(br[1], br[2], br[3])
+		end)
+		toggle:SetScript("OnClick", function()
+			older:SetShown(not older:IsShown())
+			Refresh()
+		end)
+		Refresh()
+	else
+		child:SetHeight(y + 8)
+	end
 
 	return frame
 end
@@ -548,7 +717,9 @@ function ns:OpenChangelog()
 end
 
 function Changelog:OnEnable()
-	if not ns.db.changelog.enable then return end
+	if not ns.db.changelog.enable then
+		return
+	end
 
 	-- Auto-show once per account whenever the version changes, but only after
 	-- the first-run install screen has been dealt with (so they don't overlap).

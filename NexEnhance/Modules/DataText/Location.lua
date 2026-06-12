@@ -48,7 +48,9 @@ local PVP_COLORS = {
 }
 
 function Location:Update()
-	if not frame then return end
+	if not frame then
+		return
+	end
 
 	local zone = GetZoneText()
 	if not zone or zone == "" then
@@ -74,7 +76,9 @@ end
 local mouseThrottle = 0
 local function MouseoverOnUpdate(self, elapsed)
 	mouseThrottle = mouseThrottle + (elapsed or 0)
-	if mouseThrottle < 0.05 then return end
+	if mouseThrottle < 0.05 then
+		return
+	end
 	mouseThrottle = 0
 	self:SetAlpha(MouseIsOver(_G["Minimap"]) and 1 or 0)
 end
@@ -83,7 +87,9 @@ end
 -- text via alpha, in always-on mode we drop the OnUpdate entirely (the best
 -- throttle is not running a handler at all).
 local function ApplyVisibility()
-	if not frame then return end
+	if not frame then
+		return
+	end
 	frame:Show()
 	if cfg.mouseover then
 		frame:SetAlpha(MouseIsOver(_G["Minimap"]) and 1 or 0)
@@ -101,7 +107,9 @@ function Location:Create()
 	end
 
 	local minimap = _G["Minimap"]
-	if not minimap then return end
+	if not minimap then
+		return
+	end
 
 	frame = CreateFrame("Frame", nil, minimap)
 	frame:SetFrameLevel(minimap:GetFrameLevel() + 5)
@@ -134,7 +142,9 @@ end
 
 function Location:OnEnable()
 	cfg = ns.db.location
-	if not cfg.enable then return end
+	if not cfg.enable then
+		return
+	end
 	self:Create()
 end
 

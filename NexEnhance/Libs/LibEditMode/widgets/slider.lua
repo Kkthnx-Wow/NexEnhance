@@ -4,7 +4,7 @@ if ns.LibEditMode then
 	lib = ns.LibEditMode
 else
 	local MINOR, prevMinor = 15
-	lib, prevMinor = LibStub('LibEditMode')
+	lib, prevMinor = LibStub("LibEditMode")
 	if prevMinor > MINOR then
 		return
 	end
@@ -12,8 +12,8 @@ end
 
 local function showTooltip(self)
 	if self.setting and self.setting.desc then
-		SettingsTooltip:SetOwner(self, 'ANCHOR_NONE')
-		SettingsTooltip:SetPoint('BOTTOMRIGHT', self, 'TOPLEFT')
+		SettingsTooltip:SetOwner(self, "ANCHOR_NONE")
+		SettingsTooltip:SetPoint("BOTTOMRIGHT", self, "TOPLEFT")
 		SettingsTooltip:SetText(self.setting.name, 1, 1, 1)
 		SettingsTooltip:AddLine(self.setting.desc)
 		SettingsTooltip:Show()
@@ -38,13 +38,13 @@ end
 
 function sliderMixin:Refresh()
 	local data = self.setting
-	if type(data.disabled) == 'function' then
+	if type(data.disabled) == "function" then
 		self:SetEnabled(not data.disabled(lib:GetActiveLayoutName()))
 	else
 		self:SetEnabled(not data.disabled)
 	end
 
-	if type(data.hidden) == 'function' then
+	if type(data.hidden) == "function" then
 		self:SetShown(not data.hidden(lib:GetActiveLayoutName()))
 	else
 		self:SetShown(not data.hidden)
@@ -73,9 +73,9 @@ local function onEditFocus(self)
 
 	-- resize editbox to take up the available space
 	self:ClearAllPoints()
-	self:SetPoint('RIGHT', parent.Slider.RightText, 5, 0)
-	self:SetPoint('TOPLEFT', parent.Slider)
-	self:SetPoint('BOTTOMLEFT', parent.Slider)
+	self:SetPoint("RIGHT", parent.Slider.RightText, 5, 0)
+	self:SetPoint("TOPLEFT", parent.Slider)
+	self:SetPoint("BOTTOMLEFT", parent.Slider)
 
 	-- set editbox text to current slider value
 	-- TODO: maybe flatten the value here
@@ -103,37 +103,37 @@ local function onEditReset(self)
 	local parent = self:GetParent()
 	parent.Slider:Show()
 
-	self:SetText('')
+	self:SetText("")
 	self:ClearFocus()
 
 	self:ClearAllPoints()
-	self:SetPoint('RIGHT', parent.Slider.RightText, 5, 0)
-	self:SetPoint('TOPLEFT', parent.Slider.RightText)
-	self:SetPoint('BOTTOMLEFT', parent.Slider.RightText)
+	self:SetPoint("RIGHT", parent.Slider.RightText, 5, 0)
+	self:SetPoint("TOPLEFT", parent.Slider.RightText)
+	self:SetPoint("BOTTOMLEFT", parent.Slider.RightText)
 end
 
 lib.internal:CreatePool(lib.SettingType.Slider, function()
-	local frame = CreateFrame('Frame', nil, UIParent, 'EditModeSettingSliderTemplate')
-	frame:SetScript('OnLeave', DefaultTooltipMixin.OnLeave)
-	frame:SetScript('OnEnter', showTooltip)
+	local frame = CreateFrame("Frame", nil, UIParent, "EditModeSettingSliderTemplate")
+	frame:SetScript("OnLeave", DefaultTooltipMixin.OnLeave)
+	frame:SetScript("OnEnter", showTooltip)
 	Mixin(frame, sliderMixin)
 
 	frame:SetHeight(32)
 	frame.Slider:SetWidth(200)
 	frame.Slider.MinText:Hide()
 	frame.Slider.MaxText:Hide()
-	frame.Label:SetPoint('LEFT')
+	frame.Label:SetPoint("LEFT")
 
-	local editBox = CreateFrame('EditBox', nil, frame, 'InputBoxTemplate')
-	editBox:SetPoint('TOPLEFT', frame.Slider.RightText)
-	editBox:SetPoint('BOTTOMLEFT', frame.Slider.RightText)
-	editBox:SetPoint('RIGHT', frame.Slider.RightText, 5, 0)
+	local editBox = CreateFrame("EditBox", nil, frame, "InputBoxTemplate")
+	editBox:SetPoint("TOPLEFT", frame.Slider.RightText)
+	editBox:SetPoint("BOTTOMLEFT", frame.Slider.RightText)
+	editBox:SetPoint("RIGHT", frame.Slider.RightText, 5, 0)
 	editBox:SetAutoFocus(false)
-	editBox:SetJustifyH('CENTER')
-	editBox:SetScript('OnEditFocusGained', onEditFocus)
-	editBox:SetScript('OnEnterPressed', onEditSubmit)
-	editBox:SetScript('OnEscapePressed', onEditReset)
-	editBox:SetScript('OnEditFocusLost', onEditReset)
+	editBox:SetJustifyH("CENTER")
+	editBox:SetScript("OnEditFocusGained", onEditFocus)
+	editBox:SetScript("OnEnterPressed", onEditSubmit)
+	editBox:SetScript("OnEscapePressed", onEditReset)
+	editBox:SetScript("OnEditFocusLost", onEditReset)
 	frame.EditBox = editBox
 
 	frame:OnLoad()

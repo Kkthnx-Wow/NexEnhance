@@ -65,7 +65,9 @@ local function SlotKeystoneFromBags()
 end
 
 function AutoKeystone:OnKeystoneFrameShown()
-	if not ns.db.autoKeystone.enable then return end
+	if not ns.db.autoKeystone.enable then
+		return
+	end
 
 	if SlotKeystoneFromBags() then
 		F.Print(L["Keystone automatically placed."])
@@ -73,9 +75,13 @@ function AutoKeystone:OnKeystoneFrameShown()
 end
 
 function AutoKeystone:HookKeystoneFrame()
-	if self.hooked then return end
+	if self.hooked then
+		return
+	end
 	local frame = _G["ChallengesKeystoneFrame"]
-	if not frame then return end
+	if not frame then
+		return
+	end
 
 	self.hooked = true
 	frame:HookScript("OnShow", function()
@@ -91,7 +97,9 @@ end
 
 function AutoKeystone:OnEnable()
 	-- AngryKeystones already auto-slots keystones; don't fight it.
-	if C_AddOns_IsAddOnLoaded("AngryKeystones") then return end
+	if C_AddOns_IsAddOnLoaded("AngryKeystones") then
+		return
+	end
 
 	if C_AddOns_IsAddOnLoaded("Blizzard_ChallengesUI") then
 		self:HookKeystoneFrame()

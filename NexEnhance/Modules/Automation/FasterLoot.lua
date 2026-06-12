@@ -15,6 +15,7 @@ local GetNumLootItems = GetNumLootItems
 local GetLootSlotInfo = GetLootSlotInfo
 local LootSlot = LootSlot
 local CreateFrame = CreateFrame
+local select, type = select, type
 
 ns:RegisterDefaults({
 	fasterLoot = {

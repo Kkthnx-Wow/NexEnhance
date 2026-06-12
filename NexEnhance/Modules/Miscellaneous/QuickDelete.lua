@@ -42,7 +42,9 @@ local originals = {}
 local applied = false
 
 local function Apply()
-	if applied or not StaticPopupDialogs then return end
+	if applied or not StaticPopupDialogs then
+		return
+	end
 
 	for _, entry in ipairs(OVERRIDES) do
 		local source = StaticPopupDialogs[entry.source]
@@ -63,7 +65,9 @@ local function Apply()
 end
 
 local function Restore()
-	if not applied or not StaticPopupDialogs then return end
+	if not applied or not StaticPopupDialogs then
+		return
+	end
 
 	for _, entry in ipairs(OVERRIDES) do
 		if originals[entry.target] ~= nil then
@@ -81,7 +85,9 @@ function QuickDelete:OnEnable()
 end
 
 function QuickDelete:OnSettingChanged(key, value)
-	if key ~= "enable" then return end
+	if key ~= "enable" then
+		return
+	end
 	if value then
 		Apply()
 	else

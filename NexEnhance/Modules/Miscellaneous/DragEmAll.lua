@@ -16,6 +16,7 @@ local L = ns.L
 local _G = _G
 local pairs, type = pairs, type
 local gmatch = string.gmatch
+local InCombatLockdown = InCombatLockdown
 
 ns:RegisterDefaults({
 	dragEmAll = {
@@ -60,6 +61,19 @@ local frames = {
 	["TokenFrame"] = true,
 	["TutorialFrame"] = false,
 	["SettingsPanel"] = false,
+
+	-- Bags: draggable but intentionally NOT persisted. Blizzard's
+	-- UpdateContainerFrameAnchors re-pins them on the next bag open/update, so
+	-- they snap back to the default spot rather than saving a position. The
+	-- combined window covers the default layout; ContainerFrame1-6 cover the
+	-- separate-bag layout (dragging the first/root bag moves the whole cluster).
+	["ContainerFrameCombinedBags"] = false,
+	["ContainerFrame1"] = false,
+	["ContainerFrame2"] = false,
+	["ContainerFrame3"] = false,
+	["ContainerFrame4"] = false,
+	["ContainerFrame5"] = false,
+	["ContainerFrame6"] = false,
 }
 
 -- Frames provided by load-on-demand addons; hooked when that addon loads.
@@ -114,6 +128,12 @@ local lodFrames = {
 local parentFrame, hooked = {}, {}
 
 local function MouseDownHandler(frame, button)
+	-- Don't start moving a Blizzard window mid-combat: a few of these frames
+	-- carry secure children, and StartMoving on a protected frame is blocked in
+	-- the lockdown. Combat is also exactly when you don't want to be dragging UI.
+	if InCombatLockdown() then
+		return
+	end
 	frame = parentFrame[frame] or frame
 	if frame and button == "LeftButton" then
 		frame:StartMoving()
@@ -128,19 +148,15 @@ local function MouseUpHandler(frame, button)
 	end
 end
 
+-- Post-hook the frame's mouse scripts. We use the widget HookScript so the
+-- original handler keeps running (and so we never taint the script path the way
+-- a raw SetScript wrapper would). OnMouseDown/OnMouseUp exist on every frame, so
+-- HookScript is always valid here.
 local function HookScript(frame, script, handler)
-	if not frame.GetScript then
+	if not frame.HookScript then
 		return
 	end
-	local oldHandler = frame:GetScript(script)
-	if oldHandler then
-		frame:SetScript(script, function(...)
-			handler(...)
-			oldHandler(...)
-		end)
-	else
-		frame:SetScript(script, handler)
-	end
+	frame:HookScript(script, handler)
 end
 
 local function HookFrame(name, moveParent)

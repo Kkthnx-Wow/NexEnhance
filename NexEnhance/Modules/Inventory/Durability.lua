@@ -136,7 +136,7 @@ local function UpdateAllSlots()
 		local index = slots[i][1]
 		if GetInventoryItemLink("player", index) then
 			local current, max = GetInventoryItemDurability(index)
-			if current and max and max > 0 then
+			if current and max and F.NotSecret(current) and F.NotSecret(max) and max > 0 then
 				slots[i][3] = current / max
 				numSlots = numSlots + 1
 			end
@@ -207,10 +207,12 @@ local function OnEvent(self, event)
 	end
 
 	local HelpTip = _G.HelpTip
-	if isLow then
-		HelpTip:Show(self, GetLowDurabilityInfo())
-	else
-		HelpTip:Hide(self, L["DurabilityHelpTip"])
+	if not InCombatLockdown() then
+		if isLow then
+			HelpTip:Show(self, GetLowDurabilityInfo())
+		else
+			HelpTip:Hide(self, L["DurabilityHelpTip"])
+		end
 	end
 end
 

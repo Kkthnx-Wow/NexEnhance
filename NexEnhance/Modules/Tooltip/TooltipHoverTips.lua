@@ -22,7 +22,14 @@ local BattlePetToolTip_Show = BattlePetToolTip_Show
 local C_EncounterJournal_GetSectionInfo = C_EncounterJournal and C_EncounterJournal.GetSectionInfo
 local EJ_GetInstanceInfo, EJ_GetEncounterInfo, GetDifficultyInfo = EJ_GetInstanceInfo, EJ_GetEncounterInfo, GetDifficultyInfo
 
+-- orig1/orig2: the chat frame's original OnHyperlinkEnter/Leave scripts, stashed
+-- per frame so our replacements can chain back to them (we hijack the script
+-- rather than hooksecurefunc, so it's on us to call the previous owner).
+-- sectionInfo: encounter-journal section lookups are pricey; cache per id.
 local orig1, orig2, sectionInfo = {}, {}, {}
+-- Link types we just hand straight to GameTooltip:SetHyperlink. battlepet and
+-- journal links don't round-trip through SetHyperlink cleanly, so they get the
+-- bespoke handlers below instead of living in here.
 local linkTypes = {
 	item = true,
 	enchant = true,
@@ -58,6 +65,8 @@ local function HyperLink_GetSectionInfo(id)
 end
 
 local function HyperLink_SetJournal(self, link)
+	-- journal link shape: journal:<idType>:<id>:<difficulty>
+	-- idType 0 = instance, 1 = encounter/boss, 2 = ability section.
 	local _, idType, idStr, diffStr = strsplit(":", link)
 	local id, diffID = tonumber(idStr), tonumber(diffStr) or 0
 	if not id then
@@ -93,6 +102,8 @@ local function HyperLink_SetJournal(self, link)
 end
 
 local function HyperLink_SetTypes(self, link)
+	-- Flag the tooltip as hover-spawned so the rest of the Tooltip module can
+	-- tell "I'm parked over a chat link" apart from a normal unit/item tooltip.
 	GameTooltip.__isHoverTip = true
 	GameTooltip:SetOwner(self, "ANCHOR_TOPRIGHT", -3, 5)
 	GameTooltip:SetHyperlink(link)

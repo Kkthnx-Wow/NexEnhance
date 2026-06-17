@@ -18,21 +18,23 @@
 
 	Differences: NDui's hardcoded locale-specific addon/club blocklists and the
 	dead BFA Azerite-island filter are dropped. Keyword/whitelist tables are
-	account-wide (ns.global) and managed with the /nexfilter slash command since
-	the Settings panel has no free-text control. Message reads are secret-gated.
+	account-wide (ns.global) and editable in Filters settings or via /nexfilter.
+	Message reads are secret-gated.
 --]]
 
 local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
 
 local pairs = pairs
-local gsub, strmatch, strrep = string.gsub, string.match, string.rep
+local gsub, strmatch, strrep, strlower = string.gsub, string.match, string.rep, string.lower
 local strfind = string.find
 local min, max, tremove = math.min, math.max, table.remove
+local sort = table.sort
 local tconcat = table.concat
 local wipe = wipe
 local GetTime, Ambiguate = GetTime, Ambiguate
-local IsGuildMember, IsGUIDInGroup = IsGuildMember, IsGUIDInGroup
+local IsGuildMember = IsGuildMember
+local C_PartyInfo_IsGUIDInGroup = C_PartyInfo and C_PartyInfo.IsGUIDInGroup
 local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
 local C_FriendList_IsFriend = C_FriendList.IsFriend
 local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet.GetGameAccountInfoByGUID
@@ -51,15 +53,165 @@ ns:RegisterDefaults({
 	},
 })
 
--- Account-wide keyword tables (sets keyed by the keyword), edited via /nexfilter.
+-- Account-wide keyword tables (sets keyed by the keyword), edited in settings or /nexfilter.
 ns:RegisterDefaults({
 	chatFilter = {
 		keywords = {},
 		whitelist = {},
+		keywordVersion = 0,
 	},
 }, "global")
 
 local ChatFilter = ns:NewModule("ChatFilter", "chatFilter", { group = "filters", title = L["Chat Filter"], order = 10 })
+
+-- Predefined spam keywords (stored lowercase; matching is case-insensitive). A line
+-- must hit `matches` of these before it is hidden (default 3). Curated from
+-- current Midnight services/trade boosting spam: WTS carries, M+, raid bundles,
+-- gold-only payment lines, commercial site links, and copy-paste booking CTAs.
+-- Bump DEFAULT_KEYWORD_VERSION when adding new defaults for existing installs.
+local DEFAULT_KEYWORD_VERSION = 1
+local DEFAULT_KEYWORDS = {
+	-- WTS markers
+	["wts"] = true,
+	["<<wts>>"] = true,
+	["<wts>"] = true,
+	["[wts]"] = true,
+	["-wts-"] = true,
+
+	-- Payment / gold-only boosting
+	["gold only"] = true,
+	["only accept gold"] = true,
+	["pay in raid"] = true,
+	["trade in raid"] = true,
+	["trade gold in raid"] = true,
+
+	-- Mythic+ / dungeon carries
+	["mythic+"] = true,
+	["mythic keystone"] = true,
+	["m+ carry"] = true,
+	["timed guarantee"] = true,
+	["armor stack"] = true,
+	["specific key"] = true,
+	["discount on multi"] = true,
+	["crest farming"] = true,
+	["free reruns"] = true,
+	["loot traders"] = true,
+	["mega dungeon"] = true,
+
+	-- Keystone achievements / io spam
+	["ksm"] = true,
+	["ksh"] = true,
+	["ksl"] = true,
+	["ksmythic"] = true,
+	["3400io"] = true,
+
+	-- Leveling services
+	["power lvl"] = true,
+	["power level"] = true,
+	["afk level"] = true,
+	["1-90"] = true,
+	["10-80"] = true,
+	["80-90"] = true,
+	["1>90"] = true,
+
+	-- Raid boosting
+	["saved heroic"] = true,
+	["hc unsaved"] = true,
+	["unsaved vip"] = true,
+	["vip loot"] = true,
+	["loot prio"] = true,
+	["lootrun"] = true,
+	["loot run"] = true,
+	["aotc"] = true,
+	["bundle discount"] = true,
+	["bundle run"] = true,
+	["mythic raid"] = true,
+	["full run"] = true,
+	["all loot is up for roll"] = true,
+	["single kills"] = true,
+	["single boss"] = true,
+	["mount runs"] = true,
+	["mount run"] = true,
+
+	-- Commercial / external links
+	["wowvendor"] = true,
+	["trustpilot"] = true,
+	["discord.gg"] = true,
+	["price match"] = true,
+	["24/7 support"] = true,
+	["24/7 schedule"] = true,
+	["instant start"] = true,
+
+	-- Booking / whisper spam
+	["/w to book"] = true,
+	["/w me for spots"] = true,
+	["/w for info"] = true,
+	["pst for more"] = true,
+	["pm for booking"] = true,
+	["check prices"] = true,
+	["book now"] = true,
+	["whisper me for prices"] = true,
+
+	-- TCG / mount sellers
+	["tcg seller"] = true,
+
+	-- Common spam phrases
+	["boosting"] = true,
+	["carry service"] = true,
+	["best service"] = true,
+	["going now"] = true,
+	["join us now"] = true,
+	["no waiting"] = true,
+}
+
+local function MergeDefaultKeywords()
+	local chatGlobal = ns.global and ns.global.chatFilter
+	if not chatGlobal then
+		return
+	end
+	local version = chatGlobal.keywordVersion or 0
+	if version >= DEFAULT_KEYWORD_VERSION then
+		return
+	end
+	chatGlobal.keywords = chatGlobal.keywords or {}
+	for keyword in pairs(DEFAULT_KEYWORDS) do
+		chatGlobal.keywords[keyword] = true
+	end
+	chatGlobal.keywordVersion = DEFAULT_KEYWORD_VERSION
+end
+
+local keywordSortScratch = {}
+
+local function SerializeKeywordSet(set)
+	wipe(keywordSortScratch)
+	for keyword in pairs(set) do
+		if keyword ~= "" then
+			keywordSortScratch[#keywordSortScratch + 1] = keyword
+		end
+	end
+	sort(keywordSortScratch)
+	return tconcat(keywordSortScratch, "\n")
+end
+
+local function ApplyKeywordText(text, set)
+	wipe(set)
+	for line in (text or ""):gmatch("[^\r\n]+") do
+		local keyword = strlower(line:match("^%s*(.-)%s*$") or "")
+		if keyword ~= "" then
+			set[keyword] = true
+		end
+	end
+end
+
+local function RestoreDefaultKeywords()
+	local set = ns.global.chatFilter.keywords
+	set = set or {}
+	ns.global.chatFilter.keywords = set
+	for keyword in pairs(DEFAULT_KEYWORDS) do
+		set[keyword] = true
+	end
+	ns.global.chatFilter.keywordVersion = DEFAULT_KEYWORD_VERSION
+end
 
 local MyName = C.Player.name
 
@@ -71,6 +223,10 @@ local chatLines, prevLineID = {}, 0
 local filterResult ---@type any
 local last, this = {}, {} -- reused Levenshtein rows (no per-call allocation)
 local rowPool = {}
+-- Shared with Modules/Chat/Chat.lua so whispers hidden by this filter do not
+-- still trigger the optional whisper sound in the same event pass.
+ns.ChatMuteCache = ns.ChatMuteCache or {}
+local MuteCache = ns.ChatMuteCache
 
 local function AcquireChatLine(name, timestamp)
 	local row = tremove(rowPool)
@@ -124,11 +280,12 @@ local function GetFilterResult(event, msg, name, flag, guid)
 	end
 
 	-- Never filter people you know.
-	if guid and guid ~= "" and (IsGuildMember(guid) or C_BattleNet_GetGameAccountInfoByGUID(guid) or C_FriendList_IsFriend(guid) or IsGUIDInGroup(guid)) then
+	if guid and F.NotSecret(guid) and guid ~= "" and (IsGuildMember(guid) or C_BattleNet_GetGameAccountInfoByGUID(guid) or C_FriendList_IsFriend(guid) or (C_PartyInfo_IsGUIDInGroup and C_PartyInfo_IsGUIDInGroup(guid))) then
 		return
 	end
 
 	if cfg.blockStranger and event == "CHAT_MSG_WHISPER" then
+		MuteCache[name] = GetTime()
 		return true
 	end
 
@@ -143,7 +300,10 @@ local function GetFilterResult(event, msg, name, flag, guid)
 	-- Strip hyperlinks and colour codes down to plain text for matching.
 	local filterMsg = gsub(msg, "|H.-|h(.-)|h", "%1")
 	filterMsg = gsub(filterMsg, "|c%x%x%x%x%x%x%x%x", "")
+	filterMsg = gsub(filterMsg, "|C%x%x%x%x%x%x%x%x", "")
 	filterMsg = gsub(filterMsg, "|r", "")
+	filterMsg = gsub(filterMsg, "|R", "")
+	filterMsg = strlower(filterMsg)
 
 	local keywords = ns.global.chatFilter.keywords
 	local whitelist = ns.global.chatFilter.whitelist
@@ -211,13 +371,17 @@ local function UpdateChatFilter(_, event, msg, author, _, _, _, flag, _, _, _, _
 	-- One result per chat line, shared across all chat frames showing it.
 	if lineID ~= prevLineID then
 		prevLineID = lineID
-		local name = Ambiguate(author, "none")
-		filterResult = GetFilterResult(event, msg, name, flag, guid)
-		if filterResult and filterResult ~= 0 then
-			BadBoys[name] = (BadBoys[name] or 0) + 1
-		end
-		if filterResult == 0 then
-			filterResult = true
+		if F.IsSecret(author) then
+			filterResult = nil
+		else
+			local name = Ambiguate(author, "none")
+			filterResult = GetFilterResult(event, msg, name, flag, guid)
+			if filterResult and filterResult ~= 0 then
+				BadBoys[name] = (BadBoys[name] or 0) + 1
+			end
+			if filterResult == 0 then
+				filterResult = true
+			end
 		end
 	end
 
@@ -384,7 +548,11 @@ local function HandleFilterCommand(input)
 	elseif cmd == "clear" then
 		wipe(set.keywords)
 		wipe(set.whitelist)
+		set.keywordVersion = DEFAULT_KEYWORD_VERSION
 		F.Print(F.Colorize(L["Chat filter keywords cleared."], "brand"))
+	elseif cmd == "defaults" or cmd == "resetkeywords" then
+		RestoreDefaultKeywords()
+		F.Print(F.Colorize(L["Chat filter default keywords restored."], "brand"))
 	elseif cmd == "list" then
 		F.Print(F.Colorize(L["Filter keywords"] .. ":", "brand"))
 		PrintSet(set.keywords)
@@ -397,12 +565,16 @@ local function HandleFilterCommand(input)
 		F.Print("  /nexfilter white <keyword>")
 		F.Print("  /nexfilter list")
 		F.Print("  /nexfilter clear")
+		F.Print("  /nexfilter defaults")
 	end
 end
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+function ChatFilter:OnInitialize()
+	MergeDefaultKeywords()
+end
 function ChatFilter:OnEnable()
 	---@diagnostic disable-next-line: undefined-field
 	_G.SlashCmdList["NEXFILTER"] = HandleFilterCommand
@@ -421,13 +593,40 @@ end
 
 function ChatFilter:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat Filter"], L["Filter chat spam and decorate item links (installs on enable; individual toggles below apply live)."])
-	local _, spamInit = builder:Checkbox(category, self, "spamFilter", L["Spam Filter"], L["Hide messages matching blacklisted keywords or repeated near-identical spam. Manage keywords with /nexfilter."])
+	local _, spamInit = builder:Checkbox(category, self, "spamFilter", L["Spam Filter"], L["Hide messages matching blacklisted keywords or repeated near-identical spam."])
 	local _, matchesInit = builder:Slider(category, self, "matches", L["Match Threshold"], L["How many blacklisted keywords a message must contain before it is hidden."], 1, 6, 1)
 	local _, strangerInit = builder:Checkbox(category, self, "blockStranger", L["Block Strangers"], L["Hide whispers from anyone who is not a friend, guild member or group member."])
+
+	local chatGlobal = ns.global.chatFilter
+	local keywordsInit = builder:MultilineEditBox(category, L["Filter keywords"], L["CHATFILTER_KEYWORDS_TIP"], function()
+		return SerializeKeywordSet(chatGlobal.keywords)
+	end, function(text)
+		ApplyKeywordText(text, chatGlobal.keywords)
+	end, {
+		width = 280,
+		boxHeight = 130,
+		onRestoreDefaults = RestoreDefaultKeywords,
+		restoreLabel = L["Restore Default Keywords"],
+	})
+
+	local whitelistInit = builder:MultilineEditBox(category, L["Whitelist keywords"], L["CHATFILTER_WHITELIST_TIP"], function()
+		return SerializeKeywordSet(chatGlobal.whitelist)
+	end, function(text)
+		ApplyKeywordText(text, chatGlobal.whitelist)
+	end, {
+		width = 280,
+		boxHeight = 72,
+	})
 
 	builder:DependsOn(spamInit, enableInit)
 	builder:DependsOn(matchesInit, spamInit) -- threshold only matters with the spam filter on
 	builder:DependsOn(strangerInit, enableInit)
+	if keywordsInit then
+		builder:DependsOn(keywordsInit, spamInit)
+	end
+	if whitelistInit then
+		builder:DependsOn(whitelistInit, spamInit)
+	end
 	builder:Checkbox(category, self, "blockSpammer", L["Block Spammers"], L["Hide all messages from a sender once they have tripped the filter repeatedly this session."])
 	builder:Checkbox(category, self, "chatItemLevel", L["Item Level in Chat"], L["Append the item level and gem sockets to item links posted in chat."])
 end

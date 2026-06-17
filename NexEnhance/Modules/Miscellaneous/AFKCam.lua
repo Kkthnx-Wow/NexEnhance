@@ -677,7 +677,7 @@ local function GetChatColoredName(event, arg1, arg2, arg3, arg4, arg5, arg6, arg
 
 	-- Fallback: class-colour the sender from their GUID (secret-safe).
 	local guid = arg12
-	if guid and guid ~= "" and not F.IsSecret(guid) and GetPlayerInfoByGUID then
+	if guid and F.NotSecret(guid) and guid ~= "" and GetPlayerInfoByGUID then
 		local _, classFileName = GetPlayerInfoByGUID(guid)
 		local classColors = _G.CUSTOM_CLASS_COLORS or _G.RAID_CLASS_COLORS
 		local color = classFileName and classColors and classColors[classFileName]
@@ -690,6 +690,10 @@ local function GetChatColoredName(event, arg1, arg2, arg3, arg4, arg5, arg6, arg
 end
 
 local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
+	if F.IsSecret(arg1) then
+		return
+	end
+
 	local coloredName = GetChatColoredName(event, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13, arg14)
 	local chatType = sub(event, 10)
 	local chatInfo = _G.ChatTypeInfo[chatType]
@@ -1023,6 +1027,10 @@ function AFKCam:OnSettingChanged(key, value)
 end
 
 function AFKCam:ToggleTest()
+	if InCombatLockdown() then
+		F.Print(L["Cannot preview AFK mode during combat."])
+		return
+	end
 	self:InstallHooks()
 	manualPreview = not manualPreview
 	if manualPreview then

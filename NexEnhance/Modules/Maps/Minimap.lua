@@ -1017,7 +1017,7 @@ local binPopAnchor = {
 
 local binFrame, binToggle
 local binCollected, binShown = {}, {}
-local binChildCount, binScanCount, binAutoCloseTimer = 0, 0, nil
+local binScanCount, binAutoCloseTimer = 0, nil
 local OpenBin, CloseBin, LayoutBin, StartAutoClose, StopAutoClose
 
 local function RefreshButtonBinPosition()
@@ -1043,6 +1043,30 @@ local function BinIgnored(name)
 			return true
 		end
 	end
+end
+
+local function ShouldCollectBinButton(child, name)
+	if not child or child.nexExamined or child.nexBinSelf then
+		return
+	end
+	if name and (binBlacklist[name] or BinIgnored(name)) then
+		return
+	end
+
+	local isButton = child.IsObjectType and child:IsObjectType("Button")
+	if name then
+		return isButton or strfind(strupper(name), "BUTTON")
+	end
+
+	-- Anonymous minimap buttons exist, but so do our own anonymous helper
+	-- widgets (the clock, the tray toggle, ...). Use GetScript, not HasScript:
+	-- HasScript only reports that a Button *supports* OnClick/OnDragStart, which
+	-- every Button does. An assigned drag handler is the real tell of a
+	-- LibDBIcon-style button that rides the minimap ring.
+	if not (isButton and child.GetScript) then
+		return
+	end
+	return child:GetScript("OnDragStart") ~= nil or child:GetScript("OnDragStop") ~= nil
 end
 
 local function AddBinBorder(button)
@@ -1178,19 +1202,16 @@ local function ScanBinButtons()
 	end
 
 	local num = Minimap:GetNumChildren()
-	if num ~= binChildCount then
-		local kids = { Minimap:GetChildren() }
-		for i = 1, num do
-			local child = kids[i]
-			local name = child and child.GetName and child:GetName()
-			if name and not child.nexExamined and not binBlacklist[name] then
-				if (child:IsObjectType("Button") or strfind(strupper(name), "BUTTON")) and not BinIgnored(name) then
-					SkinBinButton(child, name)
-				end
-				child.nexExamined = true
+	local kids = { Minimap:GetChildren() }
+	for i = 1, num do
+		local child = kids[i]
+		local name = child and child.GetName and child:GetName()
+		if child and not child.nexExamined then
+			if ShouldCollectBinButton(child, name) then
+				SkinBinButton(child, name)
 			end
+			child.nexExamined = true
 		end
-		binChildCount = num
 	end
 
 	ParkBinButtons()
@@ -1248,6 +1269,7 @@ local function CreateCollectButtons()
 	end
 
 	binToggle = CreateFrame("Button", nil, Minimap)
+	binToggle.nexBinSelf = true
 	binToggle:SetSize(16, 16)
 	binToggle:SetFrameLevel(Minimap:GetFrameLevel() + 6)
 	binToggle:SetAlpha(0.25)

@@ -22,9 +22,9 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local next, ipairs, pairs, select = next, ipairs, pairs, select
-local wipe, strfind, strupper = wipe, string.find, string.upper
+local wipe, strfind, strupper, format = wipe, string.find, string.upper, string.format
 local IsAltKeyDown, IsShiftKeyDown, IsControlKeyDown = IsAltKeyDown, IsShiftKeyDown, IsControlKeyDown
-local UnitGUID, UnitIsDeadOrGhost = UnitGUID, UnitIsDeadOrGhost
+local UnitGUID, UnitIsDeadOrGhost, UnitName = UnitGUID, UnitIsDeadOrGhost, UnitName
 local InCombatLockdown = InCombatLockdown
 local QuestIsDaily, QuestIsWeekly = QuestIsDaily, QuestIsWeekly
 local GetQuestMoneyToGet = GetQuestMoneyToGet
@@ -119,6 +119,9 @@ end
 -- ---------------------------------------------------------------------------
 local handlers = {}
 local choiceQueue
+-- Set true the moment we auto-select a lone "<Skip ...>" option, so the follow-up
+-- GOSSIP_CONFIRM popup it can raise gets auto-accepted (free skips only - see below).
+local pendingSkipConfirm
 local regenRetryRegistered = false
 local regenRetryCallback
 
@@ -342,12 +345,20 @@ local function IsItemAccountBound(itemID)
 end
 
 -- Reads the QUEST_PROGRESS frame; only meaningful while that stage is shown.
+local function QuestTurnInCostsMoney()
+	if not GetQuestMoneyToGet then
+		return false
+	end
+	local cost = GetQuestMoneyToGet()
+	return F.NotSecret(cost) and (cost or 0) > 0
+end
+
 local function TurnInHasCost()
 	if not db().protectTurnIns then
 		return false
 	end
 
-	if GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then
+	if QuestTurnInCostsMoney() then
 		return true
 	end
 
@@ -493,7 +504,20 @@ local ignoreInstances = {
 }
 
 local QUEST_STRING = "cFF0000FF.-" .. TRANSMOG_SOURCE_2
-local SKIP_GOSSIP_PREFIX, SKIP_GOSSIP_PREFIX_UPPER = "|cFFFF0000<", "|CFFFF0000<"
+
+-- Blizzard wraps "skip" gossip instructions in angle brackets - "<Skip the Argus
+-- Campaign>", "<Skip the scenario and begin your journey on Broken Shore.>",
+-- "<Skip conversation>". They are sometimes coloured red (campaign skips) and
+-- sometimes plain (scenario skips), and the bracketed marker can trail a white
+-- lead-in line (e.g. "I've heard this tale before... <Skip the scenario...>").
+-- So rather than matching a specific colour or anchoring to the start, we look
+-- for any <...> segment anywhere in the option text. Brackets are colour- and
+-- locale-independent, so this catches every encoding on every client. The
+-- single-option auto-walk path treats brackets as "unsafe" (HasUnsafeGossipOption)
+-- for the same reason - bracketed options are special and handled deliberately.
+local function IsSkipGossip(name)
+	return strfind(name, "<[^>]+>") ~= nil
+end
 
 local function IsQuestLabelPrepend(flags)
 	if not flags then
@@ -512,7 +536,7 @@ end
 local function HasUnsafeGossipOption(options)
 	for i = 1, #options do
 		local name = options[i] and options[i].name
-		if name then
+		if name and F.NotSecret(name) then
 			local upper = strupper(name)
 			if (strfind(upper, "|C") or strfind(upper, "<")) and not strfind(upper, "FF0008E8") then
 				return true
@@ -523,6 +547,8 @@ local function HasUnsafeGossipOption(options)
 end
 
 Register("GOSSIP_SHOW", function()
+	-- Reset any pending skip-confirm from a prior window; re-armed below if we skip.
+	pendingSkipConfirm = nil
 	local npcID = GetNPCID()
 	if ignoreList[npcID] then
 		return
@@ -610,8 +636,8 @@ Register("GOSSIP_SHOW", function()
 	for i = 1, numOptions do
 		local option = gossipInfoTable[i]
 		local name = option.name
-		if name then
-			if strfind(name, SKIP_GOSSIP_PREFIX, 1, true) == 1 or strfind(name, SKIP_GOSSIP_PREFIX_UPPER, 1, true) == 1 then
+		if name and F.NotSecret(name) then
+			if IsSkipGossip(name) then
 				numSkipGossips = numSkipGossips + 1
 				skipGossipID = option.gossipOptionID
 			end
@@ -627,6 +653,17 @@ Register("GOSSIP_SHOW", function()
 	-- default so it never silently bypasses dialogue you wanted to read. Checked
 	-- before the quest-gossip auto-select so it wins when both are present.
 	if db().autoSkipGossip and numSkipGossips == 1 and not ignoreGossipOptions[skipGossipID] then
+		-- Arm the GOSSIP_CONFIRM auto-accept: some skips raise a "Skip ahead?"
+		-- confirmation popup that must be accepted for the skip to take effect.
+		pendingSkipConfirm = true
+		-- Tell the player we skipped, and from whom. NPC name can read Secret in
+		-- instances, so fall back to the name-less line rather than risk a crash.
+		local npcName = UnitName("npc")
+		if npcName and F.NotSecret(npcName) then
+			F.Print(format(L["Skipped story dialogue from %s."], npcName))
+		else
+			F.Print(L["Skipped story dialogue."])
+		end
 		return C_GossipInfo_SelectOption(skipGossipID)
 	end
 
@@ -642,11 +679,27 @@ local skipConfirmNPCs = {
 	[54334] = true, -- Darkmoon Faire Mystic Mage (Alliance)
 }
 
-Register("GOSSIP_CONFIRM", function(index)
+-- GOSSIP_CONFIRM payload is (gossipID, text, cost). Blizzard's StaticPopup OnAccept
+-- confirms with C_GossipInfo.SelectOption(gossipID, "", true); we mirror that.
+Register("GOSSIP_CONFIRM", function(gossipID, _, cost)
+	-- Known per-NPC teleport/skip confirmations: always auto-accept.
 	if skipConfirmNPCs[GetNPCID()] then
-		C_GossipInfo_SelectOption(index, "", true)
+		C_GossipInfo_SelectOption(gossipID, "", true)
 		StaticPopup_Hide("GOSSIP_CONFIRM")
+		return
 	end
+
+	-- Story-skip follow-up: when we just auto-selected a lone "<Skip ...>" option,
+	-- accept its confirmation so the skip actually goes through. Never auto-accept a
+	-- confirmation that costs money, or whose cost reads Secret - leave those to the
+	-- player (cost is nil/0 for free story skips).
+	if pendingSkipConfirm and (not cost or (F.NotSecret(cost) and cost == 0)) then
+		pendingSkipConfirm = nil
+		C_GossipInfo_SelectOption(gossipID, "", true)
+		StaticPopup_Hide("GOSSIP_CONFIRM")
+		return
+	end
+	pendingSkipConfirm = nil
 end)
 
 Register("QUEST_DETAIL", function()
@@ -812,7 +865,7 @@ Register("QUEST_COMPLETE", function()
 	end
 
 	-- Guard against any quest that still wants gold to hand in at this stage.
-	if db().protectTurnIns and GetQuestMoneyToGet and (GetQuestMoneyToGet() or 0) > 0 then
+	if db().protectTurnIns and QuestTurnInCostsMoney() then
 		return
 	end
 

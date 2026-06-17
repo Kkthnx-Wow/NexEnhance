@@ -48,25 +48,38 @@ local classColorStr = F.ColorStr(F.UnitColor("player"))
 local currentMapID, cursorCoords, playerCoords, coordsUpdater, fadeFrame, mapAnchor
 
 -- ---------------------------------------------------------------------------
--- Movable anchor (Edit Mode)
---   The windowed map follows an invisible anchor frame registered with our
---   LibEditMode mover, so it can be dragged like any other NexEnhance element.
---   We anchor the map to it (rather than make the giant map itself the mover)
---   so Blizzard's own Maximize/Minimize repositioning never fights the saved
---   position - we simply re-anchor whenever the windowed state is restored.
+-- Movable anchor (direct drag, no Edit Mode)
+--   The windowed map follows an invisible anchor frame. We anchor the map to it
+--   (rather than make the giant map itself movable) so Blizzard's own
+--   Maximize/Minimize repositioning never fights the saved position - we simply
+--   re-anchor whenever the windowed state is restored. Position is dragged via
+--   the title strip (see below) and persisted to movers.worldMap ourselves.
 -- ---------------------------------------------------------------------------
+local MAP_ANCHOR_DEFAULT = { point = "TOPLEFT", x = 16, y = -94 }
+
+local function PlaceAnchor()
+	local saved = ns.db and ns.db.movers and ns.db.movers.worldMap
+	local point = saved and type(saved.point) == "string" and saved.point or MAP_ANCHOR_DEFAULT.point
+	local x = saved and tonumber(saved.x) or MAP_ANCHOR_DEFAULT.x
+	local y = saved and tonumber(saved.y) or MAP_ANCHOR_DEFAULT.y
+	mapAnchor:ClearAllPoints()
+	mapAnchor:SetPoint(point, x, y)
+end
+
 local function GetAnchor()
 	if mapAnchor then
 		return mapAnchor
 	end
 	mapAnchor = CreateFrame("Frame", nil, UIParent)
 	mapAnchor:SetSize(700, 466)
-	F.CreateMover(mapAnchor, "worldMap", L["World Map"], "TOPLEFT", 16, -94)
+	mapAnchor:SetMovable(true)
+	mapAnchor:SetClampedToScreen(true)
+	PlaceAnchor()
 	return mapAnchor
 end
 
--- Pin the windowed map's top-left to the mover anchor and size the Edit Mode
--- box to match the map so the selection overlay lines up.
+-- Pin the windowed map's top-left to the anchor and size the anchor to match
+-- the map so a future drag tracks the visible map bounds.
 local function AnchorMapToMover(wmf)
 	local anchor = GetAnchor()
 	local w, h = wmf:GetSize()
@@ -75,6 +88,81 @@ local function AnchorMapToMover(wmf)
 	end
 	wmf:ClearAllPoints()
 	wmf:SetPoint("TOPLEFT", anchor, "TOPLEFT")
+end
+
+-- ---------------------------------------------------------------------------
+-- Direct drag (no Edit Mode)
+--   Grab the map's title strip to reposition it like NDui's movable frames.
+--   We move the invisible anchor (the map follows it), then persist the result
+--   to movers.worldMap so the position survives reloads.
+-- ---------------------------------------------------------------------------
+local function SaveMapPosition()
+	if not mapAnchor then
+		return
+	end
+	local point, _, _, ax, ay = mapAnchor:GetPoint()
+	if not point then
+		return
+	end
+	ax, ay = F.Round(ax), F.Round(ay)
+	-- Normalise to the 3-arg form PlaceAnchor restores (relative to UIParent).
+	mapAnchor:ClearAllPoints()
+	mapAnchor:SetPoint(point, ax, ay)
+	ns.db.movers = ns.db.movers or {}
+	ns.db.movers.worldMap = { point = point, x = ax, y = ay }
+end
+
+local isDragging = false
+
+local function MapDrag_OnMouseDown(_, button)
+	if button ~= "LeftButton" then
+		return
+	end
+	local wmf = _G.WorldMapFrame
+	-- Only the windowed map is positioned by our anchor; the maximized map is
+	-- centred by Blizzard, so leave it alone (otherwise mouse-up would re-anchor
+	-- it to the small-map slot and it would jump around).
+	if not cfg.smallMap or wmf:IsMaximized() then
+		return
+	end
+	isDragging = true
+	GetAnchor():StartMoving()
+end
+
+local function MapDrag_OnMouseUp(_, button)
+	if button ~= "LeftButton" or not isDragging then
+		return
+	end
+	isDragging = false
+	if mapAnchor then
+		mapAnchor:StopMovingOrSizing()
+	end
+	SaveMapPosition()
+	AnchorMapToMover(_G.WorldMapFrame)
+end
+
+local function BuildDragHandle(wmf)
+	if WorldMap.dragHandle then
+		return
+	end
+	-- The portrait border's TitleContainer is the frame that actually receives
+	-- the mouse over the title bar (HIGH strata, above our scroll area and the
+	-- title spacer), so we drive the drag straight from it. The NavBar
+	-- breadcrumb buttons sit above it and keep their own clicks.
+	local border = wmf.BorderFrame
+	local handle = border and border.TitleContainer
+	if not handle then
+		return
+	end
+
+	-- Post-hook (not SetScript) so Blizzard's own title-bar behaviour survives and
+	-- the script path stays untainted. We only move our own anchor frame, so the
+	-- drag itself is safe in or out of combat.
+	handle:EnableMouse(true)
+	handle:HookScript("OnMouseDown", MapDrag_OnMouseDown)
+	handle:HookScript("OnMouseUp", MapDrag_OnMouseUp)
+
+	WorldMap.dragHandle = handle
 end
 
 -- ---------------------------------------------------------------------------
@@ -185,7 +273,7 @@ local function SynchronizeDisplayState()
 		wmf:ClearAllPoints()
 		wmf:SetPoint("CENTER", UIParent)
 	else
-		-- Restore the saved mover position after a Blizzard state change.
+		-- Restore the saved drag position after a Blizzard state change.
 		AnchorMapToMover(wmf)
 	end
 end
@@ -378,6 +466,12 @@ function WorldMap:Setup()
 		hooksecurefunc(PlayerMovementFrameFader, "AddDeferredFrame", UpdateMapFade)
 	end
 
+	-- Click-drag the title strip to reposition the windowed map (the OnMouseDown
+	-- handler bails out when the small map is disabled or the map is maximised).
+	if cfg.smallMap then
+		BuildDragHandle(wmf)
+	end
+
 	self:ClearBlackout()
 	self:Apply()
 end
@@ -443,6 +537,9 @@ function WorldMap:OnSettingChanged()
 			SetCoordsShown(true)
 		else
 			SetCoordsShown(false)
+		end
+		if cfg.smallMap then
+			BuildDragHandle(_G.WorldMapFrame)
 		end
 		self:ClearBlackout()
 		self:Apply()

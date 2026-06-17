@@ -25,6 +25,14 @@
 	  * Secret-value guards - vignette name and position can be secret inside
 	    instances on 12.0; every read is gated with F.NotSecret before any
 	    string/arith op, mirroring RareScanner's issecretvalue checks.
+
+	Cherry-picked from Plumber's RareAnnouncement (by Peterodox):
+	  * Right-clicking the popup shares the rare + a clickable map-pin link in
+	    chat, the way Plumber's "horn" button broadcasts rare locations. We send
+	    to your group when grouped (instance/raid/party) and General chat when
+	    solo, with a short cooldown so a flurry of clicks can't flood the channel.
+	  * The shared message carries a DEFAULT-named map-pin worldmap link, because
+	    the server drops worldmap links whose pin text was customised.
 --]]
 
 local _, ns = ...
@@ -53,6 +61,16 @@ local UiMapPoint = _G["UiMapPoint"]
 local CreateFrame, UIParent = CreateFrame, UIParent
 local UIErrorsFrame = UIErrorsFrame
 local UNKNOWN = _G["UNKNOWN"] or "Unknown"
+local IsInGroup, IsInRaid = IsInGroup, IsInRaid
+local C_ChatInfo = C_ChatInfo
+local LE_PARTY_CATEGORY_INSTANCE = _G["LE_PARTY_CATEGORY_INSTANCE"] or 2
+
+-- Right-click "share to chat" message piece. The server silently drops a
+-- worldmap hyperlink whose pin text was customised, so an announced message has
+-- to use the default map-pin link (NOT our own "[name (x,y)]" label, which is
+-- fine only for printing to your own chat). Cherry-picked from Plumber.
+local MAP_PIN_HYPERLINK = _G["MAP_PIN_HYPERLINK"] or "|A:Waypoint-MapPin-ChatIcon:13:13:0:0|a Map Pin Location"
+local ANNOUNCE_COOLDOWN = 20 -- be a good channel citizen (Plumber uses 20s)
 
 -- The same classic Blizzard tooltip-style gold edge we frame the minimap with,
 -- so the popup reads as part of the same UI (see Modules/Maps/Minimap.lua).
@@ -91,6 +109,7 @@ ns:RegisterDefaults({
 		printToChat = true,
 		showPopup = true,
 		clickToTarget = true,
+		announce = true, -- right-click the popup to share the rare in chat
 		raidMarker = 0, -- 0 = off, 1-8 = raid target icon
 		ignoreList = "",
 	},
@@ -128,6 +147,7 @@ local ignoredIDs = {} -- vignetteID/npcID -> true (defaults + user list), rebuil
 local seen = {} -- vignetteGUID -> true, bounded via F.CacheSet
 local announcedAt = {} -- vignetteID -> GetTime() of last announce, bounded via F.CacheSet
 local lastSoundAt = 0 -- GetTime() of the last alert sound (anti-burst throttle)
+local lastAnnounceAt = 0 -- GetTime() of the last chat announce (anti-spam cooldown)
 local instType = "none" -- current instance type for "sound in world only"
 local subscribed, gateRegistered = false, false
 
@@ -156,8 +176,8 @@ end
 
 -- Restore the user's background-sound CVar after the brief override window.
 local function RestoreBGSound()
-	if bgSoundSaved ~= nil then
-		SetCVar(BG_SOUND_CVAR, bgSoundSaved)
+	if bgSoundSaved ~= nil and not InCombatLockdown() then
+		pcall(SetCVar, BG_SOUND_CVAR, bgSoundSaved)
 		bgSoundSaved = nil
 	end
 	bgRestoreTimer = nil
@@ -172,7 +192,9 @@ local function PlayRareSound()
 			local cur = GetCVar(BG_SOUND_CVAR)
 			if cur ~= "1" then
 				bgSoundSaved = cur
-				SetCVar(BG_SOUND_CVAR, "1")
+				if not InCombatLockdown() then
+					pcall(SetCVar, BG_SOUND_CVAR, "1")
+				end
 			end
 		end
 		if bgSoundSaved ~= nil then
@@ -264,6 +286,62 @@ local function SetTrackedWaypoint(mapID, x, y, name)
 	return false
 end
 
+-- Pick the chat channel to broadcast to. Group members benefit most, so prefer
+-- the active group channel; fall back to General chat when solo (Plumber's
+-- behaviour). Returns chatType plus an optional target (the channel id).
+local function GetAnnounceChannel()
+	if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
+		return "INSTANCE_CHAT"
+	elseif IsInRaid() then
+		return "RAID"
+	elseif IsInGroup() then
+		return "PARTY"
+	elseif C_ChatInfo and C_ChatInfo.GetGeneralChannelID then
+		local id = C_ChatInfo.GetGeneralChannelID()
+		if id and id > 0 then
+			return "CHANNEL", id
+		end
+	end
+end
+
+-- Right-click the popup to share the rare + its waypoint in chat, the way
+-- Plumber's "horn" button broadcasts locations. The message uses the default
+-- map-pin link so the server won't drop it, and a short cooldown keeps repeated
+-- clicks from flooding the channel.
+local function AnnounceRare(f)
+	if not db().announce then
+		return
+	end
+
+	local name, mapID, x, y = f.rareName, f.mapID, f.x, f.y
+	if not (name and mapID and x and y) then
+		F.Print(F.Colorize(L["Rare Alert"] .. ": ", "brand") .. L["No location to announce yet."])
+		return
+	end
+
+	local now = GetTime()
+	local wait = ANNOUNCE_COOLDOWN - (now - lastAnnounceAt)
+	if wait > 0 then
+		F.Print(F.Colorize(L["Rare Alert"] .. ": ", "brand") .. format(L["Wait %d seconds before announcing again."], wait))
+		return
+	end
+
+	local channel, target = GetAnnounceChannel()
+	if not channel then
+		F.Print(F.Colorize(L["Rare Alert"] .. ": ", "brand") .. L["No chat channel available to announce."])
+		return
+	end
+
+	-- Default-named map-pin link so the server accepts the worldmap hyperlink.
+	local link = format("|cffffff00|Hworldmap:%d:%.0f:%.0f|h[%s]|h|r", mapID, x * 10000, y * 10000, MAP_PIN_HYPERLINK)
+	local msg = format("%s %s", name, link)
+
+	-- C_ChatInfo.SendChatMessage is the live API; the global SendChatMessage is a
+	-- deprecated shim that just forwards to it (Blizzard_DeprecatedChatInfo).
+	C_ChatInfo.SendChatMessage(msg, channel, nil, target)
+	lastAnnounceAt = now
+end
+
 local function Popup_Hide()
 	if not popup then
 		return
@@ -274,6 +352,9 @@ local function Popup_Hide()
 	end
 	popup.testing = nil
 	popup.shownForEdit = nil
+	if GameTooltip:GetOwner() == popup then
+		GameTooltip:Hide()
+	end
 	-- The popup holds a secure child, so hiding it is a protected action in
 	-- combat; defer the actual Hide to PLAYER_REGEN_ENABLED.
 	if InCombatLockdown() then
@@ -297,11 +378,16 @@ end
 -- protected macro can fire on the press instead of the release and silently miss
 -- - the click-to-target would just not work for those users. Force key-up
 -- handling for the duration of this one click and restore it in PostClick.
--- (Cherry-picked from RareAlert by the same mechanism it uses for its target
--- button.) SetCVar on this CVar is unprotected, so it is safe even in combat.
+-- On Midnight (12.0) SetCVar from tainted code is blocked in combat, so only
+-- flip out of combat and remember whether we did, to restore symmetrically.
 local function Popup_PreClick(self)
-	self.prevUseKeyDown = GetCVar("ActionButtonUseKeyDown")
-	if self.prevUseKeyDown ~= "0" then
+	self.prevUseKeyDown = nil
+	if InCombatLockdown() then
+		return
+	end
+	local prev = GetCVar("ActionButtonUseKeyDown")
+	if prev ~= "0" then
+		self.prevUseKeyDown = prev
 		SetCVar("ActionButtonUseKeyDown", "0")
 	end
 end
@@ -312,7 +398,9 @@ end
 -- taint the secure path - see the optimisation guide, Section 9).
 local function Popup_PostClick(self, button)
 	-- Restore the user's key-down casting preference flipped in Popup_PreClick.
-	if self.prevUseKeyDown and self.prevUseKeyDown ~= "0" then
+	-- prevUseKeyDown is only set when we actually flipped (out of combat), so a
+	-- combat-locked PostClick never reaches a blocked SetCVar here.
+	if self.prevUseKeyDown and self.prevUseKeyDown ~= "0" and not InCombatLockdown() then
 		SetCVar("ActionButtonUseKeyDown", self.prevUseKeyDown)
 	end
 	self.prevUseKeyDown = nil
@@ -322,6 +410,14 @@ local function Popup_PostClick(self, button)
 		if SetTrackedWaypoint(f.mapID, f.x, f.y, f.rareName) then
 			F.Print(format(L["Tracking %s."], F.Colorize(f.rareName or UNKNOWN, "green")))
 		end
+	elseif button == "RightButton" then
+		-- Right-click shares the rare in chat (Plumber-style); the popup stays
+		-- up so you can also left-click to track or share again after cooldown.
+		-- Never broadcast a preview/Edit Mode sample.
+		if not (f.testing or f.shownForEdit) then
+			AnnounceRare(f)
+		end
+		return
 	end
 	if not f.testing then
 		Popup_Hide()
@@ -403,13 +499,35 @@ local function Popup_SetIcon(f, atlas, unit)
 	end
 end
 
+-- Build the hover tooltip listing what a click does for this rare. Stored on the
+-- banner in Popup_Show so OnEnter can render it without recomputing.
+local function Popup_ShowTooltip(f)
+	if not f.hintLines or #f.hintLines == 0 then
+		return
+	end
+	GameTooltip:SetOwner(f, "ANCHOR_BOTTOM", 0, -4)
+	if f.rareName then
+		GameTooltip:AddLine(f.rareName, 1, 1, 1)
+	end
+	for i = 1, #f.hintLines do
+		GameTooltip:AddLine(f.hintLines[i], 0.5, 0.78, 1)
+	end
+	GameTooltip:Show()
+end
+
+local function Popup_HideTooltip()
+	if GameTooltip:GetOwner() == popup then
+		GameTooltip:Hide()
+	end
+end
+
 local function BuildPopup()
 	if popup then
 		return popup
 	end
 
 	local f = CreateFrame("Button", nil, UIParent, "BackdropTemplate")
-	f:SetSize(268, PORTRAIT_FRAME + 10)
+	f:SetSize(268, PORTRAIT_FRAME + 14)
 	f:SetFrameStrata("HIGH")
 	f:Hide()
 	f:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -439,20 +557,19 @@ local function BuildPopup()
 	f.iconMask:SetPoint("CENTER", f.icon, "CENTER")
 	f.iconMask:SetTexture("Interface\\CharacterFrame\\TempPortraitAlphaMask", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
 
+	-- Title + coords sit as one block beside the portrait, nudged down so the pair
+	-- reads centred against the face. Hints now live in a hover tooltip, not inline.
 	f.title = F.CreateFS(f, 14, nil, "OVERLAY")
-	f.title:SetPoint("TOPLEFT", f.portraitHolder, "TOPRIGHT", 10, -2)
+	f.title:SetPoint("TOPLEFT", f.portraitHolder, "TOPRIGHT", 10, -10)
 	f.title:SetPoint("RIGHT", f, "RIGHT", -24, 0)
 	f.title:SetJustifyH("LEFT")
 	f.title:SetWordWrap(false)
 
 	f.coords = F.CreateFS(f, 11, nil, "OVERLAY")
-	f.coords:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
+	f.coords:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -4)
+	f.coords:SetPoint("RIGHT", f, "RIGHT", -12, 0)
 	f.coords:SetJustifyH("LEFT")
 	f.coords:SetTextColor(0.7, 0.7, 0.7)
-
-	f.hint = F.CreateFS(f, 10, L["Click to set a waypoint"], "OVERLAY")
-	f.hint:SetPoint("BOTTOMLEFT", f.portraitHolder, "BOTTOMRIGHT", 10, 8)
-	f.hint:SetTextColor(0.5, 0.78, 1)
 
 	-- Secure overlay: a SecureActionButtonTemplate covering the banner. Left-click
 	-- runs the protected /targetexact macro (set out of combat via Popup_UpdateMacro);
@@ -469,9 +586,11 @@ local function BuildPopup()
 	secure:SetScript("OnEnter", function()
 		local b = C.Colors.brand
 		f:SetBackdropBorderColor(b[1], b[2], b[3], 1)
+		Popup_ShowTooltip(f)
 	end)
 	secure:SetScript("OnLeave", function()
 		f:SetBackdropBorderColor(1, 0.82, 0, 1)
+		Popup_HideTooltip()
 	end)
 	f.secure = secure
 
@@ -522,20 +641,25 @@ local function Popup_Show(atlas, name, mapID, x, y, guid)
 		f.coords:SetText("")
 	end
 
-	-- Hint reflects what a click will actually do.
-	local hint
+	-- Collect the click hints for the hover tooltip rather than crowding the banner.
+	local lines = f.hintLines or {}
+	wipe(lines)
 	if cfg.clickToTarget and canTrack then
-		hint = L["Click to target & track"]
+		lines[#lines + 1] = L["Click to target & track"]
 	elseif cfg.clickToTarget then
-		hint = L["Click to target"]
+		lines[#lines + 1] = L["Click to target"]
 	elseif canTrack then
-		hint = L["Click to set a waypoint"]
+		lines[#lines + 1] = L["Click to set a waypoint"]
 	end
-	if hint then
-		f.hint:SetText(hint)
-		f.hint:Show()
-	else
-		f.hint:Hide()
+	-- Right-click shares the rare in chat (needs a known position).
+	if cfg.announce and canTrack then
+		lines[#lines + 1] = L["Right-click to announce"]
+	end
+	f.hintLines = lines
+
+	-- Refresh the tooltip in place if the banner is already being hovered.
+	if GameTooltip:GetOwner() == f then
+		Popup_ShowTooltip(f)
 	end
 
 	f.pendingHide = nil
@@ -647,6 +771,18 @@ local function HookEditMode()
 				end,
 				set = function(_, value)
 					db().clickToTarget = value
+				end,
+			},
+			{
+				kind = lib.SettingType.Checkbox,
+				name = L["Right-Click To Announce"],
+				desc = L["Right-click the popup to share the rare and a map-pin link in chat - your group when grouped, otherwise General chat."],
+				default = true,
+				get = function()
+					return db().announce
+				end,
+				set = function(_, value)
+					db().announce = value
 				end,
 			},
 			{
@@ -895,6 +1031,7 @@ function RareAlert:RegisterOptions(category, builder)
 	local _, printInit = builder:Checkbox(category, self, "printToChat", L["Rare Alert To Chat"], L["Post a clickable map link to chat when a rare is detected."])
 	local _, popupInit = builder:Checkbox(category, self, "showPopup", L["Rare Alert Popup"], L["Show a movable popup when a rare is detected - click it to set a tracked waypoint (uses TomTom if installed). Preview/move it with /nex rare."])
 	local _, targetInit = builder:Checkbox(category, self, "clickToTarget", L["Click To Target"], L["Left-click the popup to clear your target and target the rare by name. Targeting needs a secure click, so it only updates out of combat."])
+	local _, announceInit = builder:Checkbox(category, self, "announce", L["Right-Click To Announce"], L["Right-click the popup to share the rare and a map-pin link in chat - your group when grouped, otherwise General chat."])
 
 	local markerChoices = {
 		{ value = 0, label = L["Off"] },
@@ -917,6 +1054,7 @@ function RareAlert:RegisterOptions(category, builder)
 	builder:DependsOn(printInit, enableInit)
 	builder:DependsOn(popupInit, enableInit)
 	builder:DependsOn(targetInit, popupInit)
+	builder:DependsOn(announceInit, popupInit)
 	if markerInit then
 		builder:DependsOn(markerInit, targetInit)
 	end

@@ -134,18 +134,20 @@ function QuestNavigation:Style()
 	frame:HookScript("OnHide", HideTime)
 end
 
-function QuestNavigation:ADDON_LOADED(addon)
+local function OnQuestNavLoaded(_, addon)
 	if addon == "Blizzard_QuestNavigation" then
-		self:Style()
-		self:UnregisterEvent("ADDON_LOADED")
+		QuestNavigation.waiting = nil
+		QuestNavigation:Style()
+		ns:UnregisterEvent("ADDON_LOADED", OnQuestNavLoaded)
 	end
 end
 
 function QuestNavigation:OnEnable()
 	if _G.SuperTrackedFrame or C_AddOns.IsAddOnLoaded("Blizzard_QuestNavigation") then
 		self:Style()
-	else
-		self:RegisterEvent("ADDON_LOADED")
+	elseif not self.waiting then
+		self.waiting = true
+		ns:RegisterEvent("ADDON_LOADED", OnQuestNavLoaded)
 	end
 end
 

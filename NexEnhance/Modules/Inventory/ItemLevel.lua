@@ -203,12 +203,28 @@ local function CreateMissingIcon(parent, point, x, y, slotName)
 	return icon
 end
 
+-- Quality and item level can both read Secret inside instances on 12.0 (Blizzard
+-- locks loot/bag data to thwart automation). A secret poisons every >, <= and
+-- table-index it touches, so we gate before comparing. A skipped overlay beats a
+-- Lua error mid-loot any day of the week.
 local function GetQualityColor(quality)
+	if F.IsSecret(quality) then
+		return 1, 1, 1
+	end
 	local color = quality and QUALITY_COLORS and QUALITY_COLORS[quality]
 	if not color then
 		return 1, 1, 1
 	end
 	return color.r, color.g, color.b
+end
+
+-- True only when both reads are non-secret and worth painting (quality above
+-- Common, real item level). Either being secret short-circuits to false.
+local function LevelIsShowable(level, quality)
+	if F.IsSecret(level) or F.IsSecret(quality) then
+		return false
+	end
+	return level and level > 1 and quality and quality > 1
 end
 
 local function SetBindLabelColor(fs, label)
@@ -302,7 +318,7 @@ function ItemLevel:UpdateSlotInfo(slotFrame, info, quality, link)
 	local infoType = type(info)
 	local level = infoType == "table" and info.iLvl or info
 
-	if level and level > 1 and quality and quality > 1 then
+	if LevelIsShowable(level, quality) then
 		slotFrame.iLvlText:SetText(level)
 		slotFrame.iLvlText:SetTextColor(GetQualityColor(quality))
 	end
@@ -418,7 +434,13 @@ end
 
 function ItemLevel:INSPECT_READY(guid)
 	local InspectFrame = _G["InspectFrame"]
-	if InspectFrame and InspectFrame.unit and UnitGUID(InspectFrame.unit) == guid then
+	if not (InspectFrame and InspectFrame.unit) then
+		return
+	end
+	-- UnitGUID (and the event's guid) can be secret while inspecting in an
+	-- instance; comparing two secrets throws, so confirm both are readable first.
+	local inspectGUID = UnitGUID(InspectFrame.unit)
+	if F.NotSecret(inspectGUID) and F.NotSecret(guid) and inspectGUID == guid then
 		self:SetupSlots(InspectFrame, "Inspect", InspectFrame.unit)
 	end
 end
@@ -432,13 +454,14 @@ local function SetSimpleLevel(button, link, quality, bagID, slotID)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
 
-	if not link or (quality and quality <= 1) then
+	-- Secret quality means "instance loot we can't reason about" -> clear, bail.
+	if not link or F.IsSecret(quality) or (quality and quality <= 1) then
 		button.nexILvl:SetText("")
 		return
 	end
 
 	local level = F.GetItemLevel(link, bagID, slotID)
-	if level and quality and quality > 1 then
+	if LevelIsShowable(level, quality) then
 		button.nexILvl:SetText(level)
 		button.nexILvl:SetTextColor(GetQualityColor(quality))
 	else
@@ -545,8 +568,9 @@ function ItemLevel:UpdateLoot()
 				button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 			end
 			local quality = select(5, _G.GetLootSlotInfo(slotIndex))
-			if quality and quality > 1 then
-				local level = F.GetItemLevel(_G.GetLootSlotLink(slotIndex))
+			local link = _G.GetLootSlotLink(slotIndex)
+			local level = link and F.GetItemLevel(link)
+			if LevelIsShowable(level, quality) then
 				button.nexILvl:SetText(level)
 				button.nexILvl:SetTextColor(GetQualityColor(quality))
 			elseif button.nexILvl then
@@ -594,7 +618,7 @@ local function UpdateBagSlot(button)
 	local quality = info and info.quality
 	local link = info and info.hyperlink
 
-	if quality and quality > 1 then
+	if F.NotSecret(quality) and quality and quality > 1 then
 		local level = F.GetItemLevel(link, bagID, slotID)
 		button.nexILvl:SetText(level)
 		button.nexILvl:SetTextColor(GetQualityColor(quality))

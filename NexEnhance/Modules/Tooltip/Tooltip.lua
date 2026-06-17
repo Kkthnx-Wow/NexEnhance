@@ -12,8 +12,9 @@
 	couple of tiny primitives (F.IsSecret / IsSecretUnit) plus targeted checks at
 	the read sites that actually need them - no global function wrappers, no
 	OnSizeChanged backdrop guards. Untainted Blizzard code is allowed to read
-	secrets, so we simply avoid tainting its layout path (the status-bar border is
-	a stock tooltip backdrop, which needs no Lua size maths).
+	secrets, so we avoid tainting its layout path; status-bar chrome uses plain
+	textures instead of BackdropTemplate because Blizzard's backdrop mixin does
+	width / edgeSize in Lua. Midnight said "surprise, that's a secret now."
 
 	This file owns the module; the sibling files (TooltipID, TooltipIcons,
 	TooltipItemLevel, TooltipHoverTips, TooltipMountSource) fetch it with
@@ -273,7 +274,13 @@ function Tooltip:UpdateFactionLine(lineData)
 	local isPlayer = UnitIsPlayer(unit)
 	isPlayer = F.NotSecret(isPlayer) and isPlayer
 	local unitClass = isPlayer and UnitClass(unit)
+	if unitClass and F.IsSecret(unitClass) then
+		unitClass = nil
+	end
 	local unitCreature = UnitCreatureType(unit)
+	if unitCreature and F.IsSecret(unitCreature) then
+		unitCreature = nil
+	end
 
 	local linetext = lineData.leftText
 	if not linetext or F.IsSecret(linetext) then
@@ -425,7 +432,7 @@ function Tooltip:OnTooltipSetUnit(data)
 
 		if cfg.factionIcon then
 			local faction = UnitFactionGroup(unit)
-			if faction and faction ~= "Neutral" then
+			if F.NotSecret(faction) and faction ~= "Neutral" then
 				Tooltip.InsertFactionFrame(self, faction)
 			end
 		end
@@ -441,23 +448,28 @@ function Tooltip:OnTooltipSetUnit(data)
 		local hasText = GameTooltipTextLeft2:GetText()
 		if guildName and F.NotSecret(guildName) and hasText then
 			local myGuild, _, _, myGuildRealm = GetGuildInfo("player")
-			if IsInGuild() and guildName == myGuild and guildRealm == myGuildRealm then
+			local sameGuild = IsInGuild() and F.NotSecret(myGuild) and guildName == myGuild
+			if sameGuild and guildRealm and myGuildRealm then
+				sameGuild = F.NotSecret(guildRealm) and F.NotSecret(myGuildRealm) and guildRealm == myGuildRealm
+			end
+			if sameGuild then
 				GameTooltipTextLeft2:SetTextColor(0.25, 1, 0.25)
 			else
 				GameTooltipTextLeft2:SetTextColor(LBL[1], LBL[2], LBL[3])
 			end
 
-			rankIndex = (rankIndex or 0) + 1
-			if cfg.hideRank then
-				rank = ""
+			if F.NotSecret(rankIndex) then
+				rankIndex = (rankIndex or 0) + 1
+				local rankText = (not cfg.hideRank and rank and F.NotSecret(rank) and rank) or ""
+				local displayGuild = guildName
+				if guildRealm and F.NotSecret(guildRealm) and isShiftKeyDown then
+					displayGuild = guildName .. "-" .. guildRealm
+				end
+				if F.NotSecret(displayGuild) and strlen(displayGuild) > 31 and not isShiftKeyDown then
+					displayGuild = "..."
+				end
+				GameTooltipTextLeft2:SetText("<" .. displayGuild .. "> " .. rankText .. "(" .. rankIndex .. ")")
 			end
-			if guildRealm and F.NotSecret(guildRealm) and isShiftKeyDown then
-				guildName = guildName .. "-" .. guildRealm
-			end
-			if strlen(guildName) > 31 and not isShiftKeyDown then
-				guildName = "..."
-			end
-			GameTooltipTextLeft2:SetText("<" .. guildName .. "> " .. (rank or "") .. "(" .. rankIndex .. ")")
 		end
 	end
 
@@ -491,15 +503,26 @@ function Tooltip:OnTooltipSetUnit(data)
 
 		local diff = GetCreatureDifficultyColor(level)
 		local classify = UnitClassification(unit)
-		local textLevel = format("%s%s%s|r", F.ColorStr(diff.r, diff.g, diff.b), boss or format("%d", level), classification[classify] or "")
+		local classifySuffix = (classify and F.NotSecret(classify) and classification[classify]) or ""
+		local textLevel = format("%s%s%s|r", F.ColorStr(diff.r, diff.g, diff.b), boss or format("%d", level), classifySuffix)
 		local tiptextLevel = Tooltip.GetLevelLine(self)
 		local unitClass = isPlayer and select(1, UnitClass(unit))
+		if unitClass and F.IsSecret(unitClass) then
+			unitClass = nil
+		end
 		if tiptextLevel then
 			local reaction = UnitReaction(unit, "player")
 			local standingText = (not isPlayer and reaction and F.NotSecret(reaction) and hexColor .. (_G["FACTION_STANDING_LABEL" .. reaction] or "") .. "|r ") or ""
 			local pvp = UnitIsPVP(unit)
 			local pvpFlag = (isPlayer and F.NotSecret(pvp) and pvp and format(" |cffff0000%s|r", PVP)) or ""
-			local unitClassStr = (isPlayer and format("%s %s", UnitRace(unit) or "", hexColor .. (unitClass or "") .. "|r")) or UnitCreatureType(unit) or ""
+			local race = isPlayer and UnitRace(unit)
+			local creatureType = (not isPlayer) and UnitCreatureType(unit)
+			local unitClassStr = ""
+			if isPlayer and F.NotSecret(race) and F.NotSecret(unitClass) then
+				unitClassStr = format("%s %s", race or "", hexColor .. (unitClass or "") .. "|r")
+			elseif creatureType and F.NotSecret(creatureType) then
+				unitClassStr = creatureType
+			end
 
 			tiptextLevel:SetFormattedText("%s%s %s %s", textLevel, pvpFlag, standingText .. unitClassStr, (not alive and "|cffCCCCCC" .. DEAD .. "|r" or ""))
 		end
@@ -563,11 +586,12 @@ local function EnsureStatusBarText(bar)
 	bar.Text:SetDrawLayer("OVERLAY", 7)
 end
 
--- Frame the health/status bar with our classic look: a dark tooltip fill behind
--- the bar and a tooltip border above it, on two child frames. Both are anchored
--- to the bar with fixed offsets (no Lua size maths), so styling never errors when
--- the bar holds a secret value - which is why this needs none of the old
--- OnSizeChanged backdrop guards.
+-- Frame the health/status bar with our classic look without BackdropTemplate.
+-- Blizzard's backdrop mixin calls GetWidth()/GetHeight() and divides those values
+-- in Lua (Resources/Blizzard_SharedXML/Backdrop.lua:221+). Tooltip/statusbar sizes
+-- can be Secret under Midnight, so even a plain child frame that ends up feeding
+-- that math can crash while the world-cursor tooltip updates. Border pulled for
+-- now while we confirm that's the culprit; just the dark fill remains.
 local function StyleStatusBar(bar)
 	bar = bar or GameTooltipStatusBar
 	if not bar or bar.nexStyled then
@@ -579,20 +603,14 @@ local function StyleStatusBar(bar)
 
 	local level = bar:GetFrameLevel()
 
-	local bg = CreateFrame("Frame", nil, bar, "BackdropTemplate")
+	local bg = CreateFrame("Frame", nil, bar)
 	bg:SetPoint("TOPLEFT", bar, "TOPLEFT", -0, 0)
 	bg:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 0, 0)
 	bg:SetFrameLevel(level > 0 and level - 1 or 0)
-	bg:SetBackdrop({ bgFile = "Interface\\Tooltips\\UI-Tooltip-Background", tile = true, tileSize = 16 })
-	bg:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	local bgTexture = bg:CreateTexture(nil, "BACKGROUND")
+	bgTexture:SetAllPoints()
+	bgTexture:SetColorTexture(0.06, 0.06, 0.06, 0.9)
 	bar.nexBG = bg
-
-	local border = CreateFrame("Frame", nil, bar, "BackdropTemplate")
-	border:SetPoint("TOPLEFT", bar, "TOPLEFT", -3, 3)
-	border:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", 3, -3)
-	border:SetFrameLevel(level + 1)
-	border:SetBackdrop({ edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border", edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 } })
-	bar.nexBorder = border
 
 	EnsureStatusBarText(bar)
 end

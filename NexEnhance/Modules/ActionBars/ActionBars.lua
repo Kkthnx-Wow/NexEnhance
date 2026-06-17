@@ -17,7 +17,7 @@
 --]]
 
 local _, ns = ...
-local C, L = ns.C, ns.L
+local C, L, F = ns.C, ns.L, ns.F
 
 -- Localised globals (hot-path friendly).
 local _G = _G
@@ -25,6 +25,7 @@ local ipairs = ipairs
 local gsub = string.gsub
 local hooksecurefunc = hooksecurefunc
 local InCombatLockdown = InCombatLockdown
+local IsEquippedAction = C_ActionBar and C_ActionBar.IsEquippedAction
 
 local KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR = KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR
 local KEY_BUTTON3, KEY_SPACE = KEY_BUTTON3, KEY_SPACE
@@ -43,6 +44,7 @@ ns:RegisterDefaults({
 		showCount = true,
 		showHotkey = true,
 		skinExtraButtons = true,
+		equipGlow = true,
 		extraButtonScale = 120,
 		nameSize = 12,
 		countSize = 14,
@@ -187,8 +189,15 @@ end
 local HUD_ICON_FRAME = "UI-HUD-ActionBar-IconFrame"
 local HUD_ICON_FRAME_DOWN = "UI-HUD-ActionBar-IconFrame-Down"
 local HUD_ICON_FRAME_SLOT = "UI-HUD-ActionBar-IconFrame-Slot"
+local HUD_ICON_FRAME_MOUSEOVER = "UI-HUD-ActionBar-IconFrame-Mouseover"
+-- Same mask Blizzard's ActionButtonTemplate/ExtraActionBar use to round the icon
+-- to the IconFrame opening (CLAMPTOBLACKADDITIVE in the XML).
+local HUD_ICON_MASK = "UI-HUD-ActionBar-IconFrame-Mask"
 local FRAME_WIDTH_RATIO = 46 / 45
-local FRAME_TINT = C.Colors.yellow -- gold border to make the special buttons pop
+-- Blizzard draws the 64px mask atlas centered over a 45px icon (and 76 over the
+-- 52px Extra Action button), i.e. the mask is ~1.42x larger than the icon so its
+-- feathered border sits outside the icon. Match that ratio or the icon shrinks.
+local MASK_SIZE_RATIO = 64 / 45
 
 local function SetStyleRegionHidden(region, hidden)
 	if region then
@@ -211,12 +220,12 @@ local function SizeArtTexture(texture, button)
 	texture:ClearAllPoints()
 	texture:SetPoint("CENTER", button, "CENTER", 0, 0)
 	texture:SetSize(w * FRAME_WIDTH_RATIO, h)
-	texture:SetVertexColor(FRAME_TINT[1], FRAME_TINT[2], FRAME_TINT[3])
 end
 
 -- The Extra Action icon is drawn larger than its button and anchored top-left,
 -- so it spills past our button-sized frame. Pin it to the button so the icon and
--- the gold frame share the same bounds (matching the default buttons).
+-- the gold frame share the same bounds (matching the default buttons), then round
+-- it with the HUD icon mask so the corners can't poke past the rounded frame.
 local function NormalizeButtonIcon(button)
 	local icon = button.icon or button.Icon
 	if not icon then
@@ -225,8 +234,53 @@ local function NormalizeButtonIcon(button)
 	icon:SetDrawLayer("ARTWORK")
 	icon:ClearAllPoints()
 	icon:SetAllPoints(button)
-	-- Crop the baked-in icon edge so the art sits cleanly inside the gold frame.
-	icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+	icon:SetTexCoord(0, 1, 0, 1)
+
+	-- Mask the icon like Blizzard's ActionButtonTemplate instead of a square
+	-- texcoord crop, so the rounded gold frame fully contains the art. The mask
+	-- is sized larger than the icon (Blizzard's 64/45 ratio) and centered, so the
+	-- icon fills the frame instead of shrinking inside the mask's feathered edge.
+	if not button.nexIconMask then
+		local mask = button:CreateMaskTexture(nil, "ARTWORK")
+		mask:SetAtlas(HUD_ICON_MASK)
+		icon:AddMaskTexture(mask)
+		button.nexIconMask = mask
+	end
+	local w, h = button:GetSize()
+	if not w or w == 0 then
+		w = 45
+	end
+	if not h or h == 0 then
+		h = 45
+	end
+	button.nexIconMask:ClearAllPoints()
+	button.nexIconMask:SetPoint("CENTER", button, "CENTER", 0, 0)
+	button.nexIconMask:SetSize(w * MASK_SIZE_RATIO, h * MASK_SIZE_RATIO)
+	button.nexIconMask:Show()
+end
+
+-- The Extra Action button hovers with an additive blue glow; the regular bars use
+-- this same atlas at full strength with no additive blend. Match the bars so a
+-- skinned special button hovers like the rest of the action bar.
+local function NormalizeButtonHighlight(button)
+	local highlight = button:GetHighlightTexture()
+	if not highlight then
+		return
+	end
+	highlight:SetAtlas(HUD_ICON_FRAME_MOUSEOVER)
+	highlight:SetBlendMode("BLEND")
+	highlight:SetAlpha(1)
+
+	local w, h = button:GetSize()
+	if not w or w == 0 then
+		w = 45
+	end
+	if not h or h == 0 then
+		h = 45
+	end
+	highlight:ClearAllPoints()
+	highlight:SetPoint("CENTER", button, "CENTER", 0, 0)
+	highlight:SetSize(w * FRAME_WIDTH_RATIO, h)
 end
 
 -- Dress a special button (Extra Action / Zone Ability) in the same HUD art the
@@ -237,6 +291,7 @@ local function ApplyHudButtonArt(button)
 	end
 
 	NormalizeButtonIcon(button)
+	NormalizeButtonHighlight(button)
 
 	button:SetNormalAtlas(HUD_ICON_FRAME)
 	SizeArtTexture(button:GetNormalTexture(), button)
@@ -254,8 +309,18 @@ local function ApplyHudButtonArt(button)
 end
 
 local function RemoveHudButtonArt(button)
-	if button and button.nexSlotArt then
+	if not button then
+		return
+	end
+	if button.nexSlotArt then
 		button.nexSlotArt:Hide()
+	end
+	if button.nexIconMask then
+		local icon = button.icon or button.Icon
+		if icon then
+			icon:RemoveMaskTexture(button.nexIconMask)
+		end
+		button.nexIconMask:Hide()
 	end
 end
 
@@ -327,16 +392,92 @@ function ActionBars:StyleZoneAbilityArt()
 	end
 end
 
--- Built once: prefix + count for every default action-button family.
+-- ---------------------------------------------------------------------------
+-- Equipped-item border
+--   Blizzard marks an action that holds an equipped item with its IconFrame
+--   Border atlas vertex-coloured a faint green (see ActionBarActionButtonMixin:Update
+--   -> self.Border, colour 0,1,0,0.5). We draw our own copy of that same border art
+--   (UI-HUD-ActionBar-IconFrame-Border, the atlas the gold frame uses) at full green
+--   so it matches our skin and reads clearly. Post-hooking the shared mixin keeps us
+--   on the correct, taint-free path and covers every action button at once; the
+--   handler runs only when an action changes (event-driven), and the work is trivial.
+-- ---------------------------------------------------------------------------
+local EQUIP_BORDER_ATLAS = "UI-HUD-ActionBar-IconFrame-Border"
+
+local function GetEquipGlow(button)
+	local glow = button.nexEquipGlow
+	if not glow then
+		glow = button:CreateTexture(nil, "OVERLAY", nil, 7)
+		glow:SetAtlas(EQUIP_BORDER_ATLAS)
+		glow:SetBlendMode("BLEND")
+		glow:SetVertexColor(0, 1, 0)
+		glow:SetPoint("CENTER", button, "CENTER", 0, 0)
+		local w, h = button:GetSize()
+		if not w or w == 0 then
+			w = 45
+		end
+		if not h or h == 0 then
+			h = 45
+		end
+		-- Grow 2px on every edge over the button, and keep the width 1px wider than
+		-- the height (matches the IconFrame art's slight horizontal overhang).
+		local size = h + 4
+		glow:SetSize(size + 1, size)
+		glow:Hide()
+		button.nexEquipGlow = glow
+	end
+	return glow
+end
+
+-- Post-hook for ActionBarActionButtonMixin:Update (and our refresh pass). We
+-- resolve the equipped state the same way Blizzard does (C_ActionBar.IsEquippedAction
+-- on the paged slot) rather than reading our own hidden border, so toggling the
+-- option back off cleanly restores the green border. None of these calls are
+-- protected (texture show/hide only), so this is combat-safe.
+local function ApplyEquipGlow(button)
+	local border = button.Border
+	if not border then
+		return
+	end
+
+	local action = button.GetPagedID and button:GetPagedID()
+	local equipped = action and IsEquippedAction and IsEquippedAction(action)
+	-- On 12.0 action state can read secret in combat/instances; never branch on a
+	-- secret boolean (it would error). Leave the current look untouched.
+	if F.IsSecret(equipped) then
+		return
+	end
+
+	if ns.db.actionbars.equipGlow and equipped then
+		border:Hide()
+		GetEquipGlow(button):Show()
+		return
+	end
+
+	-- Glow disabled, or this slot isn't an equipped item: clear our glow. When the
+	-- option is off we also re-show Blizzard's green border (it may have been
+	-- hidden on an earlier pass while the option was on).
+	if button.nexEquipGlow then
+		button.nexEquipGlow:Hide()
+	end
+	if equipped then
+		border:SetVertexColor(0, 1.0, 0, 0.5)
+		border:Show()
+	end
+end
+
+-- Built once: prefix + count for every default action-button family. `equip`
+-- marks the families that use ActionBarActionButtonMixin (the ones that can hold
+-- an equipped item); stance/pet buttons have no equipped-item border.
 local actionButtonSets = {
-	{ prefix = "ActionButton", count = 12 },
-	{ prefix = "MultiBarBottomLeftButton", count = 12 },
-	{ prefix = "MultiBarLeftButton", count = 12 },
-	{ prefix = "MultiBarRightButton", count = 12 },
-	{ prefix = "MultiBarBottomRightButton", count = 12 },
-	{ prefix = "MultiBar5Button", count = 12 },
-	{ prefix = "MultiBar6Button", count = 12 },
-	{ prefix = "MultiBar7Button", count = 12 },
+	{ prefix = "ActionButton", count = 12, equip = true },
+	{ prefix = "MultiBarBottomLeftButton", count = 12, equip = true },
+	{ prefix = "MultiBarLeftButton", count = 12, equip = true },
+	{ prefix = "MultiBarRightButton", count = 12, equip = true },
+	{ prefix = "MultiBarBottomRightButton", count = 12, equip = true },
+	{ prefix = "MultiBar5Button", count = 12, equip = true },
+	{ prefix = "MultiBar6Button", count = 12, equip = true },
+	{ prefix = "MultiBar7Button", count = 12, equip = true },
 	{ prefix = "StanceButton", count = 10 },
 	{ prefix = "PetActionButton", count = 10 },
 }
@@ -354,6 +495,9 @@ function ActionBars:RefreshActionBarStyling()
 			local button = _G[prefix .. i]
 			if button then
 				StyleActionButton(button, config)
+				if set.equip then
+					ApplyEquipGlow(button)
+				end
 			end
 		end
 	end
@@ -379,6 +523,7 @@ function ActionBars:OnSettingChanged(key, value)
 		return
 	end
 	if key == "enable" and value then
+		self:InstallEquipGlowHook()
 		self:RegisterModuleEvents()
 	end
 	self:RefreshActionBarStyling()
@@ -390,6 +535,7 @@ function ActionBars:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "showCount", L["Show Counts"], L["Show stack counts and charges on action buttons."])
 	builder:Checkbox(category, self, "showHotkey", L["Show Hotkeys"], L["Show abbreviated keybind text on action buttons."])
 	builder:Checkbox(category, self, "skinExtraButtons", L["Skin Extra Buttons"], L["Give the Extra Action and Zone Ability buttons the standard action-bar button frame (reload to restore Blizzard's art)."])
+	builder:Checkbox(category, self, "equipGlow", L["Equipped Item Border"], L["Replace Blizzard's faint equipped-item border with a brighter green border that matches the action-bar frame."])
 
 	builder:Slider(category, self, "extraButtonScale", L["Extra Button Scale"], L["Scale of the Extra Action and Zone Ability buttons, as a percent (applied out of combat)."], 100, 200, 1)
 
@@ -401,6 +547,21 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+-- Hook the shared action-button mixin once so the equipped-item glow follows
+-- live action changes (drag/drop, equips) without us polling. hooksecurefunc
+-- keeps the secure update path clean.
+function ActionBars:InstallEquipGlowHook()
+	if self.equipGlowHooked then
+		return
+	end
+	local mixin = _G.ActionBarActionButtonMixin
+	if not (mixin and mixin.Update) then
+		return
+	end
+	self.equipGlowHooked = true
+	hooksecurefunc(mixin, "Update", ApplyEquipGlow)
+end
+
 function ActionBars:RegisterModuleEvents()
 	if self.eventsRegistered then
 		return
@@ -424,6 +585,7 @@ function ActionBars:PLAYER_REGEN_ENABLED()
 end
 
 function ActionBars:OnEnable()
+	self:InstallEquipGlowHook()
 	self:RefreshActionBarStyling()
 	self:RegisterModuleEvents()
 end

@@ -44,7 +44,7 @@ end
 --   order, only when older data is loaded. Unstamped data is treated as v1
 --   (the baseline before versioning existed), matching the AceDB convention.
 -- ---------------------------------------------------------------------------
-local DB_SCHEMA_VERSION = 2
+local DB_SCHEMA_VERSION = 3
 
 local migrations = {
 	-- The Battle.net toast and Quick Join button movers were re-defaulted to
@@ -55,6 +55,17 @@ local migrations = {
 			if type(profile.movers) == "table" then
 				profile.movers.bnToast = nil
 				profile.movers.quickJoinToast = nil
+			end
+		end
+	end,
+	-- The Loot Roll bar was re-defaulted to a larger width/height. Drop any
+	-- stale saved sizes so the new defaults take effect once; the sliders still
+	-- let the user resize afterwards.
+	[3] = function(root)
+		for _, profile in pairs(root.profiles) do
+			if type(profile.lootRoll) == "table" then
+				profile.lootRoll.width = nil
+				profile.lootRoll.height = nil
 			end
 		end
 	end,

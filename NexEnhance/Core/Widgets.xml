@@ -40,4 +40,27 @@
 			</Layer>
 		</Layers>
 	</Frame>
+
+	<!--
+		Scrollable multiline text area for Blizzard's vertical Settings layout.
+		Used for account-wide keyword lists (Chat Filter) and similar free-form
+		sets stored outside the profile DB. See F.CreateSettingsMultilineEditBox.
+	-->
+	<Frame name="NexEnhanceSettingsMultilineEditBoxTemplate" virtual="true" mixin="NexEnhanceSettingsMultilineEditBoxMixin">
+		<Layers>
+			<Layer level="ARTWORK">
+				<FontString parentKey="Text" inherits="GameFontNormal" justifyH="LEFT" justifyV="TOP">
+					<Anchors>
+						<Anchor point="TOPLEFT" x="28" y="-4"/>
+					</Anchors>
+				</FontString>
+				<FontString parentKey="Description" inherits="GameFontHighlightSmall" justifyH="LEFT" justifyV="TOP">
+					<Anchors>
+						<Anchor point="TOPLEFT" relativeKey="$parent.Text" relativePoint="BOTTOMLEFT" x="0" y="-3"/>
+						<Anchor point="RIGHT" x="-26"/>
+					</Anchors>
+				</FontString>
+			</Layer>
+		</Layers>
+	</Frame>
 </Ui>

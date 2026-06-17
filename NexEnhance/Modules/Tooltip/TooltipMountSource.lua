@@ -120,8 +120,9 @@ function Tooltip:SetupMountSource()
 			return
 		end
 		local data = C_UnitAuras.GetAuraDataByAuraInstanceID(unit, auraInstanceID)
-		if data then
-			HandleAura(tip, data.spellId)
+		if not data or F.IsSecret(data) then
+			return
 		end
+		HandleAura(tip, data.spellId)
 	end)
 end

@@ -5,9 +5,15 @@
 	the most relevant active mode:
 
 	  * Experience while levelling, with a rested overlay
+	  * House XP when a house is tracked (Midnight housing)
 	  * Watched reputation at max level
 	  * Honor when "track honor as experience" is active
 	  * Azerite power when a Heart of Azeroth is equipped
+
+	Priority when several apply: levelling XP wins, then house XP (it is an
+	explicit opt-in - you choose a tracked house), then reputation/honor/Azerite.
+	Every applicable section still appears in the tooltip regardless of which one
+	owns the visible bar.
 
 	The tooltip still shows every applicable progress section, so levelling
 	characters can see watched reputation/honor/Azerite details while XP remains
@@ -44,7 +50,8 @@ local IsVeteranTrialAccount = IsVeteranTrialAccount
 local IsWatchingHonorAsXP = IsWatchingHonorAsXP
 local IsAltKeyDown = IsAltKeyDown
 local IsInGroup = IsInGroup
-local SendChatMessage = SendChatMessage
+-- C_ChatInfo.SendChatMessage is the live API; the global is a deprecated shim.
+local SendChatMessage = C_ChatInfo.SendChatMessage
 local UnitHonor = UnitHonor
 local UnitHonorMax = UnitHonorMax
 local UnitHonorLevel = UnitHonorLevel
@@ -66,6 +73,23 @@ local C_MajorFactions_HasMaximumRenown = C_MajorFactions and C_MajorFactions.Has
 local C_AzeriteItem_FindActiveAzeriteItem = C_AzeriteItem and C_AzeriteItem.FindActiveAzeriteItem
 local C_AzeriteItem_GetAzeriteItemXPInfo = C_AzeriteItem and C_AzeriteItem.GetAzeriteItemXPInfo
 local C_AzeriteItem_GetPowerLevel = C_AzeriteItem and C_AzeriteItem.GetPowerLevel
+
+-- Midnight housing. GetCurrentHouseLevelFavor is a *request*: it returns nothing
+-- and the client answers asynchronously with HOUSE_LEVEL_FAVOR_UPDATED, whose
+-- payload { houseGUID, houseLevel, houseFavor } we cache. houseFavor is the
+-- absolute total "House XP". To match the Housing dashboard's numbers we show the
+-- cumulative "houseFavor / forLevel(level+1)" (e.g. 2670 / 3700) rather than the
+-- within-level segment, formatted like the experience bar (cur - max (pct%) plus a
+-- Remaining line). These reads are plain numbers (not Secret-flagged), so no
+-- F.NotSecret needed.
+local C_Housing = _G.C_Housing
+local C_Housing_GetTrackedHouseGuid = C_Housing and C_Housing.GetTrackedHouseGuid
+local C_Housing_GetCurrentHouseLevelFavor = C_Housing and C_Housing.GetCurrentHouseLevelFavor
+local C_Housing_GetHouseLevelFavorForLevel = C_Housing and C_Housing.GetHouseLevelFavorForLevel
+
+-- Neighborhood Endeavors, shown as a percentage line in the housing tooltip.
+local C_NeighborhoodInitiative = _G.C_NeighborhoodInitiative
+local C_Housing_GetMaxHouseLevel = C_Housing and C_Housing.GetMaxHouseLevel
 
 local STATUSBAR = C.Media.Textures.statusbar
 -- Retail unit-frame fill atlas. The "-Status" variant is the neutral, tintable
@@ -125,7 +149,10 @@ local displayText = ""
 local reportLabel = ""
 local lastReport = 0
 
-local xpState, repState, honorState, azeriteState = {}, {}, {}, {}
+local xpState, repState, honorState, azeriteState, housingState = {}, {}, {}, {}, {}
+
+-- Latest HOUSE_LEVEL_FAVOR_UPDATED payload for the tracked house (or nil).
+local housingData
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -512,6 +539,88 @@ local function BuildAzeriteState()
 	return true
 end
 
+-- Ask the client for the tracked house's favor. The reply arrives later via
+-- HOUSE_LEVEL_FAVOR_UPDATED, so we only fire this on the events that can change
+-- which house is tracked (enter world, tracked-house change) rather than every
+-- rebuild, to avoid hammering the request.
+local function RequestHousingFavor()
+	if not (C_Housing_GetTrackedHouseGuid and C_Housing_GetCurrentHouseLevelFavor) then
+		return
+	end
+	local guid = C_Housing_GetTrackedHouseGuid()
+	if guid then
+		C_Housing_GetCurrentHouseLevelFavor(guid)
+	end
+end
+
+-- Neighborhood Endeavors. RequestNeighborhoodInitiativeInfo primes the client
+-- cache; the reply lands via NEIGHBORHOOD_INITIATIVE_UPDATED and we simply re-read
+-- on the next tooltip hover. GetEndeavorProgress mirrors the dashboard's Endeavors
+-- tab: currentProgress against the final milestone's required contribution.
+local function RequestEndeavorInfo()
+	if C_NeighborhoodInitiative and C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo then
+		C_NeighborhoodInitiative.RequestNeighborhoodInitiativeInfo()
+	end
+end
+
+local function GetEndeavorProgress()
+	if not (C_NeighborhoodInitiative and C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo) then
+		return nil
+	end
+	local info = C_NeighborhoodInitiative.GetNeighborhoodInitiativeInfo()
+	-- initiativeID 0 means the neighborhood is between Endeavors (choosing stage).
+	if not info or not info.isLoaded or info.initiativeID == 0 then
+		return nil
+	end
+	local milestones = info.milestones
+	local maxProgress = milestones and #milestones > 0 and milestones[#milestones].requiredContributionAmount or info.progressRequired
+	if not maxProgress or maxProgress <= 0 then
+		return nil
+	end
+	local pct = (info.currentProgress or 0) / maxProgress * 100
+	return pct > 100 and 100 or pct
+end
+
+local function BuildHousingState()
+	if not (C_Housing_GetTrackedHouseGuid and C_Housing_GetHouseLevelFavorForLevel) then
+		housingState.available = nil
+		return false
+	end
+
+	local guid = C_Housing_GetTrackedHouseGuid()
+	-- Need a tracked house and cached favor data that belongs to it. The data
+	-- is seeded by RequestHousingFavor + HOUSE_LEVEL_FAVOR_UPDATED; until it
+	-- arrives we simply report unavailable (the event triggers a rebuild).
+	if not guid or not housingData or housingData.houseGUID ~= guid then
+		housingState.available = nil
+		return false
+	end
+
+	local level = housingData.houseLevel or 1
+	local favor = housingData.houseFavor or 0
+	local minBar = C_Housing_GetHouseLevelFavorForLevel(level) or 0
+	local nextBar = C_Housing_GetHouseLevelFavorForLevel(level + 1) or minBar
+	local maxLevel = C_Housing_GetMaxHouseLevel and C_Housing_GetMaxHouseLevel()
+	local atMax = (maxLevel and level >= maxLevel) or nextBar <= minBar
+
+	housingState.available = true
+	housingState.level = level
+	housingState.capped = atMax
+
+	if atMax then
+		housingState.cur, housingState.max, housingState.percent, housingState.remaining = 1, 1, 100, 0
+		housingState.display = format("%s [%s %d]", _G.MAXIMUM or "Maximum", _G.LEVEL or "Level", level)
+	else
+		-- Cumulative "House XP / next-level threshold" exactly like the Housing
+		-- dashboard (e.g. 2670 / 3700), formatted like the experience bar.
+		local cur, maxP, pct, capped, remaining = Progress(0, nextBar, favor)
+		housingState.cur, housingState.max, housingState.percent = cur, maxP, pct
+		housingState.remaining, housingState.capped = remaining, capped
+		housingState.display = format("%s - %s (%.1f%%)", F.ShortValue(cur), F.ShortValue(maxP), pct)
+	end
+	return true
+end
+
 -- ---------------------------------------------------------------------------
 -- Visible bar modes
 -- ---------------------------------------------------------------------------
@@ -568,6 +677,20 @@ local function ShowAzerite()
 
 	bar.fill:SetStatusBarColor(0.90, 0.80, 0.60, 1)
 	SetBarValues(bar.fill, 0, azeriteState.max, azeriteState.cur)
+
+	bar.rest:Hide()
+	bar.reward:Hide()
+	bar.text:SetText(displayText)
+	bar:Show()
+end
+
+local function ShowHousing()
+	reportLabel = L["Housing Experience"]
+	displayText = housingState.display
+
+	-- Housing gold, matching the Housing dashboard's frame art.
+	bar.fill:SetStatusBarColor(1.0, 0.82, 0.0, 1)
+	SetBarValues(bar.fill, 0, housingState.max, housingState.cur)
 
 	bar.rest:Hide()
 	bar.reward:Hide()
@@ -646,6 +769,32 @@ local function AddAzeriteTooltip(addSpacing)
 	return true
 end
 
+local function AddHousingTooltip(addSpacing)
+	if not housingState.available then
+		return false
+	end
+
+	if addSpacing then
+		AddTooltipDivider()
+	end
+	local hdr = C.Colors.header
+	_G.GameTooltip:AddDoubleLine(L["Housing Experience"], format("%s %d", _G.LEVEL or "Level", housingState.level or 1), hdr[1], hdr[2], hdr[3], hdr[1], hdr[2], hdr[3])
+	_G.GameTooltip:AddLine(" ")
+	if housingState.capped then
+		_G.GameTooltip:AddLine(housingState.display, 1, 1, 1, true)
+	else
+		_G.GameTooltip:AddDoubleLine(L["XP"], format("%s - %s (%.1f%%)", F.ShortValue(housingState.cur), F.ShortValue(housingState.max), housingState.percent or 0), 1, 1, 1)
+		AddRemainingLine(housingState)
+	end
+
+	-- Neighborhood Endeavor completion, matching the dashboard's "%0.2f%%" readout.
+	local endeavorPct = GetEndeavorProgress()
+	if endeavorPct then
+		_G.GameTooltip:AddDoubleLine(L["Endeavor Progress"], format("%.2f%%", endeavorPct), 1, 1, 1)
+	end
+	return true
+end
+
 local function OnEnter()
 	isMouseOver = true
 	if ns.db.expRep.fade then
@@ -659,6 +808,8 @@ local function OnEnter()
 	_G.GameTooltip:SetOwner(bar, "ANCHOR_CURSOR")
 
 	local any = AddExperienceTooltip()
+	local addedHousing = AddHousingTooltip(any)
+	any = any or addedHousing
 	local addedRep = AddReputationTooltip(any)
 	any = any or addedRep
 	local addedHonor = AddHonorTooltip(any)
@@ -718,12 +869,15 @@ local function UpdateBar(_, _, unit)
 	end
 
 	BuildExperienceState()
+	BuildHousingState()
 	BuildReputationState()
 	BuildHonorState()
 	BuildAzeriteState()
 
 	if xpState.available then
 		ShowExperience()
+	elseif housingState.available then
+		ShowHousing()
 	elseif repState.available then
 		ShowReputation()
 	elseif honorState.available then
@@ -744,6 +898,25 @@ end
 -- nudges every faction; a gear swap fires per slot). UpdateBar rebuilds all four
 -- states every time, so coalesce the storm into a single end-of-frame rebuild.
 local QueueBarUpdate = F.Debounce(0, UpdateBar)
+
+-- Most events just coalesce into a rebuild. HOUSE_LEVEL_FAVOR_UPDATED carries the
+-- favor payload we must cache first (it only arrives after a GetCurrentHouseLevelFavor
+-- request); a tracked-house change invalidates the cache and asks for fresh data;
+-- and entering the world primes the first request.
+local function OnBarEvent(_, event, arg1)
+	if event == "HOUSE_LEVEL_FAVOR_UPDATED" then
+		if arg1 and C_Housing_GetTrackedHouseGuid and arg1.houseGUID == C_Housing_GetTrackedHouseGuid() then
+			housingData = arg1
+		end
+	elseif event == "TRACKED_HOUSE_CHANGED" then
+		housingData = nil
+		RequestHousingFavor()
+	elseif event == "PLAYER_ENTERING_WORLD" then
+		RequestHousingFavor()
+		RequestEndeavorInfo()
+	end
+	QueueBarUpdate()
+end
 
 local function ApplyAppearance()
 	if not bar then
@@ -774,6 +947,8 @@ local EVENTS = {
 	"PLAYER_FLAGS_CHANGED",
 	"PLAYER_EQUIPMENT_CHANGED",
 	"AZERITE_ITEM_EXPERIENCE_CHANGED",
+	"HOUSE_LEVEL_FAVOR_UPDATED",
+	"TRACKED_HOUSE_CHANGED",
 }
 
 -- ---------------------------------------------------------------------------
@@ -848,7 +1023,7 @@ local function BuildBar()
 		-- registration of the rest.
 		pcall(f.RegisterEvent, f, EVENTS[i])
 	end
-	f:SetScript("OnEvent", QueueBarUpdate)
+	f:SetScript("OnEvent", OnBarEvent)
 	f:SetScript("OnEnter", OnEnter)
 	f:SetScript("OnLeave", OnLeave)
 	f:SetScript("OnMouseUp", OnMouseUp)
@@ -952,6 +1127,9 @@ function ExpRep:Setup()
 	F.CreateMover(bar, "ExpRepBar", L["Experience Bar"], "TOP", 0, -4)
 	SetupEditModeSettings()
 	ApplyAppearance()
+	-- Prime house favor + neighborhood Endeavor data so they're ready on first hover.
+	RequestHousingFavor()
+	RequestEndeavorInfo()
 	UpdateBar(bar)
 end
 

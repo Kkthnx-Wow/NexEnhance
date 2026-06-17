@@ -1,15 +1,14 @@
-## Interface: 120005, 120007
+## Interface: 120007
 ## Title: |cff5C8BCFNex|rEnhance
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
-## Version: 1.2.9
+## Version: 1.3.0
 ## SavedVariables: NexEnhanceDB
 ## SavedVariablesPerCharacter: NexEnhanceCharDB
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64
 ## X-Support: Midnight
 ## X-Category: Interface Enhancements
 ## X-Curse-Project-ID: 1090729
-## X-Wago-ID: BNBea0Gx
 
 # ----------------------------------------------------------------------------
 # Libraries (load before everything so the engine/modules can use them).
@@ -50,10 +49,12 @@ Modules\Miscellaneous\CameraZoom.lua
 Modules\Miscellaneous\ActionKeyDown.lua
 Modules\Miscellaneous\NumberFormat.lua
 Modules\Miscellaneous\HideHelpTips.lua
+Modules\Miscellaneous\HideUIElements.lua
 
 # Action Bars
 Modules\ActionBars\ActionBars.lua
 Modules\ActionBars\Cooldowns.lua
+Modules\ActionBars\ExtraQuestButton.lua
 Modules\ActionBars\RangeColors.lua
 
 # Unit Frames
@@ -104,6 +105,9 @@ Modules\Skins\ColorPicker.lua
 Modules\DataText\Stats.lua
 Modules\DataText\Time.lua
 Modules\DataText\Location.lua
+Modules\DataText\Guild.lua
+Modules\DataText\Friends.lua
+Modules\DataText\CharacterInfo.lua
 
 # Maps
 Modules\Maps\Minimap.lua
@@ -114,6 +118,7 @@ Modules\Maps\WowheadLink.lua
 
 # Automation
 Modules\Automation\AutoVendor.lua
+Modules\Automation\AutoGreed.lua
 Modules\Automation\QuickQuest.lua
 Modules\Automation\FasterLoot.lua
 Modules\Automation\MovieSkip.lua
@@ -138,14 +143,17 @@ Modules\Blizzard\BlizzFix.lua
 # Miscellaneous
 Modules\Miscellaneous\Install.lua
 Modules\Miscellaneous\SocialColors.lua
+Modules\Miscellaneous\MenuButtons.lua
 Modules\Miscellaneous\QueueTimer.lua
 Modules\Miscellaneous\TradeTargetInfo.lua
 Modules\Miscellaneous\QuickDelete.lua
 Modules\Miscellaneous\DragEmAll.lua
 Modules\Miscellaneous\WidgetMovers.lua
 Modules\Miscellaneous\AlertFrames.lua
+Modules\Miscellaneous\LootRoll.lua
 Modules\Miscellaneous\Animation.lua
 Modules\Miscellaneous\AchievementScreenshot.lua
+Modules\Miscellaneous\AchievementBackButton.lua
 Modules\Miscellaneous\AFKCam.lua
 Modules\Miscellaneous\ExpRep.lua
 Modules\Miscellaneous\ReloadUI.lua

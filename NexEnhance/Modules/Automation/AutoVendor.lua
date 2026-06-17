@@ -14,6 +14,11 @@
 	  https://github.com/siweia/NDui
 
 	Hold Shift while opening a merchant to skip both selling and repairing.
+
+	Bagforge compatibility: Bagforge has its own Vendor module. If that addon is
+	loaded and its matching vendor option is enabled, NexEnhance skips the same
+	action at runtime instead of racing it. We do not mutate this addon's saved
+	settings; turning Bagforge's option off hands control back here immediately.
 --]]
 
 -- luacheck: globals LE_GAME_ERR_GUILD_NOT_ENOUGH_MONEY LE_GAME_ERR_VENDOR_DOESNT_BUY
@@ -70,6 +75,29 @@ local repairGossipIDs = {
 	[44982] = true,
 }
 
+-- Bagforge's Vendor module stores its live profile at _G.Bagforge.db.vendor:
+--   active, autoSellJunk, autoSellCustomJunk, autoRepair, useGuildFunds
+-- Treat Bagforge as authoritative only while its master vendor switch is active.
+local function GetBagforgeVendorDB()
+	local bagforge = _G.Bagforge
+	local db = bagforge and bagforge.db and bagforge.db.vendor
+	if db and db.active then
+		return db
+	end
+end
+
+local function BagforgeHandlesRepair()
+	local db = GetBagforgeVendorDB()
+	return db and db.autoRepair
+end
+
+local function BagforgeHandlesSelling()
+	local db = GetBagforgeVendorDB()
+	-- Bagforge only sells custom junk from inside its normal auto-sell path, so
+	-- autoSellJunk is the real merchant-selling gate.
+	return db and db.autoSellJunk
+end
+
 -- ---------------------------------------------------------------------------
 -- Defaults & module
 -- ---------------------------------------------------------------------------
@@ -109,10 +137,13 @@ local function StartSelling()
 			end
 
 			local info = C_Container_GetContainerItemInfo(bag, slot)
-			if info and not info.hasNoValue then
+			if info and not info.hasNoValue and not info.isLocked then
 				local itemID = info.itemID
 				local key = bag * 100 + slot
-				if not sellCache[key] and (info.quality == POOR_QUALITY or junkList[itemID]) and not IsPetTrash(itemID) then
+				local quality = info.quality
+				local isCustomJunk = itemID and junkList[itemID]
+				local isPoorJunk = F.NotSecret(quality) and quality == POOR_QUALITY
+				if not sellCache[key] and (isPoorJunk or isCustomJunk) and not IsPetTrash(itemID) then
 					sellCache[key] = true
 					C_Container_UseContainerItem(bag, slot)
 					-- One item per tick; the server credits the gold for us.
@@ -132,7 +163,7 @@ local repairShown, isBankEmpty, repairAllCost, canRepair
 local function NeedToRepair()
 	for slot = 1, 18 do
 		local cur, max = GetInventoryItemDurability(slot)
-		if cur and max and max > 0 and cur < max then
+		if cur and max and F.NotSecret(cur) and F.NotSecret(max) and max > 0 and cur < max then
 			return true
 		end
 	end
@@ -153,6 +184,9 @@ function AutoVendor:Repair(override)
 	if not db.autoRepair then
 		return
 	end
+	if BagforgeHandlesRepair() then
+		return
+	end
 	if repairShown and not override then
 		return
 	end
@@ -160,23 +194,29 @@ function AutoVendor:Repair(override)
 	isBankEmpty = false
 
 	repairAllCost, canRepair = GetRepairAllCost()
-	if not canRepair or repairAllCost <= 0 then
+	-- Bail unless we have a readable, positive cost. Order matters: check for a
+	-- nil/secret value before the `<= 0` compare so we never do arithmetic on one.
+	if not canRepair or not repairAllCost or F.IsSecret(repairAllCost) or repairAllCost <= 0 then
 		return
 	end
 
 	-- GetGuildBankWithdrawMoney() returns -1 for ranks with unlimited
 	-- withdrawal (e.g. guild master); treat that as "can always cover it".
 	local guildWithdraw = GetGuildBankWithdrawMoney()
-	local guildCanCover = guildWithdraw == -1 or guildWithdraw >= repairAllCost
+	local guildCanCover = F.NotSecret(guildWithdraw) and F.NotSecret(repairAllCost)
+		and (guildWithdraw == -1 or guildWithdraw >= repairAllCost)
 	if (not override) and db.useGuildFunds and IsInGuild() and CanGuildBankRepair() and guildCanCover then
 		RepairAllItems(true)
 		-- Wait for a possible "not enough guild money" error, then confirm.
 		C_Timer_After(0.5, ReportGuildRepair)
-	elseif GetMoney() >= repairAllCost then
-		RepairAllItems(false)
-		F.Print(format(L["Repaired equipment for %s"], F.FormatMoney(repairAllCost)))
 	else
-		F.Print(F.Colorize(L["Not enough money to repair"], "red"))
+		local money = GetMoney()
+		if F.NotSecret(money) and F.NotSecret(repairAllCost) and money >= repairAllCost then
+			RepairAllItems(false)
+			F.Print(format(L["Repaired equipment for %s"], F.FormatMoney(repairAllCost)))
+		else
+			F.Print(F.Colorize(L["Not enough money to repair"], "red"))
+		end
 	end
 end
 
@@ -195,7 +235,7 @@ function AutoVendor:MERCHANT_SHOW()
 		self:Repair()
 	end
 
-	if ns.db.autoVendor.sellJunk then
+	if ns.db.autoVendor.sellJunk and not BagforgeHandlesSelling() then
 		sellStop = false
 		wipe(sellCache)
 		StartSelling()
@@ -220,6 +260,9 @@ function AutoVendor:GOSSIP_SHOW()
 		return
 	end
 	if not ns.db.autoVendor.autoRepair then
+		return
+	end
+	if BagforgeHandlesRepair() then
 		return
 	end
 	if IsShiftKeyDown() or not NeedToRepair() then

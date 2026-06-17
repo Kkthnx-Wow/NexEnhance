@@ -20,6 +20,9 @@ local hooksecurefunc = hooksecurefunc
 local C_MountJournal_GetMountInfoByID = C_MountJournal and C_MountJournal.GetMountInfoByID
 local C_Item_GetItemIconByID = C_Item.GetItemIconByID
 local C_Spell_GetSpellTexture = C_Spell.GetSpellTexture
+-- |T texcoord tail: full 64x64 texture, cropped 5..59 on both axes to shave the
+-- ugly default icon border. Looks like keyboard mashing; it isn't. Reused for
+-- every inline icon rewrite below so they all crop identically.
 local newString = "0:0:64:64:5:59:5:59"
 
 function Tooltip:SetupTooltipIcon(icon)

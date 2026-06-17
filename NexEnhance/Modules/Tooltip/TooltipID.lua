@@ -48,6 +48,9 @@ function Tooltip:AddLineForID(id, linkType, noadd)
 		return
 	end
 
+	-- Hovering a mount spell you already know in chat: flag it "Already Learned"
+	-- so you don't relink/relearn it. Only on hover tips (real mount tooltips
+	-- already say this) and only when the spell actually maps to a mount.
 	if self.__isHoverTip and linkType == types.spell and IsPlayerSpell(id) and C_MountJournal_GetMountFromSpell and C_MountJournal_GetMountFromSpell(id) then
 		self:AddLine(LEARNT_STRING)
 	end
@@ -58,14 +61,15 @@ function Tooltip:AddLineForID(id, linkType, noadd)
 
 	if linkType == types.item then
 		local bagCount = C_Item_GetItemCount(id)
-		local bankCount = C_Item_GetItemCount(id, true, nil, true, true) - bagCount
+		local totalCount = C_Item_GetItemCount(id, true, nil, true, true)
+		local bankCount = (F.NotSecret(bagCount) and F.NotSecret(totalCount)) and (totalCount - bagCount) or 0
 		local itemStackCount = select(8, C_Item_GetItemInfo(id))
-		if bankCount > 0 then
+		if F.NotSecret(bankCount) and bankCount > 0 then
 			self:AddDoubleLine(BAGSLOT .. "/" .. BANK .. ":", C.InfoColor .. bagCount .. "/" .. bankCount)
-		elseif bagCount > 0 then
+		elseif F.NotSecret(bagCount) and bagCount > 0 then
 			self:AddDoubleLine(BAGSLOT .. ":", C.InfoColor .. bagCount)
 		end
-		if itemStackCount and itemStackCount > 1 then
+		if itemStackCount and F.NotSecret(itemStackCount) and itemStackCount > 1 then
 			self:AddDoubleLine(L["Stack Cap"] .. ":", C.InfoColor .. itemStackCount)
 		end
 	end
@@ -104,6 +108,9 @@ function Tooltip:SetupTooltipID()
 	hooksecurefunc(ItemRefTooltip, "SetHyperlink", Tooltip.SetHyperLinkID)
 
 	local function HandleAuraData(tip, data)
+		if not data or F.IsSecret(data) then
+			return
+		end
 		local id, caster = data.spellId, data.sourceUnit
 		if id then
 			Tooltip.AddLineForID(tip, id, types.spell)
@@ -176,6 +183,7 @@ function Tooltip:SetupTooltipID()
 		if not tooltipType then
 			return
 		end
+		-- Action-tooltip line tooltipType: 0 = item, 1 = spell (Blizzard's enum).
 		if tooltipType == 0 then
 			Tooltip.AddLineForID(tip, lineData.tooltipID, types.item)
 		elseif tooltipType == 1 then

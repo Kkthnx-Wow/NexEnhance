@@ -112,13 +112,24 @@ local function IsCosmeticCollected(link)
 end
 
 -- True when a housing catalog entry represents something the player owns:
--- a copy in storage (quantity), a copy placed in a house (numPlaced), an
--- unredeemed copy (remainingRedeemable), or an "owned stack" subtype.
+-- stored copies (totalNumStored), placed copies (totalNumPlaced), unredeemed
+-- copies (remainingRedeemable), or an "owned stack" subtype. Falls back to
+-- deprecated quantity/numPlaced when Blizzard's compat bridge isn't loaded.
+local function OwnedCount(info, primaryField, legacyField)
+	local v = info[primaryField]
+	if v == nil then
+		v = info[legacyField]
+	end
+	return F.NotSecret(v) and v > 0
+end
+
 local function EntryInfoOwned(info)
 	if not info then
 		return false
 	end
-	if (info.quantity and info.quantity > 0) or (info.numPlaced and info.numPlaced > 0) or (info.remainingRedeemable and info.remainingRedeemable > 0) then
+	if OwnedCount(info, "totalNumStored", "quantity")
+		or OwnedCount(info, "totalNumPlaced", "numPlaced")
+		or (F.NotSecret(info.remainingRedeemable) and info.remainingRedeemable > 0) then
 		return true
 	end
 
@@ -157,7 +168,7 @@ local function IsDecorCollected(link)
 		return
 	end
 
-	local info = C_HousingCatalog_GetCatalogEntryInfoByItem(link, true)
+	local info = C_HousingCatalog_GetCatalogEntryInfoByItem(link)
 	if not info then
 		return
 	end
@@ -264,7 +275,7 @@ local function UpdateMerchantInfo()
 			local isUsable = info and info.isUsable
 			if isUsable and IsAlreadyKnown(GetMerchantItemLink(index)) then
 				local r, g, b = COLOR.r, COLOR.g, COLOR.b
-				if numAvailable == 0 then
+				if numAvailable and F.NotSecret(numAvailable) and numAvailable == 0 then
 					r, g, b = r * 0.5, g * 0.5, b * 0.5
 				end
 				SetItemButtonTextureVertexColor(button, r, g, b)

@@ -7,14 +7,13 @@
 	  * a small delete button on each inbox row
 	  * an attachment list in the inbox row tooltip when a mail holds several
 	    items
-	  * a fix for the default "Open All" routine choking on GM mail
 
 	Adapted (functional parts only) from NDui's Modules/Misc/Mail.lua by
 	siweia:
 	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Modules/Misc/Mail.lua
 --]]
 
--- luacheck: globals OpenAllMail InboxFrame ATTACHMENTS_MAX_RECEIVE
+-- luacheck: globals OpenAllMail InboxFrame ATTACHMENTS_MAX_RECEIVE INBOXITEMS_TO_DISPLAY
 ---@diagnostic disable: undefined-field, redundant-parameter
 local _, ns = ...
 local F, L = ns.F, ns.L
@@ -30,7 +29,6 @@ local GetInboxHeaderInfo = GetInboxHeaderInfo
 local GetInboxItem = GetInboxItem
 local TakeInboxMoney = TakeInboxMoney
 local TakeInboxItem = TakeInboxItem
-local HasInboxItem = HasInboxItem
 local InboxItemCanDelete = InboxItemCanDelete
 local DeleteInboxItem = DeleteInboxItem
 local C_Mail_HasInboxMoney = C_Mail.HasInboxMoney
@@ -40,7 +38,10 @@ local C_Item_GetItemQualityColor = C_Item.GetItemQualityColor
 
 local DELETE = _G.DELETE
 local ERR_MAIL_DELETE_ITEM_ERROR = _G.ERR_MAIL_DELETE_ITEM_ERROR
-local MAX_RECEIVE = _G.ATTACHMENTS_MAX_RECEIVE or 12
+-- Blizzard_MailFrame loads at login (DefaultState: enabled), so these globals
+-- exist; fall back to current live values just in case the constants move.
+local MAX_RECEIVE = _G.ATTACHMENTS_MAX_RECEIVE or 16
+local PER_PAGE = _G.INBOXITEMS_TO_DISPLAY or 7
 
 ns:RegisterDefaults({
 	mail = {
@@ -61,7 +62,10 @@ local timeToWait = 0.15
 local function GetTotalInboxMoney()
 	local total = 0
 	for i = 1, GetInboxNumItems() do
-		total = total + (select(5, GetInboxHeaderInfo(i)) or 0)
+		local money = select(5, GetInboxHeaderInfo(i)) or 0
+		if F.NotSecret(money) then
+			total = total + money
+		end
 	end
 	return total
 end
@@ -195,7 +199,7 @@ end
 -- ---------------------------------------------------------------------------
 local function DeleteButton_OnClick(self)
 	local inbox = _G["InboxFrame"]
-	local selectedID = self.id + (inbox.pageNum - 1) * 7
+	local selectedID = self.id + (inbox.pageNum - 1) * PER_PAGE
 	if InboxItemCanDelete(selectedID) then
 		DeleteInboxItem(selectedID)
 	else
@@ -210,7 +214,7 @@ local function DeleteButton_OnEnter(self)
 end
 
 local function CreateDeleteButtons()
-	for i = 1, 7 do
+	for i = 1, PER_PAGE do
 		local item = _G["MailItem" .. i .. "Button"]
 		if item and not item.nexDelete then
 			local bu = CreateFrame("Button", nil, item)
@@ -244,13 +248,13 @@ local function InboxItem_OnEnter(self)
 	wipe(inboxItems)
 
 	local itemAttached = select(8, GetInboxHeaderInfo(self.index))
-	if not (itemAttached and itemAttached > 1) then
+	if not (itemAttached and F.NotSecret(itemAttached) and itemAttached > 1) then
 		return
 	end
 
-	for attachID = 1, 12 do
+	for attachID = 1, MAX_RECEIVE do
 		local _, itemID, _, itemCount = GetInboxItem(self.index, attachID)
-		if itemID and itemCount and itemCount > 0 then
+		if itemID and itemCount and F.NotSecret(itemCount) and itemCount > 0 then
 			inboxItems[itemID] = (inboxItems[itemID] or 0) + itemCount
 		end
 	end
@@ -264,48 +268,6 @@ local function InboxItem_OnEnter(self)
 		end
 	end
 	GameTooltip:Show()
-end
-
--- ---------------------------------------------------------------------------
--- Fix the default Open-All routine skipping past GM mail (it can stall when a
--- GM letter sits in the queue). Mirrors NDui's guard.
--- ---------------------------------------------------------------------------
-local function ApplyOpenAllMailFix()
-	local openAll = _G["OpenAllMail"]
-	if not (openAll and openAll.AdvanceToNextItem) then
-		return
-	end
-	local ATTACHMENTS_MAX = _G.ATTACHMENTS_MAX or MAX_RECEIVE
-
-	function openAll:AdvanceToNextItem()
-		local foundAttachment = false
-		while not foundAttachment do
-			local _, _, _, _, _, CODAmount, _, _, _, _, _, _, isGM = GetInboxHeaderInfo(self.mailIndex)
-			local itemID = select(2, GetInboxItem(self.mailIndex, self.attachmentIndex))
-			local hasBlacklistedItem = self:IsItemBlacklisted(itemID)
-			local hasCOD = CODAmount and CODAmount > 0
-			local hasMoneyOrItem = C_Mail_HasInboxMoney(self.mailIndex) or HasInboxItem(self.mailIndex, self.attachmentIndex)
-			if not hasBlacklistedItem and not isGM and not hasCOD and hasMoneyOrItem then
-				foundAttachment = true
-			else
-				self.attachmentIndex = self.attachmentIndex - 1
-				if self.attachmentIndex == 0 then
-					break
-				end
-			end
-		end
-
-		if not foundAttachment then
-			self.mailIndex = self.mailIndex + 1
-			self.attachmentIndex = ATTACHMENTS_MAX
-			if self.mailIndex > GetInboxNumItems() then
-				return false
-			end
-			return self:AdvanceToNextItem()
-		end
-
-		return true
-	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -324,8 +286,6 @@ function Mail:Setup()
 	if _G["InboxFrameItem_OnEnter"] then
 		hooksecurefunc("InboxFrameItem_OnEnter", InboxItem_OnEnter)
 	end
-
-	ApplyOpenAllMailFix()
 end
 
 function Mail:OnEnable()

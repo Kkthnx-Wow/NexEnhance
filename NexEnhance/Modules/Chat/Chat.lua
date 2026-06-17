@@ -42,6 +42,7 @@ local hooksecurefunc = hooksecurefunc
 ns:RegisterDefaults({
 	chat = {
 		enable = true,
+		background = 1, -- 1 = none, 2 = full backdrop, 3 = gradient
 		styleTabs = true,
 		editBoxBorder = true,
 		editBoxTop = true,
@@ -65,6 +66,7 @@ local Chat = ns:NewModule("Chat", "chat", { group = "chat", title = L["Chat"], o
 local cfg
 local messageSoundID = SOUNDKIT and SOUNDKIT.TELL_MESSAGE
 local chatEditBoxes = {}
+local MUTE_CACHE_WINDOW = 1
 
 -- Forward declaration: SetupEditBox hooks each box's UpdateHeader to this.
 local ColorEditBox
@@ -110,6 +112,83 @@ end
 local function UpdateAllEditBoxAnchors()
 	for i = 1, #chatEditBoxes do
 		UpdateEditBoxAnchor(chatEditBoxes[i])
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Chat window background. Two looks, switchable live without a reload:
+--   * Full     : Blizzard tooltip border + dark fill (F.CreateTooltipBackdrop)
+--   * Gradient : a horizontal dark fade with a thin brand-coloured top line
+-- Both anchor to the frame's own .Background region -- Blizzard keeps that sized
+-- and inset correctly via FloatingChatFrame_UpdateBackgroundAnchors, so we ride
+-- along with it instead of doing any size maths. While a custom look is active we
+-- hide Blizzard's faint default bg/border draw layers so they don't show through.
+-- Modelled on NDui's chat background, using our shared backdrop/gradient helpers.
+-- ---------------------------------------------------------------------------
+local BG_NONE, BG_FULL, BG_GRADIENT = 1, 2, 3
+local chatFrames = {}
+
+local function ToggleDefaultTextures(frame)
+	if cfg.background == BG_NONE then
+		frame:EnableDrawLayer("BORDER")
+		frame:EnableDrawLayer("BACKGROUND")
+	else
+		frame:DisableDrawLayer("BORDER")
+		frame:DisableDrawLayer("BACKGROUND")
+	end
+end
+
+local function ApplyBackground(frame)
+	local mode = cfg.background or BG_NONE
+	if frame.__nexBG then
+		frame.__nexBG:SetShown(mode == BG_FULL)
+	end
+	if frame.__nexGradient then
+		frame.__nexGradient:SetShown(mode == BG_GRADIENT)
+	end
+	ToggleDefaultTextures(frame)
+end
+
+function Chat:SetupBackground(frame)
+	local region = frame.Background
+	if not region or frame.__nexBG then
+		return
+	end
+
+	-- Sit one level below the frame's text so messages always draw on top.
+	local lvl = frame:GetFrameLevel()
+	local baseLevel = lvl > 0 and lvl - 1 or 0
+
+	local full = CreateFrame("Frame", nil, frame)
+	full:SetFrameLevel(baseLevel)
+	full:SetPoint("TOPLEFT", region, "TOPLEFT", 0, 0)
+	full:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT", 0, 0)
+	F.CreateTooltipBackdrop(full, { edgeSize = 12 })
+	frame.__nexBG = full
+
+	local grad = CreateFrame("Frame", nil, frame)
+	grad:SetFrameLevel(baseLevel)
+	grad:SetPoint("TOPLEFT", region, "TOPLEFT", 0, 0)
+	grad:SetPoint("BOTTOMRIGHT", region, "BOTTOMRIGHT", 0, 0)
+	local fill = F.SetGradient(grad, "H", 0, 0, 0, 0.6, 0)
+	if fill then
+		fill:SetAllPoints(grad)
+	end
+	local brand = C.Colors.brand
+	local line = F.SetGradient(grad, "H", brand[1], brand[2], brand[3], 0.7, 0, nil, C.Mult)
+	if line then
+		line:SetPoint("BOTTOMLEFT", grad, "TOPLEFT", 0, 0)
+		line:SetPoint("BOTTOMRIGHT", grad, "TOPRIGHT", 0, 0)
+	end
+	frame.__nexGradient = grad
+
+	chatFrames[#chatFrames + 1] = frame
+	ApplyBackground(frame)
+end
+
+function Chat:UpdateBackgrounds()
+	for i = 1, #chatFrames do
+		ApplyBackground(chatFrames[i])
 	end
 end
 
@@ -183,6 +262,7 @@ function Chat:SetupChat(frame)
 		end
 	end
 
+	Chat:SetupBackground(frame)
 	Chat:SetupEditBox(frame)
 
 	frame.__nexSetup = true
@@ -614,6 +694,12 @@ function Chat:PlayWhisperSound(event, _, author)
 	end
 
 	local currentTime = GetTime()
+	local name = Ambiguate(author, "none")
+	local mutedAt = ns.ChatMuteCache and ns.ChatMuteCache[name]
+	if mutedAt and currentTime - mutedAt <= MUTE_CACHE_WINDOW then
+		return
+	end
+
 	if not self._soundTimer or currentTime > self._soundTimer then
 		PlaySound(messageSoundID, "Master")
 	end
@@ -624,7 +710,7 @@ end
 -- Keyword auto-invite
 -- ---------------------------------------------------------------------------
 local InviteToGroup = C_PartyInfo and C_PartyInfo.InviteUnit
-local BNInviteFriend = BNInviteFriend
+local C_BattleNet_InviteFriend = C_BattleNet and C_BattleNet.InviteFriend
 local CanCooperateWithGameAccount = CanCooperateWithGameAccount
 local C_BattleNet_GetAccountInfoByID = C_BattleNet and C_BattleNet.GetAccountInfoByID
 -- CHAT_MSG_WHISPER hands us a player GUID, so resolve Battle.net friendship
@@ -683,7 +769,7 @@ function Chat:OnChatWhisper(event, ...)
 	end
 
 	if event == "CHAT_MSG_BN_WHISPER" then
-		if not (C_BattleNet_GetAccountInfoByID and BNInviteFriend) then
+		if not (C_BattleNet_GetAccountInfoByID and C_BattleNet_InviteFriend) then
 			return
 		end
 		local accountInfo = C_BattleNet_GetAccountInfoByID(presenceID)
@@ -692,7 +778,7 @@ function Chat:OnChatWhisper(event, ...)
 		if gameID and gameAccountInfo and CanCooperateWithGameAccount(accountInfo) then
 			local fullName = (gameAccountInfo.characterName or "") .. "-" .. (gameAccountInfo.realmName or "")
 			if not cfg.guildInviteOnly or IsTrustedInviteSender(guid, fullName, accountInfo) then
-				BNInviteFriend(gameID)
+				C_BattleNet_InviteFriend(gameID)
 			end
 		end
 	elseif InviteToGroup then
@@ -734,8 +820,12 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
-function Chat:OnSettingChanged()
+function Chat:OnSettingChanged(key)
 	if not cfg then
+		return
+	end
+	if key == "background" then
+		self:UpdateBackgrounds()
 		return
 	end
 	self:ChatWhisperSticky()
@@ -798,6 +888,11 @@ end
 
 function Chat:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat"], L["Enable the chat enhancements (reload to fully disable)."])
+	local _, bgInit = builder:Dropdown(category, self, "background", L["Chat Background"], L["Show a background behind the chat window."], {
+		{ value = 1, label = L["None"] },
+		{ value = 2, label = L["Full Background"] },
+		{ value = 3, label = L["Gradient"] },
+	})
 	local _, tabsInit = builder:Checkbox(category, self, "styleTabs", L["Flatten Tabs"], L["Strip the busy default chat tab textures for a flat look (reload to apply)."])
 	local _, boxBorderInit = builder:Checkbox(category, self, "editBoxBorder", L["Edit Box Border"], L["Give the chat input a Blizzard tooltip-style border (reload to apply)."])
 	local _, boxTopInit = builder:Checkbox(category, self, "editBoxTop", L["Edit Box on Top"], L["Dock the chat edit box to the top of the chat window (reload to apply)."])
@@ -825,6 +920,9 @@ function Chat:RegisterOptions(category, builder)
 	local _, guildOnlyInit = builder:Checkbox(category, self, "guildInviteOnly", L["Guild/Friends Only"], L["Only auto-invite guild members and Battle.net friends."])
 
 	-- All chat tweaks rely on the module being on.
+	if bgInit then
+		builder:DependsOn(bgInit, enableInit)
+	end
 	builder:DependsOn(tabsInit, enableInit)
 	builder:DependsOn(boxBorderInit, enableInit)
 	builder:DependsOn(boxTopInit, enableInit)

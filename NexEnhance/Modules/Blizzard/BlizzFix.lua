@@ -10,70 +10,45 @@
 	DragEmAll system instead of NDui's mover.
 --]]
 
--- luacheck: globals AddonTooltip_Update GuildNewsButton_OnEnter SetTooltipMoney BackdropTemplateMixin PlayerTalentFrame TalentFrame_LoadUI
--- luacheck: read_globals GetCoinTextureString
 -- Legacy/secret-context globals the Lua Language Server doesn't model.
 ---@diagnostic disable: undefined-global, undefined-field, deprecated
 local _, ns = ...
-local F = ns.F
 
 local _G = _G
-local hooksecurefunc = hooksecurefunc
 local InCombatLockdown = InCombatLockdown
-local GetCoinTextureString = GetCoinTextureString
 local C_AddOns = C_AddOns
 
 local BlizzFix = ns:NewModule("BlizzFix", "blizzFix")
 
 -- ---------------------------------------------------------------------------
--- Fix: stop ACTIVE_TALENT_GROUP_CHANGED spam from the (legacy) talent frame.
--- No-op on modern clients where neither global exists.
--- ---------------------------------------------------------------------------
-local function FixTalentEvent()
-	if PlayerTalentFrame then
-		PlayerTalentFrame:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
-	elseif TalentFrame_LoadUI then
-		hooksecurefunc("TalentFrame_LoadUI", function()
-			if PlayerTalentFrame then
-				PlayerTalentFrame:UnregisterEvent("ACTIVE_TALENT_GROUP_CHANGED")
-			end
-		end)
-	end
-end
-
--- ---------------------------------------------------------------------------
 -- Fix: AddonList tooltip errors on header/blank rows (GetID() < 1).
+-- Ported from NDui; the old approach wrapped the global AddonTooltip_Update,
+-- but AddonListEntryMixin:OnEnter reads that global directly, so a tainted
+-- wrapper spams "Execution tainted by NexEnhance while reading global
+-- AddonTooltip_Update". Guard at the mixin OnEnter call site instead.
 -- ---------------------------------------------------------------------------
-local function FixAddonTooltip()
-	if type(AddonTooltip_Update) ~= "function" then
+local function GuardAddonListTooltipMixin(mixin)
+	if not mixin or mixin.nexAddonTooltipGuard or type(mixin.OnEnter) ~= "function" then
 		return
 	end
-	local orig = AddonTooltip_Update
-	AddonTooltip_Update = function(owner)
-		if not owner then
+
+	local origOnEnter = mixin.OnEnter
+	function mixin:OnEnter(...)
+		if not self then
 			return
 		end
-		if owner.GetID and owner:GetID() < 1 then
+		if self.GetID and self:GetID() < 1 then
 			return
 		end
-		orig(owner)
+		return origOnEnter(self, ...)
 	end
+
+	mixin.nexAddonTooltipGuard = true
 end
 
--- ---------------------------------------------------------------------------
--- Fix: guild news hyperlink error on entries with no whatText.
--- ---------------------------------------------------------------------------
-local function FixGuildNews()
-	if type(GuildNewsButton_OnEnter) ~= "function" then
-		return
-	end
-	local orig = GuildNewsButton_OnEnter
-	GuildNewsButton_OnEnter = function(self)
-		if not (self.newsInfo and self.newsInfo.whatText) then
-			return
-		end
-		orig(self)
-	end
+local function FixAddonTooltip()
+	GuardAddonListTooltipMixin(_G["AddonListEntryMixin"])
+	GuardAddonListTooltipMixin(_G["AddonListCategoryMixin"])
 end
 
 -- ---------------------------------------------------------------------------
@@ -88,32 +63,6 @@ local function FixRaidGroupButtons()
 			bu:SetAttribute("unit", bu.unit)
 			bu.clickFixed = true
 		end
-	end
-end
-
--- ---------------------------------------------------------------------------
--- Fix: guard backdrop texture setup against secret width values (12.0).
--- ---------------------------------------------------------------------------
-local function FixBackdropSecret()
-	local mixin = BackdropTemplateMixin
-	if not mixin or type(mixin.SetupTextureCoordinates) ~= "function" then
-		return
-	end
-	local orig = mixin.SetupTextureCoordinates
-	function mixin:SetupTextureCoordinates()
-		if F.IsSecret(self:GetWidth()) then
-			return
-		end
-		orig(self)
-	end
-end
-
--- ---------------------------------------------------------------------------
--- Fix: money tooltip prefix/suffix spacing.
--- ---------------------------------------------------------------------------
-local function FixTooltipMoney()
-	SetTooltipMoney = function(frame, money, _, prefixText, suffixText)
-		frame:AddLine((prefixText or "") .. " " .. GetCoinTextureString(money) .. " " .. (suffixText or ""), 1, 1, 1)
 	end
 end
 
@@ -149,25 +98,21 @@ function BlizzFix:PLAYER_REGEN_ENABLED()
 end
 
 function BlizzFix:ADDON_LOADED(addon)
-	if addon == "Blizzard_GuildUI" then
-		FixGuildNews()
+	if addon == "Blizzard_AddOnList" then
+		FixAddonTooltip()
 	elseif addon == "Blizzard_RaidUI" then
 		self:SetupRaidFix()
 	end
 end
 
 function BlizzFix:OnEnable()
-	FixTalentEvent()
-	FixAddonTooltip()
-	FixBackdropSecret()
-	FixTooltipMoney()
 	FixPetFrameClickArea()
 
 	-- LoadOnDemand UIs may already be present; otherwise wait for them.
 	local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
 	if isLoaded then
-		if isLoaded("Blizzard_GuildUI") then
-			FixGuildNews()
+		if isLoaded("Blizzard_AddOnList") then
+			FixAddonTooltip()
 		end
 		if isLoaded("Blizzard_RaidUI") then
 			self:SetupRaidFix()

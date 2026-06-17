@@ -115,6 +115,8 @@ handlers.help = function(_)
 	F.Print("  /nex reminder      -", L["Toggle buff reminder test icons"])
 	F.Print("  /nex rare          -", L["Toggle rare alert popup preview"])
 	F.Print("  /nex afk           -", L["Toggle AFK camera preview"])
+	F.Print("  /nex lootroll      -", L["Toggle loot roll test bars"])
+	F.Print("  /nex questnotify   -", L["Toggle quest notification self-test"])
 	F.Print("  /nex abandonquests -", L["Abandon every quest in your log"])
 	F.Print("  /nex bordertest    -", L["Preview the tooltip border"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
@@ -203,6 +205,24 @@ handlers.afk = function(_)
 		module:ToggleTest()
 	else
 		F.Print(F.Colorize(L["AFK Camera"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
+handlers.lootroll = function(_)
+	local module = ns:GetModule("LootRoll")
+	if module and module.ToggleTest then
+		module:ToggleTest()
+	else
+		F.Print(F.Colorize(L["Loot Roll"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
+handlers.questnotify = function(_)
+	local module = ns:GetModule("QuestNotification")
+	if module and module.ToggleDebug then
+		module:ToggleDebug()
+	else
+		F.Print(F.Colorize(L["Quest Notification"] .. ": ", "brand") .. L["Module unavailable."])
 	end
 end
 
@@ -551,6 +571,20 @@ function OptionBuilder:EditBox(category, module, key, name, tooltip, width, onCo
 		layout:AddInitializer(initializer)
 	end
 	return setting, initializer
+end
+
+-- Multiline free-text row backed by caller-supplied get/set (e.g. account-wide
+-- keyword tables). `opts`: width, boxHeight, onRestoreDefaults, restoreLabel.
+function OptionBuilder:MultilineEditBox(category, name, tooltip, getValue, setValue, opts)
+	local layout = self.layout
+	if not (layout and F.CreateSettingsMultilineEditBox) then
+		return
+	end
+	local initializer = F.CreateSettingsMultilineEditBox(name, tooltip, getValue, setValue, opts)
+	if initializer then
+		layout:AddInitializer(initializer)
+	end
+	return initializer
 end
 
 -- Add a section header (same style as the per-module headers) partway through a

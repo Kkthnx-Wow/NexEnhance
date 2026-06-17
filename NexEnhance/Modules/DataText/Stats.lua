@@ -180,15 +180,15 @@ local function UpdateStat(self)
 
 	local display = cfg and cfg.display or "both"
 	if display == "fps" then
-		self.text:SetText(fpsText)
+		F.SetPlainText(self.text, fpsText)
 	elseif display == "ms" then
-		self.text:SetText(msText)
+		F.SetPlainText(self.text, msText)
 	else
 		local a, b = fpsText, msText
 		if cfg and cfg.flip then
 			a, b = msText, fpsText
 		end
-		self.text:SetFormattedText("%s |cff808080/|r %s", a, b)
+		F.SetPlainFormattedText(self.text, "%s |cff808080/|r %s", a, b)
 	end
 
 	self:SetWidth(max(60, self.text:GetStringWidth() + 8))
@@ -444,11 +444,9 @@ function DataText:Create()
 	stat:SetSize(120, 20)
 	stat:RegisterForClicks("AnyUp")
 
-	-- Plain text with a soft drop shadow (no outline).
-	stat.text = stat:CreateFontString(nil, "OVERLAY")
-	stat.text:SetFont(C.Media.Fonts.normal, 14, "")
-	stat.text:SetShadowColor(0, 0, 0, 1)
-	stat.text:SetShadowOffset(1, -1)
+	-- Plain text with a manual drop shadow (SetShadowOffset reads 1,-1 on 12.0.7+
+	-- but Slug text can still draw the shadow flush on the glyphs).
+	stat.text = F.CreatePlainFS(stat, 14)
 	stat.text:SetPoint("CENTER")
 
 	stat:SetScript("OnEnter", OnEnter)

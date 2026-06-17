@@ -23,12 +23,16 @@ local UnitGUID, UnitClass, UnitIsUnit, UnitIsPlayer = UnitGUID, UnitClass, UnitI
 local UnitIsVisible, UnitIsDeadOrGhost, UnitOnTaxi = UnitIsVisible, UnitIsDeadOrGhost, UnitOnTaxi
 local GetInventoryItemTexture, GetInventoryItemLink, GetAverageItemLevel = GetInventoryItemTexture, GetInventoryItemLink, GetAverageItemLevel
 local InCombatLockdown = InCombatLockdown
+local GetItemInfo, GetItemGem = C_Item.GetItemInfo, C_Item.GetItemGem
 local HEIRLOOMS = _G["HEIRLOOMS"]
 
 local levelPrefix = STAT_AVERAGE_ITEM_LEVEL .. ": " .. C.InfoColor
 local isPending = LFG_LIST_LOADING
 local resetTime, frequency = 900, 0.5
 local cache, weapon = {}, {}
+-- Reused across artifact-relic scans so we don't allocate a split table per
+-- weapon. Multiple-assignment from select() nils the unused slots for us.
+local relicScratch = {}
 -- The inspect cache is keyed by GUID; cap it so a long session of mousing over
 -- many players (cities, raids) can't grow it without bound.
 local cacheCount, CACHE_MAX = 0, 200
@@ -64,7 +68,7 @@ local function GetUnitItemLevel(unit)
 				if not itemLink then
 					delay = true
 				else
-					local _, _, quality, level, _, _, _, _, slot = C_Item.GetItemInfo(itemLink)
+					local _, _, quality, level, _, _, _, _, slot = GetItemInfo(itemLink)
 					if (not quality) or not level then
 						delay = true
 					else
@@ -77,10 +81,10 @@ local function GetUnitItemLevel(unit)
 							if i < 16 then
 								total = total + level
 							elseif i > 15 and quality == Enum.ItemQuality.Artifact then
-								local relics = { select(4, strsplit(":", itemLink)) }
+								relicScratch[1], relicScratch[2], relicScratch[3] = select(4, strsplit(":", itemLink))
 								for r = 1, 3 do
-									local relicID = relics[r] ~= "" and relics[r]
-									local relicLink = select(2, C_Item.GetItemGem(itemLink, r))
+									local relicID = relicScratch[r] and relicScratch[r] ~= "" and relicScratch[r]
+									local relicLink = select(2, GetItemGem(itemLink, r))
 									if relicID and not relicLink then
 										delay = true
 										break

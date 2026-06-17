@@ -18,6 +18,7 @@ local F, C, L = ns.F, ns.C, ns.L
 -- Localised globals.
 local _G = _G
 local CreateFrame = CreateFrame
+local CreateColor = CreateColor
 local EnumerateFrames = EnumerateFrames
 local RegisterAttributeDriver = RegisterAttributeDriver
 local UIParent = UIParent
@@ -282,6 +283,36 @@ function F.CreateTooltipBackdrop(frame, opts)
 	local outset = opts.outset or 0
 	bg:SetInside(frame, outset, outset)
 	return bg
+end
+
+-- ---------------------------------------------------------------------------
+-- Gradient texture
+--   Creates a flat texture on `frame` that fades between two alpha stops of the
+--   same colour along the given axis ("H" horizontal, "V" vertical) via the
+--   modern Texture:SetGradient(orientation, minColour, maxColour) API (the old
+--   SetGradientAlpha was removed in 9.0). Optional width/height size the texture;
+--   otherwise anchor the returned texture yourself. Reusable gradient art helper
+--   (chat backgrounds, info bars, divider lines), modelled on NDui's B.SetGradient.
+-- ---------------------------------------------------------------------------
+local GRADIENT_ORIENTATION = { H = "HORIZONTAL", V = "VERTICAL" }
+
+function F.SetGradient(frame, orientation, r, g, b, a1, a2, width, height)
+	orientation = GRADIENT_ORIENTATION[orientation]
+	if not frame or not orientation then
+		return
+	end
+
+	local tex = frame:CreateTexture(nil, "BACKGROUND")
+	tex:SetTexture(C.Media.Textures.blank)
+	tex:SetGradient(orientation, CreateColor(r, g, b, a1), CreateColor(r, g, b, a2))
+	if width then
+		tex:SetWidth(width)
+	end
+	if height then
+		tex:SetHeight(height)
+	end
+
+	return tex
 end
 
 -- ---------------------------------------------------------------------------

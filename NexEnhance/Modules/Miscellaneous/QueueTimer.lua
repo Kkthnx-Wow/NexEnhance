@@ -28,10 +28,10 @@ local GetBattlefieldPortExpiration = GetBattlefieldPortExpiration
 local GetBattlefieldStatus = GetBattlefieldStatus
 
 -- Tunables.
-local WARNING_SOUND_ID = 567458
-local WARNING_THRESHOLD = 6
-local PVE_EXPIRE_BASE = 40
-local UPDATE_INTERVAL = 0.2
+local WARNING_SOUND_ID = 567458 -- the "you're about to lose your queue" beep
+local WARNING_THRESHOLD = 6 -- seconds left when the beep + red kicks in
+local PVE_EXPIRE_BASE = 40 -- LFG pops give ~40s to accept; no API hands us this
+local UPDATE_INTERVAL = 0.2 -- 5fps is plenty for a whole-second countdown
 
 ns:RegisterDefaults({
 	queueTimer = {

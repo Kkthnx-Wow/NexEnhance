@@ -553,3 +553,223 @@ function F.CreateSettingsEditBox(name, tooltip, getValue, setValue, width)
 	end
 	return initializer
 end
+
+-- ---------------------------------------------------------------------------
+-- Multiline edit box (Settings list row)
+-- ---------------------------------------------------------------------------
+-- luacheck: globals NexEnhanceSettingsMultilineEditBoxMixin
+
+local INPUT_BACKDROP = ns.C and ns.C.Backdrops and ns.C.Backdrops.window
+
+local function multilineRow_Commit(owner)
+	local data = owner and owner._nexData
+	local box = owner and owner.EditBox
+	if not (data and data.setValue and box) then
+		return
+	end
+	data.setValue(box:GetText() or "")
+	if data.getValue then
+		box:SetText(data.getValue() or "")
+	end
+end
+
+local function multilineRow_OnEditFocusLost(self)
+	multilineRow_Commit(self:GetParent())
+end
+
+local function multilineRow_OnEscapePressed(self)
+	local owner = self:GetParent()
+	local data = owner and owner._nexData
+	if data and data.getValue then
+		self:SetText(data.getValue() or "")
+	end
+	self:ClearFocus()
+end
+
+local function multilineRow_FocusEditBox(scroll)
+	local box = scroll and scroll.editBox
+	if box then
+		box:SetFocus()
+	end
+end
+
+local function multilineRow_CreateInputArea(parent, width, height)
+	local box = CreateFrame("Frame", nil, parent, "BackdropTemplate")
+	box:SetBackdrop(INPUT_BACKDROP)
+	box:SetBackdropColor(0.06, 0.06, 0.06, 0.9)
+	box:SetBackdropBorderColor(0.45, 0.35, 0.2, 0.7)
+	box:SetSize(width, height)
+
+	local scroll = CreateFrame("ScrollFrame", nil, box)
+	scroll:SetPoint("TOPLEFT", 8, -8)
+	scroll:SetPoint("BOTTOMRIGHT", -28, 8)
+
+	local scrollBar = CreateFrame("EventFrame", nil, box, "MinimalScrollBar")
+	scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 6, 0)
+	scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 6, 0)
+	if ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
+		ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
+	end
+
+	local editBox = CreateFrame("EditBox", nil, scroll)
+	editBox:SetMultiLine(true)
+	editBox:SetMaxLetters(0)
+	editBox:SetAutoFocus(false)
+	editBox:SetFontObject("ChatFontNormal")
+	editBox:SetWidth(width - 44)
+	editBox:SetScript("OnEditFocusLost", multilineRow_OnEditFocusLost)
+	editBox:SetScript("OnEscapePressed", multilineRow_OnEscapePressed)
+	scroll.editBox = editBox
+	scroll:SetScrollChild(editBox)
+	scroll:SetScript("OnSizeChanged", function(_, w)
+		if w and w > 0 then
+			editBox:SetWidth(w)
+		end
+	end)
+	scroll:EnableMouse(true)
+	scroll:SetScript("OnMouseDown", multilineRow_FocusEditBox)
+	box:EnableMouse(true)
+	box:SetScript("OnMouseDown", function()
+		multilineRow_FocusEditBox(scroll)
+	end)
+
+	return box, editBox
+end
+
+NexEnhanceSettingsMultilineEditBoxMixin = {}
+
+function NexEnhanceSettingsMultilineEditBoxMixin:EvaluateState()
+	local initializer = self.initializer
+	local enabled = true
+	if initializer and initializer.EvaluateModifyPredicates then
+		enabled = initializer:EvaluateModifyPredicates()
+	end
+
+	local nameColor = enabled and NORMAL_FONT_COLOR or GRAY_FONT_COLOR
+	self.Text:SetTextColor(nameColor:GetRGB())
+	local d = enabled and 0.75 or 0.4
+	self.Description:SetTextColor(d, d, d)
+
+	local box = self.EditBox
+	if box then
+		box:SetEnabled(enabled)
+		if not enabled then
+			box:ClearFocus()
+		end
+		box:SetTextColor(enabled and 1 or 0.5, enabled and 1 or 0.5, enabled and 1 or 0.5)
+	end
+
+	local input = self.InputArea
+	if input then
+		input:SetAlpha(enabled and 1 or 0.55)
+	end
+
+	local restore = self.RestoreButton
+	if restore then
+		restore:SetEnabled(enabled)
+	end
+end
+
+function NexEnhanceSettingsMultilineEditBoxMixin:Init(initializer)
+	local data = initializer:GetData()
+	self._nexData = data
+	self.initializer = initializer
+
+	if self.cbrHandles then
+		self.cbrHandles:Unregister()
+	else
+		self.cbrHandles = Settings.CreateCallbackHandleContainer()
+	end
+
+	local parentInitializer = initializer.GetParentInitializer and initializer:GetParentInitializer()
+	if parentInitializer then
+		local parentSetting = parentInitializer:GetSetting()
+		if parentSetting then
+			self.cbrHandles:SetOnValueChangedCallback(parentSetting:GetVariable(), self.EvaluateState, self)
+		end
+	end
+
+	self.Text:SetText(data and data.name or "")
+	self.Description:SetText(data and data.tooltip or "")
+
+	local indent = (initializer.GetIndent and initializer:GetIndent()) or 0
+	self.Text:ClearAllPoints()
+	self.Text:SetPoint("TOPLEFT", indent + SETTINGS_LABEL_INDENT, -4)
+
+	local boxWidth = (data and data.width) or 280
+	local boxHeight = (data and data.boxHeight) or 120
+
+	if not self.InputArea then
+		local input, editBox = multilineRow_CreateInputArea(self, boxWidth, boxHeight)
+		self.InputArea = input
+		self.EditBox = editBox
+	end
+
+	local descHeight = self.Description:GetStringHeight()
+	if not descHeight or descHeight <= 0 then
+		descHeight = 12
+	end
+
+	self.InputArea:ClearAllPoints()
+	self.InputArea:SetPoint("TOPLEFT", self.Text, "BOTTOMLEFT", 0, -(descHeight + 11))
+	self.InputArea:SetSize(boxWidth, boxHeight)
+
+	if data and data.onRestoreDefaults and not self.RestoreButton then
+		local btn = CreateFrame("Button", nil, self, "UIPanelButtonTemplate")
+		btn:SetSize(160, 22)
+		btn:SetText(data.restoreLabel or (_G.RESET or "Reset"))
+		btn:SetScript("OnClick", function()
+			if data.onRestoreDefaults then
+				data.onRestoreDefaults()
+			end
+			if self.EditBox and data.getValue then
+				self.EditBox:SetText(data.getValue() or "")
+			end
+		end)
+		self.RestoreButton = btn
+	end
+
+	if self.RestoreButton then
+		if data and data.onRestoreDefaults then
+			self.RestoreButton:Show()
+			self.RestoreButton:ClearAllPoints()
+			self.RestoreButton:SetPoint("TOPLEFT", self.InputArea, "BOTTOMLEFT", 0, -8)
+		else
+			self.RestoreButton:Hide()
+		end
+	end
+
+	self.EditBox:SetText((data and data.getValue and data.getValue()) or "")
+	self:EvaluateState()
+end
+
+function NexEnhanceSettingsMultilineEditBoxMixin:Release()
+	if self.cbrHandles then
+		self.cbrHandles:Unregister()
+	end
+end
+
+--- Scrollable multiline Settings row. Value is owned via getValue/setValue (any
+--- table). `opts`: width, boxHeight, onRestoreDefaults, restoreLabel.
+function F.CreateSettingsMultilineEditBox(name, tooltip, getValue, setValue, opts)
+	if not (Settings and Settings.CreateElementInitializer) then
+		return
+	end
+	opts = opts or {}
+	local initializer = Settings.CreateElementInitializer("NexEnhanceSettingsMultilineEditBoxTemplate", {
+		name = name,
+		tooltip = tooltip,
+		getValue = getValue,
+		setValue = setValue,
+		width = opts.width or 280,
+		boxHeight = opts.boxHeight or 120,
+		onRestoreDefaults = opts.onRestoreDefaults,
+		restoreLabel = opts.restoreLabel,
+	})
+	initializer.GetExtent = function()
+		local descHeight = MeasureDescriptionHeight(tooltip)
+		local extra = opts.onRestoreDefaults and 30 or 0
+		return descHeight + (opts.boxHeight or 120) + extra + 28
+	end
+	return initializer
+end

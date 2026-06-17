@@ -49,7 +49,6 @@ local GetMaxLevelForPlayerExpansion = GetMaxLevelForPlayerExpansion
 local C_AddOns = C_AddOns
 local C_AreaPoiInfo = C_AreaPoiInfo
 local C_Calendar = C_Calendar
-local C_CurrencyInfo = C_CurrencyInfo
 local C_DateAndTime = C_DateAndTime
 local C_Item = C_Item
 local C_Map = C_Map
@@ -131,6 +130,10 @@ local QUEST_LIST = {
 	{ name = L["Community Feast"], id = 70893, questName = true },
 	{ name = L["The Big Dig"], id = 79226, questName = true },
 	{ name = L["The Superbloom"], id = 78319, questName = true },
+	-- TWW weekly/event quests. Title is left blank on purpose: questName = true
+	-- resolves the live name via C_QuestLog, so the label always matches the
+	-- player's locale and a stale ID simply omits the line instead of erroring.
+	-- /run print(C_QuestLog.GetTitleForQuestID(76586), C_QuestLog.GetTitleForQuestID(82946), C_QuestLog.GetTitleForQuestID(83240))
 	{ name = "", id = 76586, questName = true },
 	{ name = "", id = 82946, questName = true },
 	{ name = "", id = 83240, questName = true },
@@ -277,7 +280,7 @@ local function UpdateClock(self)
 	end
 
 	local pending = (C_Calendar and C_Calendar.GetNumPendingInvites and C_Calendar.GetNumPendingInvites() or 0) > 0
-	self.text:SetText(FormatClock(hour, minute, pending))
+	F.SetPlainText(self.text, FormatClock(hour, minute, pending))
 	self:SetWidth(self.text:GetStringWidth() + 8)
 end
 
@@ -738,7 +741,11 @@ local function AddDelves()
 		return
 	end
 
-	local header, found
+	-- `header` is a sentinel: nil/false means "section title not emitted yet".
+	-- AddDelveLine flips it to true on the first line so the title prints once
+	-- across all three fallback passes. Seeded false (not nil) to keep linters quiet.
+	local header = false
+	local found
 	local seen = {}
 	local shown = 0
 
@@ -917,8 +924,8 @@ local function GetWidgetVisInfo(widgetID, widgetType)
 	if widgetType == Enum.UIWidgetVisualizationType.IconAndText and C_UIWidgetManager.GetIconAndTextWidgetVisualizationInfo then
 		return C_UIWidgetManager.GetIconAndTextWidgetVisualizationInfo(widgetID)
 	end
-	if widgetType == Enum.UIWidgetVisualizationType.TextureAndText and C_UIWidgetManager.GetTextureAndTextWidgetVisualizationInfo then
-		return C_UIWidgetManager.GetTextureAndTextWidgetVisualizationInfo(widgetID)
+	if widgetType == Enum.UIWidgetVisualizationType.TextureAndText and C_UIWidgetManager.GetTextureAndTextVisualizationInfo then
+		return C_UIWidgetManager.GetTextureAndTextVisualizationInfo(widgetID)
 	end
 end
 
@@ -1330,6 +1337,7 @@ function Clock:Create()
 	-- behind whenever the minimap is repositioned or its cluster is resized.
 	local minimap = _G["Minimap"]
 	clock = CreateFrame("Button", nil, minimap or UIParent)
+	clock.nexBinSelf = true -- never sweep our own clock into the minimap button tray
 	clock:SetSize(60, 18)
 	clock:RegisterForClicks("AnyUp")
 	if minimap then
@@ -1339,10 +1347,7 @@ function Clock:Create()
 		clock:SetPoint("CENTER", UIParent, "CENTER", 0, 0)
 	end
 
-	clock.text = clock:CreateFontString(nil, "OVERLAY")
-	clock.text:SetFont(C.Media.Fonts.normal, 13, "")
-	clock.text:SetShadowColor(0, 0, 0, 1)
-	clock.text:SetShadowOffset(1, -1)
+	clock.text = F.CreatePlainFS(clock, 13)
 	clock.text:SetPoint("CENTER")
 
 	clock:SetScript("OnEnter", OnEnter)

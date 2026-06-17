@@ -34,6 +34,7 @@ local max = math.max
 local CreateFrame = CreateFrame
 local UIParent = UIParent
 local hooksecurefunc = hooksecurefunc
+local InCombatLockdown = InCombatLockdown
 
 ns:RegisterDefaults({
 	widgetMovers = {
@@ -44,8 +45,15 @@ ns:RegisterDefaults({
 local WidgetMovers = ns:NewModule("WidgetMovers", "widgetMovers", { group = "misc", title = L["Widget Movers"], order = 35 })
 
 -- Pin `container` to `anchor`. Setting the point re-enters the SetPoint hook, but
--- the parent == anchor guard there stops the recursion.
+-- the parent == anchor guard there stops the recursion. We skip re-pinning during
+-- combat: ignoreFramePositionManager already keeps the legacy manager off these
+-- containers, so the only in-combat caller is Blizzard's own widget layout, and
+-- we'd rather not move frames mid-lockdown. The next out-of-combat SetPoint
+-- (or widget refresh) re-glues it.
 local function Glue(container, anchor, point)
+	if InCombatLockdown() then
+		return
+	end
 	container:ClearAllPoints()
 	container:SetPoint(point, anchor)
 end

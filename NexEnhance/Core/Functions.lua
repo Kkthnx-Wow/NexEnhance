@@ -14,10 +14,12 @@ local select, type, tostring = select, type, tostring
 local pairs, ipairs = pairs, ipairs
 local floor = math.floor
 local format = string.format
+local gsub = string.gsub
 local tconcat = table.concat
 local tremove = table.remove
 local wipe = wipe
 local C_Timer = C_Timer
+local BreakUpLargeNumbers = BreakUpLargeNumbers
 local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
 
 local PREFIX = format("|c%s%s|r:", C.BrandHex, "NexEnhance")
@@ -127,6 +129,7 @@ function F.Round(value, places)
 end
 
 --- Format a copper amount into a "Xg Ys Zc" string using Blizzard's icons.
+--- The gold component is grouped with thousands separators (e.g. 25,000).
 function F.FormatMoney(copper)
 	copper = floor(copper or 0)
 	local gold = floor(copper / 10000)
@@ -134,7 +137,8 @@ function F.FormatMoney(copper)
 	local copperRem = copper % 100
 
 	if gold > 0 then
-		return format("%d|TInterface\\MoneyFrame\\UI-GoldIcon:12:12:2:0|t %d|TInterface\\MoneyFrame\\UI-SilverIcon:12:12:2:0|t %d|TInterface\\MoneyFrame\\UI-CopperIcon:12:12:2:0|t", gold, silver, copperRem)
+		local goldText = BreakUpLargeNumbers and BreakUpLargeNumbers(gold) or gold
+		return format("%s|TInterface\\MoneyFrame\\UI-GoldIcon:12:12:2:0|t %d|TInterface\\MoneyFrame\\UI-SilverIcon:12:12:2:0|t %d|TInterface\\MoneyFrame\\UI-CopperIcon:12:12:2:0|t", goldText, silver, copperRem)
 	elseif silver > 0 then
 		return format("%d|TInterface\\MoneyFrame\\UI-SilverIcon:12:12:2:0|t %d|TInterface\\MoneyFrame\\UI-CopperIcon:12:12:2:0|t", silver, copperRem)
 	end
@@ -530,10 +534,63 @@ function F.CreateFS(parent, size, text, layer)
 	return fs
 end
 
+--- Strip inline colour codes so a duplicate shadow string can stay solid black.
+function F.StripColorCodes(text)
+	if not text then
+		return ""
+	end
+	text = gsub(text, "|%a%x%x%x%x%x%x%x%x", "")
+	text = gsub(text, "|r", "")
+	text = gsub(text, "|R", "")
+	return text
+end
+
+--- Plain font string with a manual drop shadow. On 12.0.7+ the engine can report
+--- GetShadowOffset() as 1,-1 while Slug-rendered text draws the shadow flush on
+--- the glyphs, so we offset a solid-black duplicate instead of SetShadowOffset.
+function F.CreatePlainFS(parent, size, text, layer)
+	local lyr = layer or "OVERLAY"
+	local sz = size or 12
+	local font = C.Media.Fonts.normal
+
+	-- Shadow first so it draws beneath the main string on the same layer.
+	local shadow = parent:CreateFontString(nil, lyr)
+	shadow:SetFont(font, sz, "")
+	shadow:SetTextColor(0, 0, 0, 0.85)
+
+	local fs = parent:CreateFontString(nil, lyr)
+	fs:SetFont(font, sz, "")
+	fs.nexShadow = shadow
+	shadow:SetPoint("CENTER", fs, "CENTER", 1, -1)
+
+	if text then
+		F.SetPlainText(fs, text)
+	end
+	return fs
+end
+
+--- Keep a CreatePlainFS shadow duplicate in sync with the main string.
+function F.SetPlainText(fs, text)
+	fs:SetText(text or "")
+	local shadow = fs.nexShadow
+	if shadow then
+		shadow:SetText(F.StripColorCodes(text))
+	end
+end
+
+function F.SetPlainFormattedText(fs, fmt, ...)
+	F.SetPlainText(fs, format(fmt, ...))
+end
+
 --- Resize a font string while preserving its font file and flags.
 function F.SetFontSize(fontString, size)
 	local font, _, flags = fontString:GetFont()
 	fontString:SetFont(font, size, flags)
+	local shadow = fontString.nexShadow
+	if shadow then
+		local sFont, _, sFlags = shadow:GetFont()
+		shadow:SetFont(sFont or font, size, sFlags or flags)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -654,6 +711,10 @@ do
 		end
 
 		if fullScan then
+			if not (arg1 and arg2) then
+				return
+			end
+
 			---@type any
 			local data = C_TooltipInfo.GetInventoryItem(arg1, arg2)
 			if not data then
@@ -694,6 +755,13 @@ do
 			end
 
 			return slotData
+		end
+
+		-- Hyperlink mode needs an actual hyperlink. LootFrame can briefly expose a
+		-- slot before GetLootSlotLink is ready; don't feed nil to C_TooltipInfo and
+		-- make Blizzard yell at us in hieroglyphics.
+		if not link and type(arg1) ~= "string" and type(arg1) ~= "number" then
+			return
 		end
 
 		if iLvlCache[link] then
@@ -739,7 +807,6 @@ do
 	local C_TooltipInfo = C_TooltipInfo
 	local C_Container = C_Container
 	local C_Item = C_Item
-	local select = select
 
 	local LINE_ITEM_BINDING = Enum.TooltipDataLineType.ItemBinding
 	local BIND = Enum.TooltipDataItemBinding

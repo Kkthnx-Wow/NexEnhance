@@ -23,7 +23,8 @@ local GetTime = GetTime
 local IsInGroup = IsInGroup
 local IsInRaid = IsInRaid
 local IsPartyLFG = IsPartyLFG
-local SendChatMessage = SendChatMessage
+-- C_ChatInfo.SendChatMessage is the live API; the global is a deprecated shim.
+local SendChatMessage = C_ChatInfo.SendChatMessage
 local math_random = math.random
 
 ns:RegisterDefaults({

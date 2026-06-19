@@ -43,6 +43,19 @@ local BACKDROP = C.Backdrops.window
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.4.0",
+		date = "2026-06-16",
+		intro = "Third-party plugin support lets other authors extend NexEnhance as separate addons, with a Plugin Manager page in settings and a starter template in the repo.",
+		sections = {
+			{ "Core", {
+				"Plugins: third-party authors can ship separate addons that call NexEnhance:RegisterPlugin(...) to use the same profile DB, lifecycle, events, and settings builder as built-in modules. Settings live under Plugins (per-extension options) and Plugin Manager (overview cards). /nex plugins lists installed extensions. Starter template: Examples/NexEnhancePluginTemplate/.",
+			} },
+			{ "Fixed", {
+				"Plugin Manager: canvas labels no longer show a duplicate black shadow behind the text (standard GameFont strings instead of manual shadow duplicates).",
+			} },
+		},
+	},
+	{
 		version = "1.3.0",
 		date = "2026-06-13",
 		intro = "Three new micro-button datatexts - guild, friends and a wealth tooltip - turn the menu bar into an information hub, plus a loot quality-of-life pass: auto-greeding low-rarity drops and a compact, skinned replacement for Blizzard's group-loot roll bars. The world map and your bags can now be dragged straight off their title bars without entering Edit Mode.",
@@ -80,6 +93,7 @@ local CHANGELOG = {
 			} },
 			{ "Fixed", {
 				"Chat / Chat Filter: migrated 12.0.7-deprecated globals to namespace APIs - C_BattleNet.InviteFriend (keyword auto-invite) and C_PartyInfo.IsGUIDInGroup (friend/group exemption in the spam filter).",
+				"Unit Frames - Class Colours: audited against 12.0.7 FrameXML - added UNIT_FACTION / UNIT_CONNECTION refresh, party vehicle UpdateArt re-tint hook, compact-frame threat-colour deferral, and UnitTreatAsPlayerForDisplay class colouring to match Blizzard's compact path.",
 				"DataText - Stats & Clock: minimap FPS/latency and clock text now use a manual drop-shadow duplicate instead of SetShadowOffset. On 12.0.7 the API still reports 1,-1 and Slug CVars do not change the look, but the engine draws Slug-rendered shadow flush on the glyphs anyway; offsetting a solid-black copy behind the main string restores a readable shadow.",
 				"Extra Quest Button: the cooldown swipe swept over the gold IconFrame border. The border is the button's OVERLAY normal texture while the Cooldown is a child frame (which always renders above the parent's textures), so the swipe and its bright leading edge drew on top of the chrome. The swipe is now inset to the frame's inner opening and the leading edge is disabled, so it stays neatly inside the gold border.",
 				"DataText - Time: the world-map quest-timer tooltip read a widget through a misnamed Blizzard API (GetTextureAndTextWidgetVisualizationInfo) that never resolved; corrected to the real GetTextureAndTextVisualizationInfo so texture-and-text widget timers display again.",

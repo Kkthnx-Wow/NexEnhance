@@ -1,0 +1,8 @@
+## Interface: 120007
+## Title: NexEnhance Plugin Template
+## Notes: Example NexEnhance extension — duplicate this folder, rename it, and customize Core.lua.
+## Author: Your Name
+## Version: 1.0.0
+## Dependencies: NexEnhance
+
+Core.lua

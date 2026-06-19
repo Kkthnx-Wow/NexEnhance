@@ -2,6 +2,28 @@
 
 ---
 
+## [1.4.0] — 2026-06-16
+
+Third-party plugin support lets other authors extend NexEnhance as separate
+addons, with a Plugin Manager page in settings and a starter template in the
+repo.
+
+### Added
+
+- **Core — Plugins:** third-party authors can ship separate addons that call
+  `NexEnhance:RegisterPlugin(...)` to hook into the same profile DB, lifecycle,
+  events, and settings builder as built-in modules. A **Plugins** settings group
+  and **Plugin Manager** canvas list installed extensions; `/nex plugins` lists
+  them in chat. Starter template: `Examples/NexEnhancePluginTemplate/`.
+
+### Fixed
+
+- **Core — Plugin Manager:** canvas labels no longer show a duplicate black
+  shadow behind the text (standard GameFont strings instead of manual shadow
+  duplicates).
+
+---
+
 ## [1.3.0] — 2026-06-13
 
 Three new micro-button datatexts — guild, friends and a wealth tooltip — turn the
@@ -15,6 +37,10 @@ title bars without entering Edit Mode.
 - **Chat / Chat Filter:** migrated 12.0.7-deprecated globals to namespace APIs —
   `C_BattleNet.InviteFriend` (keyword auto-invite) and
   `C_PartyInfo.IsGUIDInGroup` (friend/group exemption in the spam filter).
+- **Unit Frames — Class Colours:** audited against 12.0.7 FrameXML — added
+  `UNIT_FACTION` / `UNIT_CONNECTION` refresh, party vehicle `UpdateArt` re-tint
+  hook, compact-frame threat-colour deferral, and `UnitTreatAsPlayerForDisplay`
+  class colouring to match Blizzard's compact path.
 
 ### Added
 
@@ -1158,6 +1184,7 @@ the default UI and gets out of your way.
 
 ---
 
+[1.4.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.4.0
 [1.3.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.3.0
 [1.2.9]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.9
 [1.2.8]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.8

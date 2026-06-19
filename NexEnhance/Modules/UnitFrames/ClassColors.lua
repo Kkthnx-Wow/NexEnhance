@@ -31,7 +31,9 @@
 	    so the dark chrome shows through and target matches the player frame.
 	  * Compact frames (raid-style party / raid / arena) colour through
 	    `CompactUnitFrame_UpdateHealthColor(frame)`. Their bars use a plain
-	    texture, so no desaturation is needed - just SetStatusBarColor.
+	    texture, so no desaturation is needed - just SetStatusBarColor. We skip
+	    nameplates (forbidden / secret healthBar) and defer to Blizzard when
+	    threat-colouring is enabled on the frame.
 
 	hooksecurefunc is used for both, so we never taint the secure unit buttons.
 	SetStatusBarColor / SetStatusBarDesaturated accept tainted callers (12.0+).
@@ -58,6 +60,8 @@ local UnitIsPlayer = UnitIsPlayer
 local UnitIsConnected = UnitIsConnected
 local UnitReaction = UnitReaction
 local UnitSelectionColor = UnitSelectionColor
+local UnitThreatSituation = UnitThreatSituation
+local UnitTreatAsPlayerForDisplay = UnitTreatAsPlayerForDisplay
 local hooksecurefunc = hooksecurefunc
 local ipairs = ipairs
 local strfind = string.find
@@ -89,8 +93,14 @@ local function GetPlayerClassColor(unit)
 	end
 
 	local isPlayer = UnitIsPlayer(unit)
-	if IsSecret(isPlayer) or not isPlayer then
+	if IsSecret(isPlayer) then
 		return nil
+	end
+	if not isPlayer then
+		local treatAsPlayer = UnitTreatAsPlayerForDisplay and UnitTreatAsPlayerForDisplay(unit)
+		if IsSecret(treatAsPlayer) or not treatAsPlayer then
+			return nil
+		end
 	end
 
 	local connected = UnitIsConnected(unit)
@@ -213,6 +223,15 @@ local function ColorCompactHealth(frame)
 	local unit = frame.displayedUnit or frame.unit
 	if not unit or IsSecret(unit) or strfind(unit, "nameplate") then
 		return
+	end
+
+	-- Leave Blizzard's aggro/threat tint when the frame has that option enabled
+	-- (Edit Mode raid/party frames). Matches CompactUnitFrame_UpdateHealthColor.
+	if frame.displayThreatHealthBarColor then
+		local threat = UnitThreatSituation(unit)
+		if not IsSecret(threat) and threat and threat > 0 then
+			return
+		end
 	end
 
 	local color = GetPlayerClassColor(unit)
@@ -388,6 +407,24 @@ local function HookFaction(frame)
 	end)
 end
 
+-- PartyMemberFrameMixin:UpdateArt() re-applies the HUD health atlas when a
+-- member enters/leaves a vehicle (ToPlayerArt / ToVehicleArt). Same pattern as
+-- TargetFrameMixin:CheckClassification — hook after the atlas swap so our tint
+-- is not left on the wrong texture state.
+local function HookPartyUpdateArt()
+	local mixin = _G["PartyMemberFrameMixin"]
+	if not mixin or mixin.nexClassColorHooked or type(mixin.UpdateArt) ~= "function" then
+		return
+	end
+	mixin.nexClassColorHooked = true
+	hooksecurefunc(mixin, "UpdateArt", function(self)
+		local container = self.HealthBarContainer
+		local bar = container and container.HealthBar
+		local unit = self.GetUnit and self:GetUnit() or self.unit
+		ColorStandardHealth(bar, unit)
+	end)
+end
+
 function ClassColors:InstallHooks()
 	if self.hooksInstalled then
 		return
@@ -415,6 +452,8 @@ function ClassColors:InstallHooks()
 	if _G["CompactUnitFrame_UpdateHealthColor"] then
 		hooksecurefunc("CompactUnitFrame_UpdateHealthColor", ColorCompactHealth)
 	end
+
+	HookPartyUpdateArt()
 end
 
 -- Recolour on the events that change which unit a frame shows, rebuild its
@@ -434,6 +473,10 @@ function ClassColors:OnEnable()
 	self:RegisterEvent("UNIT_CLASSIFICATION_CHANGED", "RefreshEvent")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED", "RefreshEvent")
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshEvent")
+	-- Reaction tint can change without a retarget (mind control, faction flip).
+	self:RegisterEvent("UNIT_FACTION", "RefreshEvent")
+	-- Party disconnect/reconnect toggles desaturation alongside health updates.
+	self:RegisterEvent("UNIT_CONNECTION", "RefreshEvent")
 	-- Boss frames appear mid-fight; refresh when an encounter engages units.
 	self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
 

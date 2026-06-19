@@ -110,6 +110,7 @@ handlers.help = function(_)
 	F.Print(F.Colorize(L["Usage"] .. ":", "brand"))
 	F.Print("  /nex help          -", L["Show this help"])
 	F.Print("  /nex modules       -", L["List modules and their state"])
+	F.Print("  /nex plugins       -", L["List installed NexEnhance plugins"])
 	F.Print("  /nex toggle <name> -", L["Toggle a module: /nex toggle <module>"])
 	F.Print("  /nex config        -", L["Open the options panel"])
 	F.Print("  /nex reminder      -", L["Toggle buff reminder test icons"])
@@ -167,18 +168,37 @@ handlers.toggle = function(name)
 
 	local module = ns:GetModule(name)
 	if not module or not module.dbKey then
-		F.Print(F.Colorize(format("Unknown module '%s'.", name), "red"))
+		F.Print(F.Colorize(format(L["Unknown module '%s'."], name), "red"))
 		return
 	end
 
 	local settings = ns.db[module.dbKey]
 	settings.enable = not settings.enable
 	local state = settings.enable and F.Colorize(L["Enabled"], "green") or F.Colorize(L["Disabled"], "red")
-	F.Print(module.name, "->", state)
+	local label = module.title or module.name
+	F.Print(label, "->", state)
+	if module.isPlugin then
+		ns:ApplyPluginEnable(module, settings.enable)
+	end
 	if module.OnSettingChanged then
 		module:OnSettingChanged("enable", settings.enable)
 	end
 	ns:TriggerCallback("SettingChanged." .. module.dbKey .. ".enable", settings.enable, module)
+end
+
+handlers.plugins = function(_)
+	local list = ns:GetPlugins()
+	if #list == 0 then
+		F.Print(F.Colorize(L["Plugins"], "brand") .. ": " .. L["PLUGIN_NONE_INSTALLED"])
+		return
+	end
+	F.Print(F.Colorize(L["Plugins"], "brand") .. " (" .. #list .. "):")
+	for i = 1, #list do
+		local plugin = list[i]
+		local state = plugin:IsEnabled() and F.Colorize(L["Enabled"], "green") or F.Colorize(L["Disabled"], "red")
+		F.Print(format("  %s v%s — %s (%s)", plugin.title or plugin.name, plugin.pluginVersion or "?", plugin.author or L["Unknown"], state))
+	end
+	F.Print(L["PLUGIN_OPEN_SETTINGS_HINT"])
 end
 
 handlers.reminder = function(_)
@@ -466,6 +486,10 @@ _G["SlashCmdList"]["NEXENHANCE"] = HandleSlash
 -- Options panel (modern Settings API, guarded)
 -- ---------------------------------------------------------------------------
 local function ApplyModuleSetting(module, key, value)
+	if key == "enable" and module.isPlugin then
+		ns:ApplyPluginEnable(module, value)
+	end
+
 	if module.OnSettingChanged then
 		module:OnSettingChanged(key, value)
 	elseif module.UpdateStylingConfig then
@@ -691,6 +715,7 @@ local GROUP_ORDER = {
 	{ key = "skins", title = L["Skins"], icon = [[Interface\ICONS\INV_Shirt_GuildTabard_01]], desc = L["DESC_SKINS"] },
 	{ key = "datatext", title = L["DataText"], icon = [[Interface\ICONS\INV_Misc_PocketWatch_01]], desc = L["DESC_DATATEXT"] },
 	{ key = "maps", title = L["Maps"], icon = [[Interface\ICONS\INV_Misc_Map_01]], desc = L["DESC_MAPS"] },
+	{ key = "plugins", title = L["Plugins"], icon = [[Interface\ICONS\INV_Misc_Gear_01]], desc = L["DESC_PLUGINS"] },
 	{ key = "automation", title = L["Automation"], icon = [[Interface\ICONS\INV_Gizmo_01]], desc = L["DESC_AUTOMATION"] },
 	{ key = "announcements", title = L["Announcements"], icon = [[Interface\ICONS\INV_Misc_Horn_01]], desc = L["DESC_ANNOUNCEMENTS"] },
 	{ key = "misc", title = L["Miscellaneous"], icon = [[Interface\ICONS\INV_Misc_QuestionMark]], desc = L["DESC_MISC"] },
@@ -861,6 +886,8 @@ local function AddSectionHeader(layout, text, isNew)
 	layout:AddInitializer(init)
 end
 
+ns.AddSectionHeader = AddSectionHeader
+
 -- ---------------------------------------------------------------------------
 -- Landing page (canvas)
 --   A small styled frame for the top-level category: logo, title, version,
@@ -915,6 +942,7 @@ local function CreateLandingFrame()
 	local lines = {
 		{ "/nex", L["Open the options panel"] },
 		{ "/nex modules", L["List modules and their state"] },
+		{ "/nex plugins", L["List installed NexEnhance plugins"] },
 		{ "/nex toggle <module>", L["Toggle a module: /nex toggle <module>"] },
 		{ "/nex credits", L["Open the credits panel"] },
 		{ "/nex help", L["Show this help"] },
@@ -1218,6 +1246,8 @@ local function BuildOptions()
 			_G["C_SettingsUtil"].OpenSettingsPanel(category.ID)
 		end
 	end
+
+	ns.optionsBuilt = true
 end
 
 ns:RegisterEvent("PLAYER_LOGIN", BuildOptions)

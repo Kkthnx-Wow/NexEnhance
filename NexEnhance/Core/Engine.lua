@@ -123,6 +123,17 @@ function ns:GetModule(name)
 	return moduleByName[name]
 end
 
+--- Register a module table that was not created via NewModule (third-party plugins).
+--- Attaches RegisterEvent / IsEnabled and adds the entry to the module registry.
+function ns:RegisterAddonModule(module)
+	assert(type(module) == "table" and type(module.name) == "string", "RegisterAddonModule: invalid module")
+	assert(not moduleByName[module.name], ("NexEnhance: module '%s' already exists"):format(module.name))
+	setmetatable(module, moduleMeta)
+	moduleByName[module.name] = module
+	tinsert(modules, module)
+	return module
+end
+
 -- ---------------------------------------------------------------------------
 -- Central event dispatcher
 --   One frame for the whole addon. Each event maps to an array of callbacks
@@ -311,9 +322,13 @@ local function Enable()
 
 	for i = 1, #modules do
 		local module = modules[i]
-		if module:IsEnabled() then
+		if not module.isPlugin and module:IsEnabled() then
 			RunCallback(module, "OnEnable")
 		end
+	end
+
+	if ns.OnCoreEnabled then
+		ns:OnCoreEnabled()
 	end
 end
 
@@ -331,6 +346,10 @@ local function Initialize()
 
 	for i = 1, #modules do
 		RunCallback(modules[i], "OnInitialize")
+	end
+
+	if ns.OnCoreInitialized then
+		ns:OnCoreInitialized()
 	end
 
 	-- Late load (after login): PLAYER_LOGIN will not fire again, enable now.

@@ -194,6 +194,13 @@ end
 --- Debounce: returns a function that, however often it is called, only runs
 --- `func` once after `delay` seconds of quiet. Ideal for event storms such as
 --- BAG_UPDATE where many events fire in quick succession.
+---
+--- Implementation note: we capture up to 4 positional args in fixed upvalue
+--- slots instead of creating a `{ ... }` table on every call. This avoids a
+--- GC allocation on each of the (usually many) suppressed invocations, since
+--- only the *first* call per debounce window needs to store args at all.
+--- 4 slots covers virtually every WoW event payload (most have 0-2 args);
+--- callers that truly need 5+ args should use a different approach.
 function F.Debounce(delay, func)
 	local scheduled = false
 	return function(...)
@@ -201,10 +208,10 @@ function F.Debounce(delay, func)
 			return
 		end
 		scheduled = true
-		local args = { ... }
+		local a1, a2, a3, a4 = ...
 		C_Timer.After(delay, function()
 			scheduled = false
-			func(unpack(args))
+			func(a1, a2, a3, a4)
 		end)
 	end
 end
@@ -245,6 +252,7 @@ function F.CreatePool(creator, onRemoved, onAcquired)
 	-- object on the free stack. Capability checks keep this safe for plain
 	-- tables (which have no Hide/ClearAllPoints).
 	local function reclaim(obj)
+		obj._poolIdx = nil -- clear index so double-Release is a safe no-op
 		if obj.ClearAllPoints then
 			obj:ClearAllPoints()
 		end
@@ -277,6 +285,7 @@ function F.CreatePool(creator, onRemoved, onAcquired)
 		end
 
 		self.active[#self.active + 1] = obj
+		obj._poolIdx = #self.active -- reverse-index for O(1) Release
 		if obj.Show then
 			obj:Show()
 		end
@@ -287,15 +296,23 @@ function F.CreatePool(creator, onRemoved, onAcquired)
 	end
 
 	--- Release a single active object back into the pool.
+	--- O(1): uses a reverse-index (`obj._poolIdx`) to find the slot, then
+	--- swaps with the last element and pops — no linear scan needed.
 	function pool:Release(obj)
-		local active = self.active
-		for i = 1, #active do
-			if active[i] == obj then
-				tremove(active, i)
-				reclaim(obj)
-				return
-			end
+		local idx = obj._poolIdx
+		if not idx then
+			return -- already released or not from this pool
 		end
+		local active = self.active
+		local last = #active
+		if idx ~= last then
+			-- Move the last element into the vacated slot and update its index.
+			local tail = active[last]
+			active[idx] = tail
+			tail._poolIdx = idx
+		end
+		active[last] = nil
+		reclaim(obj) -- also clears obj._poolIdx inside reclaim
 	end
 
 	--- Reclaim every active object in one pass. Cheap way to clear a list

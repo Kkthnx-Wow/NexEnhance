@@ -46,6 +46,7 @@ ns:RegisterDefaults({
 		microBags = false,
 		portraitDamage = false,
 		portraitHealing = false,
+		pvpBadge = false,
 	},
 })
 
@@ -156,6 +157,129 @@ local function InstallPortraitHook()
 end
 
 -- ---------------------------------------------------------------------------
+-- PvP Badge
+-- ---------------------------------------------------------------------------
+local function HidePlayerPvP()
+	local contextual = _G.PlayerFrame and _G.PlayerFrame.PlayerFrameContent and _G.PlayerFrame.PlayerFrameContent.PlayerFrameContentContextual
+	if contextual then
+		if contextual.PrestigePortrait then
+			contextual.PrestigePortrait:Hide()
+		end
+		if contextual.PrestigeBadge then
+			contextual.PrestigeBadge:Hide()
+		end
+		if contextual.PVPIcon then
+			contextual.PVPIcon:Hide()
+		end
+		if _G.PlayerPVPTimerText then
+			_G.PlayerPVPTimerText:Hide()
+			_G.PlayerPVPTimerText.timeLeft = nil
+		end
+	end
+end
+
+local function HideTargetPvP(frame)
+	local contextual = frame and frame.TargetFrameContent and frame.TargetFrameContent.TargetFrameContentContextual
+	if contextual then
+		if contextual.PrestigePortrait then
+			contextual.PrestigePortrait:Hide()
+		end
+		if contextual.PrestigeBadge then
+			contextual.PrestigeBadge:Hide()
+		end
+		if contextual.PvpIcon then
+			contextual.PvpIcon:Hide()
+		end
+	end
+end
+
+local function ApplyPvPBadge()
+	if Module.hidePvPBadge then
+		HidePlayerPvP()
+		local target = _G.TargetFrame
+		if target then
+			HideTargetPvP(target)
+		end
+		local focus = _G.FocusFrame
+		if focus then
+			HideTargetPvP(focus)
+		end
+
+		local container = _G.BossTargetFrameContainer
+		local bossFrames = container and container.BossTargetFrames
+		if bossFrames then
+			for i = 1, #bossFrames do
+				local frame = bossFrames[i]
+				if frame then
+					HideTargetPvP(frame)
+				end
+			end
+		end
+	else
+		if type(_G.PlayerFrame_UpdatePvPStatus) == "function" then
+			_G.PlayerFrame_UpdatePvPStatus()
+		end
+
+		local target = _G.TargetFrame
+		if target and type(target.CheckFaction) == "function" then
+			target:CheckFaction()
+		end
+		local focus = _G.FocusFrame
+		if focus and type(focus.CheckFaction) == "function" then
+			focus:CheckFaction()
+		end
+
+		local container = _G.BossTargetFrameContainer
+		local bossFrames = container and container.BossTargetFrames
+		if bossFrames then
+			for i = 1, #bossFrames do
+				local frame = bossFrames[i]
+				if frame and type(frame.CheckFaction) == "function" then
+					frame:CheckFaction()
+				end
+			end
+		end
+	end
+end
+
+local function HookPvPBadge()
+	if Module.pvpHooked then
+		return
+	end
+	Module.pvpHooked = true
+
+	if type(_G.PlayerFrame_UpdatePvPStatus) == "function" then
+		hooksecurefunc("PlayerFrame_UpdatePvPStatus", function()
+			if Module.hidePvPBadge then
+				HidePlayerPvP()
+			end
+		end)
+	end
+
+	local function hookFrame(frame)
+		if frame and type(frame.CheckFaction) == "function" and not frame.nexPvPHooked then
+			frame.nexPvPHooked = true
+			hooksecurefunc(frame, "CheckFaction", function(f)
+				if Module.hidePvPBadge then
+					HideTargetPvP(f)
+				end
+			end)
+		end
+	end
+
+	hookFrame(_G.TargetFrame)
+	hookFrame(_G.FocusFrame)
+
+	local container = _G.BossTargetFrameContainer
+	local bossFrames = container and container.BossTargetFrames
+	if bossFrames then
+		for i = 1, #bossFrames do
+			hookFrame(bossFrames[i])
+		end
+	end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function Module:PLAYER_REGEN_ENABLED()
@@ -170,10 +294,13 @@ function Module:OnEnable()
 	self.hideMicroBags = ns.db.hideUIElements.microBags
 	self.hidePortraitDamage = ns.db.hideUIElements.portraitDamage
 	self.hidePortraitHealing = ns.db.hideUIElements.portraitHealing
+	self.hidePvPBadge = ns.db.hideUIElements.pvpBadge
 
 	ApplyAuraCollapse()
 	ApplyMicroBags()
 	InstallPortraitHook()
+	HookPvPBadge()
+	ApplyPvPBadge()
 
 	-- Only needed to flush a combat-deferred micro/bags hide.
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -184,6 +311,7 @@ function Module:OnSettingChanged(key)
 	self.hideMicroBags = ns.db.hideUIElements.microBags
 	self.hidePortraitDamage = ns.db.hideUIElements.portraitDamage
 	self.hidePortraitHealing = ns.db.hideUIElements.portraitHealing
+	self.hidePvPBadge = ns.db.hideUIElements.pvpBadge
 
 	if key == "auraCollapse" then
 		ApplyAuraCollapse()
@@ -193,6 +321,8 @@ function Module:OnSettingChanged(key)
 		-- The hook reads the live flags; nothing to re-apply (numbers reappear
 		-- on the next combat event once a toggle is turned off).
 		InstallPortraitHook()
+	elseif key == "pvpBadge" then
+		ApplyPvPBadge()
 	end
 end
 
@@ -201,4 +331,5 @@ function Module:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "microBags", L["Hide Micro Menu & Bags"], L["Hide the micro-menu buttons and the bag bar in the bottom-right (open them with keybinds). Reload to fully restore."])
 	builder:Checkbox(category, self, "portraitDamage", L["Hide Portrait Damage Text"], L["Hide the incoming damage numbers that flash over your player portrait."])
 	builder:Checkbox(category, self, "portraitHealing", L["Hide Portrait Healing Text"], L["Hide the incoming healing numbers that flash over your player portrait."])
+	builder:Checkbox(category, self, "pvpBadge", L["Hide PvP Badge"], L["Hide PvP status icons, timers, and prestige badges on the Player, Target, and Focus frames."])
 end

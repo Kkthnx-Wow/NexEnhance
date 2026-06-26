@@ -127,9 +127,7 @@ local function EntryInfoOwned(info)
 	if not info then
 		return false
 	end
-	if OwnedCount(info, "totalNumStored", "quantity")
-		or OwnedCount(info, "totalNumPlaced", "numPlaced")
-		or (F.NotSecret(info.remainingRedeemable) and info.remainingRedeemable > 0) then
+	if OwnedCount(info, "totalNumStored", "quantity") or OwnedCount(info, "totalNumPlaced", "numPlaced") or (F.NotSecret(info.remainingRedeemable) and info.remainingRedeemable > 0) then
 		return true
 	end
 

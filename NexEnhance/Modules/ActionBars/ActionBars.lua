@@ -26,6 +26,19 @@ local gsub = string.gsub
 local hooksecurefunc = hooksecurefunc
 local InCombatLockdown = InCombatLockdown
 local IsEquippedAction = C_ActionBar and C_ActionBar.IsEquippedAction
+local UnitExists = UnitExists
+local C_Timer = C_Timer
+-- NOTE: UIFrameFadeIn / UIFrameFadeOut are intentionally NOT used here.
+-- In Midnight 12.0, action bar frames (MultiBarLeft, etc.) are
+-- EditModeActionBarMixin instances whose Show() method is overridden to
+-- ShowOverride(). UIFrameFade() always calls frame:Show() after setting
+-- alpha, which triggers ShowOverride() → UpdateVisibility() → HideBase()
+-- (the saved, protected C-level Hide). Calling a protected function from
+-- addon-tainted code produces ADDON_ACTION_BLOCKED, and that taint then
+-- spreads to Blizzard's own ActionButton_UpdateCooldown in the same tick,
+-- causing the secondary "Secret values only allowed during untainted
+-- execution" error on SetCooldown. We use our own FadeBar() instead, which
+-- only ever touches SetAlpha() and never calls Show() or Hide().
 
 local KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR = KEY_BUTTON4, KEY_NUMPAD1, RANGE_INDICATOR
 local KEY_BUTTON3, KEY_SPACE = KEY_BUTTON3, KEY_SPACE
@@ -49,11 +62,25 @@ ns:RegisterDefaults({
 		nameSize = 12,
 		countSize = 14,
 		hotkeySize = 12,
+		-- Mouseover options
+		fadedAlpha = 0,
+		mouseoverShowAll = false,
+		visibilityMain = "ALWAYS",
+		visibilityBottomLeft = "ALWAYS",
+		visibilityBottomRight = "ALWAYS",
+		visibilityRight = "ALWAYS",
+		visibilityLeft = "ALWAYS",
+		visibilityBar5 = "ALWAYS",
+		visibilityBar6 = "ALWAYS",
+		visibilityBar7 = "ALWAYS",
+		visibilityPet = "ALWAYS",
+		visibilityStance = "ALWAYS",
 	},
 })
 
 local ActionBars = ns:NewModule("ActionBars", "actionbars", { group = "actionbars", title = L["Action Bars"], order = 10 })
 local zoneAbilityHooked
+local pendingStyling = false
 
 -- ---------------------------------------------------------------------------
 -- Hotkey abbreviation
@@ -96,7 +123,7 @@ function ActionBars:UpdateHotKey(hotkey)
 	end
 
 	local text = hotkey:GetText()
-	if not text or text == "" then
+	if not text or text == "" or F.IsSecret(text) then
 		return
 	end
 
@@ -116,7 +143,7 @@ function ActionBars:UpdateHotKey(hotkey)
 
 	-- SetFormattedText does not fire the SetText hook, so no recursion. Skip the
 	-- write when the text already matches (nothing to abbreviate).
-	if abbr ~= text then
+	if abbr ~= text and not F.IsSecret(abbr) then
 		hotkey:SetFormattedText("%s", abbr)
 	end
 end
@@ -124,6 +151,9 @@ end
 -- Shared hook handler: hooksecurefunc passes the hooked object as the first
 -- argument, so one function serves every hotkey (no per-button closure).
 local function OnHotKeySetText(hotkey)
+	if InCombatLockdown() then
+		return
+	end
 	ActionBars:UpdateHotKey(hotkey)
 end
 
@@ -367,6 +397,11 @@ local function StyleExtraActionArt(config)
 end
 
 function ActionBars:StyleZoneAbilityArt()
+	if InCombatLockdown() then
+		pendingStyling = true
+		return
+	end
+
 	local frame = _G["ZoneAbilityFrame"]
 	if not frame then
 		return
@@ -407,15 +442,16 @@ local EQUIP_BORDER_ATLAS = "UI-HUD-ActionBar-IconFrame-Border"
 local function GetEquipGlow(button)
 	local glow = button.nexEquipGlow
 	if not glow then
+		-- Creating child textures on secure action buttons is blocked in combat.
+		if InCombatLockdown() then
+			return nil
+		end
 		glow = button:CreateTexture(nil, "OVERLAY", nil, 7)
 		glow:SetAtlas(EQUIP_BORDER_ATLAS)
 		glow:SetBlendMode("BLEND")
 		glow:SetVertexColor(0, 1, 0)
 		glow:SetPoint("CENTER", button, "CENTER", 0, 0)
-		local w, h = button:GetSize()
-		if not w or w == 0 then
-			w = 45
-		end
+		local _, h = button:GetSize()
 		if not h or h == 0 then
 			h = 45
 		end
@@ -432,9 +468,14 @@ end
 -- Post-hook for ActionBarActionButtonMixin:Update (and our refresh pass). We
 -- resolve the equipped state the same way Blizzard does (C_ActionBar.IsEquippedAction
 -- on the paged slot) rather than reading our own hidden border, so toggling the
--- option back off cleanly restores the green border. None of these calls are
--- protected (texture show/hide only), so this is combat-safe.
+-- option back off cleanly restores the green border. Skip in combat — touching
+-- secure action buttons taints them and blocks Blizzard's own SetShown/SetAttribute.
 local function ApplyEquipGlow(button)
+	if InCombatLockdown() then
+		pendingStyling = true
+		return
+	end
+
 	local border = button.Border
 	if not border then
 		return
@@ -450,7 +491,10 @@ local function ApplyEquipGlow(button)
 
 	if ns.db.actionbars.equipGlow and equipped then
 		border:Hide()
-		GetEquipGlow(button):Show()
+		local glow = GetEquipGlow(button)
+		if glow then
+			glow:Show()
+		end
 		return
 	end
 
@@ -464,6 +508,229 @@ local function ApplyEquipGlow(button)
 		border:SetVertexColor(0, 1.0, 0, 0.5)
 		border:Show()
 	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Safe alpha fade (SetAlpha-only, no Show/Hide)
+--   A minimal OnUpdate-based fader that only ever calls frame:SetAlpha().
+--   This is the correct approach for Midnight 12.0 action bar frames, which
+--   override Show()/Hide() with protected secure functions. UIFrameFadeIn/Out
+--   call frame:Show() internally and must never be used on these frames.
+-- ---------------------------------------------------------------------------
+local activeFades = {} -- frame -> { start, target, duration, elapsed }
+
+local fadeFrame = CreateFrame("Frame")
+
+local function FadeFrame_OnUpdate(self, elapsed)
+	local anyActive = false
+	for frame, info in pairs(activeFades) do
+		info.elapsed = info.elapsed + elapsed
+		local progress = math.min(info.elapsed / info.duration, 1.0)
+		frame:SetAlpha(info.start + (info.target - info.start) * progress)
+		if progress >= 1.0 then
+			activeFades[frame] = nil
+		else
+			anyActive = true
+		end
+	end
+	if not anyActive then
+		self:SetScript("OnUpdate", nil)
+	end
+end
+
+--- Fade `frame` toward `targetAlpha` over `duration` seconds using only
+--- SetAlpha. Cancels any in-progress fade for the same frame. Safe to call on
+--- EditModeActionBarMixin frames where Show()/Hide() are protected.
+local function FadeBar(frame, targetAlpha, duration)
+	local current = frame:GetAlpha()
+	if math.abs(current - targetAlpha) < 0.002 then
+		activeFades[frame] = nil -- cancel any stale pending fade
+		return
+	end
+	if not duration or duration <= 0 then
+		frame:SetAlpha(targetAlpha)
+		activeFades[frame] = nil
+		return
+	end
+	local wasEmpty = not next(activeFades)
+	activeFades[frame] = { start = current, target = targetAlpha, duration = duration, elapsed = 0 }
+	if wasEmpty then
+		fadeFrame:SetScript("OnUpdate", FadeFrame_OnUpdate)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Mouseover & Visibility
+-- ---------------------------------------------------------------------------
+local actionBarsInfo = {
+	{ name = "MainMenuBar", key = "visibilityMain", prefix = "ActionButton", count = 12 },
+	{ name = "MultiBarBottomLeft", key = "visibilityBottomLeft", prefix = "MultiBarBottomLeftButton", count = 12 },
+	{ name = "MultiBarBottomRight", key = "visibilityBottomRight", prefix = "MultiBarBottomRightButton", count = 12 },
+	{ name = "MultiBarRight", key = "visibilityRight", prefix = "MultiBarRightButton", count = 12 },
+	{ name = "MultiBarLeft", key = "visibilityLeft", prefix = "MultiBarLeftButton", count = 12 },
+	{ name = "MultiBar5", key = "visibilityBar5", prefix = "MultiBar5Button", count = 12 },
+	{ name = "MultiBar6", key = "visibilityBar6", prefix = "MultiBar6Button", count = 12 },
+	{ name = "MultiBar7", key = "visibilityBar7", prefix = "MultiBar7Button", count = 12 },
+	{ name = "PetActionBar", key = "visibilityPet", prefix = "PetActionButton", count = 10 },
+	{ name = "StanceBar", key = "visibilityStance", prefix = "StanceButton", count = 10 },
+}
+
+local function IsFrameOrChildrenHovered(barInfo)
+	local barFrame = _G[barInfo.name]
+	if barFrame and barFrame:IsShown() and barFrame:IsMouseOver() then
+		return true
+	end
+	for i = 1, barInfo.count do
+		local button = _G[barInfo.prefix .. i]
+		if button and button:IsShown() and button:IsMouseOver() then
+			return true
+		end
+	end
+	return false
+end
+
+function ActionBars:UpdateMouseoverVisibility()
+	if not self:IsEnabled() then
+		return
+	end
+
+	local config = ns.db.actionbars
+	local inCombat = InCombatLockdown()
+	local hasTarget = UnitExists("target")
+
+	local isFlyoutOpen = _G.SpellFlyout and _G.SpellFlyout:IsShown()
+	local flyoutOwnerButton = isFlyoutOpen and _G.SpellFlyout:GetParent()
+	local isFlyoutHovered = isFlyoutOpen and _G.SpellFlyout:IsMouseOver()
+
+	local barHovered = {}
+	for _, barInfo in ipairs(actionBarsInfo) do
+		local isHovered = false
+		if IsFrameOrChildrenHovered(barInfo) then
+			isHovered = true
+		elseif isFlyoutOpen and isFlyoutHovered and flyoutOwnerButton then
+			-- If the flyout is hovered, check if the button that opened it belongs to this bar
+			for i = 1, barInfo.count do
+				local button = _G[barInfo.prefix .. i]
+				if button == flyoutOwnerButton then
+					isHovered = true
+					break
+				end
+			end
+		end
+		barHovered[barInfo.name] = isHovered
+	end
+
+	local anyHovered = false
+	for _, barInfo in ipairs(actionBarsInfo) do
+		local mode = config[barInfo.key] or "ALWAYS"
+		local isMouseoverMode = (mode ~= "ALWAYS" and mode ~= "HIDDEN")
+		if isMouseoverMode and barHovered[barInfo.name] then
+			anyHovered = true
+			break
+		end
+	end
+
+	for _, barInfo in ipairs(actionBarsInfo) do
+		local barFrame = _G[barInfo.name]
+		if barFrame then
+			local mode = config[barInfo.key] or "ALWAYS"
+			local targetAlpha
+
+			if mode == "ALWAYS" then
+				targetAlpha = 1
+			elseif mode == "HIDDEN" then
+				targetAlpha = 0
+			else
+				-- Mouseover modes
+				if (mode == "COMBAT" or mode == "COMBAT_TARGET") and inCombat then
+					targetAlpha = 1
+				elseif (mode == "TARGET" or mode == "COMBAT_TARGET") and hasTarget then
+					targetAlpha = 1
+				elseif barHovered[barInfo.name] then
+					targetAlpha = 1
+				elseif config.mouseoverShowAll and anyHovered then
+					targetAlpha = 1
+				else
+					targetAlpha = (config.fadedAlpha or 0) / 100
+				end
+			end
+
+			local currentAlpha = barFrame:GetAlpha()
+			if math.abs(currentAlpha - targetAlpha) > 0.001 then
+				FadeBar(barFrame, targetAlpha, 0.25)
+			end
+		end
+	end
+end
+
+local refreshTimer
+local function RequestVisibilityRefresh()
+	if refreshTimer then
+		refreshTimer:Cancel()
+	end
+	refreshTimer = C_Timer.NewTimer(0.05, function()
+		ActionBars:UpdateMouseoverVisibility()
+		refreshTimer = nil
+	end)
+end
+
+local function HookFrameMouseover(frame, isButton)
+	if not frame or frame.nexMouseoverHooked then
+		return
+	end
+	frame.nexMouseoverHooked = true
+
+	-- Hook script handlers in-place securely. Do NOT use SetScript here because
+	-- replacing the script of a secure action button taints it and blocks Blizzard's
+	-- own attribute/cooldown calls during combat. Slay the taint!
+	if frame.HasScript and frame:HasScript("OnEnter") then
+		frame:HookScript("OnEnter", function()
+			ActionBars:UpdateMouseoverVisibility()
+		end)
+	end
+
+	if frame.HasScript and frame:HasScript("OnLeave") then
+		if isButton and frame.EnableMouse then
+			frame:EnableMouse(true)
+		end
+		frame:HookScript("OnLeave", function()
+			RequestVisibilityRefresh()
+		end)
+	end
+end
+
+local function HookSpellFlyout()
+	local flyout = _G.SpellFlyout
+	if not flyout or flyout.nexMouseoverHooked then
+		return
+	end
+	flyout.nexMouseoverHooked = true
+
+	flyout:HookScript("OnEnter", function()
+		ActionBars:UpdateMouseoverVisibility()
+	end)
+	flyout:HookScript("OnLeave", function()
+		RequestVisibilityRefresh()
+	end)
+	flyout:HookScript("OnHide", function()
+		RequestVisibilityRefresh()
+	end)
+end
+
+function ActionBars:SetupMouseoverHooks()
+	for _, barInfo in ipairs(actionBarsInfo) do
+		local barFrame = _G[barInfo.name]
+		if barFrame then
+			HookFrameMouseover(barFrame)
+			for i = 1, barInfo.count do
+				local button = _G[barInfo.prefix .. i]
+				if button then
+					HookFrameMouseover(button, true)
+				end
+			end
+		end
+	end
+	HookSpellFlyout()
 end
 
 -- Built once: prefix + count for every default action-button family. `equip`
@@ -484,6 +751,12 @@ local actionButtonSets = {
 
 function ActionBars:RefreshActionBarStyling()
 	if not self:IsEnabled() then
+		return
+	end
+
+	-- SetShown / ClearAllPoints on action-button overlays are protected in combat.
+	if InCombatLockdown() then
+		pendingStyling = true
 		return
 	end
 
@@ -508,6 +781,7 @@ function ActionBars:RefreshActionBarStyling()
 
 	StyleExtraActionArt(config)
 	self:StyleZoneAbilityArt()
+	self:UpdateMouseoverVisibility()
 end
 
 --- Re-apply styling after a settings change (called from the options panel).
@@ -542,6 +816,30 @@ function ActionBars:RegisterOptions(category, builder)
 	builder:Slider(category, self, "nameSize", L["Macro Name Size"], L["Font size for macro/action names."], 8, 24, 1)
 	builder:Slider(category, self, "countSize", L["Count Size"], L["Font size for stack counts and charges."], 8, 28, 1)
 	builder:Slider(category, self, "hotkeySize", L["Hotkey Size"], L["Font size for keybind text."], 8, 24, 1)
+
+	builder:Header(L["Mouseover & Visibility"])
+	builder:Checkbox(category, self, "mouseoverShowAll", L["Show All on Hover"], L["Hovering any mouseover action bar reveals all of them."])
+	builder:Slider(category, self, "fadedAlpha", L["Faded Alpha"], L["The opacity of action bars when they are not hovered."], 0, 100, 5)
+
+	local visibilityChoices = {
+		{ value = "ALWAYS", label = L["Always Show"] },
+		{ value = "MOUSEOVER", label = L["Mouseover Only"] },
+		{ value = "COMBAT", label = L["Mouseover (Show in Combat)"] },
+		{ value = "TARGET", label = L["Mouseover (Show with Target)"] },
+		{ value = "COMBAT_TARGET", label = L["Mouseover (Combat & Target)"] },
+		{ value = "HIDDEN", label = L["Always Hide"] },
+	}
+
+	builder:Dropdown(category, self, "visibilityMain", L["Action Bar 1"], L["Set the visibility scenario for Action Bar 1."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityBottomLeft", L["Action Bar 2 (Bottom Left)"], L["Set the visibility scenario for Action Bar 2 (Bottom Left)."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityBottomRight", L["Action Bar 3 (Bottom Right)"], L["Set the visibility scenario for Action Bar 3 (Bottom Right)."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityRight", L["Action Bar 4 (Right)"], L["Set the visibility scenario for Action Bar 4 (Right)."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityLeft", L["Action Bar 5 (Left)"], L["Set the visibility scenario for Action Bar 5 (Left)."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityBar5", L["Action Bar 6"], L["Set the visibility scenario for Action Bar 6."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityBar6", L["Action Bar 7"], L["Set the visibility scenario for Action Bar 7."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityBar7", L["Action Bar 8"], L["Set the visibility scenario for Action Bar 8."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityPet", L["Pet Action Bar"], L["Set the visibility scenario for the pet action bar."], visibilityChoices)
+	builder:Dropdown(category, self, "visibilityStance", L["Stance Bar"], L["Set the visibility scenario for the stance bar."], visibilityChoices)
 end
 
 -- ---------------------------------------------------------------------------
@@ -574,18 +872,29 @@ function ActionBars:RegisterModuleEvents()
 	self:RegisterEvent("ACTIONBAR_PAGE_CHANGED", "RefreshActionBarStyling")
 	self:RegisterEvent("PLAYER_ENTERING_WORLD", "RefreshActionBarStyling")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:RegisterEvent("PLAYER_REGEN_DISABLED", "UpdateMouseoverVisibility")
+	self:RegisterEvent("PLAYER_TARGET_CHANGED", "UpdateMouseoverVisibility")
 end
 
--- Re-apply any scale change that was blocked while in combat.
+-- Re-apply any scale, styling, or equip-glow change that was blocked in combat.
 function ActionBars:PLAYER_REGEN_ENABLED()
+	local pending = self.pendingScale or pendingStyling
 	if self.pendingScale then
 		self.pendingScale = nil
+	end
+	if pendingStyling then
+		pendingStyling = false
+	end
+	if pending then
 		self:RefreshActionBarStyling()
+	else
+		self:UpdateMouseoverVisibility()
 	end
 end
 
 function ActionBars:OnEnable()
 	self:InstallEquipGlowHook()
+	self:SetupMouseoverHooks()
 	self:RefreshActionBarStyling()
 	self:RegisterModuleEvents()
 end

@@ -2,7 +2,7 @@
 	NexEnhance - Minimap
 	-------------------------------------------------------------------------
 	A fuller minimap pass adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Maps/Minimap.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Maps/Minimap.lua
 
 	What we do (all gated behind the module toggle):
 	  - Square the minimap and frame it with the game's tooltip border.
@@ -461,6 +461,25 @@ local function UpdatePulse()
 end
 
 -- ---------------------------------------------------------------------------
+-- Masked textures (12.0 HUD atlases, housing minimap overlay) reject SetTexCoord.
+-- Strip mask textures first, then crop; swallow any remaining engine errors.
+-- ---------------------------------------------------------------------------
+local function SafeSetTexCoord(texture, ...)
+	if not (texture and texture.SetTexCoord) then
+		return
+	end
+	if texture.GetNumMaskTextures and texture.GetMaskTexture and texture.RemoveMaskTexture then
+		for i = texture:GetNumMaskTextures(), 1, -1 do
+			local mask = texture:GetMaskTexture(i)
+			if mask then
+				texture:RemoveMaskTexture(mask)
+			end
+		end
+	end
+	pcall(texture.SetTexCoord, texture, ...)
+end
+
+-- ---------------------------------------------------------------------------
 -- Declutter the Blizzard cluster
 -- ---------------------------------------------------------------------------
 local function Declutter()
@@ -499,7 +518,7 @@ local function Declutter()
 		overlay:ClearAllPoints()
 		overlay:SetPoint("TOPLEFT", Minimap, "TOPLEFT", 0, 0)
 		overlay:SetPoint("BOTTOMRIGHT", Minimap, "BOTTOMRIGHT", 0, 0)
-		overlay:SetTexCoord(0.2, 0.8, 0.2, 0.8)
+		SafeSetTexCoord(overlay, 0.2, 0.8, 0.2, 0.8)
 	end
 end
 
@@ -590,10 +609,10 @@ local function ApplyCalendarSkin()
 	local normal = gameTime:GetNormalTexture()
 	local pushed = gameTime:GetPushedTexture()
 	if normal then
-		normal:SetTexCoord(0, 1, 0, 1)
+		SafeSetTexCoord(normal, 0, 1, 0, 1)
 	end
 	if pushed then
-		pushed:SetTexCoord(0, 1, 0, 1)
+		SafeSetTexCoord(pushed, 0, 1, 0, 1)
 	end
 end
 
@@ -1097,7 +1116,7 @@ local function SkinBinRegions(frame, button, name)
 				region:ClearAllPoints()
 				region:SetAllPoints(button)
 				if not binGoodIcon[name] then
-					region:SetTexCoord(unpack(BIN_TEXCOORD))
+					SafeSetTexCoord(region, unpack(BIN_TEXCOORD))
 				end
 			end
 		end

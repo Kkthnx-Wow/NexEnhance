@@ -6,7 +6,7 @@
 	popups once the roster updates.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Automation/Elements/Invite.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/Invite.lua
 
 	Both events stay registered while the module is on; the trusted-source
 	sub-options are read live so the toggles apply without a reload.

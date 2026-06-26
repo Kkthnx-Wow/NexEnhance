@@ -5,7 +5,7 @@
 	keystone finishes, after a short human-feeling delay.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Automation/Elements/Goodbye.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/Goodbye.lua
 
 	Events stay registered while the module is on; the enable flag is read live
 	so the toggle applies without a reload. Opt-in by default since it speaks on

@@ -118,6 +118,7 @@ handlers.help = function(_)
 	F.Print("  /nex afk           -", L["Toggle AFK camera preview"])
 	F.Print("  /nex lootroll      -", L["Toggle loot roll test bars"])
 	F.Print("  /nex questnotify   -", L["Toggle quest notification self-test"])
+	F.Print("  /nex quickquest    -", L["Toggle Quick Quest debug logging"])
 	F.Print("  /nex abandonquests -", L["Abandon every quest in your log"])
 	F.Print("  /nex bordertest    -", L["Preview the tooltip border"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
@@ -243,6 +244,15 @@ handlers.questnotify = function(_)
 		module:ToggleDebug()
 	else
 		F.Print(F.Colorize(L["Quest Notification"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
+handlers.quickquest = function(_)
+	local module = ns:GetModule("QuickQuest")
+	if module and module.ToggleDebug then
+		module:ToggleDebug()
+	else
+		F.Print(F.Colorize(L["Quick Quest"] .. ": ", "brand") .. L["Module unavailable."])
 	end
 end
 
@@ -464,13 +474,12 @@ handlers.config = function(_)
 	if ns.OpenOptions then
 		ns:OpenOptions()
 	else
-		F.Print(L["Show this help"])
 		handlers.help()
 	end
 end
 
 local function HandleSlash(input)
-	input = (input or ""):gsub("^%s+", ""):gsub("%s+$", "")
+	input = (input or ""):match("^%s*(.-)%s*$") or ""
 	local command, rest = input:match("^(%S*)%s*(.-)$")
 	command = command:lower()
 

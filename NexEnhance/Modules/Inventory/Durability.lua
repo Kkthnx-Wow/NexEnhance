@@ -40,6 +40,7 @@ local GetAverageItemLevel = GetAverageItemLevel
 local GetInventoryItemDurability = GetInventoryItemDurability
 local GetInventoryItemLink = GetInventoryItemLink
 local GetInventoryItemTexture = GetInventoryItemTexture
+local GetRepairAllCost = GetRepairAllCost
 local C_TooltipInfo_GetInventoryItem = C_TooltipInfo and C_TooltipInfo.GetInventoryItem
 
 local DURABILITY = _G.DURABILITY
@@ -72,6 +73,8 @@ local slots = {
 }
 
 local button -- the tab widget (created lazily on enable)
+local paperDollHooked
+local retryScheduled
 
 -- ---------------------------------------------------------------------------
 -- Helpers
@@ -97,20 +100,25 @@ local function SortSlots(a, b)
 	end
 end
 
--- Pull the repair cost for a slot out of its structured tooltip data. Handles
--- both the flattened (`data.args`) and per-line (`data.lines[i].args`) shapes.
+-- Per-slot repair cost from C_TooltipInfo.GetInventoryItem (12.0.7: repairCost lives
+-- on TooltipData itself; TooltipDataRules.FinalizeItemTooltip reads tooltipData.repairCost).
 local function GetSlotRepairCost(slot)
 	if not C_TooltipInfo_GetInventoryItem then
-		return 0
+		return nil
 	end
 	local data = C_TooltipInfo_GetInventoryItem("player", slot)
 	if not data then
-		return 0
+		return nil
+	end
+
+	local cost = data.repairCost
+	if cost and F.NotSecret(cost) and cost > 0 then
+		return cost
 	end
 
 	if data.args then
 		for _, arg in ipairs(data.args) do
-			if arg.field == "repairCost" and arg.intVal then
+			if arg.field == "repairCost" and arg.intVal and F.NotSecret(arg.intVal) and arg.intVal > 0 then
 				return arg.intVal
 			end
 		end
@@ -119,14 +127,23 @@ local function GetSlotRepairCost(slot)
 		for _, line in ipairs(data.lines) do
 			if line.args then
 				for _, arg in ipairs(line.args) do
-					if arg.field == "repairCost" and arg.intVal then
+					if arg.field == "repairCost" and arg.intVal and F.NotSecret(arg.intVal) and arg.intVal > 0 then
 						return arg.intVal
 					end
 				end
 			end
 		end
 	end
-	return 0
+	return nil
+end
+
+-- Total equipped repair bill; same API the merchant Repair All button uses.
+local function GetTotalRepairCost()
+	local total, canRepair = GetRepairAllCost()
+	if canRepair and total and F.NotSecret(total) and total > 0 then
+		return total
+	end
+	return nil
 end
 
 local function UpdateAllSlots()
@@ -171,6 +188,9 @@ local lowDurabilityInfo
 local function GetLowDurabilityInfo()
 	if not lowDurabilityInfo then
 		local HelpTip = _G.HelpTip
+		if not HelpTip then
+			return nil
+		end
 		lowDurabilityInfo = {
 			text = L["DurabilityHelpTip"],
 			buttonStyle = HelpTip.ButtonStyle.Okay,
@@ -186,17 +206,15 @@ end
 -- Scripts
 -- ---------------------------------------------------------------------------
 local function OnEvent(self, event)
-	if event == "PLAYER_ENTERING_WORLD" then
-		self:UnregisterEvent(event)
-	end
-
 	local numSlots = UpdateAllSlots()
 	local isLow = HasLowDurability()
 
 	if event == "PLAYER_REGEN_ENABLED" then
 		self:UnregisterEvent(event)
 		self:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
-	elseif self.Text then
+	end
+
+	if self.Text then
 		if numSlots > 0 then
 			local percent = floor(slots[1][3] * 100)
 			local color = F.ColorStr(DurabilityColor(percent))
@@ -207,9 +225,12 @@ local function OnEvent(self, event)
 	end
 
 	local HelpTip = _G.HelpTip
-	if not InCombatLockdown() then
+	if HelpTip and not InCombatLockdown() then
 		if isLow then
-			HelpTip:Show(self, GetLowDurabilityInfo())
+			local info = GetLowDurabilityInfo()
+			if info then
+				HelpTip:Show(self, info)
+			end
 		else
 			HelpTip:Hide(self, L["DurabilityHelpTip"])
 		end
@@ -217,23 +238,32 @@ local function OnEvent(self, event)
 end
 
 local function OnEnter(self)
+	UpdateAllSlots()
+
 	local totalItemLevel, equippedItemLevel = GetAverageItemLevel()
 	GameTooltip:SetOwner(self, "ANCHOR_NONE")
 	GameTooltip:SetPoint("BOTTOMLEFT", self, "TOPRIGHT", 0, 0)
 	GameTooltip:AddDoubleLine(DURABILITY, format("%s: %d/%d", STAT_AVERAGE_ITEM_LEVEL, equippedItemLevel, totalItemLevel), HDR[1], HDR[2], HDR[3], 1, 1, 1)
 	GameTooltip:AddLine(" ")
 
-	local totalCost = 0
+	local slotCostSum = 0
 	for i = 1, #slots do
 		if slots[i][3] ~= 1000 then
 			local curPercent = floor(slots[i][3] * 100)
 			local slotIcon = slots[i][4] or ""
-			GameTooltip:AddDoubleLine(slotIcon .. slots[i][2], curPercent .. "%", 1, 1, 1, DurabilityColor(curPercent))
-			totalCost = totalCost + GetSlotRepairCost(slots[i][1])
+			local slotCost = GetSlotRepairCost(slots[i][1])
+			local dr, dg, db = DurabilityColor(curPercent)
+			local rightText = format("%s%d%%|r", F.ColorStr(dr, dg, db), curPercent)
+			if slotCost then
+				slotCostSum = slotCostSum + slotCost
+				rightText = rightText .. "  |cffffffff" .. F.FormatMoney(slotCost) .. "|r"
+			end
+			GameTooltip:AddDoubleLine(slotIcon .. slots[i][2], rightText, 1, 1, 1, 1, 1, 1)
 		end
 	end
 
-	if totalCost > 0 then
+	local totalCost = GetTotalRepairCost() or (slotCostSum > 0 and slotCostSum or nil)
+	if totalCost then
 		GameTooltip:AddLine(" ")
 		GameTooltip:AddDoubleLine(repairCostString, F.FormatMoney(totalCost), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
@@ -248,19 +278,24 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local function RefreshTab()
+	if button then
+		OnEvent(button, "UPDATE_INVENTORY_DURABILITY")
+	end
+end
+
 function Durability:Create()
 	if button then
 		-- Re-arm after a previous disable left the events unregistered.
 		button:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
-		button:RegisterEvent("PLAYER_ENTERING_WORLD")
 		button:Show()
-		OnEvent(button, "UPDATE_INVENTORY_DURABILITY")
-		return
+		RefreshTab()
+		return true
 	end
 
 	local PaperDollFrame = _G.PaperDollFrame
 	if not PaperDollFrame then
-		return
+		return false
 	end
 
 	button = CreateFrame("Button", "NexEnhanceDurability", PaperDollFrame, "PanelTabButtonTemplate")
@@ -276,19 +311,52 @@ function Durability:Create()
 	end
 
 	button:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
-	button:RegisterEvent("PLAYER_ENTERING_WORLD")
 	button:SetScript("OnEvent", OnEvent)
 	button:SetScript("OnEnter", OnEnter)
 	button:SetScript("OnLeave", OnLeave)
 
-	OnEvent(button, "UPDATE_INVENTORY_DURABILITY")
+	if not paperDollHooked then
+		paperDollHooked = true
+		PaperDollFrame:HookScript("OnShow", RefreshTab)
+	end
+
+	RefreshTab()
+	return true
+end
+
+-- Bootstrap the tab and refresh its label. Module-level events cover the login
+-- race where PLAYER_ENTERING_WORLD fires before OnEnable, and
+-- UPDATE_INVENTORY_ALERTS (Blizzard's minimap durability frame) covers the
+-- initial population that UPDATE_INVENTORY_DURABILITY alone does not send.
+function Durability:Bootstrap()
+	if not ns.db.durability.enable then
+		return
+	end
+
+	if not self:Create() and not retryScheduled then
+		retryScheduled = true
+		C_Timer.After(0.5, function()
+			retryScheduled = false
+			Durability:Bootstrap()
+		end)
+		return
+	end
+
+	RefreshTab()
 end
 
 function Durability:OnEnable()
 	if not ns.db.durability.enable then
 		return
 	end
-	self:Create()
+	self:RegisterEvent("PLAYER_ENTERING_WORLD", "Bootstrap")
+	self:RegisterEvent("UPDATE_INVENTORY_ALERTS", "Bootstrap")
+	self:RegisterEvent("UPDATE_INVENTORY_DURABILITY", "Bootstrap")
+	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "Bootstrap")
+	self:Bootstrap()
+	C_Timer.After(0, function()
+		Durability:Bootstrap()
+	end)
 end
 
 function Durability:OnSettingChanged(key, value)
@@ -296,7 +364,7 @@ function Durability:OnSettingChanged(key, value)
 		return
 	end
 	if value then
-		self:Create()
+		self:Bootstrap()
 	elseif button then
 		-- Go fully idle: a hidden tab shouldn't keep processing durability events.
 		button:UnregisterAllEvents()

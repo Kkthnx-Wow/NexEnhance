@@ -2,7 +2,7 @@
 ## Title: |cff5C8BCFNex|rEnhance
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
-## Version: 1.4.0
+## Version: 1.5.0
 ## SavedVariables: NexEnhanceDB
 ## SavedVariablesPerCharacter: NexEnhanceCharDB
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64
@@ -10,10 +10,23 @@
 ## X-Category: Interface Enhancements
 ## X-Curse-Project-ID: 1090729
 
+## Category-enUS: Kkthnx's AddOns
+## Category-deDE: Kkthnx's AddOns
+## Category-esES: Kkthnx's AddOns
+## Category-esMX: Kkthnx's AddOns
+## Category-itIT: Kkthnx's AddOns
+## Category-frFR: Kkthnx's AddOns
+## Category-ptBR: Kkthnx's AddOns
+## Category-ruRU: Kkthnx's AddOns
+## Category-koKR: Kkthnx's AddOns
+## Category-zhCN: Kkthnx's AddOns
+## Category-zhTW: Kkthnx's AddOns
+
 # ----------------------------------------------------------------------------
 # Libraries (load before everything so the engine/modules can use them).
 # ----------------------------------------------------------------------------
 Libs\LibEditMode\LibStub\LibStub.lua
+Libs\LibChatAnims\LibChatAnims.lua
 Libs\LibSerialize\LibSerialize.lua
 Libs\LibDeflate\LibDeflate.lua
 Libs\LibEditMode\embed.xml
@@ -57,13 +70,16 @@ Modules\Miscellaneous\HideUIElements.lua
 # Action Bars
 Modules\ActionBars\ActionBars.lua
 Modules\ActionBars\Cooldowns.lua
+Modules\ActionBars\GCDBar.lua
 Modules\ActionBars\ExtraQuestButton.lua
 Modules\ActionBars\RangeColors.lua
 
 # Unit Frames
 Modules\UnitFrames\ClassColors.lua
+Modules\UnitFrames\TargetFrameLayout.lua
 Modules\UnitFrames\LevelColors.lua
 Modules\UnitFrames\PlayerCastBar.lua
+Modules\UnitFrames\HideDpsRole.lua
 
 # Auras
 Modules\Auras\Reminder.lua
@@ -133,12 +149,17 @@ Modules\Automation\QuickJoin.lua
 Modules\Automation\AutoGoodbye.lua
 Modules\Automation\AutoResurrect.lua
 Modules\Automation\AutoKeystone.lua
+Modules\Automation\HolidayDungeon.lua
 Modules\Automation\AutoHideTracker.lua
 Modules\Automation\DelvesAutomation.lua
+Modules\Automation\AutoSummon.lua
+Modules\Automation\AutoPvPRelease.lua
+Modules\Automation\AutoWarbandGold.lua
 
 # Announcements
 Modules\Announcements\QuestNotification.lua
 Modules\Announcements\RareAlert.lua
+Modules\Announcements\LevelAnnouncer.lua
 
 # Blizzard (always-on bug fixes)
 Modules\Blizzard\BlizzFix.lua
@@ -158,6 +179,7 @@ Modules\Miscellaneous\Animation.lua
 Modules\Miscellaneous\AchievementScreenshot.lua
 Modules\Miscellaneous\AchievementBackButton.lua
 Modules\Miscellaneous\AFKCam.lua
+Modules\Miscellaneous\AudioSync.lua
 Modules\Miscellaneous\ExpRep.lua
 Modules\Miscellaneous\ReloadUI.lua
 Modules\Miscellaneous\Changelog.lua

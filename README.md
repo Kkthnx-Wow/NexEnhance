@@ -146,7 +146,8 @@ NexEnhance groups its modules into the same themed categories you'll find in the
 - **Extra Quest Button** — a keybindable button for the closest usable quest item from your log, with Edit Mode positioning and HUD-matching art.
 
 ### Unit Frames
-- **Class Colours** — colour unit-frame health by class (players) or reaction (NPCs) across player, target, focus, boss, party and more, with an optional neutral target strip.
+- **Class Colours** — colour unit-frame health by class (players) or reaction (NPCs) across player, target, focus, boss, party and more.
+- **Target Frame Layout** — optional player-style target frame: hide the reaction strip on Target/Focus/Boss and move the target name beside the portrait.
 - **Level Colours** — difficulty-coloured level text on unit frames.
 - **Player Cast Bar** — tweaks to the player's casting bar.
 

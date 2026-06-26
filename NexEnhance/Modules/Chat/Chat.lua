@@ -6,7 +6,10 @@
 	Features:
 	  * Tab key cycles SAY -> PARTY -> RAID -> INSTANCE -> GUILD
 	  * Shift/Ctrl + mouse-wheel quick scroll (top/bottom, page)
-	  * sticky whisper, whisper sound, keyword auto-invite
+	  * optional auto scroll-back after scrolling up (ElvUI-style)
+	  * sticky whisper, whisper sound, flash taskbar icon on whisper
+	  * /tt and /gr edit-box shortcuts, combat repeat-spam guard
+	  * keyword auto-invite
 	  * a font-size submenu on the tab right-click menu
 	  * optionally hide the social/menu buttons beside the chat window
 	  * flatten the chat tab textures
@@ -23,7 +26,7 @@ local F, C, L = ns.F, ns.C, ns.L
 local _G = _G
 local ipairs = ipairs
 local strsub, strlower = string.sub, string.lower
-local strlen, gmatch = string.len, string.gmatch
+local strlen, gmatch, gsub = string.len, string.gmatch, string.gsub
 local floor, format = math.floor, string.format
 local CreateFrame, max = CreateFrame, math.max
 local UIParent = UIParent
@@ -32,9 +35,19 @@ local UIParent = UIParent
 local MAX_CHAT_BYTES = 255
 
 local IsInGroup, IsInRaid, IsInGuild = IsInGroup, IsInRaid, IsInGuild
+local IsInInstance = IsInInstance
 local IsShiftKeyDown, IsControlKeyDown = IsShiftKeyDown, IsControlKeyDown
 local IsPartyLFG = IsPartyLFG
+local InCombatLockdown = InCombatLockdown
+local UnitExists, UnitName = UnitExists, UnitName
+local GetNormalizedRealmName = GetNormalizedRealmName
 local Ambiguate, GetTime, PlaySound = Ambiguate, GetTime, PlaySound
+local FlashClientIcon = FlashClientIcon
+local C_Timer_After = C_Timer.After
+local ChatFrame_SendTell = ChatFrame_SendTell
+local ChatFrameUtil = _G.ChatFrameUtil
+local ChatEdit_ParseText = ChatEdit_ParseText
+local UIErrorsFrame = UIErrorsFrame
 local ChatEdit_UpdateHeader = ChatEdit_UpdateHeader
 local UnitIsGroupLeader, UnitIsGroupAssistant = UnitIsGroupLeader, UnitIsGroupAssistant
 local hooksecurefunc = hooksecurefunc
@@ -52,8 +65,13 @@ ns:RegisterDefaults({
 		hideScrollBar = true,
 		tabChannelSwitch = true,
 		quickScroll = true,
+		scrollDownInterval = 15, -- seconds; 0 = off (ElvUI-style auto return to bottom)
 		stickyWhisper = true,
 		whisperSound = false,
+		flashClientIcon = false,
+		editShortcuts = true, -- /tt whisper target, /gr group channel prefix
+		combatRepeatBlock = true,
+		combatRepeatChars = 5,
 		fontSizeMenu = true,
 		autoInvite = false,
 		inviteKeyword = "inv",
@@ -66,6 +84,7 @@ local Chat = ns:NewModule("Chat", "chat", { group = "chat", title = L["Chat"], o
 local cfg
 local messageSoundID = SOUNDKIT and SOUNDKIT.TELL_MESSAGE
 local chatEditBoxes = {}
+local scrollTimers = {}
 local MUTE_CACHE_WINDOW = 1
 
 -- Forward declaration: SetupEditBox hooks each box's UpdateHeader to this.
@@ -195,25 +214,61 @@ end
 -- ---------------------------------------------------------------------------
 -- Per-frame setup (behaviour only, no skinning)
 -- ---------------------------------------------------------------------------
-function Chat:QuickMouseScroll(dir)
+local function CancelScrollTimer(frame)
+	local timer = scrollTimers[frame]
+	if timer and timer.Cancel then
+		timer:Cancel()
+	end
+	scrollTimers[frame] = nil
+end
+
+local function ScheduleScrollToBottom(frame)
+	local interval = cfg and cfg.scrollDownInterval or 0
+	if interval <= 0 then
+		return
+	end
+	CancelScrollTimer(frame)
+	scrollTimers[frame] = C_Timer_After(interval, function()
+		scrollTimers[frame] = nil
+		if frame and frame.ScrollToBottom then
+			frame:ScrollToBottom()
+		end
+	end)
+end
+
+local function OnChatMouseWheel(frame, delta)
+	if not cfg or not delta then
+		return
+	end
+
+	-- ElvUI: after scrolling up, jump back to the bottom once the interval elapses.
+	if delta > 0 and not IsShiftKeyDown() and cfg.scrollDownInterval and cfg.scrollDownInterval > 0 then
+		ScheduleScrollToBottom(frame)
+	end
+
+	if not cfg.quickScroll then
+		return
+	end
+
 	-- The modifier shortcuts below are invisible until someone stumbles on them,
 	-- so the first time the chat is wheeled we point them out (once, account-wide).
-	-- `self` here is the chat frame (this is hooked as its OnMouseWheel script).
-	F.ShowHelpTip(self, "ChatQuickScroll", L["ChatQuickScrollHelp"])
+	F.ShowHelpTip(frame, "ChatQuickScroll", L["ChatQuickScrollHelp"])
 
-	if dir > 0 then
+	if delta > 0 then
 		if IsShiftKeyDown() then
-			self:ScrollToTop()
+			CancelScrollTimer(frame)
+			frame:ScrollToTop()
 		elseif IsControlKeyDown() then
-			self:ScrollUp()
-			self:ScrollUp()
+			frame:ScrollUp()
+			frame:ScrollUp()
 		end
 	else
 		if IsShiftKeyDown() then
-			self:ScrollToBottom()
+			CancelScrollTimer(frame)
+			frame:ScrollToBottom()
 		elseif IsControlKeyDown() then
-			self:ScrollDown()
-			self:ScrollDown()
+			frame:ScrollDown()
+			frame:ScrollDown()
 		end
 	end
 end
@@ -227,8 +282,8 @@ function Chat:SetupChat(frame)
 	frame:SetClampRectInsets(0, 0, 0, 0)
 	frame:SetClampedToScreen(false)
 
-	if cfg.quickScroll then
-		frame:HookScript("OnMouseWheel", Chat.QuickMouseScroll)
+	if cfg.quickScroll or (cfg.scrollDownInterval and cfg.scrollDownInterval > 0) then
+		frame:HookScript("OnMouseWheel", OnChatMouseWheel)
 	end
 
 	if cfg.hideButtons and frame.buttonFrame then
@@ -266,6 +321,99 @@ function Chat:SetupChat(frame)
 	Chat:SetupEditBox(frame)
 
 	frame.__nexSetup = true
+end
+
+-- ---------------------------------------------------------------------------
+-- Edit-box shortcuts (/tt, /gr) and combat repeat-spam guard (ElvUI-style).
+-- ---------------------------------------------------------------------------
+local function GetGroupChatPrefix()
+	local _, instanceType = IsInInstance()
+	if instanceType == "pvp" or instanceType == "arena" then
+		return "/bg "
+	end
+	if IsInRaid() then
+		return "/ra "
+	end
+	if IsInGroup() then
+		return "/p "
+	end
+	return "/s "
+end
+
+local function GetTargetTellName()
+	if not UnitExists("target") then
+		return
+	end
+	local name, realm = UnitName("target")
+	if not name or F.IsSecret(name) then
+		return
+	end
+	name = gsub(name, "%s", "")
+	if realm and realm ~= "" and realm ~= GetNormalizedRealmName() then
+		name = format("%s-%s", name, realm)
+	end
+	return name
+end
+
+local function SendTellToTarget(editBox)
+	local name = GetTargetTellName()
+	if not name then
+		if UIErrorsFrame then
+			UIErrorsFrame:AddMessage(L["Invalid Target"], 1, 0.2, 0.2, 1)
+		end
+		return
+	end
+	local chatFrame = editBox.chatFrame
+	if ChatFrameUtil and ChatFrameUtil.SendTell then
+		ChatFrameUtil.SendTell(name, chatFrame)
+	elseif ChatFrame_SendTell then
+		ChatFrame_SendTell(name, chatFrame)
+	end
+end
+
+local function ParseEditBoxText(editBox)
+	if editBox.ParseText then
+		editBox:ParseText(0)
+	elseif ChatEdit_ParseText then
+		ChatEdit_ParseText(editBox, 0)
+	end
+end
+
+local function OnEditBoxUserInput(editBox)
+	local text = editBox:GetText()
+	local len = strlen(text)
+
+	if cfg.combatRepeatBlock and InCombatLockdown() then
+		local minRepeat = cfg.combatRepeatChars or 5
+		if len > minRepeat then
+			local repeatChar = true
+			for i = 1, minRepeat do
+				local tail = strsub(text, -i, -i)
+				local prev = strsub(text, -1 - i, -1 - i)
+				if tail ~= prev then
+					repeatChar = false
+					break
+				end
+			end
+			if repeatChar and not editBox.__nexRepeatHide then
+				editBox.__nexRepeatHide = true
+				editBox:Hide()
+				editBox.__nexRepeatHide = false
+				return
+			end
+		end
+	end
+
+	if not cfg.editShortcuts or len ~= 4 then
+		return
+	end
+
+	if text == "/tt " then
+		SendTellToTarget(editBox)
+	elseif text == "/gr " then
+		editBox:SetText(GetGroupChatPrefix() .. strsub(text, 5))
+		ParseEditBoxText(editBox)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -404,7 +552,12 @@ function Chat:SetupEditBox(frame)
 	counter:SetText("")
 	editBox.nexCharCount = counter
 
-	editBox:HookScript("OnTextChanged", UpdateEditBoxCharCount)
+	editBox:HookScript("OnTextChanged", function(self, userInput)
+		if userInput then
+			OnEditBoxUserInput(self)
+		end
+		UpdateEditBoxCharCount(self)
+	end)
 	editBox:HookScript("OnEditFocusLost", function(self)
 		if self.nexCharCount then
 			self.nexCharCount:SetText("")
@@ -706,6 +859,19 @@ function Chat:PlayWhisperSound(event, _, author)
 	self._soundTimer = currentTime + 5
 end
 
+function Chat:FlashOnWhisper(event, _, author)
+	if not cfg.flashClientIcon or not FlashClientIcon then
+		return
+	end
+	if F.IsSecret(author) then
+		return
+	end
+	if not whisperEvents[event] then
+		return
+	end
+	FlashClientIcon()
+end
+
 -- ---------------------------------------------------------------------------
 -- Keyword auto-invite
 -- ---------------------------------------------------------------------------
@@ -870,14 +1036,12 @@ function Chat:OnEnable()
 
 	ns:RegisterEvent("CHAT_MSG_WHISPER", function(event, ...)
 		Chat:PlayWhisperSound(event, ...)
-	end)
-	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", function(event, ...)
-		Chat:PlayWhisperSound(event, ...)
-	end)
-	ns:RegisterEvent("CHAT_MSG_WHISPER", function(event, ...)
+		Chat:FlashOnWhisper(event, ...)
 		Chat:OnChatWhisper(event, ...)
 	end)
 	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", function(event, ...)
+		Chat:PlayWhisperSound(event, ...)
+		Chat:FlashOnWhisper(event, ...)
 		Chat:OnChatWhisper(event, ...)
 	end)
 
@@ -902,8 +1066,13 @@ function Chat:RegisterOptions(category, builder)
 	local _, hideScrollInit = builder:Checkbox(category, self, "hideScrollBar", L["Hide Scroll Bar"], L["Remove the scroll bar and jump-to-bottom button (reload to restore)."])
 	local _, tabSwitchInit = builder:Checkbox(category, self, "tabChannelSwitch", L["Tab Channel Switch"], L["Press Tab in an empty edit box to cycle chat channels."])
 	local _, scrollInit = builder:Checkbox(category, self, "quickScroll", L["Quick Scroll"], L["Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."])
+	local _, scrollDownInit = builder:Slider(category, self, "scrollDownInterval", L["Scroll-Down Interval"], L["After scrolling up, return to the bottom after this many seconds (0 = off)."], 0, 120, 5)
 	local _, stickyInit = builder:Checkbox(category, self, "stickyWhisper", L["Sticky Whisper"], L["Keep the edit box in whisper mode after replying."])
 	local _, whisperSoundInit = builder:Checkbox(category, self, "whisperSound", L["Whisper Sound"], L["Play a sound when you receive a whisper."])
+	local _, flashInit = builder:Checkbox(category, self, "flashClientIcon", L["Flash Client Icon"], L["Flash the WoW taskbar icon when you receive a whisper."])
+	local _, shortcutsInit = builder:Checkbox(category, self, "editShortcuts", L["Edit Box Shortcuts"], L["Type /tt then space to whisper your target; /gr then space for the group channel prefix."])
+	local _, repeatInit = builder:Checkbox(category, self, "combatRepeatBlock", L["Combat Repeat Block"], L["Hide the edit box if you paste the same character repeatedly during combat."])
+	local _, repeatCharsInit = builder:Slider(category, self, "combatRepeatChars", L["Repeat Character Count"], L["How many identical trailing characters trigger the combat repeat block."], 3, 20, 1)
 	local _, fontMenuInit = builder:Checkbox(category, self, "fontSizeMenu", L["Font Size Menu"], L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."])
 
 	builder:Header(L["Keyword Auto-Invite"])
@@ -932,8 +1101,13 @@ function Chat:RegisterOptions(category, builder)
 	builder:DependsOn(hideScrollInit, enableInit)
 	builder:DependsOn(tabSwitchInit, enableInit)
 	builder:DependsOn(scrollInit, enableInit)
+	builder:DependsOn(scrollDownInit, enableInit)
 	builder:DependsOn(stickyInit, enableInit)
 	builder:DependsOn(whisperSoundInit, enableInit)
+	builder:DependsOn(flashInit, enableInit)
+	builder:DependsOn(shortcutsInit, enableInit)
+	builder:DependsOn(repeatInit, enableInit)
+	builder:DependsOn(repeatCharsInit, repeatInit)
 	builder:DependsOn(fontMenuInit, enableInit)
 
 	builder:DependsOn(keywordInit, autoInviteInit)

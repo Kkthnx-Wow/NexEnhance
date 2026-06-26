@@ -43,15 +43,46 @@ local BACKDROP = C.Backdrops.window
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.5.0",
+		date = "2026-06-16",
+		intro = "Midnight maintenance pass - Character and Inspect frame reskin sync, chat quality-of-life, quest and durability fixes, and assorted 12.0.7 API polish.",
+		sections = {
+			{ "Chat", {
+				"ElvUI-style chat quality-of-life: scroll-down interval (auto return to bottom after scrolling up), flash taskbar icon on whisper, /tt and /gr edit-box shortcuts, and combat repeat-character block.",
+			} },
+			{ "Chat Channels", {
+				"Hide Channel Tags: strip channel brackets entirely instead of abbreviating them.",
+			} },
+			{ "Automation", {
+				"Holiday Dungeon: when you open the Dungeon Finder for the first time each login, points out the active holiday or Timewalking queue in the Type menu if it is not already selected (including Turbulent Timeways weeks where the API omits the Timewalking flag).",
+			} },
+			{
+				"Fixed",
+				{
+					"Chat: scroll-down interval and quick-scroll mouse wheel no longer error - HookScript passes (frame, delta) but the hooked colon-method shifted arguments so delta was nil.",
+					"Character Frames: synced with CharInspectPlus v2.0.0 for 12.0.7 - widened gear layout only when CharacterFrame.Expanded, Reputation/Currency tabs keep Blizzard inset anchors, Inspect PVP/Guild tabs restore ButtonFrameTemplate insets, Secret guards on inspect class and item level.",
+					"Character Frames: Pawn button clickable and hoverable again - CharacterStatsPane was drawing above PaperDollFrame and blocking the wrist/trinket anchor; lift the button to HIGH frame strata so it stays on the gear tab only.",
+					"Missing Stats: wrap CharacterStatsPane in a scroll frame so extra attribute rows and the full Enhancements list stay inside the stats sidebar (mouse-wheel scroll, hidden scrollbar).",
+					"Holiday Dungeon: no longer calls LFDQueueFrame_SetType from addon code; that tainted LFG session globals and could block AcceptProposal with ADDON_ACTION_BLOCKED.",
+					"Chat Channels: ElvUI-style full-line abbreviation and timestamps via a LibChatAnims-safe AddMessage wrapper; URLs stay on ChatFrame_AddMessageEventFilter. Fixes [Guild] to [G] and restores [HH:MM] before the channel tag. Embeds LibChatAnims.",
+					"Minimap: SetTexCoord on masked HUD/housing textures no longer errors on enable - strip mask textures first (12.0 rejects texcoord changes on masked textures).",
+					"Missing Stats: scroll extent no longer compares secret scroll positions in combat; stats-pane scroll updates defer until PLAYER_REGEN_ENABLED.",
+					"Action Bars: defer styling refreshes while in combat so SetShown and overlay repositioning on secure action buttons no longer trigger ADDON_ACTION_BLOCKED on ACTIONBAR_PAGE_CHANGED or UPDATE_BINDINGS; pending work runs on PLAYER_REGEN_ENABLED. Equipped-item glow and hotkey abbreviation post-hooks also skip combat so hovering action buttons no longer taints SetShown/SetAttribute.",
+					"Chat Channels: secret chat message bodies (instances/combat) pass through the AddMessage wrapper unchanged instead of erroring on compare/match.",
+					"Plugin Manager: canvas labels no longer show a duplicate black shadow behind the text (standard GameFont strings instead of manual shadow duplicates).",
+					"Durability: the Character-pane durability tab now populates on first login without /reload (UPDATE_INVENTORY_ALERTS + PLAYER_ENTERING_WORLD bootstrap, deferred refresh, PaperDoll OnShow hook). Tooltip shows per-slot and total repair costs via TooltipData.repairCost and GetRepairAllCost().",
+					"Quick Quest: gossip/greeting handlers select one quest per interaction and chain the next after each accept or turn-in. Gossip offers use C_GossipInfo quest data instead of quest-log difficulty (was 0 before accept). Warband/account-completed quests on an explicit NPC list are accepted even when account-completed tracking is hidden on the minimap. /nex quickquest toggles debug logging.",
+				},
+			},
+		},
+	},
+	{
 		version = "1.4.0",
 		date = "2026-06-16",
 		intro = "Third-party plugin support lets other authors extend NexEnhance as separate addons, with a Plugin Manager page in settings and a starter template in the repo.",
 		sections = {
 			{ "Core", {
 				"Plugins: third-party authors can ship separate addons that call NexEnhance:RegisterPlugin(...) to use the same profile DB, lifecycle, events, and settings builder as built-in modules. Settings live under Plugins (per-extension options) and Plugin Manager (overview cards). /nex plugins lists installed extensions. Starter template: Examples/NexEnhancePluginTemplate/.",
-			} },
-			{ "Fixed", {
-				"Plugin Manager: canvas labels no longer show a duplicate black shadow behind the text (standard GameFont strings instead of manual shadow duplicates).",
 			} },
 		},
 	},
@@ -73,13 +104,16 @@ local CHANGELOG = {
 			{ "Automation", {
 				"Auto Greed: automatically rolls Greed (or Disenchant) on low-rarity group-loot drops so you're not clicking the same buttons all night. Defaults to max level only, Uncommon (green) Bind-on-Equip items, and prefers Disenchant when available; optional toggles cover rares, BoP items and auto-confirming the soulbound/disenchant prompts. It only confirms rolls it started itself. Off by default. Refactored from ShestakUI's AutoGreed (originally by Tekkub). Item quality that reads secret in instances is left for the player rather than guessed.",
 			} },
-			{ "Miscellaneous", {
-				"Loot Roll: replaces Blizzard's group-loot roll frames with NexEnhance's own compact, skinned bars - an item icon (item tooltip with Shift-compare), a quality-coloured timer bar showing item level and stack count, and Need / Greed / Disenchant / Transmog / Pass buttons that grey out when unavailable. Bars stack from a draggable Edit Mode anchor, recycle through a pool, and queue when there are more rolls than your configured bar count. Width, height and max bars are configurable, and /nex lootroll spawns demo bars so you can position and preview them. Re-implemented from ElvUI's LootRoll.",
-				"Drag Frames: your bags are now draggable too - grab the combined bag, or the backpack in the separate-bag layout (which moves the whole cluster). Bag positions intentionally snap back to Blizzard's default on the next bag open rather than persisting, matching the rest of Drag Frames.",
-				"Achievement Back Button: a browser-style Back button on the Achievements frame header. As you click through categories and achievements it records where you've been, and the button retraces that history one step at a time - restoring the category, the selected achievement and both scroll positions. It greys out when there's nowhere left to go back to. Adapted from LudiusMaximus' Achievements Back Button.",
-				"Hide UI Elements: optional toggles (all off by default) for default UI bits people often want gone - the buff collapse/expand arrow, the bottom-right Micro Menu & Bags cluster (the micro-menu buttons and the bag bar), and the incoming damage / healing numbers that flash over your player portrait (separate toggles). Visibility only - nothing is destroyed - kept hidden against Edit Mode re-showing them, and the micro/bags hide is deferred out of combat. The target frame has no combat feedback to hide.",
-				"Menu Buttons: the unit right-click menu gains quick social actions as real, brand-coloured entries - Add Friend, Guild Invite (labelled with your guild's name), Copy Name and Whisper - adding only the options Blizzard's menu for that unit type is missing (self, target, party, friend, raid, ...). Built on the supported Menu.ModifyMenu API so entries are injected taint-free, and uses the live C_GuildInfo.Invite; names that read secret in instances simply omit the entries. Adapted from KkthnxUI/NDui.",
-			} },
+			{
+				"Miscellaneous",
+				{
+					"Loot Roll: replaces Blizzard's group-loot roll frames with NexEnhance's own compact, skinned bars - an item icon (item tooltip with Shift-compare), a quality-coloured timer bar showing item level and stack count, and Need / Greed / Disenchant / Transmog / Pass buttons that grey out when unavailable. Bars stack from a draggable Edit Mode anchor, recycle through a pool, and queue when there are more rolls than your configured bar count. Width, height and max bars are configurable, and /nex lootroll spawns demo bars so you can position and preview them. Re-implemented from ElvUI's LootRoll.",
+					"Drag Frames: your bags are now draggable too - grab the combined bag, or the backpack in the separate-bag layout (which moves the whole cluster). Bag positions intentionally snap back to Blizzard's default on the next bag open rather than persisting, matching the rest of Drag Frames.",
+					"Achievement Back Button: a browser-style Back button on the Achievements frame header. As you click through categories and achievements it records where you've been, and the button retraces that history one step at a time - restoring the category, the selected achievement and both scroll positions. It greys out when there's nowhere left to go back to. Adapted from LudiusMaximus' Achievements Back Button.",
+					"Hide UI Elements: optional toggles (all off by default) for default UI bits people often want gone - the buff collapse/expand arrow, the bottom-right Micro Menu & Bags cluster (the micro-menu buttons and the bag bar), and the incoming damage / healing numbers that flash over your player portrait (separate toggles). Visibility only - nothing is destroyed - kept hidden against Edit Mode re-showing them, and the micro/bags hide is deferred out of combat. The target frame has no combat feedback to hide.",
+					"Menu Buttons: the unit right-click menu gains quick social actions as real, brand-coloured entries - Add Friend, Guild Invite (labelled with your guild's name), Copy Name and Whisper - adding only the options Blizzard's menu for that unit type is missing (self, target, party, friend, raid, ...). Built on the supported Menu.ModifyMenu API so entries are injected taint-free, and uses the live C_GuildInfo.Invite; names that read secret in instances simply omit the entries. Adapted from KkthnxUI/NDui.",
+				},
+			},
 			{ "Announcements", {
 				"Rare Alert: right-click the rare popup to share the rare and a clickable map-pin link in chat - your group when grouped (instance/raid/party), otherwise General chat. The shared message uses a default-named map pin so the server doesn't drop it, and a short cooldown keeps repeated clicks from flooding the channel. Left-click still targets/tracks; the new toggle is on by default and editable in the panel or Edit Mode dialog. Cherry-picked from Plumber's rare announcement by Peterodox.",
 				"Quest Notification: objective-progress announcements now diff Blizzard's structured quest objectives (C_QuestLog.GetQuestObjectives) off the debounced QUEST_LOG_UPDATE scan instead of pattern-matching localized UI_INFO_MESSAGE text. It's locale-independent, no longer parses a string that can be a Midnight Secret value in instances, fires for every quest regardless of tracking, and posts the quest name alongside each objective. High-count objectives still report roughly every 20%, and percent-style progress-bar quests are announced too. The module stays idle while you're solo, and the old Dragonflight-only dragon-glyph notice was removed.",
@@ -91,17 +125,20 @@ local CHANGELOG = {
 				"Chat Filter: settings panel now includes scrollable keyword lists for the blacklist and the trade-channel whitelist — one keyword per line, with a Restore Default Keywords button for the built-in spam set. /nexfilter still works for quick edits.",
 				"Chat Filter: ships a curated default keyword list for current services/trade boosting spam (WTS carries, Mythic+, raid bundles, gold-only payment lines, commercial links like WowVendor/Trustpilot/discord.gg, and copy-paste booking CTAs). Keywords merge in automatically on first load; matching is now case-insensitive. A message still needs to hit your configured match threshold (default 3) before it is hidden, so short LF/LFW craft lines stay safe. Restore the built-ins anytime with /nexfilter defaults.",
 			} },
-			{ "Fixed", {
-				"Chat / Chat Filter: migrated 12.0.7-deprecated globals to namespace APIs - C_BattleNet.InviteFriend (keyword auto-invite) and C_PartyInfo.IsGUIDInGroup (friend/group exemption in the spam filter).",
-				"Unit Frames - Class Colours: audited against 12.0.7 FrameXML - added UNIT_FACTION / UNIT_CONNECTION refresh, party vehicle UpdateArt re-tint hook, compact-frame threat-colour deferral, and UnitTreatAsPlayerForDisplay class colouring to match Blizzard's compact path.",
-				"DataText - Stats & Clock: minimap FPS/latency and clock text now use a manual drop-shadow duplicate instead of SetShadowOffset. On 12.0.7 the API still reports 1,-1 and Slug CVars do not change the look, but the engine draws Slug-rendered shadow flush on the glyphs anyway; offsetting a solid-black copy behind the main string restores a readable shadow.",
-				"Extra Quest Button: the cooldown swipe swept over the gold IconFrame border. The border is the button's OVERLAY normal texture while the Cooldown is a child frame (which always renders above the parent's textures), so the swipe and its bright leading edge drew on top of the chrome. The swipe is now inset to the frame's inner opening and the leading edge is disabled, so it stays neatly inside the gold border.",
-				"DataText - Time: the world-map quest-timer tooltip read a widget through a misnamed Blizzard API (GetTextureAndTextWidgetVisualizationInfo) that never resolved; corrected to the real GetTextureAndTextVisualizationInfo so texture-and-text widget timers display again.",
-				"Auto Vendor: now yields to Bagforge's Vendor module when Bagforge has the matching automation enabled. If Bagforge is handling auto-repair or auto-sell junk, NexEnhance skips that same action at runtime instead of double repairing/selling, without changing your NexEnhance settings.",
-				"Item Level: item quality and the inspected unit's GUID can read as Secret inside instances on 12.0, and the loot/bag/inspect paths compared them directly, which could throw a Lua error mid-loot. Every quality and GUID read is now Secret-guarded (matching Auto Greed and Loot Roll), and loot slots with no hyperlink yet are ignored until Blizzard finishes populating them. If a value can't be read, the overlay is simply skipped instead of erroring.",
-				"Tooltip: the status-bar skin no longer uses BackdropTemplate children. Blizzard's backdrop mixin divides by GetWidth()/GetHeight() in Lua, which can be Secret while the world-cursor tooltip updates under Midnight. The bar now uses plain texture strips, avoiding the tainted secret arithmetic crash.",
-				"Quick Quest: Auto-Skip Story Gossip now actually fires. It only matched a red <Skip ...> marker pinned to the very start of an option in the legacy hex-red colour, so it missed campaign skips with white lead-in text (like the Argus <Skip the Argus Campaign> option), the modern RED_FONT_COLOR markup Blizzard now uses, and plain uncoloured skips like the Legion <Skip the scenario and begin your journey on Broken Shore.> option. Detection now keys off the angle-bracket marker itself anywhere in the option text, which is colour- and locale-independent, with a Secret-value guard on the option name. The follow-up 'Skip ahead?' confirmation popup these skips raise is now auto-accepted too (mirroring Blizzard's GOSSIP_CONFIRM handling), but only for free skips - a confirmation that costs money, or whose cost reads Secret, is left for you to confirm. Each skip now prints a chat line naming the NPC so you know it happened. Verified against Blizzard's 12.0 gossip resources.",
-			} },
+			{
+				"Fixed",
+				{
+					"Chat / Chat Filter: migrated 12.0.7-deprecated globals to namespace APIs - C_BattleNet.InviteFriend (keyword auto-invite) and C_PartyInfo.IsGUIDInGroup (friend/group exemption in the spam filter).",
+					"Unit Frames - Class Colours: audited against 12.0.7 FrameXML - added UNIT_FACTION / UNIT_CONNECTION refresh, party vehicle UpdateArt re-tint hook, compact-frame threat-colour deferral, and UnitTreatAsPlayerForDisplay class colouring to match Blizzard's compact path.",
+					"DataText - Stats & Clock: minimap FPS/latency and clock text now use a manual drop-shadow duplicate instead of SetShadowOffset. On 12.0.7 the API still reports 1,-1 and Slug CVars do not change the look, but the engine draws Slug-rendered shadow flush on the glyphs anyway; offsetting a solid-black copy behind the main string restores a readable shadow.",
+					"Extra Quest Button: the cooldown swipe swept over the gold IconFrame border. The border is the button's OVERLAY normal texture while the Cooldown is a child frame (which always renders above the parent's textures), so the swipe and its bright leading edge drew on top of the chrome. The swipe is now inset to the frame's inner opening and the leading edge is disabled, so it stays neatly inside the gold border.",
+					"DataText - Time: the world-map quest-timer tooltip read a widget through a misnamed Blizzard API (GetTextureAndTextWidgetVisualizationInfo) that never resolved; corrected to the real GetTextureAndTextVisualizationInfo so texture-and-text widget timers display again.",
+					"Auto Vendor: now yields to Bagforge's Vendor module when Bagforge has the matching automation enabled. If Bagforge is handling auto-repair or auto-sell junk, NexEnhance skips that same action at runtime instead of double repairing/selling, without changing your NexEnhance settings.",
+					"Item Level: item quality and the inspected unit's GUID can read as Secret inside instances on 12.0, and the loot/bag/inspect paths compared them directly, which could throw a Lua error mid-loot. Every quality and GUID read is now Secret-guarded (matching Auto Greed and Loot Roll), and loot slots with no hyperlink yet are ignored until Blizzard finishes populating them. If a value can't be read, the overlay is simply skipped instead of erroring.",
+					"Tooltip: the status-bar skin no longer uses BackdropTemplate children. Blizzard's backdrop mixin divides by GetWidth()/GetHeight() in Lua, which can be Secret while the world-cursor tooltip updates under Midnight. The bar now uses plain texture strips, avoiding the tainted secret arithmetic crash.",
+					"Quick Quest: Auto-Skip Story Gossip now actually fires. It only matched a red <Skip ...> marker pinned to the very start of an option in the legacy hex-red colour, so it missed campaign skips with white lead-in text (like the Argus <Skip the Argus Campaign> option), the modern RED_FONT_COLOR markup Blizzard now uses, and plain uncoloured skips like the Legion <Skip the scenario and begin your journey on Broken Shore.> option. Detection now keys off the angle-bracket marker itself anywhere in the option text, which is colour- and locale-independent, with a Secret-value guard on the option name. The follow-up 'Skip ahead?' confirmation popup these skips raise is now auto-accepted too (mirroring Blizzard's GOSSIP_CONFIRM handling), but only for free skips - a confirmation that costs money, or whose cost reads Secret, is left for you to confirm. Each skip now prints a chat line naming the NPC so you know it happened. Verified against Blizzard's 12.0 gossip resources.",
+				},
+			},
 			{ "Performance", {
 				"Extra Quest Button: quest, zone-change and player aura events each triggered a full closest-quest-item scan, so an aura-heavy pull ran it many times a second. They're now coalesced through a 0.1s debounce into one scan, while target and bag updates stay immediate so the button still feels instant.",
 				"Audited the whole addon against Blizzard's 12.0 Resources for Secret-value/taint correctness, API drift and hot-path costs - no further issues found beyond the two above.",

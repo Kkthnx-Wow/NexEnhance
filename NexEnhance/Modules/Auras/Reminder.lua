@@ -213,7 +213,8 @@ local function Reminder_Update(cfg)
 		if equip and not C_Item_IsEquippedItem(itemID) then
 			isEquipped = false
 		end
-		if C_Item_GetItemCount(itemID) == 0 or not isEquipped or not isGrouped or C_Item_GetItemCooldown(itemID) > 0 then
+		local _, itemCooldownDur = C_Item_GetItemCooldown(itemID)
+		if C_Item_GetItemCount(itemID) == 0 or not isEquipped or not isGrouped or (itemCooldownDur and itemCooldownDur > 0) then
 			frame:Hide()
 			return
 		end

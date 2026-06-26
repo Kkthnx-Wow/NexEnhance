@@ -6,7 +6,7 @@
 	2.6, so the value is bounded to that range before it is applied.
 
 	Adapted from KkthnxUI's UpdateMaxCameraZoom (by Josh "Kkthnx" Russell):
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm
+	  https://github.com/Kkthnx-Wow/KkthnxUI
 --]]
 
 local _, ns = ...

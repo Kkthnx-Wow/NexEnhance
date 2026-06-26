@@ -5,13 +5,17 @@
 	and (optionally) emotes a /thank to whoever brought you back.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Automation/Elements/Resurrect.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/Resurrect.lua
 
 	Item-cast resurrects (the encounter "Failure Detection Pylon" and the
 	"Brazier of Awakening") are deliberately ignored so you can still make the
 	strategic call on those. The combat check avoids accepting a battle-rez at
-	a bad moment. The event stays registered while the module is on; the enable
-	flag is read live so the toggle applies without a reload.
+	a bad moment.
+
+	The event is registered symmetrically: registered on enable, unregistered
+	on disable (via OnSettingChanged). This keeps event dispatch overhead near
+	zero while the module is off. (Verified: RESURRECT_REQUEST is valid in
+	Blizzard Resources 12.0.7/Events.lua line 617.)
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -93,9 +97,12 @@ function AutoResurrect:RESURRECT_REQUEST(name)
 	StaticPopup_Hide("RESURRECT_NO_TIMER")
 
 	-- Optional friendly thank-you once we're actually back on our feet.
+	-- Guard: battle-rez can bring a player back mid-combat. DoEmote is not
+	-- itself restricted, but sending an emote at a target name that is a
+	-- secret value can taint. Also skip if still fighting — contextually wrong.
 	if ns.db.autoResurrect.thankYou and F.NotSecret(name) and name then
 		C_Timer_After(3, function()
-			if not UnitIsDeadOrGhost("player") then
+			if not UnitIsDeadOrGhost("player") and not UnitAffectingCombat("player") then
 				DoEmote("thank", name)
 			end
 		end)
@@ -108,12 +115,28 @@ function AutoResurrect:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("RESURRECT_REQUEST")
+	-- Keep the callback handle so we can unregister precisely on disable.
+	self._resurrectCallback = self:RegisterEvent("RESURRECT_REQUEST")
+end
+
+function AutoResurrect:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+
+	ns:UnregisterEvent("RESURRECT_REQUEST", self._resurrectCallback)
+	self._resurrectCallback = nil
 end
 
 function AutoResurrect:OnSettingChanged(key, value)
-	if key == "enable" and value then
+	if key ~= "enable" then
+		return
+	end
+	if value then
 		self:RegisterModuleEvents()
+	else
+		self:UnregisterModuleEvents()
 	end
 end
 

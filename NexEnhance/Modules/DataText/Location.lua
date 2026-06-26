@@ -7,7 +7,7 @@
 	Can be shown always or only on mouseover.
 
 	Adapted from KkthnxUI's Location DataText by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/DataText/Elements/Location.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/DataText/Elements/Location.lua
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global

@@ -2,17 +2,21 @@
 	NexEnhance - Cooldowns
 	-------------------------------------------------------------------------
 	Formats the numbers shown on cooldown swipes (action buttons, auras, items,
-	etc.). Adapted from NDui's ActionBar/Cooldown module, reworked to fit the
-	NexEnhance engine, database and live-apply options.
+	etc.). Uses Blizzard's native SetCountdownFormatter API introduced in
+	Midnight so the client does all per-frame rendering — we run zero OnUpdate
+	timers of our own.
 
-	Why this approach is fast:
-	  * It uses Blizzard's native countdown text via C_StringUtil's
-	    NumericRuleFormatter + Cooldown:SetCountdownFormatter. The client does
-	    the per-frame rendering, so we run NO OnUpdate timer of our own.
-	  * The shared Cooldown metatable methods are hooked once, so every current
-	    and future cooldown frame is covered with a handful of hooks.
-	  * Each cooldown frame is tagged the first time it is seen so the formatter
-	    is only assigned once per frame.
+	Architecture
+	  * Hook the shared Cooldown metatable once; every current and future
+	    cooldown frame is covered with a handful of hooks.
+	  * Each cooldown is tagged on first sighting so heavy init work (font,
+	    formatter, size-changed hook, min-duration) only runs once per frame,
+	    not on every subsequent SetCooldown event.
+	  * UpdateFormat() handles the live-settings case (font, scale, formatter,
+	    min-duration) for all already-tracked cooldowns when the user changes
+	    a setting. OnCooldownSet itself is a cheap no-op after init.
+	  * SetMinimumCountdownDuration suppresses text on GCDs and other
+	    sub-threshold cooldowns so we only show text that is actually useful.
 
 	Reference:
 	  NDui  - https://github.com/siweia/NDui (Modules/ActionBar/Cooldown.lua)
@@ -24,14 +28,12 @@ local F, C, L = ns.F, ns.C, ns.L
 -- Localised globals.
 local C_StringUtil = C_StringUtil
 local CreateColor = CreateColor
-local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
 local getmetatable = getmetatable
 local SetCVar = SetCVar
 local GetCVar = GetCVar
 local pairs = pairs
 local Enum = Enum
-local InCombatLockdown = InCombatLockdown
 local Round = Round or function(n)
 	return math.floor(n + 0.5)
 end
@@ -44,8 +46,8 @@ local COLOR_RED = CreateColor(1, 0, 0, 1)
 local COLOR_YELLOW = CreateColor(1, 1, 0, 1)
 local COLOR_DARK = CreateColor(0.8, 0.8, 0.2, 1)
 
--- Colour escape applied to the m/h/d unit suffix (uses the brand colour).
-local UNIT = "|c" .. C.BrandHex
+-- Colour escape applied to the m/h/d unit suffix (uses the class colour).
+local UNIT = "|c" .. F.RGBToHex(C.ClassColor)
 local R = "|r"
 
 -- ---------------------------------------------------------------------------
@@ -56,8 +58,11 @@ ns:RegisterDefaults({
 		enable = true,
 		style = 1, -- 1 colored+decimals, 2 colored, 3 plain+decimals, 4 plain
 		mmssThreshold = 90, -- seconds: below this show raw seconds, then mm:ss
+		minDuration = 3, -- hide text for cooldowns shorter than this many seconds
 		scaleText = false, -- shrink text on small cooldowns (relative to a default button)
 		minScale = 0.6, -- hide text once the relative scale drops below this
+		fontSize = 15,
+		fontOutline = "OUTLINE",
 	},
 })
 
@@ -137,6 +142,24 @@ local function GetStyle()
 	return ns.db.cooldowns.style or 1
 end
 
+-- Apply the NexEnhance font to the countdown FontString. Called once on init
+-- and again from UpdateFormat when the user changes font settings. NOT called
+-- on every SetCooldown event — that's the old costly path.
+local function ApplyFont(cooldown)
+	local fs = cooldown:GetCountdownFontString()
+	if fs then
+		fs:SetFont(C.Media.Fonts.number, ns.db.cooldowns.fontSize, ns.db.cooldowns.fontOutline)
+	end
+end
+
+-- Apply the minimum-duration threshold. The client suppresses countdown text
+-- for cooldowns shorter than this, keeping e.g. 1.5s GCDs quiet.
+local function ApplyMinDuration(cooldown)
+	if cooldown.SetMinimumCountdownDuration then
+		cooldown:SetMinimumCountdownDuration(ns.db.cooldowns.minDuration or 3)
+	end
+end
+
 -- Scale the countdown text relative to the button size and hide it on buttons
 -- that end up too small (so 1-pixel aura cooldowns don't show unreadable text).
 local function UpdateCooldownTextScale(cooldown, width)
@@ -171,38 +194,18 @@ local function OnCooldownSizeChanged(cooldown, width)
 	UpdateCooldownTextScale(cooldown, width)
 end
 
--- On action buttons the cooldown text draws below the hotkey / stack count.
--- Reparent it into a high-frame-level container so it sits on top. Only action
--- buttons expose TextOverlayContainer, and reparenting is skipped in combat to
--- stay taint-safe (it retries on the next out-of-combat SetCooldown).
-local function SetupTextContainer(cooldown)
-	if cooldown.nexTextContainer or InCombatLockdown() then
-		return
-	end
-
-	local parent = cooldown:GetParent()
-	if not (parent and parent.TextOverlayContainer) then
-		return
-	end
-
-	local fs = cooldown:GetCountdownFontString()
-	if not fs then
-		return
-	end
-
-	-- Park the countdown text on a very-high-level child so it always draws
-	-- above the cooldown swipe/edge and the icon's own overlay textures.
-	local container = CreateFrame("Frame", nil, cooldown)
-	container:SetAllPoints(cooldown)
-	container:SetFrameLevel(777)
-	fs:SetParent(container)
-	cooldown.nexTextContainer = container
-end
-
 -- Hook handler shared by all cooldown methods. hooksecurefunc passes the
--- cooldown as the first argument, so one function covers every frame.
---   `noCooldownCount` is the shared opt-out flag (OmniCC/tullaCTC convention):
---   frames marked with it - e.g. percentage-display swipes - are left alone.
+-- cooldown as the first argument (extra args like start/duration are secret
+-- values in Midnight — we intentionally ignore them here).
+--
+-- `noCooldownCount` is the shared opt-out flag (OmniCC/tullaCTC convention):
+-- frames marked with it - e.g. percentage-display swipes - are left alone.
+--
+-- IMPORTANT: after the first sighting (init block) this function becomes a
+-- cheap three-check no-op. All the heavy per-cooldown work lives in init and
+-- in UpdateFormat (for live settings changes). The old code ran SetFont +
+-- GetWidth + SetScale on every single SetCooldown call, which fires on every
+-- GCD and every ability press.
 local function OnCooldownSet(cooldown)
 	if not cooldown or cooldown.noCooldownCount then
 		return
@@ -210,14 +213,16 @@ local function OnCooldownSet(cooldown)
 	if not Cooldowns:IsEnabled() then
 		return
 	end
-
-	if not hookedCooldowns[cooldown] then
-		hookedCooldowns[cooldown] = true
-		cooldown:SetCountdownFormatter(formatter)
-		cooldown:HookScript("OnSizeChanged", OnCooldownSizeChanged)
+	if hookedCooldowns[cooldown] then
+		return -- already initialised; nothing to do
 	end
 
-	SetupTextContainer(cooldown)
+	-- First sighting: set up the formatter, font, min-duration and size hook.
+	hookedCooldowns[cooldown] = true
+	cooldown:SetCountdownFormatter(formatter)
+	ApplyFont(cooldown)
+	ApplyMinDuration(cooldown)
+	cooldown:HookScript("OnSizeChanged", OnCooldownSizeChanged)
 	UpdateCooldownTextScale(cooldown, cooldown:GetWidth())
 end
 
@@ -229,7 +234,7 @@ function Cooldowns:ApplyBreakpoints()
 	formatter:SetBreakpoints(BuildBreakpoints(info.colored, info.decimals, ns.db.cooldowns.mmssThreshold))
 end
 
---- Toggle the native countdown CVar and (re)apply the formatter to every
+--- Toggle the native countdown CVar and (re)apply all settings to every
 --- tracked cooldown. Called on enable and whenever a setting changes.
 -- Snapshot the player's own countdownForCooldowns choice the first time we
 -- touch it, so turning the module off restores their value instead of always
@@ -251,6 +256,10 @@ function Cooldowns:UpdateFormat()
 
 	for cooldown in pairs(hookedCooldowns) do
 		cooldown:SetCountdownFormatter(enabled and formatter or nil)
+		if enabled then
+			ApplyFont(cooldown)
+			ApplyMinDuration(cooldown)
+		end
 		UpdateCooldownTextScale(cooldown, cooldown:GetWidth())
 	end
 end
@@ -270,7 +279,15 @@ function Cooldowns:RegisterOptions(category, builder)
 		{ value = 3, label = L["Plain (decimals)"] },
 		{ value = 4, label = L["Plain (integers)"] },
 	})
+	builder:Slider(category, self, "fontSize", L["Font Size"], L["Set the font size for the cooldown countdown text."], 10, 24, 1)
+	builder:Dropdown(category, self, "fontOutline", L["Font Outline"], L["Set the outline style for the cooldown countdown text."], {
+		{ value = "NONE", label = L["None"] },
+		{ value = "OUTLINE", label = L["Outline"] },
+		{ value = "THICKOUTLINE", label = L["Thick Outline"] },
+		{ value = "MONOCHROME", label = L["Monochrome"] },
+	})
 	builder:Slider(category, self, "mmssThreshold", L["Minutes Format Threshold"], L["Below this many seconds the countdown shows raw seconds; at or above it switches to mm:ss."], 60, 300, 5)
+	builder:Slider(category, self, "minDuration", L["Minimum Cooldown Duration"], L["Hide countdown text for cooldowns shorter than this many seconds. Keeps 1.5s GCDs and other short cooldowns quiet."], 0, 10, 0.5)
 	builder:Checkbox(category, self, "scaleText", L["Scale Cooldown Text"], L["Scale the countdown text with the button size and hide it on very small cooldowns."])
 	builder:Slider(category, self, "minScale", L["Minimum Text Scale"], L["Hide the countdown text once its scale drops below this fraction of a normal button (needs Scale Cooldown Text)."], 0, 1, 0.05)
 end

@@ -2,6 +2,78 @@
 
 ---
 
+## [1.5.0] — 2026-06-16
+
+Midnight maintenance pass — Character and Inspect frame reskin sync, chat
+quality-of-life, quest and durability fixes, and assorted 12.0.7 API polish.
+
+### Added
+
+- **Chat:** ElvUI-style chat quality-of-life — scroll-down interval (auto return to
+  bottom after scrolling up), flash taskbar icon on whisper, `/tt`/`/gr` edit-box
+  shortcuts, and combat repeat-character block.
+- **Chat — Chat Channels:** optional hide channel tags entirely (strips `[Guild]`
+  brackets instead of abbreviating).
+- **Automation — Holiday Dungeon:** when you open the Dungeon Finder for the
+  first time each login, points out the active holiday or Timewalking random
+  queue in the Type menu if it is not already selected (does not call
+  `LFDQueueFrame_SetType`, which taints LFG globals and can block
+  `AcceptProposal`).
+
+### Fixed
+
+- **Chat:** fix scroll-down interval and quick-scroll mouse wheel handler —
+  `HookScript` passes `(frame, delta)` but the hooked method used a colon
+  signature, so `delta` was nil and wheel scrolling errored.
+- **Skins — Character Frames:** synced with [CharInspectPlus](https://github.com/Kkthnx-Wow/CharInspectPlus)
+  v2.0.0 for 12.0.7 — widened gear layout only when `CharacterFrame.Expanded`,
+  Reputation/Currency tabs keep Blizzard inset anchors, Inspect PVP/Guild tabs
+  restore `ButtonFrameTemplate` insets, Secret guards on inspect class and item
+  level, live enable/disable for layout (slot strip art still needs `/reload`).
+- **Skins — Missing Stats:** wrap `CharacterStatsPane` in a scroll frame so the
+  extra attribute rows and full Enhancements list stay inside the stats sidebar
+  (mouse-wheel scroll; hidden scrollbar).
+- **Skins — Character Frames:** fix Pawn paper-doll button not clickable or
+  hoverable — `CharacterStatsPane` sits above `PaperDollFrame` and was eating
+  clicks; lift the button to `HIGH` frame strata so it stays on the gear tab
+  only (no reparent, no bleed onto Reputation/Currency).
+- **Automation — Holiday Dungeon:** no longer calls `LFDQueueFrame_SetType` from
+  addon code; that tainted `LFGLockList` / `LFDDungeonList` / `LFGEnabledList`
+  and could trigger `ADDON_ACTION_BLOCKED` when accepting a dungeon-ready popup.
+- **Chat — Chat Channels:** ElvUI-style full-line abbreviation and timestamps
+  via a LibChatAnims-safe `AddMessage` wrapper; URLs stay on
+  `ChatFrame_AddMessageEventFilter`. Fixes `[Guild]` → `[G]` and restores
+  `[HH:MM]` before the channel tag. Embeds Funkydude's LibChatAnims.
+- **Maps — Minimap:** `SetTexCoord` on masked HUD/housing textures no longer
+  errors on enable — strip mask textures first (12.0 rejects texcoord changes
+  on masked textures).
+- **Action Bars:** defer action-button styling refreshes while in combat so
+  `SetShown` / repositioning overlay text on secure buttons (e.g.
+  `MultiBarBottomLeftButton1`) no longer triggers `ADDON_ACTION_BLOCKED` on
+  `ACTIONBAR_PAGE_CHANGED` or `UPDATE_BINDINGS`; pending work runs on
+  `PLAYER_REGEN_ENABLED`. Equipped-item glow and hotkey abbreviation post-hooks
+  also skip combat so they do not taint secure buttons (fixes
+  `SetShown`/`SetAttribute` blocks on bar hover).
+- **Core — Plugin Manager:** canvas labels no longer show a duplicate black
+  shadow behind the text (standard GameFont strings instead of manual shadow
+  duplicates).
+- **Inventory — Durability:** the Character-pane durability tab now populates on
+  first login without `/reload`, using the same bootstrap events as Blizzard's
+  durability frame (`UPDATE_INVENTORY_ALERTS`, `PLAYER_ENTERING_WORLD`) plus a
+  deferred refresh when the inventory API is not ready yet. Tooltip repair costs
+  now read `TooltipData.repairCost` and `GetRepairAllCost()` per 12.0.7 APIs,
+  with per-slot costs shown beside each durability percentage.
+- **Automation — Quick Quest:** gossip and greeting handlers now select one quest
+  per interaction and chain the next after each accept or turn-in, fixing NPCs
+  that offer multiple quests (e.g. two available quests on the same gossip list).
+  Gossip offers no longer wait on `C_QuestLog.GetQuestDifficultyLevel` (returns 0
+  before accept); they use `GossipQuestUIInfo` from `C_GossipInfo` instead.
+  Warband/account-completed quests on an explicit gossip or greeting list are no
+  longer skipped when account-completed tracking is hidden on the minimap.
+  `/nex quickquest` toggles chat debug for gossip/accept tracing.
+
+---
+
 ## [1.4.0] — 2026-06-16
 
 Third-party plugin support lets other authors extend NexEnhance as separate
@@ -15,12 +87,6 @@ repo.
   events, and settings builder as built-in modules. A **Plugins** settings group
   and **Plugin Manager** canvas list installed extensions; `/nex plugins` lists
   them in chat. Starter template: `Examples/NexEnhancePluginTemplate/`.
-
-### Fixed
-
-- **Core — Plugin Manager:** canvas labels no longer show a duplicate black
-  shadow behind the text (standard GameFont strings instead of manual shadow
-  duplicates).
 
 ---
 
@@ -732,7 +798,7 @@ FOr the item level- **Tooltip — Vendor Location:** for special barter/curio it
 - **Inventory — Unusable Items:** item icons across bags, bank and warband bank
   tint red for gear your class can't use (wrong weapon/armor type or off-hand
   dual-wield) or that you're below the required level for. Class-restriction data
-  reworked from [LibUnfit-1.0](https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm)
+  reworked from [LibUnfit-1.0](https://github.com/Kkthnx-Wow/KkthnxUI)
   by João Cardoso, resolved to your class once at login.
 - **Inventory — Item Level:** the item-level numbers now match the bind-status
   text size and are resizable with a new **Item Level Font Size** slider (12–14).
@@ -1184,6 +1250,7 @@ the default UI and gets out of your way.
 
 ---
 
+[1.5.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.5.0
 [1.4.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.4.0
 [1.3.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.3.0
 [1.2.9]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.2.9

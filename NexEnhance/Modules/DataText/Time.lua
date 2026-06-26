@@ -7,7 +7,7 @@
 	Delves, the weekly "Choose Your Path" meta, and Shift-held world-event details.
 
 	Adapted from KkthnxUI's Time DataText by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/DataText/Elements/Time.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/DataText/Elements/Time.lua
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global

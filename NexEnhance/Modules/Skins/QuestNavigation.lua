@@ -10,7 +10,7 @@
 	getting closer (e.g. standing still or walking away).
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Skins/Blizzard/QuestNavigation.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Skins/Blizzard/QuestNavigation.lua
 
 	Integration notes:
 	  * SuperTrackedFrame lives in the load-on-demand Blizzard_QuestNavigation

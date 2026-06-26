@@ -20,7 +20,7 @@
 	the visible bar. Alt + Right-Click reports the visible bar to party chat.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Miscellaneous/Elements/ExpRep.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Miscellaneous/Elements/ExpRep.lua
 --]]
 
 ---@diagnostic disable: undefined-field

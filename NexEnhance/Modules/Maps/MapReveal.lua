@@ -7,7 +7,7 @@
 	other module - no on-map checkbox.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Maps/Elements/MapReveal.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Maps/Elements/MapReveal.lua
 
 	K.* helpers are replaced with framework equivalents (ns.db.mapReveal for
 	options). Defers to Leatrix_Maps if that addon is loaded.

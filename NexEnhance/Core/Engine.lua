@@ -62,9 +62,11 @@ function moduleMeta:RegisterEvent(event, handler)
 	assert(type(handler) == "function", ("NexEnhance: no handler for event '%s' on module '%s'"):format(event, self.name))
 
 	-- Bind `self` once at registration time so the dispatch path stays cheap.
-	ns:RegisterEvent(event, function(_, ...)
+	-- Return the wrapper so callers can store it and pass it to ns:UnregisterEvent.
+	local wrapper = function(_, ...)
 		handler(self, ...)
-	end)
+	end
+	return ns:RegisterEvent(event, wrapper)
 end
 
 --- Register a unit-filtered event (UNIT_AURA, UNIT_HEALTH, ...). Far cheaper
@@ -186,6 +188,14 @@ function ns:RegisterUnitEvent(event, callback, ...)
 		eventCallbacks[event] = callbacks
 		eventFrame:RegisterUnitEvent(event, ...)
 	end
+	-- Fill a tombstoned slot if one exists (mirrors RegisterEvent; prevents
+	-- add/remove cycles from growing the array unboundedly for unit events).
+	for i = 1, #callbacks do
+		if not callbacks[i] then
+			callbacks[i] = callback
+			return callback
+		end
+	end
 	callbacks[#callbacks + 1] = callback
 	return callback
 end
@@ -210,6 +220,26 @@ function ns:UnregisterEvent(event, callback)
 	if not anyLive then
 		eventCallbacks[event] = nil
 		eventFrame:UnregisterEvent(event)
+		return
+	end
+
+	-- Compact when tombstones outnumber live slots (> half are dead). Rebuilding
+	-- the array is O(n) — same cost as we already paid above — and keeps the
+	-- dispatch loop short for high-churn events like UNIT_AURA.
+	local live, total = 0, #callbacks
+	for i = 1, total do
+		if callbacks[i] then
+			live = live + 1
+		end
+	end
+	if live < total / 2 then
+		local compact = {}
+		for i = 1, total do
+			if callbacks[i] then
+				compact[#compact + 1] = callbacks[i]
+			end
+		end
+		eventCallbacks[event] = compact
 	end
 end
 

@@ -41,7 +41,6 @@ local C_QuestLog_IsQuestTrivial = C_QuestLog.IsQuestTrivial
 local C_QuestLog_GetQuestDifficultyLevel = C_QuestLog.GetQuestDifficultyLevel
 local C_QuestLog_RequestLoadQuestByID = C_QuestLog.RequestLoadQuestByID
 local C_QuestLog_GetQuestTagInfo = C_QuestLog.GetQuestTagInfo
-local C_QuestLog_IsQuestFlaggedCompletedOnAccount = C_QuestLog.IsQuestFlaggedCompletedOnAccount
 local C_GossipInfo_GetOptions = C_GossipInfo.GetOptions
 local C_GossipInfo_SelectOption = C_GossipInfo.SelectOption
 local C_GossipInfo_GetActiveQuests = C_GossipInfo.GetActiveQuests
@@ -51,13 +50,11 @@ local C_GossipInfo_GetNumActiveQuests = C_GossipInfo.GetNumActiveQuests
 local C_GossipInfo_SelectAvailableQuest = C_GossipInfo.SelectAvailableQuest
 local C_GossipInfo_GetNumAvailableQuests = C_GossipInfo.GetNumAvailableQuests
 local C_Item_GetItemInfo = C_Item.GetItemInfo
-local C_Minimap_IsFilteredOut = C_Minimap.IsFilteredOut
 local C_Minimap_IsTrackingHiddenQuests = C_Minimap.IsTrackingHiddenQuests
 local C_TooltipInfo_GetItemByID = C_TooltipInfo and C_TooltipInfo.GetItemByID
 local C_PlayerInteractionManager_IsInteractingWithNpcOfType = C_PlayerInteractionManager.IsInteractingWithNpcOfType
 local QuestLabelPrepend = Enum.GossipOptionRecFlags.QuestLabelPrepend
 local FlagsUtil_IsSet = _G["FlagsUtil"] and _G["FlagsUtil"].IsSet
-local AccountCompletedFilter = Enum.MinimapTrackingFilter.AccountCompletedQuests
 local TaxiNodeInteraction = Enum.PlayerInteractionType.TaxiNode
 local QF_Daily, QF_Weekly = Enum.QuestFrequency.Daily, Enum.QuestFrequency.Weekly
 local MAX_REQUIRED_ITEMS = _G["MAX_REQUIRED_ITEMS"] or 8
@@ -101,15 +98,45 @@ local function IsOverrideKeyDown()
 	return IsShiftKeyDown()
 end
 
-local function Automating()
+local function AutomatingWhy()
 	if not db().enable then
-		return false
+		return "module-disabled"
 	end
 	local keyDown = IsOverrideKeyDown()
 	if db().requireOverride then
-		return keyDown
+		return keyDown and "ok" or "hold-override-key"
 	end
-	return not keyDown
+	if keyDown then
+		return "override-key-paused"
+	end
+	return "ok"
+end
+
+local function Automating()
+	return AutomatingWhy() == "ok"
+end
+
+local function GetNPCID()
+	return F.GetNPCID(UnitGUID("npc"))
+end
+
+local function Dbg(msg, ...)
+	if not QuickQuest.debug then
+		return
+	end
+	F.Print(format("|cff5C8BCFQuickQuest|r: " .. msg, ...))
+end
+
+local function DbgNpc()
+	if not UnitExists("npc") then
+		return "npc=?"
+	end
+	local npcID = GetNPCID()
+	local npcName = UnitName("npc")
+	if npcName and F.NotSecret(npcName) then
+		return format("npc=%s (%s)", npcName, npcID or "?")
+	end
+	return format("npcID=%s", npcID or "?")
 end
 
 -- ---------------------------------------------------------------------------
@@ -142,14 +169,26 @@ local registeredEvents = {}
 local function Register(event, func)
 	handlers[event] = func
 	local callback = function(_, ...)
-		if Automating() then
-			func(...)
+		local why = AutomatingWhy()
+		if why ~= "ok" then
+			if QuickQuest.debug then
+				Dbg("event %s blocked (%s) %s", event, why, DbgNpc())
+			end
+			return
 		end
+		if QuickQuest.debug then
+			Dbg(">> %s %s", event, DbgNpc())
+		end
+		func(...)
 	end
 	registeredEvents[#registeredEvents + 1] = { event, callback }
 end
 
 local eventsActive = false
+local function EventsShouldRun()
+	return db().enable or QuickQuest.debug
+end
+
 local function SetEventsActive(state)
 	if state then
 		if eventsActive then
@@ -169,14 +208,6 @@ local function SetEventsActive(state)
 		end
 		CancelRegenRetry()
 	end
-end
-
-local function GetNPCID()
-	return F.GetNPCID(UnitGUID("npc"))
-end
-
-local function IsAccountCompleted(questID)
-	return C_Minimap_IsFilteredOut(AccountCompletedFilter) and C_QuestLog_IsQuestFlaggedCompletedOnAccount(questID)
 end
 
 -- Blizzard can surface gossip/quest-list entries before the quest record is
@@ -199,8 +230,13 @@ Register("QUEST_DATA_LOAD_RESULT", function(questID, success)
 		return
 	end
 	questDataQueue[questID] = nil
+	if QuickQuest.debug then
+		Dbg("QUEST_DATA_LOAD_RESULT quest=%s success=%s", tostring(questID), tostring(success))
+	end
 	if success ~= false then
 		callback()
+	elseif QuickQuest.debug then
+		Dbg("quest data load failed for %s; not retrying", tostring(questID))
 	end
 end)
 
@@ -382,10 +418,38 @@ end
 -- ---------------------------------------------------------------------------
 -- Quest / gossip automation
 -- ---------------------------------------------------------------------------
-Register("QUEST_GREETING", function()
+-- Pick at most one quest per NPC interaction. Blizzard only handles one
+-- Select*Quest transition at a time; firing several in a single GOSSIP_SHOW tick
+-- leaves the gossip list open with nothing accepted. After each accept or
+-- turn-in, ScheduleGossipContinue retries the next quest on the same NPC.
+local gossipContinueScheduled
+
+local function AvailableAcceptAllowed(npcID, questID, frequency, isTrivial, isGossipIgnored)
+	if isGossipIgnored then
+		return false, "gossip-ignored"
+	end
+	if blockQuestID[questID] then
+		return false, "blocklist"
+	end
+	-- Do not gate explicit NPC offers on the minimap "account completed" tracker.
+	-- That filter is for map pins / popups (p3lim accept mode 2); if the server
+	-- lists a quest on GOSSIP_SHOW or QUEST_GREETING, accept it when other rules pass.
+	if not FrequencyAllowed(frequency) then
+		return false, "frequency-filter"
+	end
+	if isTrivial and not C_Minimap_IsTrackingHiddenQuests() and npcID ~= 64337 then
+		return false, "trivial-hidden"
+	end
+	return true
+end
+
+local function ProcessGreetingQuests()
 	local npcID = GetNPCID()
 	if ignoreList[npcID] then
-		return
+		if QuickQuest.debug then
+			Dbg("greeting: npc on ignore list (%s)", tostring(npcID))
+		end
+		return false
 	end
 
 	local active = GetNumActiveQuests()
@@ -394,7 +458,9 @@ Register("QUEST_GREETING", function()
 			local _, isComplete = GetActiveTitle(index)
 			local questID = GetActiveQuestID(index)
 			if isComplete and not C_QuestLog_IsWorldQuest(questID) then
+				Dbg("greeting: SelectActiveQuest index=%d quest=%s", index, tostring(questID))
 				SelectActiveQuest(index)
+				return true
 			end
 		end
 	end
@@ -405,12 +471,123 @@ Register("QUEST_GREETING", function()
 			local isTrivial, frequency, _, _, questID = GetAvailableQuestInfo(index)
 			local questLevel = GetAvailableLevel and GetAvailableLevel(index)
 			if questID and (not questLevel or questLevel == 0) then
-				WaitForQuestData(questID, handlers.QUEST_GREETING)
-			elseif not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(frequency) and (not isTrivial or C_Minimap_IsTrackingHiddenQuests()) then
-				SelectAvailableQuest(index)
+				-- p3lim QuickQuest: legacy greeting list — wait until level/trivial flags cache.
+				if WaitForQuestData(questID, ProcessGreetingQuests) then
+					Dbg("greeting: waiting for quest data %s", tostring(questID))
+					return true
+				end
+			else
+				local allowed, reason = AvailableAcceptAllowed(npcID, questID, frequency, isTrivial, false)
+				if allowed then
+					Dbg("greeting: SelectAvailableQuest index=%d quest=%s", index, tostring(questID))
+					SelectAvailableQuest(index)
+					return true
+				elseif QuickQuest.debug then
+					Dbg("greeting: skip available quest=%s (%s)", tostring(questID), reason)
+				end
+			end
+		end
+	elseif QuickQuest.debug and available > 0 then
+		Dbg("greeting: available=%d but npc is select-only (%s)", available, tostring(npcID))
+	end
+	return false
+end
+
+local function ProcessGossipQuests()
+	local npcID = GetNPCID()
+	if ignoreList[npcID] then
+		if QuickQuest.debug then
+			Dbg("gossip: npc on ignore list (%s)", tostring(npcID))
+		end
+		return false
+	end
+	if C_PlayerInteractionManager_IsInteractingWithNpcOfType and C_PlayerInteractionManager_IsInteractingWithNpcOfType(TaxiNodeInteraction) then
+		if QuickQuest.debug then
+			Dbg("gossip: taxi interaction active")
+		end
+		return false
+	end
+	local wormholes = _G["InteractiveWormholes"]
+	if wormholes and wormholes.IsActive and wormholes:IsActive() then
+		if QuickQuest.debug then
+			Dbg("gossip: wormhole interaction active")
+		end
+		return false
+	end
+
+	local active = C_GossipInfo_GetNumActiveQuests()
+	if active > 0 then
+		for _, questInfo in ipairs(C_GossipInfo_GetActiveQuests()) do
+			local questID = questInfo.questID
+			local isWorldQuest = questID and C_QuestLog_IsWorldQuest(questID)
+			if not questInfo.questLevel or questInfo.questLevel == 0 then
+				-- p3lim QuickQuest gossip.lua: use GossipQuestUIInfo.questLevel, not quest-log difficulty.
+				if questID and WaitForQuestData(questID, ProcessGossipQuests) then
+					Dbg("gossip: waiting for quest data %s (%s)", tostring(questID), questInfo.title or "?")
+					return true
+				end
+			elseif questInfo.isComplete and not isWorldQuest then
+				Dbg("gossip: SelectActiveQuest %s (%s)", tostring(questID), questInfo.title or "?")
+				C_GossipInfo_SelectActiveQuest(questID)
+				return true
+			elseif QuickQuest.debug then
+				Dbg("gossip: skip active %s (%s) complete=%s world=%s", tostring(questID), questInfo.title or "?", tostring(questInfo.isComplete), tostring(isWorldQuest))
 			end
 		end
 	end
+
+	local available = C_GossipInfo_GetNumAvailableQuests()
+	if available > 0 and not selectOnlyIgnoreNPC[npcID] then
+		for _, questInfo in ipairs(C_GossipInfo_GetAvailableQuests()) do
+			local questID = questInfo.questID
+			if questID == 82449 then
+				Dbg("gossip: SelectAvailableQuest %s (worldsoul)", tostring(questID))
+				C_GossipInfo_SelectAvailableQuest(questID)
+				return true
+			elseif not questInfo.questLevel or questInfo.questLevel == 0 then
+				if questID and WaitForQuestData(questID, ProcessGossipQuests) then
+					Dbg("gossip: waiting for quest data %s (%s)", tostring(questID), questInfo.title or "?")
+					return true
+				end
+			else
+				local allowed, reason = AvailableAcceptAllowed(npcID, questID, questInfo.frequency, questInfo.isTrivial, questInfo.isIgnored)
+				if allowed then
+					Dbg("gossip: SelectAvailableQuest %s (%s) lvl=%s freq=%s trivial=%s", tostring(questID), questInfo.title or "?", tostring(questInfo.questLevel), tostring(questInfo.frequency), tostring(questInfo.isTrivial))
+					C_GossipInfo_SelectAvailableQuest(questInfo.questID)
+					return true
+				elseif QuickQuest.debug then
+					Dbg("gossip: skip available %s (%s) lvl=%s — %s", tostring(questID), questInfo.title or "?", tostring(questInfo.questLevel), reason)
+				end
+			end
+		end
+	elseif QuickQuest.debug and available > 0 then
+		Dbg("gossip: available=%d but npc is select-only (%s)", available, tostring(npcID))
+	elseif QuickQuest.debug and available == 0 and active == 0 then
+		Dbg("gossip: no active or available quests on list")
+	end
+	return false
+end
+
+local function ScheduleGossipContinue()
+	if gossipContinueScheduled then
+		return
+	end
+	gossipContinueScheduled = true
+	Dbg("ScheduleGossipContinue (next frame)")
+	C_Timer.After(0, function()
+		gossipContinueScheduled = false
+		if not Automating() then
+			return
+		end
+		if ProcessGossipQuests() then
+			return
+		end
+		ProcessGreetingQuests()
+	end)
+end
+
+Register("QUEST_GREETING", function()
+	ProcessGreetingQuests()
 end)
 
 local ignoreGossipNPC = {
@@ -549,48 +726,14 @@ end
 Register("GOSSIP_SHOW", function()
 	-- Reset any pending skip-confirm from a prior window; re-armed below if we skip.
 	pendingSkipConfirm = nil
+	if ProcessGossipQuests() then
+		Dbg("GOSSIP_SHOW: quest selected from gossip list")
+		return
+	end
+
 	local npcID = GetNPCID()
 	if ignoreList[npcID] then
 		return
-	end
-	if C_PlayerInteractionManager_IsInteractingWithNpcOfType and C_PlayerInteractionManager_IsInteractingWithNpcOfType(TaxiNodeInteraction) then
-		return
-	end
-	local wormholes = _G["InteractiveWormholes"]
-	if wormholes and wormholes.IsActive and wormholes:IsActive() then
-		return
-	end
-
-	local active = C_GossipInfo_GetNumActiveQuests()
-	if active > 0 then
-		for _, questInfo in ipairs(C_GossipInfo_GetActiveQuests()) do
-			local questID = questInfo.questID
-			local isWorldQuest = questID and C_QuestLog_IsWorldQuest(questID)
-			local questLevel = questID and C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
-			if questID and (not questLevel or questLevel == 0) then
-				WaitForQuestData(questID, handlers.GOSSIP_SHOW)
-			elseif questInfo.isComplete and not isWorldQuest then
-				C_GossipInfo_SelectActiveQuest(questID)
-			end
-		end
-	end
-
-	local available = C_GossipInfo_GetNumAvailableQuests()
-	if available > 0 and not selectOnlyIgnoreNPC[npcID] then
-		for _, questInfo in ipairs(C_GossipInfo_GetAvailableQuests()) do
-			local trivial = questInfo.isTrivial
-			local questID = questInfo.questID
-			local questLevel = questID and C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
-			if questID == 82449 then
-				-- "The Call of the Worldsoul" behaves like a repeatable selector
-				-- quest, but the quest APIs don't reliably classify it that way.
-				C_GossipInfo_SelectAvailableQuest(questID)
-			elseif questID and (not questLevel or questLevel == 0) then
-				WaitForQuestData(questID, handlers.GOSSIP_SHOW)
-			elseif not blockQuestID[questID] and not IsAccountCompleted(questID) and FrequencyAllowed(questInfo.frequency) and (not trivial or C_Minimap_IsTrackingHiddenQuests() or (trivial and npcID == 64337)) then
-				C_GossipInfo_SelectAvailableQuest(questInfo.questID)
-			end
-		end
 	end
 
 	local gossipInfoTable = C_GossipInfo_GetOptions()
@@ -598,6 +741,8 @@ Register("GOSSIP_SHOW", function()
 		return
 	end
 
+	local active = C_GossipInfo_GetNumActiveQuests()
+	local available = C_GossipInfo_GetNumAvailableQuests()
 	local numOptions = #gossipInfoTable
 	local firstOptionID = gossipInfoTable[1] and gossipInfoTable[1].gossipOptionID
 
@@ -702,36 +847,51 @@ Register("GOSSIP_CONFIRM", function(gossipID, _, cost)
 	pendingSkipConfirm = nil
 end)
 
-Register("QUEST_DETAIL", function()
+local function TryAcceptQuestDetail()
 	local questID = GetQuestID()
 	if not questID or questID == 0 then
+		if QuickQuest.debug then
+			Dbg("QUEST_DETAIL: no questID")
+		end
 		return
 	end
 
+	-- p3lim QuickQuest quests.lua: wait for quest-log cache before trivial/repeatable checks.
 	local questLevel = C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
 	if not questLevel or questLevel == 0 then
-		WaitForQuestData(questID, handlers.QUEST_DETAIL)
+		Dbg("QUEST_DETAIL: waiting for quest data %d", questID)
+		WaitForQuestData(questID, TryAcceptQuestDetail)
 		return
 	end
 
 	if QuestIsFromAreaTrigger() then
+		Dbg("QUEST_DETAIL: AcceptQuest %d (area trigger)", questID)
 		AcceptQuest()
 	elseif QuestGetAutoAccept() then
+		Dbg("QUEST_DETAIL: AcknowledgeAutoAcceptQuest %d", questID)
 		AcknowledgeAutoAcceptQuest()
 		RemoveAutoQuestPopUp(questID)
 	elseif not C_QuestLog_IsQuestTrivial(questID) or C_Minimap_IsTrackingHiddenQuests() then
 		if ignoreList[GetNPCID()] then
+			Dbg("QUEST_DETAIL: skip %d — npc ignored", questID)
 			return
 		end
 		if blockQuestID[questID] then
+			Dbg("QUEST_DETAIL: skip %d — blocklist", questID)
 			return
 		end
 		if not DetailFrequencyAllowed() then
+			Dbg("QUEST_DETAIL: skip %d — frequency filter", questID)
 			return
 		end
+		Dbg("QUEST_DETAIL: AcceptQuest %d", questID)
 		AcceptQuest()
+	elseif QuickQuest.debug then
+		Dbg("QUEST_DETAIL: skip %d — trivial (track trivial off)", questID)
 	end
-end)
+end
+
+Register("QUEST_DETAIL", TryAcceptQuestDetail)
 
 Register("QUEST_ACCEPT_CONFIRM", function()
 	if ConfirmAcceptQuest then
@@ -745,6 +905,11 @@ Register("QUEST_ACCEPTED", function()
 	if QuestFrame:IsShown() and QuestGetAutoAccept() then
 		CloseQuest()
 	end
+	ScheduleGossipContinue()
+end)
+
+Register("QUEST_FINISHED", function()
+	ScheduleGossipContinue()
 end)
 
 Register("QUEST_ITEM_UPDATE", function()
@@ -1041,13 +1206,23 @@ end
 -- OnEnable only fires for modules enabled at login; combined with the live
 -- toggle below this keeps the quest events bound exactly while the feature is on.
 function QuickQuest:OnEnable()
-	SetEventsActive(db().enable)
+	SetEventsActive(EventsShouldRun())
 end
 
 function QuickQuest:OnSettingChanged(key, value)
 	if key == "enable" then
-		SetEventsActive(value)
+		SetEventsActive(EventsShouldRun())
 	end
+end
+
+function QuickQuest:ToggleDebug()
+	self.debug = not self.debug or nil
+	if self.debug then
+		F.Print(L["Quick Quest debug ON - talk to an NPC to trace gossip/accept flow."])
+	else
+		F.Print(L["Quick Quest debug OFF."])
+	end
+	SetEventsActive(EventsShouldRun())
 end
 
 function QuickQuest:RegisterOptions(category, builder)

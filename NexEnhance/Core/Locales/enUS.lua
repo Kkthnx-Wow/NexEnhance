@@ -244,6 +244,7 @@ L["Send a random friendly farewell to the group after finishing a dungeon or Myt
 -- typed the way a real player would (mostly lowercase, quick).
 L["AutoGoodbyeMessages"] = {
 	"gg",
+	"ggs",
 	"gg all",
 	"ggs",
 	"gg wp",
@@ -258,7 +259,7 @@ L["AutoGoodbyeMessages"] = {
 	"cheers all",
 	"ty for the group",
 	"gg, take care!",
-	"thanks team, gg",
+	"thanks, gg",
 }
 
 -- Cancel Bad Buffs
@@ -282,6 +283,18 @@ L["Enable Auto Keystone"] = "Enable Auto Keystone"
 L["Automatically slot your Mythic+ keystone when the Challenge Mode UI opens."] = "Automatically slot your Mythic+ keystone when the Challenge Mode UI opens."
 L["Keystone automatically placed."] = "Keystone automatically placed."
 
+-- Holiday Dungeon
+L["Holiday Dungeon"] = "Holiday Dungeon"
+L["Enable Holiday Dungeon"] = "Enable Holiday Dungeon"
+L["Holiday Dungeon setting tip"] = "When you open the Dungeon Finder for the first time each login, points out the active holiday or Timewalking queue in the Type menu if it is not already selected."
+L["HolidayDungeonHelpTip"] = "A holiday or Timewalking queue is active. Select %s from this menu — Blizzard must apply the choice to keep the queue secure."
+
+-- Chat Channels (short tags, ElvUI-style)
+L["ChatShortRW"] = "RW"
+L["ChatShortAFK"] = "AFK"
+L["ChatShortDND"] = "DND"
+L["When you open the Dungeon Finder for the first time each login, automatically select the active holiday or Timewalking random queue."] = "When you open the Dungeon Finder for the first time each login, automatically select the active holiday or Timewalking random queue."
+
 -- Delves Automation
 L["Delves Automation"] = "Delves Automation"
 L["Enable Delves Automation"] = "Enable Delves Automation"
@@ -289,6 +302,34 @@ L["While inside a Delve, automatically confirm the single-choice borrowed power 
 L["Announce Auto-Selection"] = "Announce Auto-Selection"
 L["Print the borrowed power you auto-selected to chat."] = "Print the borrowed power you auto-selected to chat."
 L["Auto-selected:"] = "Auto-selected:"
+
+-- Auto Summon
+L["Auto Summon"] = "Auto Summon"
+L["Enable Auto Summon"] = "Enable Auto Summon"
+L["Automatically accept summon requests when out of combat."] = "Automatically accept summon requests when out of combat."
+
+-- Auto PvP Release
+L["Auto PvP Release"] = "Auto PvP Release"
+L["Enable Auto PvP Release"] = "Enable Auto PvP Release"
+L["Automatically release spirit in Battlegrounds and PvP instances."] = "Automatically release spirit in Battlegrounds and PvP instances."
+L["Release Delay (seconds)"] = "Release Delay (seconds)"
+L["The amount of seconds to wait before auto-releasing your spirit."] = "The amount of seconds to wait before auto-releasing your spirit."
+
+-- Auto Warband Gold Sync
+L["Auto Warband Gold"] = "Auto Warband Gold"
+L["Enable Auto Warband Gold"] = "Enable Auto Warband Gold"
+L["Automatically sync gold with your Account/Warband bank when opening the Bank Frame."] = "Automatically sync gold with your Account/Warband bank when opening the Bank Frame."
+L["Target Gold"] = "Target Gold"
+L["The amount of gold to keep on your character. Gold above this amount is deposited; if below, gold is withdrawn (if allowed)."] = "The amount of gold to keep on your character. Gold above this amount is deposited; if below, gold is withdrawn (if allowed)."
+L["Allow Withdraw"] = "Allow Withdraw"
+L["Allow withdrawing gold from the Warband bank if your character has less than the target amount."] = "Allow withdrawing gold from the Warband bank if your character has less than the target amount."
+L["Deposited %s to Warband bank."] = "Deposited %s to Warband bank."
+L["Withdrew %s from Warband bank."] = "Withdrew %s from Warband bank."
+
+-- Audio Sync
+L["Audio Sync"] = "Audio Sync"
+L["Enable Audio Sync"] = "Enable Audio Sync"
+L["Automatically reset the sound system when audio output devices update (fixes the silent WoW sound bug)."] = "Automatically reset the sound system when audio output devices update (fixes the silent WoW sound bug)."
 
 -- Tooltip Vendor Location
 L["Vendor Location"] = "Vendor Location"
@@ -356,6 +397,17 @@ L["Color used when you lack the mana / energy / focus for an action."] = "Color 
 L["Unusable Color"] = "Unusable Color"
 L["Color used when an action cannot be used (no target, wrong stance, etc.)."] = "Color used when an action cannot be used (no target, wrong stance, etc.)."
 
+-- GCDBar
+L["GCD Bar"] = "GCD Bar"
+L["Enable GCD Bar"] = "Enable GCD Bar"
+L["Show a bar that sweeps during the Global Cooldown. Hides completely between GCDs. Drag to position in Edit Mode."] = "Show a bar that sweeps during the Global Cooldown. Hides completely between GCDs. Drag to position in Edit Mode."
+L["GCD Bar Width"] = "GCD Bar Width"
+L["Width of the GCD bar. Match to your action bar width for a seamless feel."] = "Width of the GCD bar. Match to your action bar width for a seamless feel."
+L["GCD Bar Height"] = "GCD Bar Height"
+L["Height of the GCD bar in pixels."] = "Height of the GCD bar in pixels."
+L["GCD Bar Spark"] = "GCD Bar Spark"
+L["Show the glowing spark that tracks the leading edge of the GCD sweep."] = "Show the glowing spark that tracks the leading edge of the GCD sweep."
+
 -- Cooldowns
 L["Enable Cooldown Text"] = "Enable Cooldown Text"
 L["Show formatted countdown numbers on cooldowns."] = "Show formatted countdown numbers on cooldowns."
@@ -367,6 +419,8 @@ L["Plain (decimals)"] = "Plain (decimals)"
 L["Plain (integers)"] = "Plain (integers)"
 L["Minutes Format Threshold"] = "Minutes Format Threshold"
 L["Below this many seconds the countdown shows raw seconds; at or above it switches to mm:ss."] = "Below this many seconds the countdown shows raw seconds; at or above it switches to mm:ss."
+L["Minimum Cooldown Duration"] = "Minimum Cooldown Duration"
+L["Hide countdown text for cooldowns shorter than this many seconds. Keeps 1.5s GCDs and other short cooldowns quiet."] = "Hide countdown text for cooldowns shorter than this many seconds. Keeps 1.5s GCDs and other short cooldowns quiet."
 L["Scale Cooldown Text"] = "Scale Cooldown Text"
 L["Scale the countdown text with the button size and hide it on very small cooldowns."] = "Scale the countdown text with the button size and hide it on very small cooldowns."
 L["Minimum Text Scale"] = "Minimum Text Scale"
@@ -388,7 +442,11 @@ L["Add R/G/B input boxes and class-color swatches to Blizzard's color picker (re
 L["Enable Class-Coloured Health"] = "Enable Class-Coloured Health"
 L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."] = "Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."
 L["Neutral Target Strip"] = "Neutral Target Strip"
+L["Target Frame Layout"] = "Target Frame Layout"
+L["Player-Style Target Frame"] = "Player-Style Target Frame"
+L["Hide the reaction-coloured strip on Target, Focus, and Boss frames and move the Target name beside the portrait to match the player frame."] = "Hide the reaction-coloured strip on Target, Focus, and Boss frames and move the Target name beside the portrait to match the player frame."
 L["Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."] = "Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."
+L["Remove the reaction-coloured tint on the Target status strip and move the name beside the portrait to match the player frame."] = "Remove the reaction-coloured tint on the Target status strip and move the name beside the portrait to match the player frame."
 
 -- LevelColors
 L["Level Colours"] = "Level Colours"
@@ -440,6 +498,9 @@ L["Skip single-option gossip auto-selection while in raids and certain instances
 L["Auto-Skip Story Gossip"] = "Auto-Skip Story Gossip"
 L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'] = 'Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'
 L["Alt-click to toggle Quick Quest for this NPC."] = "Alt-click to toggle Quick Quest for this NPC."
+L["Quick Quest debug ON - talk to an NPC to trace gossip/accept flow."] = "Quick Quest debug ON - talk to an NPC to trace gossip/accept flow."
+L["Quick Quest debug OFF."] = "Quick Quest debug OFF."
+L["Toggle Quick Quest debug logging"] = "Toggle Quick Quest debug logging"
 L["Skipped story dialogue from %s."] = "Skipped story dialogue from %s."
 L["Skipped story dialogue."] = "Skipped story dialogue."
 
@@ -714,6 +775,37 @@ L["Play a sound on quest completion but do not post any chat messages."] = "Play
 L["Quest Notification debug ON - messages will print here."] = "Quest Notification debug ON - messages will print here."
 L["Quest Notification debug OFF."] = "Quest Notification debug OFF."
 L["Accepted"] = "Accepted:"
+
+-- KillingBlow
+L["Killing Blow"] = "Killing Blow"
+L["Enable Killing Blow"] = "Enable Killing Blow"
+L["Show a boss-defeat banner when you land a PvP killing blow."] = "Show a boss-defeat banner when you land a PvP killing blow."
+L["Show Kill Banner"] = "Show Kill Banner"
+L["Display the victim's name in the boss-banner frame on a killing blow."] = "Display the victim's name in the boss-banner frame on a killing blow."
+L["Random Kill Emote"] = "Random Kill Emote"
+L['Perform a random taunt emote at your victim (or /hug without "Make Love, Not Warcraft").'] = 'Perform a random taunt emote at your victim (or /hug without "Make Love, Not Warcraft").'
+
+-- HideDpsRole
+L["Hide DPS Role Icon"] = "Hide DPS Role Icon"
+L["Hide the DPS (sword) role icon from party and raid frames. Tank and healer icons remain visible."] = "Hide the DPS (sword) role icon from party and raid frames. Tank and healer icons remain visible."
+
+-- LevelAnnouncer
+L["Level Announcer"] = "Level Announcer"
+L["Announce how long each level took when you ding."] = "Announce how long each level took when you ding."
+L["Announce Channel"] = "Announce Channel"
+L["Where to post the level-up message. Falls back to Local if the chosen context is unavailable."] = "Where to post the level-up message. Falls back to Local if the chosen context is unavailable."
+L["Local Only"] = "Local Only"
+L["/say"] = "/say"
+L["Party / Raid"] = "Party / Raid"
+L["Guild"] = "Guild"
+L["Special Max Level Message"] = "Special Max Level Message"
+L["Replace the normal ding message with a special line when you reach the maximum level."] = "Replace the normal ding message with a special line when you reach the maximum level."
+L["Ding! Level %d in %s!"] = "Ding! Level %d in %s!"
+L["Ding! Level %d!"] = "Ding! Level %d!"
+L["%s (%s for this level)"] = "%s (%s for this level)"
+L["%dh %dm %ds"] = "%dh %dm %ds"
+L["%dm %ds"] = "%dm %ds"
+L["%ds"] = "%ds"
 
 -- RareAlert
 L["Rare Alert"] = "Rare Alert"
@@ -1083,6 +1175,17 @@ L["Tab Channel Switch"] = "Tab Channel Switch"
 L["Press Tab in an empty edit box to cycle chat channels."] = "Press Tab in an empty edit box to cycle chat channels."
 L["Quick Scroll"] = "Quick Scroll"
 L["Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."] = "Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."
+L["Scroll-Down Interval"] = "Scroll-Down Interval"
+L["After scrolling up, return to the bottom after this many seconds (0 = off)."] = "After scrolling up, return to the bottom after this many seconds (0 = off)."
+L["Flash Client Icon"] = "Flash Client Icon"
+L["Flash the WoW taskbar icon when you receive a whisper."] = "Flash the WoW taskbar icon when you receive a whisper."
+L["Edit Box Shortcuts"] = "Edit Box Shortcuts"
+L["Type /tt then space to whisper your target; /gr then space for the group channel prefix."] = "Type /tt then space to whisper your target; /gr then space for the group channel prefix."
+L["Combat Repeat Block"] = "Combat Repeat Block"
+L["Hide the edit box if you paste the same character repeatedly during combat."] = "Hide the edit box if you paste the same character repeatedly during combat."
+L["Repeat Character Count"] = "Repeat Character Count"
+L["How many identical trailing characters trigger the combat repeat block."] = "How many identical trailing characters trigger the combat repeat block."
+L["Invalid Target"] = "Invalid Target"
 L["ChatQuickScrollHelp"] = "Tip: Shift + Mouse Wheel jumps to the top or bottom of chat, and Ctrl + Mouse Wheel scrolls a page at a time."
 L["Sticky Whisper"] = "Sticky Whisper"
 L["Keep the edit box in whisper mode after replying."] = "Keep the edit box in whisper mode after replying."
@@ -1107,11 +1210,40 @@ L["ChatCopyHelpTip"] = "The faded button in the bottom-right corner of this chat
 
 -- Chat Channels
 L["Enable Chat Channels"] = "Enable Chat Channels"
-L["Tidy channel names, URLs and timestamps in chat (reload to fully disable)."] = "Tidy channel names, URLs and timestamps in chat (reload to fully disable)."
+L["Tidy channel names, URLs and timestamps in chat."] = "Tidy channel names, URLs and timestamps in chat."
 L["Abbreviate Channels"] = "Abbreviate Channels"
 L["Shorten channel brackets, e.g. [1. General] becomes [1]."] = "Shorten channel brackets, e.g. [1. General] becomes [1]."
+L["Hide Channel Tags"] = "Hide Channel Tags"
+L["Remove channel brackets entirely instead of abbreviating them."] = "Remove channel brackets entirely instead of abbreviating them."
 L["Clickable URLs"] = "Clickable URLs"
-L["Make web links clickable and copyable (reload to apply)."] = "Make web links clickable and copyable (reload to apply)."
+L["Make web links clickable and copyable."] = "Make web links clickable and copyable."
 L["Timestamps"] = "Timestamps"
 L["Prepend a [HH:MM] timestamp to each message."] = "Prepend a [HH:MM] timestamp to each message."
 L["Copy the link below:"] = "Copy the link below:"
+
+-- Action Bars (Mouseover & Visibility)
+L["Mouseover & Visibility"] = "Mouseover & Visibility"
+L["Show All on Hover"] = "Show All on Hover"
+L["Hovering any mouseover action bar reveals all of them."] = "Hovering any mouseover action bar reveals all of them."
+L["Faded Alpha"] = "Faded Alpha"
+L["The opacity of action bars when they are not hovered."] = "The opacity of action bars when they are not hovered."
+
+-- Visibility Dropdown Modes
+L["Always Show"] = "Always Show"
+L["Mouseover Only"] = "Mouseover Only"
+L["Mouseover (Show in Combat)"] = "Mouseover (Show in Combat)"
+L["Mouseover (Show with Target)"] = "Mouseover (Show with Target)"
+L["Mouseover (Combat & Target)"] = "Mouseover (Combat & Target)"
+L["Always Hide"] = "Always Hide"
+
+-- Action Bar Labels
+L["Action Bar 1"] = "Action Bar 1"
+L["Action Bar 2 (Bottom Left)"] = "Action Bar 2 (Bottom Left)"
+L["Action Bar 3 (Bottom Right)"] = "Action Bar 3 (Bottom Right)"
+L["Action Bar 4 (Right)"] = "Action Bar 4 (Right)"
+L["Action Bar 5 (Left)"] = "Action Bar 5 (Left)"
+L["Action Bar 6"] = "Action Bar 6"
+L["Action Bar 7"] = "Action Bar 7"
+L["Action Bar 8"] = "Action Bar 8"
+L["Pet Action Bar"] = "Pet Action Bar"
+L["Stance Bar"] = "Stance Bar"

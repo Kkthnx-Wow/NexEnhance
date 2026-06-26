@@ -6,7 +6,7 @@
 	Hover to highlight, drag-select to copy.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI_Firestorm/blob/main/KkthnxUI/Modules/Maps/Elements/WowHeadLink.lua
+	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Maps/Elements/WowHeadLink.lua
 
 	K.* helpers are replaced with framework equivalents. The Wowhead subdomain
 	follows the client locale. Defers to Leatrix_Maps if that addon is loaded.

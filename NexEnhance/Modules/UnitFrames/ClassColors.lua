@@ -25,10 +25,8 @@
 	    otherwise undo our tint).
 	  * Target/Focus also carry a `ReputationColor` strip (the small bar under
 	    the name). Blizzard tints it with `UnitSelectionColor` (reaction green,
-	    hostile red, NPC rep, etc.) inside `CheckFaction`. The player frame has
-	    no such strip — the name just sits on the dark frame chrome. We
-	    post-hook `CheckFaction` and, when opted in, hide the strip (alpha 0)
-	    so the dark chrome shows through and target matches the player frame.
+	    hostile red, NPC rep, etc.) inside `CheckFaction`. See TargetFrameLayout
+	    for optional player-style strip/name tweaks.
 	  * Compact frames (raid-style party / raid / arena) colour through
 	    `CompactUnitFrame_UpdateHealthColor(frame)`. Their bars use a plain
 	    texture, so no desaturation is needed - just SetStatusBarColor. We skip
@@ -59,7 +57,6 @@ local UnitClass = UnitClass
 local UnitIsPlayer = UnitIsPlayer
 local UnitIsConnected = UnitIsConnected
 local UnitReaction = UnitReaction
-local UnitSelectionColor = UnitSelectionColor
 local UnitThreatSituation = UnitThreatSituation
 local UnitTreatAsPlayerForDisplay = UnitTreatAsPlayerForDisplay
 local hooksecurefunc = hooksecurefunc
@@ -77,7 +74,6 @@ local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS
 ns:RegisterDefaults({
 	classColors = {
 		enable = true,
-		colorReputation = false,
 	},
 })
 
@@ -241,63 +237,6 @@ local function ColorCompactHealth(frame)
 end
 
 -- ---------------------------------------------------------------------------
--- Target / Focus reputation strip (reaction tint -> neutral, like player)
--- ---------------------------------------------------------------------------
-local function GetReputationColor(frame)
-	local content = frame and frame.TargetFrameContent
-	local main = content and content.TargetFrameContentMain
-	return main and main.ReputationColor
-end
-
--- Hide the reaction-coloured strip so the dark frame chrome shows through,
--- exactly like the player frame (which has no such strip at all).
-local function NeutralizeReputationStrip(frame)
-	-- Independent of the health-bar toggle: only act when the user opted in.
-	if not frame or not ns.db.classColors.colorReputation then
-		return
-	end
-
-	local strip = GetReputationColor(frame)
-	if not strip then
-		return
-	end
-
-	strip:SetAlpha(0)
-end
-
--- Show the strip again and let Blizzard's reaction/selection colour stand
--- (used when the option is off, so it reverts live without a reload).
-local function RestoreReputationStrip(frame)
-	local unit = frame and frame.unit
-	local strip = GetReputationColor(frame)
-	if not strip then
-		return
-	end
-
-	strip:SetAlpha(1)
-
-	if not unit then
-		return
-	end
-	local r, g, b = UnitSelectionColor(unit)
-	if IsSecret(r) then
-		return
-	end
-	if r then
-		strip:SetVertexColor(r, g, b)
-	end
-end
-
--- Neutralize or restore the strip for one frame depending on the option.
-local function RefreshReputationStrip(frame)
-	if ns.db.classColors.colorReputation then
-		NeutralizeReputationStrip(frame)
-	else
-		RestoreReputationStrip(frame)
-	end
-end
-
--- ---------------------------------------------------------------------------
 -- Immediate refresh for the standard frames that exist at login (compact
 -- frames refresh themselves continuously, so they need no manual pass).
 -- ---------------------------------------------------------------------------
@@ -347,11 +286,9 @@ function ClassColors:RefreshStandard()
 		local frame = _G[standardFrames[i]]
 		if frame then
 			RefreshBar(frame.healthbar)
-			RefreshReputationStrip(frame)
 			-- Target/Focus carry a target-of-target subframe.
 			if frame.totFrame then
 				RefreshBar(frame.totFrame.healthbar)
-				RefreshReputationStrip(frame.totFrame)
 			end
 		end
 	end
@@ -368,7 +305,6 @@ function ClassColors:RefreshStandard()
 	-- Raid boss frames.
 	ForEachBossFrame(function(frame)
 		RefreshBar(frame.healthbar)
-		RefreshReputationStrip(frame)
 	end)
 end
 
@@ -391,19 +327,6 @@ local function HookClassification(frame)
 	frame.nexClassColorHooked = true
 	hooksecurefunc(frame, "CheckClassification", function(f)
 		ColorStandardHealth(f.healthbar, f.unit)
-	end)
-end
-
-local function HookFaction(frame)
-	if not frame or frame.nexFactionHooked then
-		return
-	end
-	if type(frame.CheckFaction) ~= "function" then
-		return
-	end
-	frame.nexFactionHooked = true
-	hooksecurefunc(frame, "CheckFaction", function(f)
-		NeutralizeReputationStrip(f)
 	end)
 end
 
@@ -438,14 +361,9 @@ function ClassColors:InstallHooks()
 	HookClassification(_G["TargetFrame"])
 	HookClassification(_G["FocusFrame"])
 
-	-- Keep the reaction strip neutral (player-frame style) when opted in.
-	HookFaction(_G["TargetFrame"])
-	HookFaction(_G["FocusFrame"])
-
 	-- Boss frames share the TargetFrame atlas + CheckClassification re-skin.
 	ForEachBossFrame(function(frame)
 		HookClassification(frame)
-		HookFaction(frame)
 	end)
 
 	-- Compact (raid-style) frames.
@@ -494,7 +412,6 @@ end
 
 function ClassColors:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "enable", L["Enable Class-Coloured Health"], L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."])
-	builder:Checkbox(category, self, "colorReputation", L["Neutral Target Strip"], L["Remove the reaction-coloured tint on the Target/Focus status strip so it matches the clean, dark player-frame look."])
 end
 
 -- ---------------------------------------------------------------------------

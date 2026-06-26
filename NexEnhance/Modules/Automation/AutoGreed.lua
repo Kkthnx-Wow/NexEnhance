@@ -166,13 +166,7 @@ function AutoGreed:OnSettingChanged(key, value)
 end
 
 function AutoGreed:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(
-		category,
-		self,
-		"enable",
-		L["Enable Auto Greed"],
-		L["Automatically roll Greed (or Disenchant) on low-rarity group loot."]
-	)
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Auto Greed"], L["Automatically roll Greed (or Disenchant) on low-rarity group loot."])
 	local _, maxLevelInit = builder:Checkbox(category, self, "maxLevelOnly", L["Max Level Only"], L["Only auto-roll while at the expansion's max level."])
 	local _, deInit = builder:Checkbox(category, self, "preferDisenchant", L["Prefer Disenchant"], L["Disenchant instead of Greed whenever you are able to."])
 	local _, raresInit = builder:Checkbox(category, self, "includeRares", L["Include Rares"], L["Also auto-roll on Rare (blue) items, not just Uncommon (green)."])

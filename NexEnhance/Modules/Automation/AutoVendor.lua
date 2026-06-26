@@ -203,8 +203,7 @@ function AutoVendor:Repair(override)
 	-- GetGuildBankWithdrawMoney() returns -1 for ranks with unlimited
 	-- withdrawal (e.g. guild master); treat that as "can always cover it".
 	local guildWithdraw = GetGuildBankWithdrawMoney()
-	local guildCanCover = F.NotSecret(guildWithdraw) and F.NotSecret(repairAllCost)
-		and (guildWithdraw == -1 or guildWithdraw >= repairAllCost)
+	local guildCanCover = F.NotSecret(guildWithdraw) and F.NotSecret(repairAllCost) and (guildWithdraw == -1 or guildWithdraw >= repairAllCost)
 	if (not override) and db.useGuildFunds and IsInGuild() and CanGuildBankRepair() and guildCanCover then
 		RepairAllItems(true)
 		-- Wait for a possible "not enough guild money" error, then confirm.

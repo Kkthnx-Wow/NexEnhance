@@ -34,8 +34,11 @@ local L, F = ns.L, ns.F
 
 local format = string.format
 local max = math.max
+local min = math.min
 local hooksecurefunc = hooksecurefunc
 local select = select
+local CreateFrame = CreateFrame
+local ipairs = ipairs
 
 local GetAverageItemLevel = GetAverageItemLevel
 local GetItemLevelColor = GetItemLevelColor
@@ -44,6 +47,7 @@ local GetSpecializationRoleEnum = GetSpecializationRoleEnum
 local UnitSex = UnitSex
 local C_SpecializationInfo = C_SpecializationInfo
 local C_PaperDollInfo = C_PaperDollInfo
+local C_Timer = C_Timer
 local Game13Font = _G.Game13Font
 
 -- Artifact "light gold" (#e6cc80). Used when Blizzard leaves the item-level
@@ -57,6 +61,200 @@ ns:RegisterDefaults({
 })
 
 local MissingStats = ns:NewModule("MissingStats", "missingStats", { group = "skins", title = L["Missing Stats"], order = 25 })
+
+-- CharacterStatsPane is anchored to InsetRight in CharacterFrame.xml (12.0.7).
+-- Extra rows from AddMissingStatRows exceed that viewport; wrap the pane in a
+-- ScrollFrame (KkthnxUI pattern) without changing Blizzard's stat categories.
+local scrollContainer
+local scrollFrame
+local scrollChild
+local scrollInstalled = false
+local extentPending = false
+local extentPendingCombat = false
+
+local INSET_PAD_LEFT = 3
+local INSET_PAD_TOP = -3
+local INSET_PAD_RIGHT = -3
+local INSET_PAD_BOTTOM = 2
+
+local function GetPaneContentHeight(pane)
+	local paneTop = pane:GetTop()
+	if not paneTop or F.IsSecret(paneTop) then
+		return 1
+	end
+
+	local lowestBottom = paneTop
+	local function track(frame)
+		if frame and frame.IsShown and frame:IsShown() then
+			local bottom = frame:GetBottom()
+			if bottom and not F.IsSecret(bottom) and bottom < lowestBottom then
+				lowestBottom = bottom
+			end
+		end
+	end
+
+	track(pane.ItemLevelCategory)
+	track(pane.ItemLevelFrame)
+	track(pane.AttributesCategory)
+	track(pane.EnhancementsCategory)
+	for statFrame in pane.statsFramePool:EnumerateActive() do
+		track(statFrame)
+	end
+
+	if F.IsSecret(lowestBottom) then
+		return 1
+	end
+	return max(paneTop - lowestBottom + 16, 1)
+end
+
+local function UpdateStatsScrollExtent()
+	if not (scrollChild and scrollFrame and scrollContainer) then
+		return
+	end
+
+	if InCombatLockdown() then
+		extentPendingCombat = true
+		return
+	end
+
+	local pane = CharacterStatsPane
+	local width = scrollContainer:GetWidth()
+	if not width or width <= 0 or F.IsSecret(width) then
+		width = 200
+	end
+
+	local height = GetPaneContentHeight(pane)
+	if F.IsSecret(height) then
+		return
+	end
+	scrollChild:SetSize(width, height)
+	if scrollFrame.UpdateScrollChildRect then
+		scrollFrame:UpdateScrollChildRect()
+	end
+
+	local range = scrollFrame:GetVerticalScrollRange()
+	local scroll = scrollFrame:GetVerticalScroll()
+	if not F.IsSecret(range) and not F.IsSecret(scroll) and scroll > range then
+		scrollFrame:SetVerticalScroll(range)
+	end
+end
+
+local function ScheduleStatsScrollExtent()
+	if extentPending then
+		return
+	end
+	extentPending = true
+	C_Timer.After(0, function()
+		extentPending = false
+		UpdateStatsScrollExtent()
+	end)
+end
+
+local function OnStatsScrollWheel(frame, delta)
+	local cur = frame:GetVerticalScroll()
+	local range = frame:GetVerticalScrollRange()
+	if F.IsSecret(cur) or F.IsSecret(range) or F.IsSecret(delta) then
+		return
+	end
+	local step = 20
+	frame:SetVerticalScroll(max(0, min(range, cur - delta * step)))
+end
+
+local function SyncScrollContainerVisibility()
+	if scrollContainer and CharacterStatsPane then
+		scrollContainer:SetShown(CharacterStatsPane:IsShown())
+	end
+end
+
+local function InstallStatsScrollFrame()
+	if scrollInstalled then
+		SyncScrollContainerVisibility()
+		ScheduleStatsScrollExtent()
+		return true
+	end
+
+	local inset = _G.CharacterFrameInsetRight
+	local pane = CharacterStatsPane
+	if not (inset and pane) then
+		return false
+	end
+
+	scrollInstalled = true
+
+	scrollContainer = CreateFrame("Frame", nil, inset)
+	scrollContainer:SetPoint("TOPLEFT", inset, "TOPLEFT", INSET_PAD_LEFT, INSET_PAD_TOP)
+	scrollContainer:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", INSET_PAD_RIGHT, INSET_PAD_BOTTOM)
+	scrollContainer:SetFrameLevel(inset:GetFrameLevel() + 2)
+	scrollContainer:SetScript("OnSizeChanged", function(self)
+		if scrollChild then
+			scrollChild:SetWidth(self:GetWidth())
+			ScheduleStatsScrollExtent()
+		end
+	end)
+
+	-- Plain ScrollFrame only: ScrollFrameTemplate's OnLoad auto-creates a
+	-- MinimalScrollBar in 12.0; we scroll via mouse wheel with no visible bar.
+	scrollFrame = CreateFrame("ScrollFrame", "NexEnhanceCharacterStatsScroll", scrollContainer)
+	scrollFrame:SetAllPoints()
+	scrollFrame:EnableMouseWheel(true)
+	scrollFrame:SetScript("OnMouseWheel", OnStatsScrollWheel)
+
+	scrollChild = CreateFrame("Frame", nil, scrollFrame)
+	scrollChild:SetSize(scrollContainer:GetWidth() or 200, 1)
+	scrollFrame:SetScrollChild(scrollChild)
+
+	-- Match KkthnxUI: pane fills the scroll child; child height is set after layout.
+	pane:ClearAllPoints()
+	pane:SetParent(scrollChild)
+	pane:SetAllPoints(scrollChild)
+
+	pane:HookScript("OnShow", function()
+		SyncScrollContainerVisibility()
+		ScheduleStatsScrollExtent()
+	end)
+	pane:HookScript("OnHide", SyncScrollContainerVisibility)
+
+	if type(_G.PaperDollFrame_UpdateSidebarTabs) == "function" then
+		hooksecurefunc("PaperDollFrame_UpdateSidebarTabs", SyncScrollContainerVisibility)
+	end
+
+	local paperDoll = _G.PaperDollFrame
+	if paperDoll then
+		paperDoll:HookScript("OnShow", function()
+			if scrollFrame then
+				scrollFrame:SetVerticalScroll(0)
+			end
+			ScheduleStatsScrollExtent()
+		end)
+	end
+
+	SyncScrollContainerVisibility()
+	ScheduleStatsScrollExtent()
+
+	if _G.PaperDollFrame and _G.PaperDollFrame:IsShown() and type(_G.PaperDollFrame_UpdateStats) == "function" then
+		_G.PaperDollFrame_UpdateStats()
+	end
+	return true
+end
+
+local function EnsureStatsScrollFrame()
+	if scrollInstalled then
+		return true
+	end
+	if InstallStatsScrollFrame() then
+		return true
+	end
+	if not MissingStats.deferredScrollInstall then
+		MissingStats.deferredScrollInstall = true
+		local paperDoll = _G.PaperDollFrame
+		if paperDoll then
+			paperDoll:HookScript("OnShow", function()
+				InstallStatsScrollFrame()
+			end)
+		end
+	end
+	return scrollInstalled
+end
 
 -- primary: only show for the spec whose primary stat matches.
 -- roles: only show if the spec's role is one of these.
@@ -241,9 +439,20 @@ local function ColorItemLevel()
 end
 
 local function OnUpdateStats()
+	if InCombatLockdown() then
+		return
+	end
 	AddMissingStatRows()
 	StyleStatFonts()
 	ColorItemLevel()
+	ScheduleStatsScrollExtent()
+end
+
+function MissingStats:PLAYER_REGEN_ENABLED()
+	if extentPendingCombat then
+		extentPendingCombat = false
+		UpdateStatsScrollExtent()
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -255,6 +464,8 @@ function MissingStats:OnEnable()
 		return
 	end
 
+	EnsureStatsScrollFrame()
+
 	if type(PaperDollFrame_SetItemLevel) == "function" then
 		hooksecurefunc("PaperDollFrame_SetItemLevel", EnhanceItemLevel)
 	end
@@ -262,6 +473,7 @@ function MissingStats:OnEnable()
 		hooksecurefunc("PaperDollFrame_SetLabelAndText", EnhancePercentage)
 	end
 	hooksecurefunc("PaperDollFrame_UpdateStats", OnUpdateStats)
+	MissingStats:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 
 function MissingStats:RegisterOptions(category, builder)

@@ -79,6 +79,9 @@ function F.RGBToHex(r, g, b)
 	return format("ff%02x%02x%02x", r * 255, g * 255, b * 255)
 end
 
+-- Branded display title: blue Nex + gold Enhance (matches tooltip section headers).
+ns.title = format("|c%sNex|r|c%sEnhance|r", C.BrandHex, C.HeaderHex)
+
 --- Convert a hex string ("RRGGBB" or "ffRRGGBB") to 0-1 RGB triplet.
 function F.HexToRGB(hex)
 	if #hex == 8 then
@@ -113,6 +116,33 @@ function F.Colorize(text, color)
 		color = C.Colors[color] or C.Colors.white
 	end
 	return format("|c%s%s|r", F.RGBToHex(color), text)
+end
+
+--- Inline |T| markup for sidebar icons. Uses C.TexCoord (normalized) converted to
+--- pixel texels on the 64x64 source — |T| escapes do not accept 0–1 floats.
+function F.SidebarIconMarkup(iconPath, size)
+	if not iconPath then
+		return ""
+	end
+	size = size or 16
+	local fileSize = 64
+	local l, r, t, b = C.TexCoord[1], C.TexCoord[2], C.TexCoord[3], C.TexCoord[4]
+	local leftTexel = floor(l * fileSize + 0.5)
+	local rightTexel = floor(r * fileSize + 0.5)
+	local topTexel = floor(t * fileSize + 0.5)
+	local bottomTexel = floor(b * fileSize + 0.5)
+	return format(
+		"|T%s:%d:%d:0:0:%d:%d:%d:%d:%d:%d|t",
+		iconPath,
+		size,
+		size,
+		fileSize,
+		fileSize,
+		leftTexel,
+		rightTexel,
+		topTexel,
+		bottomTexel
+	)
 end
 
 -- ---------------------------------------------------------------------------
@@ -438,6 +468,10 @@ do
 	local UnitIsPlayer = UnitIsPlayer
 	local UnitClass = UnitClass
 	local UnitReaction = UnitReaction
+	local UnitSelectionColor = UnitSelectionColor
+	local UnitSelectionType = UnitSelectionType
+	local UnitIsFriend = UnitIsFriend
+	local CompactUnitFrame_IsOnThreatListWithPlayer = CompactUnitFrame_IsOnThreatListWithPlayer
 	local FACTION_BAR_COLORS = FACTION_BAR_COLORS
 	local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS
 	local strmatch = string.match
@@ -448,9 +482,122 @@ do
 		return "|c" .. F.RGBToHex(r, g, b)
 	end
 
-	--- Resolve a unit's display colour: class colour for players, reaction
-	--- colour for NPCs, white otherwise. Every identity read is secret-gated so
-	--- this never errors under tainted execution.
+	local function ColorDistance(r, g, b, cr, cg, cb)
+		local dr, dg, db = r - cr, g - cg, b - cb
+		return dr * dr + dg * dg + db * db
+	end
+
+	-- UnitSelectionType (0=hostile, 1=unfriendly, 2=neutral, 3=friendly) is what
+	-- nameplates use for reaction category. Map to FACTION_BAR_COLORS indices.
+	local SELECTION_TYPE_TO_FACTION = {
+		[0] = 2, -- hostile red
+		[1] = 3, -- unfriendly orange
+		[2] = 4, -- neutral yellow
+		[3] = 5, -- friendly green
+	}
+
+	-- Saturated UnitSelectionColor references (wiki); fallback when type is secret.
+	local SELECTION_RGB_REFS = {
+		{ 2, 1.0, 0.0, 0.0 }, -- hostile
+		{ 3, 1.0, 0.5, 0.0 }, -- unfriendly orange
+		{ 4, 1.0, 1.0, 0.0 }, -- neutral yellow
+		{ 5, 0.0, 1.0, 0.0 }, -- friendly green
+	}
+
+	local function FactionIndexFromSelectionRGB(sr, sg, sb)
+		local bestIdx, bestDist
+		for i = 1, #SELECTION_RGB_REFS do
+			local ref = SELECTION_RGB_REFS[i]
+			local d = ColorDistance(sr, sg, sb, ref[2], ref[3], ref[4])
+			if not bestDist or d < bestDist then
+				bestDist = d
+				bestIdx = ref[1]
+			end
+		end
+		return bestIdx
+	end
+
+	-- FACTION_ORANGE_COLOR is very brown; on desaturated HUD health atlases it reads
+	-- almost like hostile red. Nudge unfriendly toward nameplate orange (1, 0.5, 0).
+	local UNFRIENDLY_ORANGE_BOOST = { r = 1.0, g = 0.52, b = 0.0 }
+	local UNFRIENDLY_ORANGE_BLEND = 0.7
+
+	local function ResolveFactionTint(factionIdx)
+		local color = FACTION_BAR_COLORS[factionIdx]
+		if not color then
+			return nil
+		end
+
+		if factionIdx == 3 then
+			local boost = UNFRIENDLY_ORANGE_BOOST
+			local mix = UNFRIENDLY_ORANGE_BLEND
+			return color.r + (boost.r - color.r) * mix,
+				color.g + (boost.g - color.g) * mix,
+				color.b + (boost.b - color.b) * mix
+		end
+
+		return color.r, color.g, color.b
+	end
+
+	--- NPC reaction tint: read UnitSelectionType/Color (same source as nameplates),
+	--- then output the darker FACTION_BAR_COLORS entry so unit frames and tooltips
+	--- match nameplate category without bright selection RGB. Falls back to
+	--- UnitReaction when selection APIs are secret or unavailable.
+	function F.GetNpcReactionColor(unit)
+		if not unit or not FACTION_BAR_COLORS then
+			return nil
+		end
+
+		local factionIdx
+		local selTypeResolved = false
+
+		if UnitSelectionType then
+			local selType = UnitSelectionType(unit, false)
+			if F.NotSecret(selType) and selType ~= nil then
+				selTypeResolved = true
+				factionIdx = SELECTION_TYPE_TO_FACTION[selType]
+			end
+		end
+
+		-- RGB fallback only when selection type is unavailable/secret; skip when type
+		-- is a non-NPC category (dead, player, party, etc.) so gray doesn't mis-map.
+		if not factionIdx and not selTypeResolved and UnitSelectionColor then
+			local sr, sg, sb = UnitSelectionColor(unit, false)
+			if F.NotSecret(sr) and F.NotSecret(sg) and F.NotSecret(sb) then
+				factionIdx = FactionIndexFromSelectionRGB(sr, sg, sb)
+			end
+		end
+
+		if not factionIdx then
+			local reaction = UnitReaction(unit, "player")
+			if F.IsSecret(reaction) or not reaction then
+				return nil
+			end
+			factionIdx = reaction
+		end
+
+		-- Neutral/yellow mobs turn bright red (1,0,0) on nameplates when pulled;
+		-- CompactUnitFrame considerSelectionInCombatAsHostile. Use darker hostile
+		-- red so nameplate + target frame stay on our palette.
+		if CompactUnitFrame_IsOnThreatListWithPlayer and UnitIsFriend then
+			local onThreat = CompactUnitFrame_IsOnThreatListWithPlayer(unit)
+			if F.NotSecret(onThreat) and onThreat then
+				local isFriend = UnitIsFriend("player", unit)
+				if F.NotSecret(isFriend) and not isFriend then
+					factionIdx = 2
+				end
+			end
+		end
+
+		if not FACTION_BAR_COLORS[factionIdx] then
+			return nil
+		end
+
+		return ResolveFactionTint(factionIdx)
+	end
+
+	--- Resolve a unit's display colour: class colour for players, reaction colour
+	--- for NPCs, white otherwise. Every identity read is secret-gated.
 	function F.UnitColor(unit)
 		local r, g, b = 1, 1, 1
 		if not unit then
@@ -469,12 +616,9 @@ do
 			return r, g, b
 		end
 
-		local reaction = UnitReaction(unit, "player")
-		if F.NotSecret(reaction) and reaction and FACTION_BAR_COLORS then
-			local color = FACTION_BAR_COLORS[reaction]
-			if color then
-				return color.r, color.g, color.b
-			end
+		local nr, ng, nb = F.GetNpcReactionColor(unit)
+		if nr then
+			return nr, ng, nb
 		end
 		return r, g, b
 	end

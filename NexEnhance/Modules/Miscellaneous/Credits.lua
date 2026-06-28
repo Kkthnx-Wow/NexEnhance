@@ -221,8 +221,7 @@ local function ColorHex(classFile)
 end
 
 local function CreditsSettingsLabel()
-	-- Brand-blue title (was rainbow) so the utility pages read as their own group.
-	return format("|T%s:16:16|t |c%s%s|r", SETTINGS_ICON, C.BrandHex, L["Credits"])
+	return format("|c%s%s|r", C.BrandHex, L["Credits"])
 end
 
 local function FormatBullets(lines)
@@ -474,4 +473,4 @@ local function BuildCreditsCanvas(canvas)
 	AttachCreditsScroll(canvas, -heroHeight - 4, 500)
 end
 
-ns:RegisterOptionsCanvas(L["Credits"], BuildCreditsCanvas, CreditsSettingsLabel())
+ns:RegisterOptionsCanvas(L["Credits"], BuildCreditsCanvas, CreditsSettingsLabel(), { icon = SETTINGS_ICON })

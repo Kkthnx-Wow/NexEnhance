@@ -73,15 +73,18 @@ local function AddSourceLine(tip, info)
 end
 
 -- Only annotate while Shift is held over another player (not yourself).
-local function HandleAura(tip, spellID)
+local function HandleAura(tip, unit, spellID)
 	if not spellID or F.IsSecret(spellID) then
 		return
 	end
 	if not IsShiftKeyDown() then
 		return
 	end
-	local isPlayer = UnitIsPlayer("target")
-	local isSelf = UnitIsUnit("target", "player")
+	if not unit or F.IsSecret(unit) or F.IsSecretUnit(unit) then
+		return
+	end
+	local isPlayer = UnitIsPlayer(unit)
+	local isSelf = UnitIsUnit(unit, "player")
 	if F.IsSecret(isPlayer) or not isPlayer or F.IsSecret(isSelf) or isSelf then
 		return
 	end
@@ -93,6 +96,9 @@ local function HandleAura(tip, spellID)
 end
 
 function Tooltip:SetupMountSource()
+	if Tooltip._mountSourceHooked then
+		return
+	end
 	-- Defer to the dedicated addon if the user runs it.
 	if C_AddOns.IsAddOnLoaded("MountsSource") then
 		return
@@ -100,19 +106,20 @@ function Tooltip:SetupMountSource()
 	if not (C_MountJournal and AuraUtil and C_UnitAuras) then
 		return
 	end
+	Tooltip._mountSourceHooked = true
 
-	hooksecurefunc(GameTooltip, "SetUnitAura", function(tip, ...)
+	hooksecurefunc(GameTooltip, "SetUnitAura", function(tip, unit, ...)
 		if tip:IsForbidden() then
 			return
 		end
-		local data = C_UnitAuras.GetAuraDataByIndex(...)
+		local data = C_UnitAuras.GetAuraDataByIndex(unit, ...)
 		-- A secret data table (e.g. another unit's auras under Patch 12.0) would
 		-- crash AuraUtil.UnpackAuraData, so read the spellId field directly and
 		-- let HandleAura's IsSecret guard sort out the rest.
 		if not data or F.IsSecret(data) then
 			return
 		end
-		HandleAura(tip, data.spellId)
+		HandleAura(tip, unit, data.spellId)
 	end)
 
 	hooksecurefunc(GameTooltip, "SetUnitBuffByAuraInstanceID", function(tip, unit, auraInstanceID)
@@ -123,6 +130,6 @@ function Tooltip:SetupMountSource()
 		if not data or F.IsSecret(data) then
 			return
 		end
-		HandleAura(tip, data.spellId)
+		HandleAura(tip, unit, data.spellId)
 	end)
 end

@@ -138,6 +138,11 @@ local function HyperLink_OnLeave(self, ...)
 end
 
 function Tooltip:SetupHoverTips()
+	if Tooltip._hoverTipsSetup then
+		return
+	end
+	Tooltip._hoverTipsSetup = true
+
 	for i = 1, NUM_CHAT_WINDOWS do
 		local frame = _G["ChatFrame" .. i]
 		if frame then

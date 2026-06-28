@@ -61,7 +61,7 @@ local CARD_GAP = 12
 local SETTINGS_ICON = [[Interface\ICONS\INV_Misc_Gear_01]]
 
 local function PluginSidebarLabel()
-	return format("|T%s:16:16:0:0|t %s", SETTINGS_ICON, L["Plugin Manager"])
+	return F.Colorize(L["Plugin Manager"], "gray")
 end
 
 local function MakeLabel(parent, template, text)
@@ -163,4 +163,4 @@ local function BuildPluginCanvas(canvas)
 	content:SetHeight(math.abs(y) + CARD_PAD)
 end
 
-ns:RegisterOptionsCanvas(L["Plugin Manager"], BuildPluginCanvas, PluginSidebarLabel())
+ns:RegisterOptionsCanvas(L["Plugin Manager"], BuildPluginCanvas, PluginSidebarLabel(), { afterGroup = "plugins", icon = SETTINGS_ICON })

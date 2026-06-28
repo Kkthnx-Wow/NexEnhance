@@ -46,6 +46,7 @@ local InCombatLockdown = InCombatLockdown
 local Minimap = Minimap
 local MinimapCluster = MinimapCluster
 local C_CVar = C_CVar
+local C_Timer = C_Timer
 local hooksecurefunc = hooksecurefunc
 local GetTime = GetTime
 local UnitClass = UnitClass
@@ -502,6 +503,19 @@ local function Declutter()
 		Kill(MinimapCluster.BorderTop)
 		Kill(MinimapCluster.ZoneTextButton)
 
+		-- Hidden chrome still counts as a ResizeLayout child (IsShown), and
+		-- Tracking at alpha 0 does too. Ignore them so Layout() does not reserve
+		-- header space or re-measure dead frames — that pass is what makes the
+		-- cluster briefly jump before our footprint hook snaps it back.
+		if MinimapCluster.MarkIgnoreInLayout then
+			MinimapCluster:MarkIgnoreInLayout(
+				MinimapCluster.BorderTop,
+				MinimapCluster.ZoneTextButton,
+				MinimapCluster.Tracking,
+				MinimapCluster.IndicatorFrame
+			)
+		end
+
 		-- Tracking is the one piece we keep alive (invisible) so right-click can
 		-- still open its menu; everything else is gone.
 		local tracking = MinimapCluster.Tracking
@@ -525,18 +539,15 @@ end
 -- ---------------------------------------------------------------------------
 -- Tighten the Edit Mode footprint
 --   The cluster reserves vertical space for the header we removed, so its Edit
---   Mode selection box floats above the square map. A one-shot resize loses to
---   Blizzard's layout pass, so instead we hook the cluster's SetSize and force
---   our footprint through the *raw* frame method on every layout - the
---   ls_Minimap / Blizzard-supported pattern. Calling the metatable SetSize
---   directly bypasses our own post-hook (no recursion), and re-applying an
---   unchanged size is a no-op, so it converges instead of fighting Blizzard.
---   Forcing it from inside the hook means it also stays flush while Edit Mode
---   is open. Keep the logical cluster size equal to the logical minimap size;
---   Edit Mode/container scaling is applied after that, so multiplying by scale
---   here would double-count the slider.
+--   Mode selection box floats above the square map. Blizzard's ResizeLayoutFrame
+--   also re-runs on mail/crafting updates (MinimapCluster:Layout), bootstraps
+--   with SetSize(1,1), and measures shown children — including invisible tracking
+--   and our repinned IndicatorFrame — before settling. Re-applying our footprint
+--   synchronously on every intermediate SetSize caused a visible jump-then-snap.
+--   We defer one correction to the end of the frame and ignore Layout's 1x1 bootstrap.
 -- ---------------------------------------------------------------------------
 local RAW_SET_SIZE = GetFrameMetatable().__index.SetSize
+local footprintPending
 
 local function ApplyClusterFootprint()
 	if InCombatLockdown() then
@@ -558,6 +569,25 @@ local function ApplyClusterFootprint()
 	RAW_SET_SIZE(cluster, w, h)
 end
 
+local function ScheduleClusterFootprint()
+	if footprintPending then
+		return
+	end
+	footprintPending = true
+	C_Timer.After(0, function()
+		footprintPending = false
+		ApplyClusterFootprint()
+	end)
+end
+
+local function OnClusterSetSize(_, w, h)
+	-- ResizeLayoutMixin:Layout() always opens with SetSize(1, 1) while measuring.
+	if not w or not h or w < 10 or h < 10 then
+		return
+	end
+	ScheduleClusterFootprint()
+end
+
 local clusterHooked
 local function HookClusterFootprint()
 	if not MinimapCluster then
@@ -568,7 +598,11 @@ local function HookClusterFootprint()
 		return
 	end
 	clusterHooked = true
-	hooksecurefunc(MinimapCluster, "SetSize", ApplyClusterFootprint)
+	hooksecurefunc(MinimapCluster, "SetSize", OnClusterSetSize)
+	hooksecurefunc(MinimapCluster, "Layout", ScheduleClusterFootprint)
+	if MinimapCluster.SetHeaderUnderneath then
+		hooksecurefunc(MinimapCluster, "SetHeaderUnderneath", ScheduleClusterFootprint)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1490,10 +1524,10 @@ function Module:OnEnable()
 	end
 	ns:RegisterCallback("SettingChanged.minimap.buttonBinPosition", RefreshButtonBinPosition)
 
-	-- Keep the Edit Mode selection box flush with the square minimap by hooking
-	-- the cluster's SetSize (re-applied on world enter as a safety kick).
+	-- Keep the Edit Mode selection box flush with the square minimap (deferred
+	-- so we run after Blizzard's ResizeLayoutFrame pass, not during it).
 	HookClusterFootprint()
-	ns:RegisterEvent("PLAYER_ENTERING_WORLD", ApplyClusterFootprint)
+	ns:RegisterEvent("PLAYER_ENTERING_WORLD", ScheduleClusterFootprint)
 
 	-- Mirror the minimap options onto the native Minimap Edit Mode dialog.
 	SetupEditModeSettings()

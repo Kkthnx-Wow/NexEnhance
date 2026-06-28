@@ -126,6 +126,7 @@ handlers.help = function(_)
 	F.Print("  /nex profile       -", L["Open the profile import/export panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
 	F.Print("  /nex poiscan       -", L["Dump area POIs on your current map (event setup)"])
+	F.Print("  /nex newreset      -", L["Reset new-update badges for testing"])
 end
 
 handlers.profile = function(_)
@@ -150,6 +151,13 @@ handlers.install = function(_)
 	if ns.OpenInstall then
 		ns:OpenInstall()
 	end
+end
+
+handlers.newreset = function(_)
+	if ns.global then
+		ns.global.newSeen = nil
+	end
+	F.Print(L["New update badges reset. Reload your UI, then open Settings."])
 end
 
 handlers.modules = function(_)
@@ -716,6 +724,7 @@ local GROUP_ORDER = {
 	{ key = "general", title = L["General"], icon = [[Interface\ICONS\Trade_Engineering]], desc = L["DESC_GENERAL"] },
 	{ key = "actionbars", title = L["Action Bars"], icon = [[Interface\ICONS\Ability_Warrior_Charge]], desc = L["DESC_ACTIONBARS"] },
 	{ key = "unitframes", title = L["Unit Frames"], icon = [[Interface\ICONS\Ability_Warrior_BattleShout]], desc = L["DESC_UNITFRAMES"] },
+	{ key = "nameplates", title = L["Nameplates"], icon = [[Interface\ICONS\Ability_Hunter_SniperShot]], desc = L["DESC_NAMEPLATES"] },
 	{ key = "auras", title = L["Auras"], icon = [[Interface\ICONS\Spell_Holy_WordFortitude]], desc = L["DESC_AURAS"] },
 	{ key = "inventory", title = L["Inventory"], icon = [[Interface\ICONS\INV_Misc_Bag_08]], desc = L["DESC_INVENTORY"] },
 	{ key = "chat", title = L["Chat"], icon = [[Interface\ICONS\INV_Letter_15]], desc = L["DESC_CHAT"] },
@@ -727,30 +736,31 @@ local GROUP_ORDER = {
 	{ key = "plugins", title = L["Plugins"], icon = [[Interface\ICONS\INV_Misc_Gear_01]], desc = L["DESC_PLUGINS"] },
 	{ key = "automation", title = L["Automation"], icon = [[Interface\ICONS\INV_Gizmo_01]], desc = L["DESC_AUTOMATION"] },
 	{ key = "announcements", title = L["Announcements"], icon = [[Interface\ICONS\INV_Misc_Horn_01]], desc = L["DESC_ANNOUNCEMENTS"] },
+	{ key = "camera", title = L["Camera"], icon = [[Interface\ICONS\INV_Misc_Spyglass_03]], desc = L["DESC_CAMERA"] },
+	{ key = "alerts", title = L["Alerts"], icon = [[Interface\ICONS\INV_Misc_Bell_01]], desc = L["DESC_ALERTS"] },
+	{ key = "movers", title = L["Movers"], icon = [[Interface\ICONS\INV_Misc_Wrench_01]], desc = L["DESC_MOVERS"] },
 	{ key = "misc", title = L["Miscellaneous"], icon = [[Interface\ICONS\INV_Misc_QuestionMark]], desc = L["DESC_MISC"] },
 }
 
--- Build a sidebar label with an inline icon. Texture paths (containing a
--- backslash) use a |T|t escape; otherwise the value is treated as an atlas name.
--- The icon is prefixed for display only - sorting still uses the clean title.
-local CreateAtlasMarkup = _G["CreateAtlasMarkup"]
--- Sidebar category buttons are Blizzard's pooled/recycled frames, so we can't
--- reliably anchor a glow template onto them. The label is plain text we own,
--- though, so groups containing a freshly-added module get a brand-blue "New"
--- suffix - enough to draw the eye to which section to open.
-local NEW_MARKER = "  " .. Brand(_G.NEW or "New") ---@diagnostic disable-line: undefined-field
-local function GroupLabel(g, isNew)
-	local suffix = isNew and NEW_MARKER or ""
-	if not g.icon then
-		return g.title .. suffix
+-- Sidebar labels are plain text; icons are drawn as Texture widgets (SetTexCoord)
+-- so every entry crops to the same square. Borders + notification dots anchor
+-- to that texture in InstallCategorySidebarBadges.
+local SIDEBAR_NEW_ATLAS = "UI-HUD-MicroMenu-Communities-Icon-Notification"
+local SIDEBAR_NEW_DOT_SIZE = 19
+local SIDEBAR_NEW_DOT_GAP = 2
+local SIDEBAR_ICON_BORDER_ATLAS = "Soulbinds_Collection_SpecBorder_Primary"
+local SIDEBAR_ICON_SIZE = 16
+local SIDEBAR_ICON_BORDER_SIZE = 26
+local SIDEBAR_ICON_GAP = 4
+
+local function GroupLabel(g)
+	if g.key == "plugins" then
+		return F.Colorize(g.title, "gray")
 	end
-	if g.icon:find("\\", 1, true) then
-		return format("|T%s:16:16:0:0|t %s%s", g.icon, g.title, suffix)
+	if g.key == "general" then
+		return F.Colorize(g.title, "header")
 	end
-	if CreateAtlasMarkup then
-		return CreateAtlasMarkup(g.icon, 16, 16) .. " " .. g.title .. suffix
-	end
-	return g.title .. suffix
+	return g.title
 end
 
 local GROUP_INDEX = {}
@@ -818,16 +828,23 @@ local function GetNewModules()
 	return result
 end
 
--- True when a module is explicitly tagged as added in the running version and the
--- player hasn't yet acknowledged this version's "new" callout.
-local function IsTaggedNew(module)
-	return ns.global ~= nil and module.since ~= nil and module.since == ns.version and ns.global.newSeen ~= ns.version
+-- Build a name -> true lookup of modules flagged by GetNewModules (tagged *or*
+-- auto-detected). Sidebar markers and section-header badges must use the same
+-- rules as the landing-page callout, not IsTaggedNew alone.
+local function BuildNewModuleLookup()
+	local lookup = {}
+	local list = GetNewModules()
+	for i = 1, #list do
+		lookup[list[i].name] = true
+	end
+	return lookup
 end
 
 -- Acknowledge the current version's new features: stamp the version (so the
 -- landing callout and section-header badges stop showing next session) and fold
--- this version's tagged-new modules into the baseline, so a later version - where
--- the `since` tag is inert - doesn't re-flag them via auto-detection.
+-- every module that was flagged as new into the baseline.
+local RefreshSidebarNewBadges
+
 local function AcknowledgeNewVersion()
 	if not ns.global or ns.global.newSeen == ns.version then
 		return
@@ -838,11 +855,141 @@ local function AcknowledgeNewVersion()
 		known = {}
 		ns.global.knownModules = known
 	end
-	for i = 1, #ns.modules do
-		local m = ns.modules[i]
-		if m.title and m.since == ns.version then
-			known[m.name] = true
+	local list = GetNewModules()
+	for i = 1, #list do
+		known[list[i].name] = true
+	end
+	RefreshSidebarNewBadges()
+end
+
+-- Sidebar categories flagged during BuildOptions.
+local sidebarNewCategories = {}
+local sidebarCategoryIcons = {}
+local SettingsCategoryListButtonMixin = _G["SettingsCategoryListButtonMixin"]
+local SettingsCategoryListMixin = _G["SettingsCategoryListMixin"]
+local sidebarBadgeHooked = false
+
+local function ShouldShowSidebarNewDot(category)
+	return category and sidebarNewCategories[category] and ns.global and ns.global.newSeen ~= ns.version
+end
+
+local function ApplySidebarIconTexture(tex, iconPath)
+	if iconPath:find("\\", 1, true) or iconPath:find("/", 1, true) then
+		pcall(tex.SetAtlas, tex, nil)
+		tex:SetTexture(iconPath)
+		tex:SetTexCoord(C.TexCoord[1], C.TexCoord[2], C.TexCoord[3], C.TexCoord[4])
+	else
+		tex:SetTexture(nil)
+		tex:SetAtlas(iconPath)
+		tex:SetTexCoord(0, 1, 0, 1)
+	end
+end
+
+local function UpdateCategorySidebarChrome(button, category)
+	if not button then
+		return
+	end
+
+	local iconPath = category and sidebarCategoryIcons[category]
+	local label = button.Label
+
+	if iconPath and label then
+		local icon = button.nexSidebarIcon
+		if not icon then
+			icon = button:CreateTexture(nil, "ARTWORK", nil, 2)
+			icon:SetSize(SIDEBAR_ICON_SIZE, SIDEBAR_ICON_SIZE)
+			icon:SetPoint("RIGHT", label, "LEFT", -SIDEBAR_ICON_GAP, 0)
+			button.nexSidebarIcon = icon
 		end
+		ApplySidebarIconTexture(icon, iconPath)
+		icon:SetDrawLayer("ARTWORK", 2)
+		icon:Show()
+
+		local border = button.nexIconBorder
+		if not border then
+			border = button:CreateTexture(nil, "ARTWORK", nil, 4)
+			border:SetAtlas(SIDEBAR_ICON_BORDER_ATLAS)
+			border:SetSize(SIDEBAR_ICON_BORDER_SIZE, SIDEBAR_ICON_BORDER_SIZE)
+			border:SetPoint("CENTER", icon, "CENTER")
+			button.nexIconBorder = border
+		end
+		border:SetDrawLayer("ARTWORK", 4)
+		border:Show()
+
+		if ShouldShowSidebarNewDot(category) then
+			local dotFrame = button.nexNewDotFrame
+			if not dotFrame then
+				dotFrame = CreateFrame("Frame", nil, button)
+				dotFrame:SetFrameStrata("HIGH")
+				dotFrame:SetFrameLevel(button:GetFrameLevel() + 20)
+				local tex = dotFrame:CreateTexture(nil, "OVERLAY")
+				tex:SetAllPoints()
+				tex:SetAtlas(SIDEBAR_NEW_ATLAS)
+				button.nexNewDotFrame = dotFrame
+			end
+			dotFrame:SetSize(SIDEBAR_NEW_DOT_SIZE, SIDEBAR_NEW_DOT_SIZE)
+			dotFrame:ClearAllPoints()
+			dotFrame:SetPoint("RIGHT", icon, "LEFT", -SIDEBAR_NEW_DOT_GAP, -2)
+			dotFrame:Show()
+		elseif button.nexNewDotFrame then
+			button.nexNewDotFrame:Hide()
+		end
+	elseif button.nexSidebarIcon then
+		button.nexSidebarIcon:Hide()
+		if button.nexIconBorder then
+			button.nexIconBorder:Hide()
+		end
+		if button.nexNewDotFrame then
+			button.nexNewDotFrame:Hide()
+		end
+	end
+end
+
+local function RefreshAllSidebarDots(listMixin)
+	local scroll = listMixin and listMixin.ScrollBox
+	if not scroll then
+		local panel = _G["SettingsPanel"]
+		scroll = panel and panel.CategoryList and panel.CategoryList.ScrollBox
+	end
+	if not (scroll and scroll.ForEachFrame) then
+		return
+	end
+	scroll:ForEachFrame(function(button)
+		local elementData = button.GetElementData and button:GetElementData()
+		local cat = elementData and elementData.data and elementData.data.category
+		if cat then
+			UpdateCategorySidebarChrome(button, cat)
+		end
+	end)
+end
+
+RefreshSidebarNewBadges = function()
+	local panel = _G["SettingsPanel"]
+	RefreshAllSidebarDots(panel and panel.CategoryList)
+end
+
+local function InstallCategorySidebarBadges()
+	if sidebarBadgeHooked or not SettingsCategoryListButtonMixin then
+		return
+	end
+	sidebarBadgeHooked = true
+
+	hooksecurefunc(SettingsCategoryListButtonMixin, "Init", function(button, initializer)
+		local category = initializer and initializer.data and initializer.data.category
+		UpdateCategorySidebarChrome(button, category)
+	end)
+
+	if SettingsCategoryListMixin then
+		hooksecurefunc(SettingsCategoryListMixin, "CreateCategories", function(listMixin)
+			-- Buttons are rebuilt asynchronously after the data provider updates.
+			if C_Timer and C_Timer.After then
+				C_Timer.After(0, function()
+					RefreshAllSidebarDots(listMixin)
+				end)
+			else
+				RefreshAllSidebarDots(listMixin)
+			end
+		end)
 	end
 end
 
@@ -896,6 +1043,104 @@ local function AddSectionHeader(layout, text, isNew)
 end
 
 ns.AddSectionHeader = AddSectionHeader
+
+-- ---------------------------------------------------------------------------
+-- Escape menu (GameMenuFrame) — NexEnhance config shortcut
+--   Blizzard rebuilds the menu on every show (InitButtons → Reset → AddButton).
+--   Post-hook InitButtons and insert our entry after Options/Shop via layoutIndex.
+-- ---------------------------------------------------------------------------
+local HideUIPanel = HideUIPanel
+local PlaySound = PlaySound
+local hooksecurefunc = hooksecurefunc
+local GAMEMENU_OPTIONS = _G["GAMEMENU_OPTIONS"]
+local BLIZZARD_STORE = _G["BLIZZARD_STORE"]
+local ADDONS = _G["ADDONS"]
+local RETURN_TO_GAME = _G["RETURN_TO_GAME"]
+local SOUNDKIT = _G["SOUNDKIT"]
+
+local gameMenuButtonHooked = false
+
+local function ResolveGameMenuInsertIndex(menu)
+	local anchorLayout = 0
+	for button in menu.buttonPool:EnumerateActive() do
+		local text = button:GetText() or ""
+		if text == GAMEMENU_OPTIONS or text == BLIZZARD_STORE then
+			anchorLayout = math.max(anchorLayout, button.layoutIndex or 0)
+		end
+	end
+	if anchorLayout > 0 then
+		return anchorLayout + 1
+	end
+	for button in menu.buttonPool:EnumerateActive() do
+		if button:GetText() == ADDONS then
+			return button.layoutIndex
+		end
+	end
+	for button in menu.buttonPool:EnumerateActive() do
+		if button:GetText() == RETURN_TO_GAME then
+			return button.layoutIndex
+		end
+	end
+	return menu.nextLayoutIndex
+end
+
+local function InsertGameMenuButton(menu)
+	if not menu or not menu.AddButton or not menu.buttonPool then
+		return
+	end
+
+	local insertIndex = ResolveGameMenuInsertIndex(menu)
+	if not insertIndex then
+		return
+	end
+
+	local function OpenFromGameMenu()
+		if SOUNDKIT then
+			PlaySound(SOUNDKIT.IG_MAINMENU_OPTION)
+		end
+		HideUIPanel(menu)
+		if ns.OpenOptions then
+			ns:OpenOptions()
+		end
+	end
+
+	local btn = menu:AddButton(ns.title, OpenFromGameMenu)
+	for button in menu.buttonPool:EnumerateActive() do
+		if button ~= btn and button.layoutIndex >= insertIndex then
+			button.layoutIndex = button.layoutIndex + 1
+		end
+	end
+	btn.layoutIndex = insertIndex
+	menu:MarkDirty()
+end
+
+local function TryInstallGameMenuButton()
+	if gameMenuButtonHooked then
+		return true
+	end
+	local menu = _G["GameMenuFrame"]
+	if not (menu and menu.InitButtons and menu.AddButton) then
+		return false
+	end
+	gameMenuButtonHooked = true
+	hooksecurefunc(menu, "InitButtons", InsertGameMenuButton)
+	return true
+end
+
+local function ScheduleGameMenuButtonInstall()
+	if TryInstallGameMenuButton() then
+		return
+	end
+	if C_Timer and C_Timer.NewTicker then
+		local tries = 0
+		C_Timer.NewTicker(0.5, function(ticker)
+			tries = tries + 1
+			if TryInstallGameMenuButton() or tries >= 20 then
+				ticker:Cancel()
+			end
+		end)
+	end
+end
 
 -- ---------------------------------------------------------------------------
 -- Landing page (canvas)
@@ -982,15 +1227,46 @@ local function CreateLandingFrame()
 		local badge = F.CreateNewFeatureBadge(block)
 		badge:SetPoint("LEFT", nheading, "RIGHT", 10, 1)
 
-		local rowAnchor, totalH = nheading, nheading:GetStringHeight() or 16
+		local listContent = CreateFrame("Frame", nil, block)
+		listContent:SetPoint("TOPLEFT", nheading, "BOTTOMLEFT", 6, -8)
+		listContent:SetPoint("RIGHT", block, "RIGHT", 0, 0)
+
+		local rowAnchor, totalH = listContent, 0
 		for i = 1, #newModules do
-			local row = MakeFontString(block, "GameFontHighlight")
-			row:SetPoint("TOPLEFT", rowAnchor, "BOTTOMLEFT", i == 1 and 6 or 0, i == 1 and -8 or -5)
+			local row = MakeFontString(listContent, "GameFontHighlight")
+			row:SetPoint("TOPLEFT", rowAnchor, i == 1 and "TOPLEFT" or "BOTTOMLEFT", 0, i == 1 and 0 or -5)
+			row:SetPoint("RIGHT", listContent, "RIGHT", 0, 0)
+			row:SetJustifyH("LEFT")
+			row:SetWordWrap(true)
 			row:SetText("|cff888888• |r" .. (newModules[i].title or newModules[i].name))
 			rowAnchor = row
-			totalH = totalH + (row:GetStringHeight() or 12) + (i == 1 and 8 or 5)
+			totalH = totalH + (row:GetStringHeight() or 12) + (i == 1 and 0 or 5)
 		end
-		block:SetHeight(totalH)
+		listContent:SetHeight(math.max(totalH, 1))
+
+		local NEW_LIST_MAX_HEIGHT = 132
+		local headingH = nheading:GetStringHeight() or 16
+		if totalH > NEW_LIST_MAX_HEIGHT and ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
+			local scroll = CreateFrame("ScrollFrame", nil, block)
+			scroll:SetPoint("TOPLEFT", nheading, "BOTTOMLEFT", 0, -6)
+			scroll:SetPoint("RIGHT", block, "RIGHT", -20, 0)
+			scroll:SetHeight(NEW_LIST_MAX_HEIGHT)
+
+			local scrollBar = CreateFrame("EventFrame", nil, block, "MinimalScrollBar")
+			scrollBar:SetPoint("TOPLEFT", scroll, "TOPRIGHT", 4, 0)
+			scrollBar:SetPoint("BOTTOMLEFT", scroll, "BOTTOMRIGHT", 4, 0)
+			ScrollUtil.InitScrollFrameWithScrollBar(scroll, scrollBar)
+
+			listContent:SetParent(scroll)
+			listContent:ClearAllPoints()
+			listContent:SetWidth(scroll:GetWidth() > 0 and scroll:GetWidth() or 360)
+			scroll:SetScrollChild(listContent)
+			listContent:SetPoint("TOPLEFT")
+
+			block:SetHeight(headingH + NEW_LIST_MAX_HEIGHT + 12)
+		else
+			block:SetHeight(headingH + totalH + 14)
+		end
 	end
 
 	function frame:OnRefresh()
@@ -1119,11 +1395,13 @@ local optionsCanvases = {}
 -- is shown; the canvas frame exposes canvas:SetDefaultsHandler(fn).
 -- Optional `sidebarLabel` colours/icons the Settings sidebar entry (e.g. rainbow
 -- |cff escapes); `name` stays plain for sorting and the in-page header.
-function ns:RegisterOptionsCanvas(name, builder, sidebarLabel)
+function ns:RegisterOptionsCanvas(name, builder, sidebarLabel, opts)
 	optionsCanvases[#optionsCanvases + 1] = {
 		name = name,
 		builder = builder,
 		sidebar = sidebarLabel or name,
+		afterGroup = opts and opts.afterGroup,
+		icon = opts and opts.icon,
 	}
 end
 
@@ -1133,6 +1411,7 @@ local function BuildOptions()
 	end
 
 	InstallSectionHeaderBadges()
+	InstallCategorySidebarBadges()
 
 	local category
 	if Settings.RegisterCanvasLayoutCategory then
@@ -1142,20 +1421,69 @@ local function BuildOptions()
 	end
 	ns.settingsCategory = category
 
+	local newModuleLookup = BuildNewModuleLookup()
+
+	for id in pairs(sidebarNewCategories) do
+		sidebarNewCategories[id] = nil
+	end
+	for id in pairs(sidebarCategoryIcons) do
+		sidebarCategoryIcons[id] = nil
+	end
+
 	-- Which groups contain a module flagged new this version, so the sidebar entry
 	-- can carry a "New" marker pointing the user at the right section.
 	local groupHasNew = {}
 	for i = 1, #ns.modules do
 		local m = ns.modules[i]
-		if m.title and IsTaggedNew(m) then
+		if m.title and newModuleLookup[m.name] then
 			groupHasNew[m.group or "misc"] = true
+		end
+	end
+
+	local canvasesAfterGroup = {}
+	local deferredCanvases = {}
+	for i = 1, #optionsCanvases do
+		local entry = optionsCanvases[i]
+		if entry.afterGroup then
+			canvasesAfterGroup[entry.afterGroup] = canvasesAfterGroup[entry.afterGroup] or {}
+			local bucket = canvasesAfterGroup[entry.afterGroup]
+			bucket[#bucket + 1] = entry
+		else
+			deferredCanvases[#deferredCanvases + 1] = entry
+		end
+	end
+
+	local panel = _G["SettingsPanel"]
+	local ourCategories = {}
+	local function RegisterCanvasEntry(entry)
+		if not Settings.RegisterCanvasLayoutSubcategory then
+			return
+		end
+		local frame, canvas = CreateCanvasSubFrame(entry.name)
+		local sub = Settings.RegisterCanvasLayoutSubcategory(category, frame, entry.sidebar)
+		if sub then
+			ourCategories[sub] = true
+			if entry.icon then
+				sidebarCategoryIcons[sub] = entry.icon
+			end
+		end
+
+		if panel and entry.builder then
+			local built = false
+			panel:HookScript("OnShow", function()
+				if not built then
+					built = true
+					entry.builder(canvas)
+				end
+			end)
+		elseif entry.builder then
+			entry.builder(canvas)
 		end
 	end
 
 	-- One subcategory (with its own layout) per themed group, listed
 	-- alphabetically by (localised) title so the sidebar reads A, B, C...
 	local groupCategory, groupLayout = {}, {}
-	local ourCategories = {}
 	if Settings.RegisterVerticalLayoutSubcategory then
 		local sortedGroups = {}
 		for i = 1, #GROUP_ORDER do
@@ -1167,16 +1495,29 @@ local function BuildOptions()
 
 		for i = 1, #sortedGroups do
 			local g = sortedGroups[i]
-			local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, GroupLabel(g, groupHasNew[g.key]))
+			local sub, layout = Settings.RegisterVerticalLayoutSubcategory(category, GroupLabel(g))
 			groupCategory[g.key] = sub
 			groupLayout[g.key] = layout
 			ourCategories[sub] = true
+			if g.icon then
+				sidebarCategoryIcons[sub] = g.icon
+			end
+			if groupHasNew[g.key] and sub then
+				sidebarNewCategories[sub] = true
+			end
 
 			-- Intro blurb at the top of the subcategory page.
 			if g.desc and F.CreateSettingsDescription then
 				local desc = F.CreateSettingsDescription(g.desc)
 				if desc then
 					layout:AddInitializer(desc)
+				end
+			end
+
+			local pinned = canvasesAfterGroup[g.key]
+			if pinned then
+				for j = 1, #pinned do
+					RegisterCanvasEntry(pinned[j])
 				end
 			end
 		end
@@ -1194,38 +1535,20 @@ local function BuildOptions()
 		if module.RegisterOptions then
 			local key = groupCategory[module.group] and module.group or "misc"
 			local moduleCategory = groupCategory[key] or category
-			AddSectionHeader(groupLayout[key], module.title or module.name, IsTaggedNew(module))
+			AddSectionHeader(groupLayout[key], module.title or module.name, newModuleLookup[module.name] == true)
 			OptionBuilder.layout = groupLayout[key]
 			module:RegisterOptions(moduleCategory, OptionBuilder)
 			OptionBuilder.layout = nil
 		end
 	end
 
-	-- Custom canvas sub-pages (registered via ns:RegisterOptionsCanvas). These
-	-- can only be registered after the modules run (that's when they're queued),
-	-- so they trail the themed groups; sort them alphabetically among themselves.
+	-- Remaining canvas sub-pages (Credits, Profiles, …) trail the themed groups.
 	if Settings.RegisterCanvasLayoutSubcategory then
-		table.sort(optionsCanvases, function(a, b)
+		table.sort(deferredCanvases, function(a, b)
 			return a.name < b.name
 		end)
-		local panel = _G["SettingsPanel"]
-		for i = 1, #optionsCanvases do
-			local entry = optionsCanvases[i]
-			local frame, canvas = CreateCanvasSubFrame(entry.name)
-			Settings.RegisterCanvasLayoutSubcategory(category, frame, entry.sidebar)
-
-			-- Build lazily on first show so we don't pay for the UI up front.
-			if panel and entry.builder then
-				local built = false
-				panel:HookScript("OnShow", function()
-					if not built then
-						built = true
-						entry.builder(canvas)
-					end
-				end)
-			elseif entry.builder then
-				entry.builder(canvas)
-			end
+		for i = 1, #deferredCanvases do
+			RegisterCanvasEntry(deferredCanvases[i])
 		end
 	end
 
@@ -1233,15 +1556,21 @@ local function BuildOptions()
 
 	InstallHeaderDividerNudge(ourCategories)
 
-	-- Acknowledge "New This Update" badges (landing callout + section headers)
-	-- once the player actually opens any NexEnhance page; they then clear from the
-	-- next session on.
+	-- Refresh sidebar dots after the category list builds (Init may run before
+	-- sidebarNewCategories is populated if the settings panel was already open).
+	if C_Timer and C_Timer.After then
+		C_Timer.After(0, RefreshSidebarNewBadges)
+	end
+
+	-- Acknowledge the landing callout + section badges when the player opens a
+	-- NexEnhance *sub*-page — not the root landing canvas, so sidebar dots stay
+	-- visible while browsing the category list.
 	do
 		local panel = _G["SettingsPanel"]
 		if panel and panel.DisplayCategory and not panel.nexNewSeenHooked then
 			panel.nexNewSeenHooked = true
 			hooksecurefunc(panel, "DisplayCategory", function(_, cat)
-				if cat == category or ourCategories[cat] then
+				if cat ~= category and ourCategories[cat] then
 					AcknowledgeNewVersion()
 				end
 			end)
@@ -1260,3 +1589,4 @@ local function BuildOptions()
 end
 
 ns:RegisterEvent("PLAYER_LOGIN", BuildOptions)
+ns:RegisterEvent("PLAYER_LOGIN", ScheduleGameMenuButtonInstall)

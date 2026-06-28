@@ -21,7 +21,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local ActionKeyDown = ns:NewModule("ActionKeyDown", "actionKeyDown", { group = "general", title = L["Cast On Key Down"], order = 30 })
+local ActionKeyDown = ns:NewModule("ActionKeyDown", "actionKeyDown", { group = "actionbars", title = L["Cast On Key Down"], order = 30 })
 
 local function Apply()
 	if InCombatLockdown() then

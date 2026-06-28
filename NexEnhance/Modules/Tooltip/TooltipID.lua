@@ -104,6 +104,11 @@ function Tooltip:SetHyperLinkID(link)
 end
 
 function Tooltip:SetupTooltipID()
+	if Tooltip._idSetup then
+		return
+	end
+	Tooltip._idSetup = true
+
 	hooksecurefunc(GameTooltip, "SetHyperlink", Tooltip.SetHyperLinkID)
 	hooksecurefunc(ItemRefTooltip, "SetHyperlink", Tooltip.SetHyperLinkID)
 

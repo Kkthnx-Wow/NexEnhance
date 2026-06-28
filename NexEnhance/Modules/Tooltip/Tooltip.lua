@@ -17,7 +17,8 @@
 	width / edgeSize in Lua. Midnight said "surprise, that's a secret now."
 
 	This file owns the module; the sibling files (TooltipID, TooltipIcons,
-	TooltipItemLevel, TooltipHoverTips, TooltipMountSource) fetch it with
+	TooltipItemLevel, TooltipHoverTips, TooltipMountSource, TooltipItemReagents,
+	TooltipPawn) fetch it with
 	ns:GetModule("Tooltip") and add their own methods, all wired from OnEnable.
 --]]
 
@@ -100,6 +101,7 @@ ns:RegisterDefaults({
 		itemLevelByShift = true,
 		hoverTips = true,
 		mountSource = true,
+		itemReagents = true,
 	},
 })
 
@@ -738,11 +740,17 @@ function Tooltip:UpdateItemQualityBorder()
 	SetDefaultBorderColor(self)
 end
 
-function Tooltip:ResetUnit(btn)
-	if GameTooltip:IsForbidden() then
+function Tooltip:ResetUnit(_, key)
+	if GameTooltip:IsForbidden() or not GameTooltip:IsShown() then
 		return
 	end
-	if GameTooltip:IsShown() and btn == "LSHIFT" and Tooltip:UnitExists("mouseover") then
+	if key ~= "LSHIFT" and key ~= "RSHIFT" then
+		return
+	end
+	if not Tooltip:UnitExists("mouseover") then
+		return
+	end
+	if GT.RefreshData then
 		GT:RefreshData()
 	end
 end
@@ -814,6 +822,12 @@ function Tooltip:OnEnable()
 	if cfg.mountSource and Tooltip.SetupMountSource then
 		Tooltip:SetupMountSource()
 	end
+	if cfg.itemReagents and Tooltip.SetupItemReagents then
+		Tooltip:SetupItemReagents()
+	end
+	if Tooltip.SetupPawnIntegration then
+		Tooltip:SetupPawnIntegration()
+	end
 
 	self:RegisterEvent("MODIFIER_STATE_CHANGED", "ResetUnit")
 
@@ -832,9 +846,11 @@ function Tooltip:OnSettingChanged(key)
 		RepositionStatusBar()
 	elseif key == "healthBarText" then
 		local bar = GameTooltipStatusBar
-		if bar and bar:IsShown() then
-			UpdateHealthText()
+		if bar then
+			UpdateHealthText(bar)
 		end
+	elseif (key == "showIcons" or key == "qualityBorder") and Tooltip.RefreshPawnIntegration then
+		Tooltip:RefreshPawnIntegration()
 	end
 end
 
@@ -852,15 +868,25 @@ function Tooltip:RegisterOptions(category, builder)
 	local _, factionInit = builder:Checkbox(category, self, "factionIcon", L["Show Faction Icon"], L["Show an Alliance/Horde icon on player tooltips."])
 	local _, roleInit = builder:Checkbox(category, self, "lfdRole", L["Show Role Icon"], L["Show the group role (tank/healer/dps) icon on player tooltips."])
 	local _, realmInit = builder:Checkbox(category, self, "hideRealm", L["Hide Realm Name"], L["Hide the realm name on players from other realms (hold Shift to reveal)."])
+	local _, rankInit = builder:Checkbox(category, self, "hideRank", L["Hide Guild Rank"], L["Hide guild rank text on player tooltips (rank index still shown)."])
 	local _, titleInit = builder:Checkbox(category, self, "hideTitle", L["Hide Player Title"], L["Hide PvP/guild titles on player names."])
 	local _, scoreInit = builder:Checkbox(category, self, "mythicScore", L["Show Mythic+ Score"], L["Show the player's current-season Mythic+ rating."])
-	local _, borderInit = builder:Checkbox(category, self, "qualityBorder", L["Quality-Coloured Border"], L["Tint Blizzard's default tooltip border by item quality."])
+	local borderTip = self.GetPawnBorderOverrideTip and self:GetPawnBorderOverrideTip(L["Tint Blizzard's default tooltip border by item quality."]) or L["Tint Blizzard's default tooltip border by item quality."]
+	local _, borderInit = builder:Checkbox(category, self, "qualityBorder", L["Quality-Coloured Border"], borderTip)
 	local _, ilvlInit = builder:Checkbox(category, self, "showItemLevel", L["Show Item Level"], L["Show the inspected player's item level on their tooltip."])
 	local _, ilvlShiftInit = builder:Checkbox(category, self, "itemLevelByShift", L["Item Level on Shift"], L["Only show the inspected item level while holding Shift."])
 	local _, idsInit = builder:Checkbox(category, self, "showIDs", L["Show IDs"], L["Append spell, item, quest and other IDs to tooltips."])
-	local _, iconsInit = builder:Checkbox(category, self, "showIcons", L["Show Icons"], L["Show an icon next to the tooltip title for spells, items and more."])
+	local iconsTip = self.GetPawnIconsOverrideTip and self:GetPawnIconsOverrideTip(L["Show an icon next to the tooltip title for spells, items and more."]) or L["Show an icon next to the tooltip title for spells, items and more."]
+	local _, iconsInit = builder:Checkbox(category, self, "showIcons", L["Show Icons"], iconsTip)
 	local _, hoverInit = builder:Checkbox(category, self, "hoverTips", L["Hyperlink Hover Tips"], L["Show a tooltip when hovering item/spell links in chat."])
 	local _, mountInit = builder:Checkbox(category, self, "mountSource", L["Show Mount Source"], L["Show a mount's collection status and source on aura tooltips (hold Shift over another player's mount buff)."])
+	local _, combatInit = builder:Checkbox(category, self, "hideInCombat", L["Hide Unit Tooltips in Combat"], L["Hide unit tooltips while in combat (hold Shift to reveal)."])
+	local _, reagentsInit = builder:Checkbox(category, self, "itemReagents", L["Show Crafting Reagents"], L["On craftable items, show required reagents with your bag and bank counts."])
+
+	if self.PawnIsAvailable and self:PawnIsAvailable() then
+		local pawnDesc = builder:Description(L["Tooltip Pawn Integration Note"])
+		builder:DependsOn(pawnDesc, enableInit)
+	end
 
 	-- Every tooltip extra is meaningless while the module is off.
 	builder:DependsOn(barPosInit, enableInit)
@@ -869,6 +895,7 @@ function Tooltip:RegisterOptions(category, builder)
 	builder:DependsOn(factionInit, enableInit)
 	builder:DependsOn(roleInit, enableInit)
 	builder:DependsOn(realmInit, enableInit)
+	builder:DependsOn(rankInit, enableInit)
 	builder:DependsOn(titleInit, enableInit)
 	builder:DependsOn(scoreInit, enableInit)
 	builder:DependsOn(borderInit, enableInit)
@@ -877,6 +904,8 @@ function Tooltip:RegisterOptions(category, builder)
 	builder:DependsOn(iconsInit, enableInit)
 	builder:DependsOn(hoverInit, enableInit)
 	builder:DependsOn(mountInit, enableInit)
+	builder:DependsOn(combatInit, enableInit)
+	builder:DependsOn(reagentsInit, enableInit)
 	-- "Item Level on Shift" only applies when item level is shown at all.
 	builder:DependsOn(ilvlShiftInit, ilvlInit)
 end

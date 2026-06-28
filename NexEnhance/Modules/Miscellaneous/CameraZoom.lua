@@ -24,7 +24,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local CameraZoom = ns:NewModule("CameraZoom", "cameraZoom", { group = "general", title = L["Camera Zoom"], order = 20 })
+local CameraZoom = ns:NewModule("CameraZoom", "cameraZoom", { group = "camera", title = L["Camera Zoom"], order = 10 })
 
 local MIN_ZOOM, MAX_ZOOM = 1.0, 2.6
 

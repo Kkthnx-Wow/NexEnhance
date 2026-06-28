@@ -44,9 +44,19 @@ local BACKDROP = C.Backdrops.window
 local CHANGELOG = {
 	{
 		version = "1.5.0",
-		date = "2026-06-16",
-		intro = "Midnight maintenance pass - Character and Inspect frame reskin sync, chat quality-of-life, quest and durability fixes, and assorted 12.0.7 API polish.",
+		date = "2026-06-27",
+		intro = "Midnight maintenance pass — nameplate tools, tooltip and automation improvements, settings reorg, chat quality-of-life, Character and Inspect frame reskin sync, and assorted 12.0.7 API polish.",
 		sections = {
+			{ "Tooltip", {
+				"Crafting Reagents: on usable craftable items, shows required reagents with bag/bank counts and a batch-craft hint (Plumber-inspired). Secret-safe counts.",
+				"New options: Hide Unit Tooltips in Combat, Hide Guild Rank, Show Crafting Reagents.",
+				"Pawn integration: Show Icons suppresses Pawn corner icons; Quality-Coloured Border suppresses Pawn green upgrade borders (scores/upgrade text unchanged). Settings note when Pawn is installed.",
+			} },
+			{ "Nameplates", {
+				"Nameplate Quest Icons: shows a quest icon on the nameplate of any NPC tied to one of your active quests, with optional objective progress (always on your target, on mouseover, or while holding a chosen modifier key). A party member's quest greys the icon; inside instances it falls back to the cheap relation check. Secret-value safe. Options for icon size, progress text size, side, X/Y offset, party quests, progress mode/format and the modifier key.",
+				"Target Arrows: arrow indicators on your current target's nameplate (attackable units only). Horizontal side arrows or a single Azerite arrow above the plate; customizable arrow color (defaults to NexEnhance blue). Optional friendly-player nameplate preset enables name-only class-colored friendly player plates via the same Blizzard CVars (restored when turned off).",
+				"Reaction Colors: tints NPC and mob nameplate health bars with the same darker reaction palette as the target frame. Player nameplates are not changed; forbidden, tap-denied, dead, and combat threat-hostile plates are skipped.",
+			} },
 			{ "Chat", {
 				"ElvUI-style chat quality-of-life: scroll-down interval (auto return to bottom after scrolling up), flash taskbar icon on whisper, /tt and /gr edit-box shortcuts, and combat repeat-character block.",
 			} },
@@ -54,11 +64,26 @@ local CHANGELOG = {
 				"Hide Channel Tags: strip channel brackets entirely instead of abbreviating them.",
 			} },
 			{ "Automation", {
+				"Auto Role: sets your party role from your active spec (GetSpecializationRoleEnum / UnitSetRoleEnum). Skips LFG groups, scenarios, and combat. Optional instant role-poll answer suppresses Blizzard's popup.",
 				"Holiday Dungeon: when you open the Dungeon Finder for the first time each login, points out the active holiday or Timewalking queue in the Type menu if it is not already selected (including Turbulent Timeways weeks where the API omits the Timewalking flag).",
+			} },
+			{ "Settings", {
+				"Options reorganised: new Nameplates, Camera, Alerts and Movers categories so the Miscellaneous page is no longer a catch-all.",
+				"Cast On Key Down moved from General to Action Bars.",
+				"Game Menu: NexEnhance button on the escape menu (after Options/Shop) opens the addon settings panel.",
+				"Localization: initial German (deDE) locale — machine-translated for native review; English remains the fallback.",
 			} },
 			{
 				"Fixed",
 				{
+					"Settings: sidebar New markers and section badges now match the landing-page new-module list; canvas pages dismiss the callout; New This Update scrolls when long; Plugin Manager sits under Plugins.",
+					"Profiles: per-character profile label + hint; dropdown rows no longer overlap.",
+					"Unit Frames / Tooltips: UnitSelectionType category + FACTION_BAR tints; unfriendly orange boosted so it reads clearly vs red.",
+					"Auto Hide Tracker: no longer hides the objective tracker when a friendly escort NPC occupies a boss frame (e.g. MoP Shado-Pan assault dailies); requires a hostile boss unit, not merely boss1..5 existing.",
+					"Minimap: fixed cluster jump-then-snap when mail/crafting orders trigger Blizzard layout — footprint correction defers until after ResizeLayoutFrame.",
+					"Tooltip — Mount Source: uses the aura unit (party/raid mouseover), not target.",
+					"Tooltip: refreshes on LShift/RShift press and release for realm, NPC ID, and shift-gated extras.",
+					"Tooltip: health-bar text live-apply no longer tests IsShown() on a secret-marked status bar.",
 					"Chat: scroll-down interval and quick-scroll mouse wheel no longer error - HookScript passes (frame, delta) but the hooked colon-method shifted arguments so delta was nil.",
 					"Character Frames: synced with CharInspectPlus v2.0.0 for 12.0.7 - widened gear layout only when CharacterFrame.Expanded, Reputation/Currency tabs keep Blizzard inset anchors, Inspect PVP/Guild tabs restore ButtonFrameTemplate insets, Secret guards on inspect class and item level.",
 					"Character Frames: Pawn button clickable and hoverable again - CharacterStatsPane was drawing above PaperDollFrame and blocking the wrist/trinket anchor; lift the button to HIGH frame strata so it stays on the gear tab only.",
@@ -72,6 +97,8 @@ local CHANGELOG = {
 					"Plugin Manager: canvas labels no longer show a duplicate black shadow behind the text (standard GameFont strings instead of manual shadow duplicates).",
 					"Durability: the Character-pane durability tab now populates on first login without /reload (UPDATE_INVENTORY_ALERTS + PLAYER_ENTERING_WORLD bootstrap, deferred refresh, PaperDoll OnShow hook). Tooltip shows per-slot and total repair costs via TooltipData.repairCost and GetRepairAllCost().",
 					"Quick Quest: gossip/greeting handlers select one quest per interaction and chain the next after each accept or turn-in. Gossip offers use C_GossipInfo quest data instead of quest-log difficulty (was 0 before accept). Warband/account-completed quests on an explicit NPC list are accepted even when account-completed tracking is hidden on the minimap. /nex quickquest toggles debug logging.",
+					"Queue Timer: listens for LFG_PROPOSAL_UPDATE, refreshes after LFGDungeonReadyPopup_Update, bootstraps an active pop after /reload, clears PvP confirm state correctly, and stops the OnUpdate ticker when the queue ends (12.0.7 has no default LFG countdown bar).",
+					"Player Cast Bar: backs off while Blizzard's OverlayPlayerCastingBarFrame replaces the player bar (talent/spec commits, crafting, etc.) so our read-only mirror does not fight SetAndUpdateShowCastbar(false) on the Edit Mode frame.",
 				},
 			},
 		},

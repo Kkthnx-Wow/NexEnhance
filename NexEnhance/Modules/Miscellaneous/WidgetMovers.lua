@@ -42,7 +42,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local WidgetMovers = ns:NewModule("WidgetMovers", "widgetMovers", { group = "misc", title = L["Widget Movers"], order = 35 })
+local WidgetMovers = ns:NewModule("WidgetMovers", "widgetMovers", { group = "movers", title = L["Widget Movers"], order = 20 })
 
 -- Pin `container` to `anchor`. Setting the point re-enters the SetPoint hook, but
 -- the parent == anchor guard there stops the recursion. We skip re-pinning during

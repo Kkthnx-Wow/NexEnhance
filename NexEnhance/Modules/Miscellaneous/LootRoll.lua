@@ -68,7 +68,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local LootRoll = ns:NewModule("LootRoll", "lootRoll", { group = "misc", title = L["Loot Roll"], order = 41 })
+local LootRoll = ns:NewModule("LootRoll", "lootRoll", { group = "alerts", title = L["Loot Roll"], order = 20 })
 
 -- Bars currently showing a roll, in stack order; rollID -> bar lookup; and a
 -- queue of rolls waiting for a free bar when we hit maxBars. `testBars` tracks

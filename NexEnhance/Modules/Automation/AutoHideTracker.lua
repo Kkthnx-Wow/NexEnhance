@@ -24,13 +24,18 @@
 	    Update (mirrors Blizzard_FrameXML/SplashFrame.lua, SplashFrameMixin:OnHide).
 	  * Mythic+ keystone runs keep the tracker visible by default (you usually
 	    want your objectives there); flip "Hide in Mythic+" to override.
+	  * Boss tokens alone are not enough to hide: MoP assault dailies and other
+	    open-world scenarios can put friendly escort NPCs on boss1..5 via
+	    INSTANCE_ENCOUNTER_ENGAGE_UNIT. We only collapse when a boss unit is
+	    hostile (UnitIsEnemy); encounter-in-progress is used only when hostility
+	    is secret (Midnight instances).
 	  * We bow out entirely if a boss mod (BigWigs/DBM) or a third-party quest
 	    tracker is loaded, since those manage the tracker themselves.
 --]]
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local L = ns.L
+local L, F = ns.L, ns.F
 
 local _G = _G
 local pcall = pcall
@@ -41,14 +46,19 @@ local GetInstanceInfo = GetInstanceInfo
 local RegisterStateDriver = RegisterStateDriver
 local UnregisterStateDriver = UnregisterStateDriver
 local ShowUIPanel = ShowUIPanel
+local UnitExists = UnitExists
+local UnitIsEnemy = UnitIsEnemy
 local C_AddOns_IsAddOnLoaded = C_AddOns.IsAddOnLoaded
+local C_InstanceEncounter = C_InstanceEncounter
 local C_TalkingHead = C_TalkingHead
 
 -- GetInstanceInfo difficultyID for a Mythic+ keystone run.
 local DIFFICULTY_KEYSTONE = 8
 
--- Resolve "hide" while any boss/arena unit exists, "show" otherwise. The bracket
--- groups are OR-ed, so any match collapses the tracker.
+-- Secure trigger: any boss/arena unit token exists (OR-ed). The state driver cannot
+-- tell a raid boss from a friendly scenario companion — MoP Shado-Pan assault
+-- dailies fire INSTANCE_ENCOUNTER_ENGAGE_UNIT and populate boss1..5 with escort
+-- NPCs (see Blizzard_UnitFrame/Mainline/TargetFrame.lua). Collapse() filters that.
 local STATE_CONDITION = "[@arena1,exists][@arena2,exists][@arena3,exists][@arena4,exists][@arena5,exists]" .. "[@boss1,exists][@boss2,exists][@boss3,exists][@boss4,exists][@boss5,exists] hide;show"
 
 ns:RegisterDefaults({
@@ -72,6 +82,43 @@ end
 
 local function IsCollapsed(tracker)
 	return tracker and tracker:GetParent() == ns.HiderFrame
+end
+
+local function AnyArenaUnit()
+	for i = 1, 5 do
+		if UnitExists("arena" .. i) then
+			return true
+		end
+	end
+	return false
+end
+
+-- Boss frames use unit tokens boss1..boss5 after INSTANCE_ENCOUNTER_ENGAGE_UNIT.
+-- Only treat them as a "boss fight" when at least one is hostile. Scenario dailies
+-- (e.g. MoP Shado-Pan assaults) can populate boss slots with friendly escorts while
+-- IsEncounterInProgress() is also true — so we never hide on encounter flag alone.
+local function AnyHostileBossUnit()
+	for i = 1, 5 do
+		local unit = "boss" .. i
+		if UnitExists(unit) then
+			local enemy = UnitIsEnemy("player", unit)
+			if F.NotSecret(enemy) then
+				if enemy then
+					return true
+				end
+			elseif C_InstanceEncounter and C_InstanceEncounter.IsEncounterInProgress() then
+				return true
+			end
+		end
+	end
+	return false
+end
+
+local function ShouldCollapseTracker()
+	if AnyArenaUnit() then
+		return true
+	end
+	return AnyHostileBossUnit()
 end
 
 -- Combat blocked the reparent earlier; apply it now that we're out of combat.
@@ -154,6 +201,10 @@ end
 local function Collapse()
 	local tracker = GetTracker()
 	if not tracker or IsCollapsed(tracker) then
+		return
+	end
+
+	if not ShouldCollapseTracker() then
 		return
 	end
 

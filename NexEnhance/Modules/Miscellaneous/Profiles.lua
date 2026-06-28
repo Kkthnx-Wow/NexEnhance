@@ -475,19 +475,30 @@ end
 
 -- Lays the management + import/export UI out inside `container`, which must
 -- already be sized and anchored by the caller (the canvas page or the
--- standalone body).
-local function BuildProfileContent(container)
+-- standalone body). Optional `ui` stores widget refs for RefreshProfileUI.
+local function BuildProfileContent(container, ui)
+	ui = ui or {}
 	-- --- Profile management ------------------------------------------------
 	local mgmtHeader = CreateSectionHeading(container, L["Profile Management"])
 	mgmtHeader:SetPoint("TOPLEFT", 8, -6)
 
+	local charKey = C.Player.key or (UnitName("player") .. " - " .. (GetRealmName() or ""))
 	local current = container:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 	current:SetPoint("TOPLEFT", mgmtHeader, "BOTTOMLEFT", 0, -8)
-	current:SetText(format(L["Current Profile: %s"], "|c" .. C.BrandHex .. ns.profileName .. "|r"))
+	current:SetText(format(L["Current Profile for %s: %s"], charKey, "|c" .. C.BrandHex .. ns.profileName .. "|r"))
+	ui.current = current
+
+	local hint = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+	hint:SetPoint("TOPLEFT", current, "BOTTOMLEFT", 0, -6)
+	hint:SetPoint("RIGHT", container, "RIGHT", -8, 0)
+	hint:SetJustifyH("LEFT")
+	hint:SetWordWrap(true)
+	hint:SetTextColor(0.65, 0.65, 0.65)
+	hint:SetText(L["PROFILE_CHAR_HINT"])
 
 	local newBtn = CreateFrame("Button", nil, container, "UIPanelButtonTemplate")
 	newBtn:SetSize(140, 24)
-	newBtn:SetPoint("TOPLEFT", current, "BOTTOMLEFT", 0, -12)
+	newBtn:SetPoint("TOPLEFT", hint, "BOTTOMLEFT", 0, -12)
 	newBtn:SetText(L["New"])
 	newBtn:SetScript("OnClick", DoNew)
 
@@ -517,7 +528,8 @@ local function BuildProfileContent(container)
 		end
 	end)
 	if switchDD then
-		switchDD:SetPoint("TOPLEFT", resetBtn, "BOTTOMLEFT", -218, -16)
+		switchDD:SetPoint("TOPLEFT", newBtn, "BOTTOMLEFT", 82, -20)
+		ui.switchDD = switchDD
 	end
 
 	local switchLabel = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -545,7 +557,7 @@ local function BuildProfileContent(container)
 		end
 	end)
 	if copyFromDD and switchDD then
-		copyFromDD:SetPoint("TOPLEFT", switchDD, "BOTTOMLEFT", 0, -10)
+		copyFromDD:SetPoint("TOPLEFT", switchDD, "BOTTOMLEFT", 0, -12)
 	end
 
 	local copyFromLabel = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -573,7 +585,7 @@ local function BuildProfileContent(container)
 		end
 	end)
 	if deleteDD then
-		deleteDD:SetPoint("TOPLEFT", (copyFromDD or switchDD or newBtn), "BOTTOMLEFT", 0, -10)
+		deleteDD:SetPoint("TOPLEFT", (copyFromDD or switchDD or newBtn), "BOTTOMLEFT", copyFromDD and 0 or 82, -12)
 	end
 
 	local deleteLabel = container:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -648,6 +660,22 @@ local function BuildProfileContent(container)
 	end)
 end
 
+local profileUI = {}
+
+local function RefreshProfileUI()
+	if profileUI.current then
+		local charKey = C.Player.key or (UnitName("player") .. " - " .. (GetRealmName() or ""))
+		profileUI.current:SetText(format(L["Current Profile for %s: %s"], charKey, "|c" .. C.BrandHex .. ns.profileName .. "|r"))
+	end
+	if profileUI.switchDD then
+		if profileUI.switchDD.OverrideText then
+			profileUI.switchDD:OverrideText(ns.profileName)
+		elseif profileUI.switchDD.SetDefaultText then
+			profileUI.switchDD:SetDefaultText(ns.profileName)
+		end
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- Settings canvas (NexEnhance -> Profiles)
 -- ---------------------------------------------------------------------------
@@ -655,18 +683,18 @@ local SIDEBAR_ICON = [[Interface\ICONS\INV_Inscription_Scroll]]
 local canvasBuilt = false
 
 local function BuildProfileCanvas(canvas)
-	if canvasBuilt then
-		return
+	if not canvasBuilt then
+		canvasBuilt = true
+		BuildProfileContent(canvas, profileUI)
 	end
-	canvasBuilt = true
-	BuildProfileContent(canvas)
+	RefreshProfileUI()
 end
 
 local function ProfilesSidebarLabel()
-	return format("|T%s:16:16|t |c%s%s|r", SIDEBAR_ICON, C.BrandHex, L["Profiles"])
+	return format("|c%s%s|r", C.BrandHex, L["Profiles"])
 end
 
-ns:RegisterOptionsCanvas(L["Profiles"], BuildProfileCanvas, ProfilesSidebarLabel())
+ns:RegisterOptionsCanvas(L["Profiles"], BuildProfileCanvas, ProfilesSidebarLabel(), { icon = SIDEBAR_ICON })
 
 -- ---------------------------------------------------------------------------
 -- Standalone window (/nex profile)
@@ -707,7 +735,8 @@ local function BuildWindow()
 	local body = CreateFrame("Frame", nil, window)
 	body:SetPoint("TOPLEFT", 14, -64)
 	body:SetPoint("BOTTOMRIGHT", -14, 12)
-	BuildProfileContent(body)
+	BuildProfileContent(body, profileUI)
+	RefreshProfileUI()
 
 	return window
 end

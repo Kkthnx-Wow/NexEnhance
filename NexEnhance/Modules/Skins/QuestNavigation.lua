@@ -21,7 +21,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local C, L = ns.C, ns.L
+local C, F, L = ns.C, ns.F, ns.L
 
 local _G = _G
 local abs, floor, max = math.abs, math.floor, math.max
@@ -89,7 +89,7 @@ local function UpdateArrival(self, elapsed)
 
 	local eta = abs(distance / max(emaSpeed, 0.1))
 	if self.TimeText then
-		self.TimeText:SetFormattedText(TIMER_MINUTES_DISPLAY, floor(eta / 60), floor(eta % 60))
+		F.SetPlainFormattedText(self.TimeText, TIMER_MINUTES_DISPLAY, floor(eta / 60), floor(eta % 60))
 		self.TimeText:Show()
 	end
 end
@@ -117,10 +117,7 @@ function QuestNavigation:Style()
 	local _, size, flags = frame.DistanceText:GetFont()
 	frame.DistanceText:SetFont(C.Media.Fonts.normal, size or 12, flags)
 
-	local time = frame:CreateFontString(nil, "BACKGROUND")
-	time:SetFont(C.Media.Fonts.normal, size or 12, flags)
-	time:SetShadowColor(0, 0, 0, 1)
-	time:SetShadowOffset(1, -1)
+	local time = F.CreatePlainFS(frame, size or 12)
 	time:SetPoint("TOP", frame.DistanceText, "BOTTOM", 0, -2)
 	time:SetHeight(20)
 	time:SetJustifyV("TOP")

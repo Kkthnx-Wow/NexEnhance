@@ -1,5 +1,5 @@
 ## Interface: 120007
-## Title: |cff5C8BCFNex|rEnhance
+## Title: |cff5C8BCFNex|r|cffffd100Enhance|r
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
 ## Version: 1.5.0
@@ -49,6 +49,7 @@ Core\Plugins.lua
 
 # Localization (English is the fallback and must load first).
 Core\Locales\enUS.lua
+Core\Locales\deDE.lua
 
 # User-facing entry points (slash commands + options panel).
 Core\Commands.lua
@@ -81,6 +82,11 @@ Modules\UnitFrames\LevelColors.lua
 Modules\UnitFrames\PlayerCastBar.lua
 Modules\UnitFrames\HideDpsRole.lua
 
+# Nameplates
+Modules\Nameplates\QuestIndicator.lua
+Modules\Nameplates\TargetArrows.lua
+Modules\Nameplates\ReactionColors.lua
+
 # Auras
 Modules\Auras\Reminder.lua
 
@@ -109,6 +115,8 @@ Modules\Tooltip\TooltipIcons.lua
 Modules\Tooltip\TooltipItemLevel.lua
 Modules\Tooltip\TooltipHoverTips.lua
 Modules\Tooltip\TooltipMountSource.lua
+Modules\Tooltip\TooltipItemReagents.lua
+Modules\Tooltip\TooltipPawn.lua
 Modules\Tooltip\TooltipVendorLocation.lua
 
 # Skins
@@ -148,6 +156,7 @@ Modules\Automation\GuildInviteFilter.lua
 Modules\Automation\QuickJoin.lua
 Modules\Automation\AutoGoodbye.lua
 Modules\Automation\AutoResurrect.lua
+Modules\Automation\AutoRole.lua
 Modules\Automation\AutoKeystone.lua
 Modules\Automation\HolidayDungeon.lua
 Modules\Automation\AutoHideTracker.lua

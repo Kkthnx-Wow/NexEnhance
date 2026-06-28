@@ -33,7 +33,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local AlertFrames = ns:NewModule("AlertFrames", "alertFrames", { group = "misc", title = L["Alert Frames"], order = 40 })
+local AlertFrames = ns:NewModule("AlertFrames", "alertFrames", { group = "alerts", title = L["Alert Frames"], order = 10 })
 
 -- Current stacking direction; flipped by AlertFrame_UpdateAnchor depending on
 -- whether the anchor sits in the top or bottom half of the screen.

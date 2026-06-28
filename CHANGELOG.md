@@ -2,13 +2,47 @@
 
 ---
 
-## [1.5.0] — 2026-06-16
+## [1.5.0] — 2026-06-27
 
-Midnight maintenance pass — Character and Inspect frame reskin sync, chat
-quality-of-life, quest and durability fixes, and assorted 12.0.7 API polish.
+Midnight maintenance pass — nameplate tools, tooltip and automation improvements,
+settings reorg, chat quality-of-life, Character and Inspect frame reskin sync,
+and assorted 12.0.7 API polish.
 
 ### Added
 
+- **Nameplates — Nameplate Quest Icons:** a quest icon on the nameplate of any
+  NPC tied to one of your active quests, with optional objective progress
+  (always on your target, on mouseover, or while holding a chosen modifier key).
+  Greys the icon for a party member's quest, falls back to the cheap relation
+  check inside instances, and is Secret-value safe. Options for icon size,
+  progress text size, side, X/Y offset, party quests, progress mode/format, and
+  the modifier key. A NexEnhance-native take on Plumber's NameplateQuestIndicator.
+- **Nameplates — Target Arrows:** left/right arrow indicators on your current
+  target's nameplate (attackable units only). Optional friendly-player nameplate
+  preset sets `nameplateShowFriendlyPlayers`,
+  `nameplateShowOnlyNameForFriendlyPlayerUnits`, and
+  `nameplateUseClassColorForFriendlyPlayerUnitNames` — the same CVars Blizzard's
+  nameplate UI reads via `CVarCallbackRegistry`; originals are restored when the
+  option is turned off. Arrow style dropdown: horizontal side arrows or a single
+  `Azerite-PointingArrow` above the nameplate. Custom arrow color (defaults to
+  NexEnhance brand blue `#5C8BCF`).
+- **Nameplates — Reaction Colors:** tints NPC and mob nameplate health bars with
+  the same darker reaction palette as the target frame (`F.GetNpcReactionColor`).
+  Player nameplates are untouched (Blizzard class-color CVars). Skips forbidden
+  plates, tap-denied/dead gray, and combat threat-hostile red.
+- **Tooltip — Crafting Reagents:** on usable craftable items, appends required
+  reagents with bag/bank counts and a batch-craft hint when you have enough for
+  multiple outputs (Plumber-inspired). Secret-safe count display.
+- **Tooltip options:** **Hide Unit Tooltips in Combat**, **Hide Guild Rank**, and
+  **Show Crafting Reagents** — settings that existed in code but had no UI row.
+- **Tooltip — Pawn integration:** when Pawn is installed, **Show Icons** suppresses
+  Pawn's corner tooltip icon frames and **Quality-Coloured Border** suppresses
+  Pawn's green upgrade border (via `PawnRegisterThirdPartyTooltip`). Pawn scores
+  and upgrade text are unchanged. Settings note this when Pawn is enabled.
+- **Automation — Auto Role:** keeps your party/raid role aligned with your active
+  specialization via Blizzard's `GetSpecializationRoleEnum` / `UnitSetRoleEnum`
+  APIs. Skips LFG-restricted groups, scenarios, and combat. Optionally answers
+  role polls instantly and suppresses Blizzard's popup.
 - **Chat:** ElvUI-style chat quality-of-life — scroll-down interval (auto return to
   bottom after scrolling up), flash taskbar icon on whisper, `/tt`/`/gr` edit-box
   shortcuts, and combat repeat-character block.
@@ -20,8 +54,45 @@ quality-of-life, quest and durability fixes, and assorted 12.0.7 API polish.
   `LFDQueueFrame_SetType`, which taints LFG globals and can block
   `AcceptProposal`).
 
+### Changed
+
+- **Settings:** reorganised the options into clearer categories — new
+  **Nameplates**, **Camera**, **Alerts**, and **Movers** groups so the
+  Miscellaneous page is no longer a catch-all. **Cast On Key Down** moved from
+  General to Action Bars.
+- **Game Menu:** **NexEnhance** button on the escape menu (after Options/Shop)
+  opens the addon settings panel.
+- **Localization:** initial German (`deDE`) locale — machine-translated for native
+  review; English remains the fallback.
+
 ### Fixed
 
+- **Settings — New badges:** sidebar group labels use the
+  `UI-HUD-MicroMenu-Communities-Icon-Notification` dot on the category icon
+  instead of a trailing "New" suffix (fixes truncated names like Announcements).
+- **Settings — landing page:** “New This Update” scrolls when the list is long
+  instead of overflowing the panel.
+- **Settings — Plugin Manager** appears directly under **Plugins** in the sidebar.
+- **Profiles:** clearer per-character profile label and hint text; dropdown row
+  layout no longer overlaps when menus open.
+- **Unit Frames / Tooltips — unfriendly (orange) NPCs:** reaction category from
+  `UnitSelectionType` (nameplate source), tinted with darker `FACTION_BAR_COLORS`;
+  unfriendly orange is boosted toward nameplate orange so it reads clearly vs
+  hostile red on desaturated HUD bars. `UnitReaction` fallback when secret.
+- **Auto Hide Tracker:** no longer hides the objective tracker when a friendly
+  escort NPC occupies a boss frame (e.g. MoP Shado-Pan assault dailies). Boss
+  slots are populated via `INSTANCE_ENCOUNTER_ENGAGE_UNIT`; we now require a
+  hostile boss unit, not merely `@bossN,exists`.
+- **Minimap:** fixed the cluster briefly jumping then snapping back when mail,
+  crafting orders, or Edit Mode layout runs — footprint correction now defers
+  until after Blizzard's `ResizeLayoutFrame` pass and ignores layout children
+  we removed or repinned.
+- **Tooltip — Mount Source:** mount collection/source lines now use the aura's
+  unit (party/raid mouseover), not `target`.
+- **Tooltip:** unit tooltips refresh when either Shift key is pressed or
+  released so realm, NPC ID, and item-level-on-shift update live.
+- **Tooltip:** health-bar text setting no longer calls `IsShown()` on a bar that
+  may carry secret aspects after Midnight health writes.
 - **Chat:** fix scroll-down interval and quick-scroll mouse wheel handler —
   `HookScript` passes `(frame, delta)` but the hooked method used a colon
   signature, so `delta` was nil and wheel scrolling errored.
@@ -71,6 +142,14 @@ quality-of-life, quest and durability fixes, and assorted 12.0.7 API polish.
   Warband/account-completed quests on an explicit gossip or greeting list are no
   longer skipped when account-completed tracking is hidden on the minimap.
   `/nex quickquest` toggles chat debug for gossip/accept tracing.
+- **Queue Timer:** aligned with Blizzard 12.0.7 LFG/PvP ready popups — listens for
+  `LFG_PROPOSAL_UPDATE`, refreshes after `LFGDungeonReadyPopup_Update`, bootstraps
+  an active pop after `/reload`, clears PvP state when confirm ends, and stops the
+  OnUpdate ticker properly when the queue ends (hidden frames still ticked before).
+- **Unit Frames — Player Cast Bar:** backs off while Blizzard's
+  `OverlayPlayerCastingBarFrame` replaces the player bar (talent/spec commits,
+  crafting, override action bar) so our read-only mirror does not fight
+  `SetAndUpdateShowCastbar(false)` on the Edit Mode-managed frame.
 
 ---
 

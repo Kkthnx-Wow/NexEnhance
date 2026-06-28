@@ -203,7 +203,7 @@ ns:RegisterDefaults({
 	},
 })
 
-local AFKCam = ns:NewModule("AFKCam", "afkCam", { group = "misc", title = L["AFK Camera"], order = 50 })
+local AFKCam = ns:NewModule("AFKCam", "afkCam", { group = "camera", title = L["AFK Camera"], order = 20 })
 
 local afkFrame
 local manualPreview

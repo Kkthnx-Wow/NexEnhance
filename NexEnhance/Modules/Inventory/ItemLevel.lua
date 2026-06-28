@@ -103,10 +103,12 @@ local enchantableSlots = {
 -- Small widget helpers (kept local: specific to this module's overlays)
 -- ---------------------------------------------------------------------------
 local function CreateFS(parent, size)
-	local fs = parent:CreateFontString(nil, "OVERLAY")
+	local fs = F.CreatePlainFS(parent, size)
 	fs:SetFont(FONT, size, "OUTLINE")
-	fs:SetShadowOffset(1, -1)
 	fs:SetWordWrap(false)
+	if fs.nexShadow then
+		fs.nexShadow:SetFont(FONT, size, "OUTLINE")
+	end
 	return fs
 end
 
@@ -128,7 +130,7 @@ end
 local function ApplyILvlFontSize()
 	local size = GetILvlFontSize()
 	for i = 1, #iLvlStrings do
-		iLvlStrings[i]:SetFont(FONT, size, "OUTLINE")
+		F.SetFontSize(iLvlStrings[i], size)
 	end
 end
 

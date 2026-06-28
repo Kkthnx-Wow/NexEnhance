@@ -3,8 +3,10 @@
 	-------------------------------------------------------------------------
 	Re-colours the health bars of the default Blizzard unit frames:
 	  * players -> their class colour;
-	  * NPCs    -> their reaction colour (hostile red, neutral yellow, friendly
-	               green), matching F.UnitColor and Blizzard's reaction strip.
+	  * NPCs    -> their reaction colour (hostile red, unfriendly orange, neutral
+	               yellow, friendly green). Category from UnitSelectionType (same
+	               as nameplates); tint from FACTION_BAR_COLORS with unfriendly
+	               orange boosted for HUD bars. UnitReaction fallback when secret.
 	Covered frames: player, pet, target, target-of-target, focus, focus-target,
 	the raid boss frames (Boss1..Boss5), party and the raid-style/compact frames.
 
@@ -56,14 +58,11 @@ local _G = _G
 local UnitClass = UnitClass
 local UnitIsPlayer = UnitIsPlayer
 local UnitIsConnected = UnitIsConnected
-local UnitReaction = UnitReaction
 local UnitThreatSituation = UnitThreatSituation
 local UnitTreatAsPlayerForDisplay = UnitTreatAsPlayerForDisplay
 local hooksecurefunc = hooksecurefunc
 local ipairs = ipairs
 local strfind = string.find
-
-local FACTION_BAR_COLORS = _G["FACTION_BAR_COLORS"]
 
 -- Shared secret-value gate (Core/Functions.lua). It accepts any value and never
 -- errors, so it is safe to call before we branch on a possibly-secret result.
@@ -113,11 +112,8 @@ local function GetPlayerClassColor(unit)
 end
 
 -- Resolve the health-bar tint for a unit: class colour for players, reaction
--- colour (hostile red / neutral yellow / friendly green) for NPCs - matching
--- F.UnitColor and Blizzard's own reaction strip. Returns r, g, b, or nil when
--- it cannot decide (classless, disconnected, or identity-restricted/secret) so
--- the caller can fall back to Blizzard's default atlas instead of guessing.
--- Every identity read is gated by F.IsSecret before it is boolean-tested.
+-- colour for NPCs via F.GetNpcReactionColor (UnitSelectionType/Color category +
+-- dark FACTION_BAR palette). Returns r, g, b, or nil when it cannot decide.
 local function GetUnitHealthColor(unit)
 	if not unit then
 		return nil
@@ -144,20 +140,7 @@ local function GetUnitHealthColor(unit)
 		return nil
 	end
 
-	-- Non-player: reaction colour. Leave the default atlas if we have no
-	-- reaction table or the reaction is secret/unknown.
-	if not FACTION_BAR_COLORS then
-		return nil
-	end
-	local reaction = UnitReaction(unit, "player")
-	if IsSecret(reaction) or not reaction then
-		return nil
-	end
-	local color = FACTION_BAR_COLORS[reaction]
-	if color then
-		return color.r, color.g, color.b
-	end
-	return nil
+	return F.GetNpcReactionColor(unit)
 end
 
 -- Atlas HUD bars use lockColor so Blizzard skips SetStatusBarColor in
@@ -393,6 +376,10 @@ function ClassColors:OnEnable()
 	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshEvent")
 	-- Reaction tint can change without a retarget (mind control, faction flip).
 	self:RegisterEvent("UNIT_FACTION", "RefreshEvent")
+	-- Neutral → combat-hostile (pulled yellow mob) updates threat before health ticks.
+	self:RegisterEvent("UNIT_THREAT_LIST_UPDATE", "RefreshEvent")
+	-- Same pull/aggro path Blizzard uses on compact frames (UpdateHealthColor).
+	self:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE", "RefreshEvent")
 	-- Party disconnect/reconnect toggles desaturation alongside health updates.
 	self:RegisterEvent("UNIT_CONNECTION", "RefreshEvent")
 	-- Boss frames appear mid-fight; refresh when an encounter engages units.

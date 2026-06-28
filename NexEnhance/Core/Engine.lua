@@ -78,7 +78,7 @@ function moduleMeta:RegisterUnitEvent(event, handler, ...)
 	end
 	assert(type(handler) == "function", ("NexEnhance: no handler for unit event '%s' on module '%s'"):format(event, self.name))
 
-	ns:RegisterUnitEvent(event, function(_, ...)
+	return ns:RegisterUnitEvent(event, function(_, ...)
 		handler(self, ...)
 	end, ...)
 end

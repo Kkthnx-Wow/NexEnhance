@@ -89,6 +89,7 @@ C.Colors = {
 
 -- Pre-built brand colour escape sequence for chat output (built once).
 C.BrandHex = ("ff%02x%02x%02x"):format(C.Colors.brand[1] * 255, C.Colors.brand[2] * 255, C.Colors.brand[3] * 255)
+C.HeaderHex = ("ff%02x%02x%02x"):format(C.Colors.header[1] * 255, C.Colors.header[2] * 255, C.Colors.header[3] * 255)
 
 -- ---------------------------------------------------------------------------
 -- Media

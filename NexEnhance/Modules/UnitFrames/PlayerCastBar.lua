@@ -15,6 +15,10 @@
 	    Blizzard's protected Edit Mode refresh path. So we treat it as READ-ONLY:
 	    we only read `Icon:GetTexture()` and `CastTimeText:GetText()` and mirror
 	    them into our own overlay anchored to the bar. We never write to it.
+	  * Talent/spec commits, crafting, and other UI hijack the player bar via
+	    OverlayPlayerCastingBarFrame:StartReplacingPlayerBarAt(), which calls
+	    PlayerCastingBarFrame:SetAndUpdateShowCastbar(false). We must back off
+	    entirely while that replacement is active or the native bar is suppressed.
 	  * Secret-safe: the icon texture / time string can be Secret values inside
 	    instances. We never compare or inspect them - issecretvalue() (always
 	    safe) decides presence, then the raw value is passed straight into
@@ -33,6 +37,7 @@ local F, L = ns.F, ns.L
 
 local _G = _G
 local CreateFrame = CreateFrame
+local hooksecurefunc = hooksecurefunc
 
 local ICON_GAP = 6 -- space between the icon and the top of the bar
 local TIME_GAP = 20 -- space between the bar and the cast time text
@@ -53,6 +58,8 @@ local active = false
 local overlay -- visual mirror (icon + time); hidden when idle
 local driver -- invisible OnUpdate host; shown only while a cast is on screen
 local eventsRegistered = false
+local suppressionHooked = false
+local overlayReplacing = false
 local elapsed = 0
 
 local function GetBar()
@@ -101,6 +108,64 @@ local function HideOverlay()
 	overlay:Hide()
 end
 
+local function SleepDriver()
+	if driver then
+		driver:Hide()
+	end
+	HideOverlay()
+end
+
+-- Blizzard routes player casts through OverlayPlayerCastingBarFrame while talents,
+-- specs, crafting, and similar UI are open. PlayerCastingBarFrame is suppressed
+-- (showCastbar = false) for that window — mirroring it would fight secure UI.
+local function ShouldMirrorPlayerBar(bar)
+	if not bar then
+		return false
+	end
+	if overlayReplacing then
+		return false
+	end
+	if IsEditModeActive(bar) then
+		return false
+	end
+	if bar.ShouldShowCastBar and not bar:ShouldShowCastBar() then
+		return false
+	end
+	return bar:IsShown()
+end
+
+local function HookCastBarSuppression()
+	if suppressionHooked then
+		return
+	end
+
+	local bar = GetBar()
+	local overlayBar = _G["OverlayPlayerCastingBarFrame"]
+	if not bar and not overlayBar then
+		return
+	end
+
+	suppressionHooked = true
+
+	if overlayBar and overlayBar.StartReplacingPlayerBarAt then
+		hooksecurefunc(overlayBar, "StartReplacingPlayerBarAt", function()
+			overlayReplacing = true
+			SleepDriver()
+		end)
+		hooksecurefunc(overlayBar, "EndReplacingPlayerBar", function()
+			overlayReplacing = false
+		end)
+	end
+
+	if bar and bar.SetAndUpdateShowCastbar then
+		hooksecurefunc(bar, "SetAndUpdateShowCastbar", function(_, showCastbar)
+			if not showCastbar then
+				SleepDriver()
+			end
+		end)
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- Mirror Blizzard's icon/time into our overlay. READ-ONLY on the cast bar.
 -- Returns true while the bar is on screen (so the driver keeps polling), false
@@ -113,7 +178,7 @@ local function UpdateMirror()
 	end
 
 	local bar = GetBar()
-	if not bar or IsEditModeActive(bar) or not bar:IsShown() then
+	if not ShouldMirrorPlayerBar(bar) then
 		HideOverlay()
 		return false
 	end
@@ -184,6 +249,12 @@ local function WakeDriver()
 	if not active then
 		return
 	end
+
+	local bar = GetBar()
+	if overlayReplacing or (bar and bar.ShouldShowCastBar and not bar:ShouldShowCastBar()) then
+		return
+	end
+
 	EnsureOverlay()
 	if not driver then
 		driver = CreateFrame("Frame", nil, _G["UIParent"])
@@ -201,6 +272,8 @@ end
 -- Activation
 -- ---------------------------------------------------------------------------
 local function Activate()
+	HookCastBarSuppression()
+
 	local bar = GetBar()
 	if not bar then
 		return false

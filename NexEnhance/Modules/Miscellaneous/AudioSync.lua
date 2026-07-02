@@ -33,11 +33,7 @@ ns:RegisterDefaults({
 
 local AudioSync = ns:NewModule("AudioSync", "audioSync", { group = "misc", title = L["Audio Sync"], order = 190 })
 
--- Store the wrapper returned by self:RegisterEvent so UnregisterModuleEvents can
--- pass the exact same closure to ns:UnregisterEvent. The method itself (self.XXX)
--- is not what gets registered - a wrapper closure is - so passing the method would
--- silently fail to remove anything.
-local voiceDevicesWrapper
+local eventHandles = {}
 
 local function SyncAudio()
 	if not ns.db.audioSync.enable then
@@ -68,7 +64,7 @@ function AudioSync:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	voiceDevicesWrapper = self:RegisterEvent("VOICE_CHAT_OUTPUT_DEVICES_UPDATED")
+	self:TrackEvent(eventHandles, "VOICE_CHAT_OUTPUT_DEVICES_UPDATED")
 
 	-- Run once on load to ensure everything is initialized and synchronized correctly.
 	SyncAudio()
@@ -80,8 +76,11 @@ function AudioSync:UnregisterModuleEvents()
 	end
 	self.eventsRegistered = false
 
-	ns:UnregisterEvent("VOICE_CHAT_OUTPUT_DEVICES_UPDATED", voiceDevicesWrapper)
-	voiceDevicesWrapper = nil
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function AudioSync:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AudioSync:OnSettingChanged(key, value)
@@ -91,7 +90,7 @@ function AudioSync:OnSettingChanged(key, value)
 	if value then
 		self:RegisterModuleEvents()
 	else
-		self:UnregisterModuleEvents()
+		self:OnDisable()
 	end
 end
 

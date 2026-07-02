@@ -48,6 +48,9 @@ ns:RegisterDefaults({
 
 local UnusableItems = ns:NewModule("UnusableItems", "unusableItems", { group = "inventory", title = L["Unusable Items"], order = 55 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
 -- ---------------------------------------------------------------------------
 -- Class-restriction data (resolved to the player's class at login).
 --   playerUnusable[itemClassID][itemSubClassID] = true  -> unusable subtype
@@ -105,6 +108,32 @@ local playerLevel = 1
 -- F.CacheSet so the table stays bounded over a long session, matching the
 -- ItemLevel / AlreadyKnown modules.
 local classCache = {}
+local reqLevelCache = {}
+
+local function GetRequiredLevel(link, itemID)
+	if not link then
+		return nil
+	end
+	if itemID and reqLevelCache[itemID] then
+		return reqLevelCache[itemID]
+	end
+	local reqLevel = select(5, C_Item_GetItemInfo(link))
+	if reqLevel then
+		if itemID then
+			reqLevelCache[itemID] = reqLevel
+		end
+		return reqLevel
+	end
+	if itemID and ns.RequestItemData then
+		ns:RequestItemData(itemID, function()
+			local loaded = select(5, C_Item_GetItemInfo(link)) or select(5, C_Item_GetItemInfo(itemID))
+			if loaded and itemID then
+				reqLevelCache[itemID] = loaded
+			end
+		end)
+	end
+	return reqLevel
+end
 
 local function IsClassUnusable(itemID)
 	if not (playerUnusable and itemID) then
@@ -136,7 +165,7 @@ local function IsUnusable(link, itemID)
 	end
 
 	if link then
-		local reqLevel = select(5, C_Item_GetItemInfo(link))
+		local reqLevel = GetRequiredLevel(link, itemID)
 		if reqLevel and reqLevel > playerLevel then
 			return true
 		end
@@ -267,7 +296,25 @@ function UnusableItems:OnEnable()
 	playerLevel = UnitLevel("player") or 1
 
 	self:HookBags()
-	self:RegisterEvent("PLAYER_LEVEL_UP")
+	if not eventsRegistered then
+		eventsRegistered = true
+		self:TrackEvent(eventHandles, "PLAYER_LEVEL_UP")
+	end
+end
+
+function UnusableItems:OnDisable()
+	ns:UnregisterModuleEventHandles(eventHandles)
+	eventsRegistered = false
+end
+
+function UnusableItems:OnSettingChanged(key, value)
+	if key == "enable" then
+		if value then
+			self:OnEnable()
+		else
+			self:OnDisable()
+		end
+	end
 end
 
 function UnusableItems:RegisterOptions(category, builder)

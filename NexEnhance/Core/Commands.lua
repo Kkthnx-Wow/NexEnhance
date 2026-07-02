@@ -125,6 +125,9 @@ handlers.help = function(_)
 	F.Print("  /nex credits       -", L["Open the credits panel"])
 	F.Print("  /nex profile       -", L["Open the profile import/export panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
+	F.Print("  /nex uiscale         -", L["Dump UI scale and chat dock debug info"])
+	F.Print("  /nex uiscale apply   -", L["Force UI scale apply now"])
+	F.Print("  /nex debug           -", L["Debug system help (dumps, logging, export)"])
 	F.Print("  /nex poiscan       -", L["Dump area POIs on your current map (event setup)"])
 	F.Print("  /nex newreset      -", L["Reset new-update badges for testing"])
 end
@@ -150,6 +153,27 @@ end
 handlers.install = function(_)
 	if ns.OpenInstall then
 		ns:OpenInstall()
+	end
+end
+
+handlers.uiscale = function(rest)
+	rest = (rest or ""):lower()
+	if rest == "apply" then
+		if ns.ApplyUIScaleNow then
+			ns:ApplyUIScaleNow()
+			F.Print(L["UIScale apply requested"])
+		end
+		return
+	end
+	if ns.Debug then
+		ns.Debug.PrintEnvironment()
+		ns.Debug.DumpScope("uiscale")
+	end
+end
+
+handlers.debug = function(rest)
+	if ns.Debug then
+		ns.Debug.HandleSlash(rest)
 	end
 end
 
@@ -547,12 +571,16 @@ function OptionBuilder:Checkbox(category, module, key, name, tooltip)
 	return setting, initializer
 end
 
-function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, maxValue, step)
+function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, maxValue, step, formatValue)
 	local setting = RegisterSetting(category, module, key, name)
 
 	local options = Settings.CreateSliderOptions(minValue, maxValue, step)
 	if MinimalSliderWithSteppersMixin and MinimalSliderWithSteppersMixin.Label then
-		options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+		if type(formatValue) == "function" then
+			options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, formatValue)
+		else
+			options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+		end
 	end
 	local initializer = Settings.CreateSlider(category, setting, options, tooltip)
 	return setting, initializer

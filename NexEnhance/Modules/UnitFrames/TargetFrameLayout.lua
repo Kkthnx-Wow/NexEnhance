@@ -42,6 +42,9 @@ local TargetFrameLayout = ns:NewModule("TargetFrameLayout", "targetFrameLayout",
 	order = 12,
 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
 -- Player: name TOPLEFT 88,-27 vs portrait TOPLEFT 24,-19 (60 wide) -> 4px gap, -8px Y.
 -- Target mirror: name TOPRIGHT to portrait TOPLEFT.
 local NAME_PORTRAIT_X = -4
@@ -224,19 +227,45 @@ function TargetFrameLayout:OnInitialize()
 	self:MigrateLegacySetting()
 end
 
+function TargetFrameLayout:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshAll")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "RefreshAll")
+	self:TrackEvent(eventHandles, "PLAYER_FOCUS_CHANGED", "RefreshAll")
+	self:TrackEvent(eventHandles, "UNIT_FACTION", "RefreshAll")
+	self:TrackEvent(eventHandles, "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshAll")
+end
+
+function TargetFrameLayout:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
 function TargetFrameLayout:OnEnable()
 	self:InstallHooks()
-
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "RefreshAll")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED", "RefreshAll")
-	self:RegisterEvent("PLAYER_FOCUS_CHANGED", "RefreshAll")
-	self:RegisterEvent("UNIT_FACTION", "RefreshAll")
-	self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshAll")
-
+	self:RegisterModuleEvents()
 	self:RefreshAll()
 end
 
-function TargetFrameLayout:OnSettingChanged(_, _)
+function TargetFrameLayout:OnDisable()
+	self:UnregisterModuleEvents()
+	self:RefreshAll()
+end
+
+function TargetFrameLayout:OnSettingChanged(key)
+	if key == "enable" then
+		if ns.db.targetFrameLayout.enable then
+			self:RegisterModuleEvents()
+		else
+			self:UnregisterModuleEvents()
+		end
+	end
 	self:RefreshAll()
 end
 

@@ -9,11 +9,15 @@
 	  1. Register an invisible anchor frame with Edit Mode (F.CreateMover) - that
 	     anchor is what the user drags and what persists in the profile.
 	  2. Opt the container out of the position manager
-	     (ignoreFramePositionManager, the same opt-out Alert Frames uses for
-	     GroupLootContainer) so it stops fighting us.
+	     (ignoreFramePositionManager — Blizzard you're sneaky; same opt-out Alert
+	     Frames uses for GroupLootContainer) so it stops fighting us.
 	  3. Pin the container to the anchor and re-pin it via a taint-safe
-	     hooksecurefunc on SetPoint, as a belt-and-braces against anything else
+	     hooksecurefunc on SetPoint. Belt-and-braces against anything else
 	     repositioning it.
+
+	Incident (WidgetMovers, Jun 2026): SetPoint hook compared arg1 (point string)
+	to our anchor frame instead of arg2 (relativeTo). Infinite Glue loop → C stack
+	overflow when UI scale / layout ran. This is why we don't code at 3am.
 
 	Ported from NDui's UIWidgetFrameMover (by siweia); NDui's B.Mover anchors are
 	replaced with F.CreateMover so the positions live in our profile and drag like
@@ -31,6 +35,7 @@ local L, F = ns.L, ns.F
 
 local _G = _G
 local max = math.max
+local format = string.format
 local CreateFrame = CreateFrame
 local UIParent = UIParent
 local hooksecurefunc = hooksecurefunc
@@ -44,41 +49,82 @@ ns:RegisterDefaults({
 
 local WidgetMovers = ns:NewModule("WidgetMovers", "widgetMovers", { group = "movers", title = L["Widget Movers"], order = 20 })
 
--- Pin `container` to `anchor`. Setting the point re-enters the SetPoint hook, but
--- the parent == anchor guard there stops the recursion. We skip re-pinning during
--- combat: ignoreFramePositionManager already keeps the legacy manager off these
--- containers, so the only in-combat caller is Blizzard's own widget layout, and
--- we'd rather not move frames mid-lockdown. The next out-of-combat SetPoint
--- (or widget refresh) re-glues it.
-local function Glue(container, anchor, point)
-	if InCombatLockdown() then
-		return
-	end
-	container:ClearAllPoints()
-	container:SetPoint(point, anchor)
-end
-
+-- Pin `container` to `anchor`. Re-entrancy guard (`gluing`) stops our own
+-- SetPoint from re-entering the hook. Skip re-pin during combat lockdown.
 local function TakeOver(container, anchor, point)
-	-- Stop the legacy UIParent manager from moving it back.
 	container.ignoreFramePositionManager = true
 
-	hooksecurefunc(container, "SetPoint", function(self, _, parent)
-		if parent ~= anchor then
-			Glue(self, anchor, point)
+	local gluing = false
+	local function Glue(self)
+		if gluing or InCombatLockdown() then
+			return
 		end
+		gluing = true
+		self:ClearAllPoints()
+		self:SetPoint(point, anchor)
+		gluing = false
+	end
+
+	-- Blizzard fix this already: SetPoint(point, relativeTo, ...). Arg2 is the
+	-- frame, not arg1. Wrong index = infinite hook loop = stack overflow.
+	hooksecurefunc(container, "SetPoint", function(self, _, relativeTo)
+		if gluing or relativeTo == anchor then
+			return
+		end
+		Glue(self)
 	end)
 
-	Glue(container, anchor, point)
+	Glue(container)
 end
 
--- Build an invisible anchor sized to the container so the Edit Mode selection box
--- lines up. Empty widget containers report a ~1px size (not 0) when they have no
--- active widgets, so we clamp to a minimum grabbable size rather than trusting
--- the live size - otherwise the mover collapses to a single point in Edit Mode.
+-- Empty widget containers lie about their size (~1px, not 0). Trust that and the
+-- mover handle becomes a single pixel in Edit Mode. Ask us how we know.
 local function CreateAnchor(container, minW, minH)
 	local anchor = CreateFrame("Frame", nil, UIParent)
 	anchor:SetSize(max(container:GetWidth() or 0, minW), max(container:GetHeight() or 0, minH))
 	return anchor
+end
+
+function WidgetMovers:OnInitialize()
+	ns.Debug.BindModule(self, "widgetMovers", {
+		title = L["Widget Movers"],
+		expectations = {
+			{
+				name = "widget containers opt out of FPM when enabled",
+				test = function()
+					if not ns.db.widgetMovers.enable then
+						return true
+					end
+					local below = _G.UIWidgetBelowMinimapContainerFrame
+					local top = _G.UIWidgetTopCenterContainerFrame
+					if below and not below.ignoreFramePositionManager then
+						return false
+					end
+					if top and not top.ignoreFramePositionManager then
+						return false
+					end
+					return true
+				end,
+				detail = function()
+					local below = _G.UIWidgetBelowMinimapContainerFrame
+					local top = _G.UIWidgetTopCenterContainerFrame
+					return format("belowFPM=%s topFPM=%s", below and tostring(below.ignoreFramePositionManager) or "nil", top and tostring(top.ignoreFramePositionManager) or "nil")
+				end,
+			},
+		},
+		dump = function()
+			local below = _G.UIWidgetBelowMinimapContainerFrame
+			local top = _G.UIWidgetTopCenterContainerFrame
+			if below then
+				local p, rel = below:GetPoint()
+				F.Print(format("  BelowMinimap: ignoreFPM=%s point=%s rel=%s size=%.0fx%.0f", tostring(below.ignoreFramePositionManager), tostring(p), rel and rel:GetName() or "nil", below:GetWidth(), below:GetHeight()))
+			end
+			if top then
+				local p, rel = top:GetPoint()
+				F.Print(format("  TopCenter: ignoreFPM=%s point=%s rel=%s size=%.0fx%.0f", tostring(top.ignoreFramePositionManager), tostring(p), rel and rel:GetName() or "nil", top:GetWidth(), top:GetHeight()))
+			end
+		end,
+	})
 end
 
 function WidgetMovers:OnEnable()

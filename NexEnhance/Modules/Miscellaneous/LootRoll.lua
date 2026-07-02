@@ -46,6 +46,36 @@ local GetLootRollTimeLeft = GetLootRollTimeLeft
 local RollOnLoot = RollOnLoot
 local GetItemInfo = C_Item.GetItemInfo
 local GetItemIconByID = C_Item.GetItemIconByID
+local tonumber = tonumber
+
+local function ItemIDFromLink(link)
+	return link and tonumber(link:match("item:(%d+)"))
+end
+
+--- Item level on roll bars; requests async item data when GetItemInfo is cold.
+local function ApplyBarItemLevel(bar, link)
+	if not (bar and link) then
+		return
+	end
+	local _, _, _, itemLevel, _, _, _, _, itemEquipLoc = GetItemInfo(link)
+	local showIlvl = itemEquipLoc and itemEquipLoc ~= "" and F.NotSecret(itemLevel) and itemLevel and itemLevel > 1
+	if showIlvl then
+		local r, g, b = bar.name:GetTextColor()
+		bar.button.ilvl:SetShown(true)
+		bar.button.ilvl:SetText(itemLevel)
+		bar.button.ilvl:SetTextColor(r, g, b)
+		return
+	end
+	bar.button.ilvl:Hide()
+	local itemID = ItemIDFromLink(link)
+	if itemID and ns.RequestItemData then
+		ns:RequestItemData(itemID, function()
+			if bar.isTest or barByRollID[bar.rollID] == bar then
+				ApplyBarItemLevel(bar, link)
+			end
+		end)
+	end
+end
 
 -- Roll types (rollID-side constants). Fall back to literals if the globals are
 -- absent on a given flavor.
@@ -69,6 +99,8 @@ ns:RegisterDefaults({
 })
 
 local LootRoll = ns:NewModule("LootRoll", "lootRoll", { group = "alerts", title = L["Loot Roll"], order = 20 })
+
+local eventHandles = {}
 
 -- Bars currently showing a roll, in stack order; rollID -> bar lookup; and a
 -- queue of rolls waiting for a free bar when we hit maxBars. `testBars` tracks
@@ -469,10 +501,6 @@ function LootRoll:START_LOOT_ROLL(rollID, rollTime)
 
 	-- Item details
 	local link = GetLootRollItemLink(rollID)
-	local itemLevel, itemEquipLoc
-	if link then
-		_, _, _, itemLevel, _, _, _, _, itemEquipLoc = GetItemInfo(link)
-	end
 
 	bar.button.rollID = rollID
 	bar.button.link = link
@@ -492,13 +520,7 @@ function LootRoll:START_LOOT_ROLL(rollID, rollTime)
 	bar.name:SetText(name)
 	bar.name:SetTextColor(r, g, b)
 
-	-- Item level for equippable items only.
-	local showIlvl = itemEquipLoc and itemEquipLoc ~= "" and F.NotSecret(itemLevel) and itemLevel and itemLevel > 1
-	bar.button.ilvl:SetShown(showIlvl)
-	if showIlvl then
-		bar.button.ilvl:SetText(itemLevel)
-		bar.button.ilvl:SetTextColor(r, g, b)
-	end
+	ApplyBarItemLevel(bar, link)
 
 	-- Roll button availability + counts reset.
 	bar.need.count:SetText("")
@@ -677,11 +699,11 @@ function LootRoll:EnsureInit()
 	F.CreateMover(anchor, "lootRoll", L["Loot Roll"], "CENTER", 0, 500)
 end
 
-function LootRoll:Setup()
-	if self.setupDone then
+function LootRoll:RegisterLootEvents()
+	if self.eventsRegistered then
 		return
 	end
-	self.setupDone = true
+	self.eventsRegistered = true
 
 	self:EnsureInit()
 
@@ -691,26 +713,47 @@ function LootRoll:Setup()
 	UIParent:UnregisterEvent("START_LOOT_ROLL")
 	UIParent:UnregisterEvent("CANCEL_LOOT_ROLL")
 
-	self:RegisterEvent("START_LOOT_ROLL")
-	self:RegisterEvent("CANCEL_LOOT_ROLL")
-	self:RegisterEvent("CANCEL_ALL_LOOT_ROLLS")
+	self:TrackEvent(eventHandles, "START_LOOT_ROLL")
+	self:TrackEvent(eventHandles, "CANCEL_LOOT_ROLL")
+	self:TrackEvent(eventHandles, "CANCEL_ALL_LOOT_ROLLS")
+end
+
+function LootRoll:UnregisterLootEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+
+	self:CANCEL_ALL_LOOT_ROLLS()
+	ns:UnregisterModuleEventHandles(eventHandles)
+
+	UIParent:RegisterEvent("START_LOOT_ROLL")
+	UIParent:RegisterEvent("CANCEL_LOOT_ROLL")
 end
 
 function LootRoll:OnEnable()
 	if not ns.db.lootRoll.enable then
 		return
 	end
-	self:Setup()
+	self:RegisterLootEvents()
+end
+
+function LootRoll:OnDisable()
+	self:UnregisterLootEvents()
 end
 
 function LootRoll:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:Setup()
+	if key == "enable" then
+		if value then
+			self:RegisterLootEvents()
+		else
+			self:OnDisable()
+		end
 	end
 end
 
 function LootRoll:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Loot Roll"], L["Replace the default group loot roll bars with NexEnhance's own (reload to disable)."])
+	builder:Checkbox(category, self, "enable", L["Enable Loot Roll"], L["Replace the default group loot roll bars with NexEnhance's own. Disable to restore Blizzard's frames without /reload."])
 	builder:Slider(category, self, "maxBars", L["Max Bars"], L["How many roll bars can show at once; extra rolls queue for a free slot."], 1, 10, 1)
 	builder:Slider(category, self, "width", L["Width"], L["Width of each loot roll bar."], 200, 500, 4)
 	builder:Slider(category, self, "height", L["Height"], L["Height of each loot roll bar."], 24, 64, 2)

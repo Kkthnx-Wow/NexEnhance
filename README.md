@@ -32,9 +32,11 @@ Every feature is **self-contained and toggleable**, so you can run the full suit
 ## Installation
 
 **Via an addon manager (recommended)**
+
 - [CurseForge](https://www.curseforge.com/wow/addons/nexenhance) — search for **NexEnhance** and install.
 
 **Manual**
+
 1. Download the latest release from the [Releases](https://github.com/Kkthnx-Wow/NexEnhance/releases) page.
 2. Extract the `NexEnhance` folder into `World of Warcraft\_retail_\Interface\AddOns`.
 3. Restart the game (or `/reload` if already in-game).
@@ -132,6 +134,7 @@ A starter template lives in [`Examples/NexEnhancePluginTemplate/`](Examples/NexE
 NexEnhance groups its modules into the same themed categories you'll find in the options panel.
 
 ### General
+
 - **UI Scale** — pixel-perfect (1 UI pixel = 1 screen pixel) auto-scaling, or a manual scale of your choice. Reload-safe and combat-aware.
 - **Number Format** — choose how large numbers abbreviate everywhere: Standard (`1.2k`/`3.4m`), East Asian (`1.2w`/`3.4y`), or full numbers.
 - **Camera Zoom** — raise the maximum camera zoom-out distance beyond the default.
@@ -140,21 +143,25 @@ NexEnhance groups its modules into the same themed categories you'll find in the
 - **Hide UI Elements** — optional toggles for the buff collapse arrow, micro menu & bag bar cluster, and portrait combat feedback numbers.
 
 ### Action Bars
+
 - **Action Bars** — style Blizzard action buttons, abbreviate hotkeys, toggle macro names, stack counts and keybind text (with adjustable font sizes), and skin the Extra Action / Zone Ability buttons.
 - **Cooldown Text** — formatted countdown numbers on cooldowns, with coloured/plain and decimal/integer styles, a configurable mm:ss threshold, a weeks tier, and optional scaling that hides text on tiny cooldowns.
 - **Range Coloring** — tint action-button icons and hotkeys when out of range, out of power, or unusable (event-driven, Midnight-safe).
 - **Extra Quest Button** — a keybindable button for the closest usable quest item from your log, with Edit Mode positioning and HUD-matching art.
 
 ### Unit Frames
+
 - **Class Colours** — colour unit-frame health by class (players) or reaction (NPCs) across player, target, focus, boss, party and more.
 - **Target Frame Layout** — optional player-style target frame: hide the reaction strip on Target/Focus/Boss and move the target name beside the portrait.
 - **Level Colours** — difficulty-coloured level text on unit frames.
 - **Player Cast Bar** — tweaks to the player's casting bar.
 
 ### Auras
+
 - **Buff Reminder** — show a "Lack" icon when you're missing a buff you can provide. Resizable icons, a Blizzard-style border, and an Edit Mode mover (preview with `/nex reminder`).
 
 ### Inventory
+
 - **Item Level** — item levels on equipped, bag, merchant, trade and loot items, with optional gem/socket/enchant info, missing-enchant warnings, BoE/BoA/WuE bind labels, and an adjustable font size.
 - **Durability** — lowest equipped-item durability on the Character pane with a per-slot repair-cost tooltip.
 - **Mail** — Collect-Gold, Take-All and quick-delete buttons on the mailbox.
@@ -166,14 +173,17 @@ NexEnhance groups its modules into the same themed categories you'll find in the
 - **Loot Frame** — let Blizzard's default loot window grow taller so more items fit on one page.
 
 ### Chat
+
 - **Chat** — a deep set of chat tweaks: flat tabs, edit-box border/positioning/colouring, hide-when-inactive, side-button and scroll-bar hiding, Tab channel switching, quick scroll, sticky whispers, whisper sound, a font-size menu, repositionable Battle.net pop-up and Quick Join button, and **Keyword Auto-Invite**.
 - **Chat Copy** — a button to copy the chat window's text.
 - **Chat Channels** — tidy channel names, clickable/copyable URLs, abbreviated channel brackets and optional timestamps.
 
 ### Filters
+
 - **Chat Filter** — hide spam by keyword or repeated near-identical messages, block strangers/repeat spammers, and append item level + sockets to item links in chat. Manage keywords in the settings panel (scrollable lists) or with `/nexfilter`.
 
 ### Tooltip
+
 - **Tooltip** — faction/role icons, hidden realm names and titles, Mythic+ score, quality-coloured border, and configurable health-bar position/height.
 - **Tooltip IDs** — append spell, item, quest and other IDs.
 - **Tooltip Icons** — show an icon next to the tooltip title.
@@ -183,7 +193,9 @@ NexEnhance groups its modules into the same themed categories you'll find in the
 - **Vendor Location** — for special barter/curio items, show where to turn them in and Ctrl-Click to drop a map waypoint.
 
 ### Skins
+
 Light, targeted restyling of select Blizzard frames — improved, not replaced.
+
 - **Objective Tracker** — hide header backgrounds, tidy the minimise button, optional class-coloured bars.
 - **Character Frames** — restyle and resize the Character and Inspect frames.
 - **Missing Stats** — surface hidden character-sheet stats (attack power, weapon speed, spell power, regen, movement) and tidy the readouts.
@@ -193,6 +205,7 @@ Light, targeted restyling of select Blizzard frames — improved, not replaced.
 - **Color Picker** — R/G/B inputs, class-colour swatches, and a reskinned hex row on Blizzard's colour picker.
 
 ### DataText
+
 - **Stats** — a movable FPS/latency readout under the minimap, with a memory/addon tooltip, flip order, and class-coloured numbers.
 - **Experience Bar** — a movable replacement for Blizzard's status tracking bar (XP, housing XP, reputation, honor, Azerite) with fade options and Edit Mode sizing.
 - **Clock** — a minimap clock with a lockout/reset tooltip (daily/weekly resets, saved instances, Midnight world events, delves, and more).
@@ -202,13 +215,16 @@ Light, targeted restyling of select Blizzard frames — improved, not replaced.
 - **Currency & Gold** — a wealth tooltip on the Character micro button (session gold, per-character totals, Warband bank, token price, tracked currencies).
 
 ### Maps
+
 - **Minimap** — square shape, clean border, status pulse (combat/mail/invites), Easy Volume (Ctrl-scroll), a middle-click shortcut menu, and a button-collecting tray.
 - **World Map** — player/cursor coordinates, draggable windowed map (position saved), and fade-while-moving.
 - **Map Reveal** — reveal unexplored areas by removing fog of war, with optional dimming of revealed tiles.
 - **Wowhead Links** — copyable Wowhead links on the world map (tracked quest) and achievement frame.
 
 ### Automation
+
 Hands-off quality-of-life.
+
 - **Auto Vendor** — auto-sell junk and repair (with guild funds) at merchants, plus a custom junk list (`/nexjunk`).
 - **Auto Greed** — automatically roll Greed or Disenchant on low-rarity group-loot drops (off by default).
 - **Quick Quest** — auto accept/turn-in quests by frequency (regular/daily/weekly), protect costly turn-ins, auto-skip story gossip, with a configurable override key and per-NPC ignore.
@@ -227,10 +243,12 @@ Hands-off quality-of-life.
 - **Achievement Screenshot** — auto-screenshot when you earn a new achievement.
 
 ### Announcements
+
 - **Quest Notification** — announce accepted quests and completions to your group, with optional progress updates and a completion sound.
 - **Rare Alert** — announce nearby rares and world events the moment their vignette appears, with a movable click-to-track popup, anti-burst sound throttle, and optional map-pin sharing in chat.
 
 ### Miscellaneous
+
 - **Social Colours** — class-coloured names and difficulty-coloured levels in the Friends, Who and Guild panels.
 - **Menu Buttons** — quick social actions (Add Friend, Guild Invite, Copy Name, Whisper) on unit right-click menus.
 - **Trade Target Info** — show whether your trade partner is a stranger, friend or guild member.
@@ -245,6 +263,7 @@ Hands-off quality-of-life.
 - **Reload UI** — `/rl`, `/reloadui`, `//` and `/.` reload commands.
 
 ### Always-On
+
 - **BlizzFix** — a collection of quiet bug fixes for default-UI quirks (no settings; just works).
 
 ---

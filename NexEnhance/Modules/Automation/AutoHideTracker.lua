@@ -295,21 +295,24 @@ function AutoHideTracker:Setup()
 	self:UpdateDriver()
 end
 
-function AutoHideTracker:ADDON_LOADED(addon)
-	if addon == "Blizzard_ObjectiveTracker" then
-		self:Setup()
-	end
-end
-
 function AutoHideTracker:OnEnable()
+	ns:RegisterAddOnLoadedCallback("Blizzard_ObjectiveTracker", function()
+		AutoHideTracker:Setup()
+	end)
 	if C_AddOns_IsAddOnLoaded("Blizzard_ObjectiveTracker") then
 		self:Setup()
-	else
-		self:RegisterEvent("ADDON_LOADED")
 	end
 end
 
-function AutoHideTracker:OnSettingChanged()
+function AutoHideTracker:OnDisable()
+	self:UpdateDriver()
+end
+
+function AutoHideTracker:OnSettingChanged(key, value)
+	if key == "enable" and not value then
+		self:OnDisable()
+		return
+	end
 	self:UpdateDriver()
 end
 

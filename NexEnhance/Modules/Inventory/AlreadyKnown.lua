@@ -83,6 +83,13 @@ ns:RegisterDefaults({
 
 local AlreadyKnown = ns:NewModule("AlreadyKnown", "alreadyKnown", { group = "inventory", title = L["Already Known"], order = 40 })
 
+local eventHandles = {}
+local eventsRegistered = false
+local merchantHooksInstalled = false
+
+-- Forward declaration: IsAlreadyKnown's item-data callback runs after load.
+local RefreshVisibleItems
+
 -- ---------------------------------------------------------------------------
 -- Detection
 -- ---------------------------------------------------------------------------
@@ -201,6 +208,14 @@ local function IsAlreadyKnown(link, index)
 	elseif linkType == "item" then
 		local name, _, _, _, _, _, _, _, _, _, _, itemClassID = C_Item_GetItemInfo(link)
 		if not name then
+			if linkID and ns.RequestItemData then
+				ns:RequestItemData(linkID, function(success)
+					if success == false or not ns.db.alreadyKnown.enable then
+						return
+					end
+					RefreshVisibleItems()
+				end)
+			end
 			return
 		end
 
@@ -365,7 +380,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Housing data warmup
 -- ---------------------------------------------------------------------------
-local function RefreshVisibleItems()
+function RefreshVisibleItems()
 	if MerchantFrame and MerchantFrame:IsShown() then
 		UpdateMerchantInfo()
 		UpdateBuybackInfo()
@@ -474,14 +489,43 @@ function AlreadyKnown:HOUSE_DECOR_ADDED_TO_CHEST()
 	self:RefreshHousingItems()
 end
 
+function AlreadyKnown:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+
+	if not (self.auctionHooked and self.guildBankHooked) then
+		self:TrackEvent(eventHandles, "ADDON_LOADED")
+	end
+
+	if C_HousingCatalog_GetCatalogEntryInfoByItem then
+		self:TrackEvent(eventHandles, "HOUSING_MARKET_AVAILABILITY_UPDATED")
+		self:TrackEvent(eventHandles, "HOUSING_STORAGE_UPDATED")
+		self:TrackEvent(eventHandles, "HOUSING_STORAGE_ENTRY_UPDATED")
+		self:TrackEvent(eventHandles, "HOUSE_DECOR_ADDED_TO_CHEST")
+	end
+end
+
+function AlreadyKnown:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
 function AlreadyKnown:OnEnable()
 	if not ns.db.alreadyKnown.enable then
 		return
 	end
 
 	-- Merchant + Buyback live in base FrameXML, so hook straight away.
-	hooksecurefunc("MerchantFrame_UpdateMerchantInfo", UpdateMerchantInfo)
-	hooksecurefunc("MerchantFrame_UpdateBuybackInfo", UpdateBuybackInfo)
+	if not merchantHooksInstalled then
+		merchantHooksInstalled = true
+		hooksecurefunc("MerchantFrame_UpdateMerchantInfo", UpdateMerchantInfo)
+		hooksecurefunc("MerchantFrame_UpdateBuybackInfo", UpdateBuybackInfo)
+	end
 
 	-- The AH and Guild Bank are load-on-demand; hook now if present, else wait.
 	if C_AddOns.IsAddOnLoaded("Blizzard_AuctionHouseUI") then
@@ -491,16 +535,24 @@ function AlreadyKnown:OnEnable()
 		self:HookGuildBank()
 	end
 
-	if not (self.auctionHooked and self.guildBankHooked) then
-		self:RegisterEvent("ADDON_LOADED")
-	end
-
 	if C_HousingCatalog_GetCatalogEntryInfoByItem then
 		self:WarmHousingData()
-		self:RegisterEvent("HOUSING_MARKET_AVAILABILITY_UPDATED")
-		self:RegisterEvent("HOUSING_STORAGE_UPDATED")
-		self:RegisterEvent("HOUSING_STORAGE_ENTRY_UPDATED")
-		self:RegisterEvent("HOUSE_DECOR_ADDED_TO_CHEST")
+	end
+
+	self:RegisterModuleEvents()
+end
+
+function AlreadyKnown:OnDisable()
+	self:UnregisterModuleEvents()
+end
+
+function AlreadyKnown:OnSettingChanged(key, value)
+	if key == "enable" then
+		if value then
+			self:OnEnable()
+		else
+			self:OnDisable()
+		end
 	end
 end
 

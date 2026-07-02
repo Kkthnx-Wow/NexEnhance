@@ -66,7 +66,7 @@ local BLANK_TEX = C.Media.Textures.blank
 local CLASS_COLOR = C.ClassColor
 local BRAND = C.Colors.brand
 local LOGO_TEX = C.Media.Textures.logo256
-local LOGOUT_SECONDS = 1800 -- 30 minutes; matches default AFK logout timing
+local LOGOUT_SECONDS = 1800 -- 30 minutes from AFK flag; no server API for the real deadline
 local CAMERA_SPEED = 0.035
 local CAST_RECHECK_DELAY = 30
 local KEY_RECHECK_DELAY = 60
@@ -220,9 +220,11 @@ local function IsEventInList(event, ...)
 end
 
 local function CreateFS(parent, size, justify)
-	local fs = parent:CreateFontString(nil, "OVERLAY")
+	local fs = F.CreatePlainFS(parent, size or 14)
 	fs:SetFont(FONT, size or 14, "OUTLINE")
-	fs:SetShadowOffset(1, -1)
+	if fs.nexShadow then
+		fs.nexShadow:SetFont(FONT, size or 14, "OUTLINE")
+	end
 	if justify then
 		fs:SetJustifyH(justify)
 	end
@@ -455,33 +457,47 @@ local function UpdateClock(frame)
 
 	if minute ~= frame.lastMinute then
 		frame.lastMinute = minute
-		frame.time:SetText(FormatClock(hour, minute))
+		F.SetPlainText(frame.time, FormatClock(hour, minute))
 		local calendarTime = C_DateAndTime.GetCurrentCalendarTime()
-		frame.date:SetText(FormatCalendarDate(calendarTime))
+		F.SetPlainText(frame.date, FormatCalendarDate(calendarTime))
 	end
 end
 
-local function UpdateLogout(frame)
-	local elapsed = GetTime() - frame.startTime
-	local remaining = LOGOUT_SECONDS - elapsed
-	if remaining < 0 then
-		remaining = 0
-	end
-
+local function FormatLogoutCountdown(remaining)
 	local minutes = math_floor(remaining / 60)
 	local seconds = math_floor(remaining % 60)
 	if minutes <= 0 and seconds <= 0 then
-		frame.countdown.text:SetFormattedText("%s |cffff000000:00|r", L["AFK Logout Timer"])
-	else
-		frame.countdown.text:SetFormattedText("%s |cfff0ff00-%02d:%02d|r", L["AFK Logout Timer"], minutes, seconds)
+		return format("%s |cffff000000:00|r", L["AFK Logout Timer"])
 	end
+	return format("%s |cfff0ff00%02d:%02d|r", L["AFK Logout Timer"], minutes, seconds)
+end
+
+local function EnsureAfkLogoutDeadline(frame, reset)
+	if reset or not frame.afkLogoutAt then
+		frame.afkLogoutAt = GetTime() + LOGOUT_SECONDS
+	end
+end
+
+local function ClearAfkLogoutDeadline(frame)
+	frame.afkLogoutAt = nil
+end
+
+local function UpdateLogout(frame)
+	if not frame.afkLogoutAt then
+		return
+	end
+	local remaining = frame.afkLogoutAt - GetTime()
+	if remaining < 0 then
+		remaining = 0
+	end
+	F.SetPlainText(frame.countdown.text, FormatLogoutCountdown(remaining))
 end
 
 local function UpdateStatMessage(frame)
 	if frame.stat.info:GetAlpha() < 0.01 then
 		frame.stat.info:SetAlpha(1)
 	end
-	frame.stat.info:SetText(CreateRandomStatMessage())
+	F.SetPlainText(frame.stat.info, CreateRandomStatMessage())
 end
 
 -- ---------------------------------------------------------------------------
@@ -500,9 +516,9 @@ local function SetAFKMode(frame, enable)
 
 		if IsInGuild() then
 			local guildName, guildRank = GetGuildInfo("player")
-			frame.guild:SetFormattedText("%s - %s", guildName or "", guildRank or "")
+			F.SetPlainFormattedText(frame.guild, "%s - %s", guildName or "", guildRank or "")
 		else
-			frame.guild:SetText(_G.GUILD_NOT_IN_GUILD or "No Guild")
+			F.SetPlainText(frame.guild, _G.GUILD_NOT_IN_GUILD or "No Guild")
 		end
 
 		local model = frame.model
@@ -511,7 +527,6 @@ local function SetAFKMode(frame, enable)
 
 		Pet_Start(frame)
 
-		frame.startTime = GetTime()
 		frame.lastMinute = -1
 
 		CancelTimer(frame.clockTimer)
@@ -550,7 +565,6 @@ local function SetAFKMode(frame, enable)
 	frame:Hide()
 	MoveViewLeftStop()
 
-	frame.startTime = nil
 	CancelTimer(frame.clockTimer)
 	CancelTimer(frame.statsTimer)
 	CancelTimer(frame.logoffTimer)
@@ -561,8 +575,8 @@ local function SetAFKMode(frame, enable)
 
 	Pet_Stop(frame)
 
-	frame.countdown.text:SetFormattedText("%s |cfff0ff00-30:00|r", L["AFK Logout Timer"])
-	frame.stat.info:SetText(L["AFK Random Stats"])
+	F.SetPlainText(frame.countdown.text, FormatLogoutCountdown(LOGOUT_SECONDS))
+	F.SetPlainText(frame.stat.info, L["AFK Random Stats"])
 	frame.stat.info:SetAlpha(1)
 
 	frame.chat:UnregisterAllEvents()
@@ -624,8 +638,17 @@ local function OnAFKEvent(frame, event, ...)
 
 	local isAFK = UnitIsAFK("player")
 	if F.IsSecret(isAFK) then
+		ClearAfkLogoutDeadline(frame)
 		SetAFKMode(frame, false)
 		return
+	end
+
+	if isAFK then
+		-- Start the 30-minute window when the AFK flag is set, not when the overlay
+		-- finally opens (casting, combat, or cinematics can delay the camera).
+		EnsureAfkLogoutDeadline(frame)
+	else
+		ClearAfkLogoutDeadline(frame)
 	end
 
 	if isAFK and not (C_PetBattles and C_PetBattles.IsInBattle and C_PetBattles.IsInBattle()) then
@@ -869,17 +892,17 @@ local function BuildFrame()
 	local topInset = -((crestSize - blockHeight) / 2)
 
 	frame.name = CreateFS(nameCard, BOTTOM_FADE.fontSize, "LEFT")
-	frame.name:SetFormattedText("%s-%s", C.Player.name, C.Player.realm)
+	F.SetPlainFormattedText(frame.name, "%s-%s", C.Player.name, C.Player.realm)
 	frame.name:SetPoint("TOPLEFT", frame.faction, "TOPRIGHT", 10, topInset)
 	frame.name:SetTextColor(CLASS_COLOR[1], CLASS_COLOR[2], CLASS_COLOR[3])
 
 	frame.playerInfo = CreateFS(nameCard, BOTTOM_FADE.fontSize, "LEFT")
 	local classHex = F.RGBToHex(CLASS_COLOR[1], CLASS_COLOR[2], CLASS_COLOR[3])
-	frame.playerInfo:SetFormattedText("|c%s%s %d|r |cff888888%s|r |c%s%s|r", C.BrandHex, _G.LEVEL or "Level", C.Player.level, C.Player.raceName or C.Player.race, classHex, C.Player.className or C.Player.class)
+	F.SetPlainFormattedText(frame.playerInfo, "|c%s%s %d|r |cff888888%s|r |c%s%s|r", C.BrandHex, _G.LEVEL or "Level", C.Player.level, C.Player.raceName or C.Player.race, classHex, C.Player.className or C.Player.class)
 	frame.playerInfo:SetPoint("TOPLEFT", frame.name, "BOTTOMLEFT", 0, -BOTTOM_FADE.lineGap)
 
 	frame.guild = CreateFS(nameCard, BOTTOM_FADE.fontSize, "LEFT")
-	frame.guild:SetText(_G.GUILD_NOT_IN_GUILD or "No Guild")
+	F.SetPlainText(frame.guild, _G.GUILD_NOT_IN_GUILD or "No Guild")
 	frame.guild:SetPoint("TOPLEFT", frame.playerInfo, "BOTTOMLEFT", 0, -BOTTOM_FADE.lineGap)
 	frame.guild:SetTextColor(0.7, 0.7, 0.7)
 
@@ -918,7 +941,7 @@ local function BuildFrame()
 	stat.info = CreateFS(stat, 18, "CENTER")
 	stat.info:SetPoint("CENTER", stat, "CENTER", 0, -2)
 	stat.info:SetTextColor(0.7, 0.7, 0.7)
-	stat.info:SetText(L["AFK Random Stats"])
+	F.SetPlainText(stat.info, L["AFK Random Stats"])
 
 	local countdown = CreateFrame("Frame", nil, frame)
 	countdown:SetSize(418, 36)
@@ -942,7 +965,7 @@ local function BuildFrame()
 	countdown.text = CreateFS(countdown, 16, "CENTER")
 	countdown.text:SetPoint("CENTER")
 	countdown.text:SetTextColor(0.7, 0.7, 0.7)
-	countdown.text:SetFormattedText("%s |cfff0ff00-30:00|r", L["AFK Logout Timer"])
+	F.SetPlainText(countdown.text, FormatLogoutCountdown(LOGOUT_SECONDS))
 
 	local wave = ANIMATIONS.wave
 
@@ -1034,9 +1057,11 @@ function AFKCam:ToggleTest()
 	self:InstallHooks()
 	manualPreview = not manualPreview
 	if manualPreview then
+		EnsureAfkLogoutDeadline(afkFrame, true)
 		SetAFKMode(afkFrame, true)
 		F.Print(L["AFK test mode on - press any key to exit."])
 	else
+		ClearAfkLogoutDeadline(afkFrame)
 		SetAFKMode(afkFrame, false)
 		F.Print(L["AFK test mode off."])
 	end

@@ -40,6 +40,9 @@ ns:RegisterDefaults({
 
 local AutoKeystone = ns:NewModule("AutoKeystone", "autoKeystone", { group = "automation", title = L["Auto Keystone"], order = 90 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
 -- GetItemInfoInstant is synchronous (no item-cache dependency), returning
 -- classID/subclassID at positions 6/7 - more reliable than GetItemInfo here.
 local function IsKeystone(itemID)
@@ -96,6 +99,9 @@ function AutoKeystone:ADDON_LOADED(addon)
 end
 
 function AutoKeystone:OnEnable()
+	if not ns.db.autoKeystone.enable then
+		return
+	end
 	-- AngryKeystones already auto-slots keystones; don't fight it.
 	if C_AddOns_IsAddOnLoaded("AngryKeystones") then
 		return
@@ -103,8 +109,24 @@ function AutoKeystone:OnEnable()
 
 	if C_AddOns_IsAddOnLoaded("Blizzard_ChallengesUI") then
 		self:HookKeystoneFrame()
-	else
-		self:RegisterEvent("ADDON_LOADED")
+	elseif not eventsRegistered then
+		eventsRegistered = true
+		self:TrackEvent(eventHandles, "ADDON_LOADED")
+	end
+end
+
+function AutoKeystone:OnDisable()
+	ns:UnregisterModuleEventHandles(eventHandles)
+	eventsRegistered = false
+end
+
+function AutoKeystone:OnSettingChanged(key, value)
+	if key == "enable" then
+		if value then
+			self:OnEnable()
+		else
+			self:OnDisable()
+		end
 	end
 end
 

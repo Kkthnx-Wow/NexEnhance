@@ -43,6 +43,10 @@ end
 --   `migrations[v]` upgrades data from version (v-1) to v and runs once, in
 --   order, only when older data is loaded. Unstamped data is treated as v1
 --   (the baseline before versioning existed), matching the AceDB convention.
+--
+--   For simple per-module key renames inside a profile table, prefer
+--   `F.InheritExistingValues(profile.moduleKey, { newKey = "oldKey" })` before
+--   deleting the old key (DialogueUI-style; see Core/Functions.lua).
 -- ---------------------------------------------------------------------------
 local DB_SCHEMA_VERSION = 3
 
@@ -210,4 +214,16 @@ function ns:SetupDatabase()
 	ns.global = root.global
 	ns.charDB = _G.NexEnhanceCharDB
 	ns:SetProfile(profileName)
+end
+
+--- Strip default-equal keys from the active profile before logout (sparse SV).
+function ns:CompactActiveProfile()
+	local root = _G.NexEnhanceDB
+	if not root or not ns.profileName then
+		return
+	end
+	local profile = root.profiles[ns.profileName]
+	if profile then
+		F.CompactDefaults(ns.defaults.profile, profile)
+	end
 end

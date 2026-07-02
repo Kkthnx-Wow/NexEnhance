@@ -60,6 +60,13 @@ ns:RegisterDefaults({
 
 local ItemLevel = ns:NewModule("ItemLevel", "itemLevel", { group = "inventory", title = L["Item Level"], order = 10 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
+local function IsActive()
+	return ns.db and ns.db.itemLevel and ns.db.itemLevel.enable
+end
+
 -- Inventory-slot ID -> slot name. The numeric index doubles as the inventory
 -- slot id passed to GetInventoryItemLink / C_TooltipInfo.GetInventoryItem.
 local inspectSlots = {
@@ -431,10 +438,16 @@ function ItemLevel:SetupSlots(frame, strType, unit)
 end
 
 function ItemLevel:UpdatePlayerSlots()
+	if not IsActive() then
+		return
+	end
 	self:SetupSlots(_G["CharacterFrame"], "Character", "player")
 end
 
 function ItemLevel:INSPECT_READY(guid)
+	if not IsActive() then
+		return
+	end
 	local InspectFrame = _G["InspectFrame"]
 	if not (InspectFrame and InspectFrame.unit) then
 		return
@@ -475,6 +488,9 @@ end
 -- Equipment-manager flyout
 -- ---------------------------------------------------------------------------
 function ItemLevel:FlyoutButton(button)
+	if not IsActive() then
+		return
+	end
 	if not button.nexILvl then
 		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
@@ -528,6 +544,9 @@ end
 -- Merchant
 -- ---------------------------------------------------------------------------
 function ItemLevel:MerchantButton(link)
+	if not IsActive() then
+		return
+	end
 	local button = _G[self:GetName() .. "ItemButton"]
 	if not button then
 		return
@@ -552,6 +571,9 @@ end
 -- Loot
 -- ---------------------------------------------------------------------------
 function ItemLevel:UpdateLoot()
+	if not IsActive() then
+		return
+	end
 	local scrollTarget = self.ScrollTarget
 	if not scrollTarget then
 		return
@@ -596,7 +618,7 @@ end
 --   UnusableItems coverage.)
 -- ---------------------------------------------------------------------------
 local function UpdateBagSlot(button)
-	if not button then
+	if not IsActive() or not button then
 		return
 	end
 
@@ -670,6 +692,9 @@ end
 -- UpdateCooldown once, and paint it immediately so overlays show up on the
 -- first open instead of waiting for the next refresh.
 local function HandleBagSlots(frame)
+	if not IsActive() then
+		return
+	end
 	local pool = frame and frame.itemButtonPool
 	if not pool then
 		return
@@ -725,6 +750,9 @@ end
 -- Install the bank hooks the first time the bank opens (covers the load-on-
 -- demand bank UI) and repaint the visible tab.
 function ItemLevel:BANKFRAME_OPENED()
+	if not IsActive() then
+		return
+	end
 	HookBank()
 	local bank = _G["BankFrame"]
 	if bank and bank.BankPanel then
@@ -736,6 +764,9 @@ end
 -- Scrapping machine (load-on-demand)
 -- ---------------------------------------------------------------------------
 local function ScrappingButtonUpdate(button)
+	if not IsActive() then
+		return
+	end
 	if not button.nexILvl then
 		button.nexILvl = CreateILvlFS(button)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
@@ -755,6 +786,9 @@ local function ScrappingButtonUpdate(button)
 end
 
 local function ScrappingSetup(frame)
+	if not IsActive() then
+		return
+	end
 	if not frame.ItemSlots or not frame.ItemSlots.scrapButtons then
 		return
 	end
@@ -786,6 +820,9 @@ local function ReplaceNewsLink(link, name)
 end
 
 local function GuildNewsSetText(button)
+	if not IsActive() then
+		return
+	end
 	if not button.text then
 		return
 	end
@@ -812,24 +849,27 @@ function ItemLevel:InstallHooks()
 	local CharacterFrame = _G["CharacterFrame"]
 	if CharacterFrame then
 		CharacterFrame:HookScript("OnShow", function()
-			self:UpdatePlayerSlots()
+			if IsActive() then
+				ItemLevel:UpdatePlayerSlots()
+			end
 		end)
-		self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "UpdatePlayerSlots")
 	end
 
 	-- Inspect frame.
-	self:RegisterEvent("INSPECT_READY")
 
 	-- Equipment flyout.
 	if _G["EquipmentFlyout_UpdateItems"] then
 		hooksecurefunc("EquipmentFlyout_UpdateItems", function()
+			if not IsActive() then
+				return
+			end
 			local flyout = _G["EquipmentFlyoutFrame"]
 			if not flyout or not flyout.buttons then
 				return
 			end
 			for _, button in pairs(flyout.buttons) do
 				if button:IsShown() then
-					self:FlyoutButton(button)
+					ItemLevel:FlyoutButton(button)
 				end
 			end
 		end)
@@ -861,7 +901,6 @@ function ItemLevel:InstallHooks()
 	-- Bags & bank. The bank panel is load-on-demand, so also (re)hook it the
 	-- first time the bank is opened.
 	self:HookBags()
-	self:RegisterEvent("BANKFRAME_OPENED")
 
 	-- Guild News (if Communities/GuildUI already present).
 	if _G["GuildNewsButton_SetText"] then
@@ -874,11 +913,32 @@ function ItemLevel:InstallHooks()
 		hooksecurefunc(scrapper, "UpdateScrapButtonState", ScrappingSetup)
 	end
 
-	-- Wait for load-on-demand UIs we couldn't hook yet.
-	self:RegisterEvent("ADDON_LOADED")
+	-- Wait for load-on-demand UIs we couldn't hook yet (event registered in RegisterModuleEvents).
+end
+
+function ItemLevel:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_EQUIPMENT_CHANGED", "UpdatePlayerSlots")
+	self:TrackEvent(eventHandles, "INSPECT_READY", "INSPECT_READY")
+	self:TrackEvent(eventHandles, "BANKFRAME_OPENED", "BANKFRAME_OPENED")
+	self:TrackEvent(eventHandles, "ADDON_LOADED", "ADDON_LOADED")
+end
+
+function ItemLevel:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
 end
 
 function ItemLevel:ADDON_LOADED(addon)
+	if not IsActive() then
+		return
+	end
 	if addon == "Blizzard_ScrappingMachineUI" then
 		local scrapper = _G["ScrappingMachineFrame"]
 		if scrapper and scrapper.UpdateScrapButtonState then
@@ -896,12 +956,25 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function ItemLevel:OnEnable()
+	if not ns.db.itemLevel.enable then
+		return
+	end
 	self:InstallHooks()
+	self:RegisterModuleEvents()
+end
+
+function ItemLevel:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function ItemLevel:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:InstallHooks()
+	if key == "enable" then
+		if value then
+			self:InstallHooks()
+			self:RegisterModuleEvents()
+		else
+			self:UnregisterModuleEvents()
+		end
 	end
 	if key == "fontSize" then
 		ApplyILvlFontSize()

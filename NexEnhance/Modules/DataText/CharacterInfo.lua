@@ -65,7 +65,8 @@ local CharacterInfo = ns:NewModule("CharacterInfo", "characterInfo", { group = "
 
 local cfg
 local hooksInstalled
-local eventsRegistered
+local eventHandles = {}
+local eventsRegistered = false
 local started
 local tokenTicker
 
@@ -347,14 +348,7 @@ function CharacterInfo:Create()
 
 	self:InstallHooks()
 
-	if not eventsRegistered then
-		self:RegisterEvent("PLAYER_ENTERING_WORLD")
-		self:RegisterEvent("PLAYER_MONEY")
-		self:RegisterEvent("ACCOUNT_MONEY")
-		self:RegisterEvent("CURRENCY_DISPLAY_UPDATE")
-		self:RegisterEvent("TOKEN_MARKET_PRICE_UPDATED")
-		eventsRegistered = true
-	end
+	self:RegisterModuleEvents()
 
 	-- Keep the token price warm: request once now, then refresh every 60s.
 	if not tokenTicker and C_Timer and C_Timer.NewTicker then
@@ -366,6 +360,34 @@ function CharacterInfo:Create()
 	UpdateWarband()
 end
 
+function CharacterInfo:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "PLAYER_ENTERING_WORLD")
+	self:TrackEvent(eventHandles, "PLAYER_MONEY", "PLAYER_MONEY")
+	self:TrackEvent(eventHandles, "ACCOUNT_MONEY", "ACCOUNT_MONEY")
+	self:TrackEvent(eventHandles, "CURRENCY_DISPLAY_UPDATE", "CURRENCY_DISPLAY_UPDATE")
+	self:TrackEvent(eventHandles, "TOKEN_MARKET_PRICE_UPDATED", "TOKEN_MARKET_PRICE_UPDATED")
+end
+
+function CharacterInfo:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function CharacterInfo:Stop()
+	self:UnregisterModuleEvents()
+	if tokenTicker then
+		tokenTicker:Cancel()
+		tokenTicker = nil
+	end
+end
+
 function CharacterInfo:OnEnable()
 	cfg = ns.db.characterInfo
 	if not cfg.enable then
@@ -374,11 +396,17 @@ function CharacterInfo:OnEnable()
 	self:Create()
 end
 
+function CharacterInfo:OnDisable()
+	self:Stop()
+end
+
 function CharacterInfo:OnSettingChanged(key)
 	cfg = ns.db.characterInfo
 	if key == "enable" then
 		if cfg.enable then
 			self:Create()
+		else
+			self:Stop()
 		end
 	elseif key == "maxCharacters" then
 		self:RefreshIfHovering()

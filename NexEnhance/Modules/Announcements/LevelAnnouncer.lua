@@ -223,15 +223,36 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local eventHandles = {}
+local eventsRegistered = false
+
 function LevelAnnouncer:OnEnable()
-	-- Both events registered unconditionally so live enable/disable works
-	-- without a /reload; the handlers gate on ns.db.levelAnnouncer.enable.
-	self:RegisterEvent("PLAYER_LEVEL_UP")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_LEVEL_UP")
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD")
 end
 
-function LevelAnnouncer:OnSettingChanged()
-	-- No subscription changes; event handlers already check the DB flag.
+function LevelAnnouncer:OnDisable()
+	ns:UnregisterModuleEventHandles(eventHandles)
+	eventsRegistered = false
+end
+
+function LevelAnnouncer:OnSettingChanged(key, value)
+	if key == "enable" then
+		if value then
+			self:OnEnable()
+		else
+			self:OnDisable()
+		end
+		if not value then
+			return
+		end
+	end
+
+	-- No subscription changes beyond enable; event handlers already check the DB flag.
 	-- If the player just toggled it on, kick-start the clock for the current
 	-- level so the first ding after enable shows a meaningful time.
 	if ns.db.levelAnnouncer.enable then

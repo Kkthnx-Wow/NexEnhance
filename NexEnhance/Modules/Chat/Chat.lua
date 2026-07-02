@@ -6,7 +6,7 @@
 	Features:
 	  * Tab key cycles SAY -> PARTY -> RAID -> INSTANCE -> GUILD
 	  * Shift/Ctrl + mouse-wheel quick scroll (top/bottom, page)
-	  * optional auto scroll-back after scrolling up (ElvUI-style)
+	  * optional auto scroll-back after scrolling up (0 = off by default)
 	  * sticky whisper, whisper sound, flash taskbar icon on whisper
 	  * /tt and /gr edit-box shortcuts, combat repeat-spam guard
 	  * keyword auto-invite
@@ -28,7 +28,7 @@ local ipairs = ipairs
 local strsub, strlower = string.sub, string.lower
 local strlen, gmatch, gsub = string.len, string.gmatch, string.gsub
 local floor, format = math.floor, string.format
-local CreateFrame, max = CreateFrame, math.max
+local CreateFrame, max, min = CreateFrame, math.max, math.min
 local UIParent = UIParent
 
 -- WoW chat messages are capped at 255 bytes.
@@ -65,7 +65,7 @@ ns:RegisterDefaults({
 		hideScrollBar = true,
 		tabChannelSwitch = true,
 		quickScroll = true,
-		scrollDownInterval = 15, -- seconds; 0 = off (ElvUI-style auto return to bottom)
+		scrollDownInterval = 0, -- seconds after scroll-up before ScrollToBottom; 0 = off
 		stickyWhisper = true,
 		whisperSound = false,
 		flashClientIcon = false,
@@ -110,11 +110,10 @@ local function UpdateEditBoxAnchor(editBox)
 
 	-- Docked frames don't all sit at the same top edge. When the Combat Log
 	-- (ChatFrame2) is selected, Blizzard shoves that frame DOWN by the height of
-	-- its quick-button bar (Blizzard_CombatLog_AdjustCombatLogHeight ->
-	-- COMBATLOG:SetPoint("TOPLEFT", ..., -quickButtonHeight)). An edit box anchored
-	-- to that frame's top rides down with it, landing on the tabs. Anchor docked
-	-- edit boxes to the dock's primary frame (ChatFrame1) instead -- it never gets
-	-- shoved, so the box stays put no matter which tab is active.
+	-- its quick-button bar (Blizzard_CombatLog_AdjustCombatLogHeight). The edit
+	-- box anchored to that frame rides down onto the General tab. Thanks, Blizzard.
+	-- Incident (Chat/UIScale, Jun 2026): also broken by uiScale CVar + deferred apply.
+	-- Fix: anchor docked edit boxes to GeneralDockManager.primary (ChatFrame1).
 	local anchor = owner
 	if owner.isDocked then
 		local dock = _G["GeneralDockManager"]
@@ -241,7 +240,7 @@ local function OnChatMouseWheel(frame, delta)
 		return
 	end
 
-	-- ElvUI: after scrolling up, jump back to the bottom once the interval elapses.
+	-- Optional ElvUI-style return-to-bottom after scrolling up (off when interval is 0).
 	if delta > 0 and not IsShiftKeyDown() and cfg.scrollDownInterval and cfg.scrollDownInterval > 0 then
 		ScheduleScrollToBottom(frame)
 	end
@@ -878,13 +877,15 @@ end
 local InviteToGroup = C_PartyInfo and C_PartyInfo.InviteUnit
 local C_BattleNet_InviteFriend = C_BattleNet and C_BattleNet.InviteFriend
 local CanCooperateWithGameAccount = CanCooperateWithGameAccount
+local CanGroupWithAccount = CanGroupWithAccount
 local C_BattleNet_GetAccountInfoByID = C_BattleNet and C_BattleNet.GetAccountInfoByID
+local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet and C_BattleNet.GetGameAccountInfoByGUID
 -- CHAT_MSG_WHISPER hands us a player GUID, so resolve Battle.net friendship
 -- through the game-account lookup (same trust check as Automation/AutoInvite).
-local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet and C_BattleNet.GetGameAccountInfoByGUID
 local C_FriendList_IsFriend = C_FriendList and C_FriendList.IsFriend
 local IsGuildMember = IsGuildMember
 local strtrim = _G.strtrim
+local BNET_CLIENT_WOW = BNET_CLIENT_WOW
 
 local function IsUnitInGuild(unitName)
 	if not unitName then
@@ -916,14 +917,61 @@ local function IsTrustedInviteSender(guid, unitName, accountInfo)
 	return IsUnitInGuild(unitName)
 end
 
+-- CHAT_MSG_BN_WHISPER payload field 13 is bnSenderID (account id), field 12 is the
+-- whispering character GUID. GetAccountInfoByID needs both or gameAccountInfo can
+-- point at the wrong client / miss the sender entirely.
+local function ResolveBNWhisperGameAccount(bnSenderID, senderGUID)
+	if not bnSenderID or bnSenderID == 0 then
+		return nil
+	end
+
+	local wowGUID = (senderGUID and F.NotSecret(senderGUID)) and senderGUID or nil
+	local accountInfo = C_BattleNet_GetAccountInfoByID and C_BattleNet_GetAccountInfoByID(bnSenderID, wowGUID)
+	local gameAccountInfo = accountInfo and accountInfo.gameAccountInfo
+
+	if (not gameAccountInfo or not gameAccountInfo.gameAccountID or gameAccountInfo.gameAccountID == 0) and wowGUID and C_BattleNet_GetGameAccountInfoByGUID then
+		gameAccountInfo = C_BattleNet_GetGameAccountInfoByGUID(wowGUID)
+	end
+
+	if not gameAccountInfo or not gameAccountInfo.gameAccountID or gameAccountInfo.gameAccountID == 0 then
+		return nil
+	end
+
+	if BNET_CLIENT_WOW and gameAccountInfo.clientProgram and gameAccountInfo.clientProgram ~= BNET_CLIENT_WOW then
+		return nil
+	end
+
+	return gameAccountInfo, accountInfo
+end
+
+local function CanInviteBNGameAccount(gameAccountInfo, accountInfo)
+	if not gameAccountInfo or not gameAccountInfo.isOnline then
+		return false
+	end
+	if not gameAccountInfo.realmID or gameAccountInfo.realmID == 0 then
+		return false
+	end
+	-- Incident (Chat BN invite, Jul 2026): CanCooperateWithGameAccount is same-faction
+	-- only and blocked valid cross-faction BN whisper invites. Prefer Blizzard's friend
+	-- restriction helper when available; otherwise allow any online WoW realm character.
+	if CanGroupWithAccount and accountInfo and accountInfo.bnetAccountID then
+		return CanGroupWithAccount(accountInfo.bnetAccountID)
+	end
+	if CanCooperateWithGameAccount and accountInfo then
+		return CanCooperateWithGameAccount(accountInfo)
+	end
+	return true
+end
+
 function Chat:OnChatWhisper(event, ...)
 	if not cfg.autoInvite then
 		return
 	end
-	local msg, author, _, _, _, _, _, _, _, _, _, guid, presenceID = ...
+	local msg, author, _, _, _, _, _, _, _, _, _, guid, bnSenderID = ...
 	if F.IsSecret(msg) then
 		return
 	end
+	msg = strtrim(msg or "")
 	local keyword = strlower(cfg.inviteKeyword or "")
 	if keyword == "" or strlower(msg) ~= keyword then
 		return
@@ -935,17 +983,16 @@ function Chat:OnChatWhisper(event, ...)
 	end
 
 	if event == "CHAT_MSG_BN_WHISPER" then
-		if not (C_BattleNet_GetAccountInfoByID and C_BattleNet_InviteFriend) then
+		if not C_BattleNet_InviteFriend then
 			return
 		end
-		local accountInfo = C_BattleNet_GetAccountInfoByID(presenceID)
-		local gameAccountInfo = accountInfo and accountInfo.gameAccountInfo
-		local gameID = gameAccountInfo and gameAccountInfo.gameAccountID
-		if gameID and gameAccountInfo and CanCooperateWithGameAccount(accountInfo) then
-			local fullName = (gameAccountInfo.characterName or "") .. "-" .. (gameAccountInfo.realmName or "")
-			if not cfg.guildInviteOnly or IsTrustedInviteSender(guid, fullName, accountInfo) then
-				C_BattleNet_InviteFriend(gameID)
-			end
+		local gameAccountInfo, accountInfo = ResolveBNWhisperGameAccount(bnSenderID, guid)
+		if not gameAccountInfo or not CanInviteBNGameAccount(gameAccountInfo, accountInfo) then
+			return
+		end
+		local fullName = (gameAccountInfo.characterName or "") .. "-" .. (gameAccountInfo.realmName or "")
+		if not cfg.guildInviteOnly or IsTrustedInviteSender(guid, fullName, accountInfo) then
+			C_BattleNet_InviteFriend(gameAccountInfo.gameAccountID)
 		end
 	elseif InviteToGroup then
 		if not cfg.guildInviteOnly or IsTrustedInviteSender(guid, author) then
@@ -997,11 +1044,63 @@ function Chat:OnSettingChanged(key)
 	self:ChatWhisperSticky()
 end
 
+function Chat:OnUIScaleApplied()
+	if not cfg or not cfg.enable then
+		return
+	end
+	if cfg.editBoxTop then
+		UpdateAllEditBoxAnchors()
+	end
+end
+
+function Chat:OnInitialize()
+	ns.Debug.BindModule(self, "chat", {
+		title = L["Chat"],
+		expectations = {
+			{
+				name = "editBoxTop uses primary dock anchor when docked",
+				test = function()
+					if not (ns.db and ns.db.chat and ns.db.chat.editBoxTop) then
+						return true
+					end
+					local cf1 = _G.ChatFrame1
+					local eb = cf1 and cf1.editBox
+					if not (eb and cf1.isDocked) then
+						return true
+					end
+					local dock = _G.GeneralDockManager
+					if not (dock and dock.primary) then
+						return true
+					end
+					local _, rel = eb:GetPoint(1)
+					return rel == dock.primary
+				end,
+				detail = "edit box should anchor to dock.primary, not Combat Log frame",
+			},
+		},
+		dump = function()
+			local c = ns.db and ns.db.chat
+			F.Print(format("  enable=%s editBoxTop=%s background=%s", tostring(c and c.enable), tostring(c and c.editBoxTop), tostring(c and c.background)))
+			local dock = _G.GeneralDockManager
+			F.Print(format("  dock primary=%s selected=%s", dock and dock.primary and dock.primary:GetName() or "nil", dock and dock.selected and dock.selected:GetName() or "nil"))
+			for i = 1, min(NUM_CHAT_WINDOWS or 10, 10) do
+				local f = _G["ChatFrame" .. i]
+				if f and f.editBox then
+					local p, rel = f.editBox:GetPoint(1)
+					F.Print(format("  ChatFrame%d editBox -> %s %s", i, tostring(p), rel and rel:GetName() or "nil"))
+				end
+			end
+		end,
+	})
+end
+
 function Chat:OnEnable()
 	cfg = ns.db.chat
 	if not cfg.enable then
 		return
 	end
+
+	ns:RegisterCallback("UIScaleApplied", "OnUIScaleApplied", self)
 
 	for i = 1, NUM_CHAT_WINDOWS do
 		self:SetupChat(_G["ChatFrame" .. i])
@@ -1051,6 +1150,13 @@ function Chat:OnEnable()
 end
 
 function Chat:RegisterOptions(category, builder)
+	local function FormatScrollDownInterval(value)
+		if not value or value <= 0 then
+			return L["Off"]
+		end
+		return tostring(value)
+	end
+
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat"], L["Enable the chat enhancements (reload to fully disable)."])
 	local _, bgInit = builder:Dropdown(category, self, "background", L["Chat Background"], L["Show a background behind the chat window."], {
 		{ value = 1, label = L["None"] },
@@ -1066,7 +1172,7 @@ function Chat:RegisterOptions(category, builder)
 	local _, hideScrollInit = builder:Checkbox(category, self, "hideScrollBar", L["Hide Scroll Bar"], L["Remove the scroll bar and jump-to-bottom button (reload to restore)."])
 	local _, tabSwitchInit = builder:Checkbox(category, self, "tabChannelSwitch", L["Tab Channel Switch"], L["Press Tab in an empty edit box to cycle chat channels."])
 	local _, scrollInit = builder:Checkbox(category, self, "quickScroll", L["Quick Scroll"], L["Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."])
-	local _, scrollDownInit = builder:Slider(category, self, "scrollDownInterval", L["Scroll-Down Interval"], L["After scrolling up, return to the bottom after this many seconds (0 = off)."], 0, 120, 5)
+	local _, scrollDownInit = builder:Slider(category, self, "scrollDownInterval", L["Scroll-Down Interval"], L["After scrolling up, return to the bottom after this many seconds (0 = off)."], 0, 120, 5, FormatScrollDownInterval)
 	local _, stickyInit = builder:Checkbox(category, self, "stickyWhisper", L["Sticky Whisper"], L["Keep the edit box in whisper mode after replying."])
 	local _, whisperSoundInit = builder:Checkbox(category, self, "whisperSound", L["Whisper Sound"], L["Play a sound when you receive a whisper."])
 	local _, flashInit = builder:Checkbox(category, self, "flashClientIcon", L["Flash Client Icon"], L["Flash the WoW taskbar icon when you receive a whisper."])

@@ -63,7 +63,8 @@ local FriendsText = ns:NewModule("FriendsText", "friendsText", { group = "datate
 
 local cfg
 local hooksInstalled
-local eventsRegistered
+local eventHandles = {}
+local eventsRegistered = false
 local dataValid
 
 local friendTable = {}
@@ -513,16 +514,33 @@ function FriendsText:Create()
 
 	self:InstallHooks()
 
-	if not eventsRegistered then
-		self:RegisterEvent("FRIENDLIST_UPDATE")
-		self:RegisterEvent("BN_FRIEND_ACCOUNT_ONLINE")
-		self:RegisterEvent("BN_FRIEND_ACCOUNT_OFFLINE")
-		self:RegisterEvent("BN_FRIEND_INFO_CHANGED")
-		self:RegisterEvent("MODIFIER_STATE_CHANGED")
-		eventsRegistered = true
-	end
+	self:RegisterModuleEvents()
 
 	dataValid = false
+end
+
+function FriendsText:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "FRIENDLIST_UPDATE", "FRIENDLIST_UPDATE")
+	self:TrackEvent(eventHandles, "BN_FRIEND_ACCOUNT_ONLINE", "BN_FRIEND_ACCOUNT_ONLINE")
+	self:TrackEvent(eventHandles, "BN_FRIEND_ACCOUNT_OFFLINE", "BN_FRIEND_ACCOUNT_OFFLINE")
+	self:TrackEvent(eventHandles, "BN_FRIEND_INFO_CHANGED", "BN_FRIEND_INFO_CHANGED")
+	self:TrackEvent(eventHandles, "MODIFIER_STATE_CHANGED", "MODIFIER_STATE_CHANGED")
+end
+
+function FriendsText:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function FriendsText:Stop()
+	self:UnregisterModuleEvents()
 end
 
 function FriendsText:OnEnable()
@@ -533,11 +551,17 @@ function FriendsText:OnEnable()
 	self:Create()
 end
 
+function FriendsText:OnDisable()
+	self:Stop()
+end
+
 function FriendsText:OnSettingChanged(key)
 	cfg = ns.db.friendsText
 	if key == "enable" then
 		if cfg.enable then
 			self:Create()
+		else
+			self:Stop()
 		end
 	elseif key == "maxFriends" then
 		self:RefreshIfHovering()

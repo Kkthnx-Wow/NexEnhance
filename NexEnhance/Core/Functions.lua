@@ -208,6 +208,44 @@ function F.CopyDefaults(defaults, target)
 	return target
 end
 
+--- Drop saved keys that match defaults so SavedVariables stay sparse (Hydra-style).
+--- Only walks keys present in `defaults`; extra profile keys (movers, etc.) are kept.
+function F.CompactDefaults(defaults, target)
+	if type(defaults) ~= "table" or type(target) ~= "table" then
+		return
+	end
+	for key, defaultValue in pairs(defaults) do
+		local value = target[key]
+		if value == nil then
+			-- already sparse
+		elseif type(defaultValue) == "table" then
+			if type(value) == "table" then
+				F.CompactDefaults(defaultValue, value)
+				if not next(value) then
+					target[key] = nil
+				end
+			end
+		elseif value == defaultValue then
+			target[key] = nil
+		end
+	end
+end
+
+--- Copy values from prior sibling keys when a new setting is absent (DialogueUI-style
+--- schema upgrades). `inheritMap` is `{ newKey = "oldKey" }`; only runs when
+--- `target[newKey]` is nil and the old key still holds a value.
+function F.InheritExistingValues(target, inheritMap)
+	if type(target) ~= "table" or type(inheritMap) ~= "table" then
+		return target
+	end
+	for newKey, oldKey in pairs(inheritMap) do
+		if target[newKey] == nil and target[oldKey] ~= nil then
+			target[newKey] = target[oldKey]
+		end
+	end
+	return target
+end
+
 --- Count entries in a hash table (no `#` for non-array tables).
 function F.TableCount(tbl)
 	local count = 0
@@ -215,6 +253,24 @@ function F.TableCount(tbl)
 		count = count + 1
 	end
 	return count
+end
+
+-- ---------------------------------------------------------------------------
+-- Frame event helpers
+-- ---------------------------------------------------------------------------
+
+--- Register `events` on `frame` and set a single OnEvent handler. Caller must
+--- call `frame:UnregisterAllEvents()` (and clear the script) when tearing down.
+function F.RegisterFrameForEvents(frame, events, handler)
+	if not frame or not events then
+		return
+	end
+	for i = 1, #events do
+		frame:RegisterEvent(events[i])
+	end
+	if handler then
+		frame:SetScript("OnEvent", handler)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -450,6 +506,25 @@ do
 		return not F.CanAccessValue(value)
 	end
 
+	--- Compare two unit tokens without secret arithmetic errors. Returns false when
+	--- comparison is blocked (`C_Secrets.CanCompareUnitTokens`) or the result is secret.
+	function F.SafeUnitIsUnit(a, b)
+		if not (a and b and UnitIsUnit) then
+			return false
+		end
+		if C_Secrets and C_Secrets.CanCompareUnitTokens then
+			local ok, can = pcall(C_Secrets.CanCompareUnitTokens, a, b)
+			if ok and not can then
+				return false
+			end
+		end
+		local ok, result = pcall(UnitIsUnit, a, b)
+		if not ok or F.IsSecret(result) then
+			return false
+		end
+		return result and true or false
+	end
+
 	--- True when a widget/frame currently holds any secret values (aspects).
 	function F.HasSecretValues(object)
 		return object and object.HasSecretValues and object:HasSecretValues()
@@ -458,6 +533,63 @@ do
 	--- True when a widget/frame holds no secret values.
 	function F.NoSecretValues(object)
 		return not F.HasSecretValues(object)
+	end
+
+	local C_CurveUtil = _G["C_CurveUtil"]
+	local EvaluateColorFromBoolean = C_CurveUtil and C_CurveUtil.EvaluateColorFromBoolean
+
+	--- Read a boolean when safe; returns `true`/`false`, or `nil` when secret/unknown.
+	function F.BooleanIsTrue(value)
+		if F.NotSecret(value) then
+			return value and true or false
+		end
+		return nil
+	end
+
+	--- Pick RGB for false vs true without comparing a secret boolean in Lua.
+	function F.EvaluateColorFromBoolean(bool, r0, g0, b0, r1, g1, b1)
+		if F.NotSecret(bool) then
+			if bool then
+				return r1, g1, b1
+			end
+			return r0, g0, b0
+		end
+		if EvaluateColorFromBoolean then
+			return EvaluateColorFromBoolean(bool, r0, g0, b0, r1, g1, b1)
+		end
+		return r0, g0, b0
+	end
+
+	--- Secret-safe frame show: uses SetShown when readable, SetAlphaFromBoolean when secret.
+	function F.SetShownFromBoolean(frame, bool, shownAlpha)
+		if not frame then
+			return
+		end
+		shownAlpha = shownAlpha or 1
+		if F.NotSecret(bool) then
+			if bool then
+				frame:SetAlpha(shownAlpha)
+				frame:Show()
+			else
+				frame:Hide()
+			end
+			return
+		end
+		if frame.SetAlphaFromBoolean then
+			frame:SetAlphaFromBoolean(bool, shownAlpha, 0)
+		end
+		if frame.SetShownFromBoolean then
+			frame:SetShownFromBoolean(bool)
+		end
+	end
+
+	--- Hide a cooldown swipe when a DurationObject is zero (permanent aura).
+	--- `durObj:IsZero()` may be Secret; `SetAlphaFromBoolean` routes it safely.
+	function F.MaskCooldownSwipeFromDurationObject(cooldown, durObj)
+		if not (cooldown and durObj and durObj.IsZero and cooldown.SetAlphaFromBoolean) then
+			return
+		end
+		cooldown:SetAlphaFromBoolean(durObj:IsZero(), 0, 1)
 	end
 end
 
@@ -471,6 +603,10 @@ do
 	local UnitSelectionColor = UnitSelectionColor
 	local UnitSelectionType = UnitSelectionType
 	local UnitIsFriend = UnitIsFriend
+	local UnitIsUnit = UnitIsUnit
+	local UnitPlayerControlled = UnitPlayerControlled
+	local UnitIsOwnerOrControllerOfUnit = UnitIsOwnerOrControllerOfUnit
+	local UnitIsOtherPlayersPet = UnitIsOtherPlayersPet
 	local CompactUnitFrame_IsOnThreatListWithPlayer = CompactUnitFrame_IsOnThreatListWithPlayer
 	local FACTION_BAR_COLORS = FACTION_BAR_COLORS
 	local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS
@@ -539,6 +675,53 @@ do
 		return color.r, color.g, color.b
 	end
 
+	--- Player pets, party pets, and other player-controlled friendly units are
+	--- not NPC reaction targets (Blizzard keeps pet HUD bars green). Matches
+	--- TargetFrame CheckFaction skipping tap-deny on UnitPlayerControlled units.
+	function F.IsFriendlyControlledUnit(unit)
+		if not unit then
+			return false
+		end
+
+		if UnitIsUnit then
+			if F.SafeUnitIsUnit(unit, "pet") then
+				return true
+			end
+		end
+
+		if UnitIsOtherPlayersPet then
+			local otherPet = UnitIsOtherPlayersPet(unit)
+			if F.NotSecret(otherPet) and otherPet then
+				return true
+			end
+		end
+
+		if not UnitPlayerControlled then
+			return false
+		end
+
+		local controlled = UnitPlayerControlled(unit)
+		if F.IsSecret(controlled) or not controlled then
+			return false
+		end
+
+		if UnitIsOwnerOrControllerOfUnit then
+			local owned = UnitIsOwnerOrControllerOfUnit("player", unit)
+			if F.NotSecret(owned) and owned then
+				return true
+			end
+		end
+
+		if UnitIsFriend then
+			local friend = UnitIsFriend("player", unit)
+			if F.NotSecret(friend) and friend then
+				return true
+			end
+		end
+
+		return false
+	end
+
 	--- NPC reaction tint: read UnitSelectionType/Color (same source as nameplates),
 	--- then output the darker FACTION_BAR_COLORS entry so unit frames and tooltips
 	--- match nameplate category without bright selection RGB. Falls back to
@@ -546,6 +729,10 @@ do
 	function F.GetNpcReactionColor(unit)
 		if not unit or not FACTION_BAR_COLORS then
 			return nil
+		end
+
+		if F.IsFriendlyControlledUnit(unit) then
+			return ResolveFactionTint(5)
 		end
 
 		local factionIdx
@@ -559,9 +746,9 @@ do
 			end
 		end
 
-		-- RGB fallback only when selection type is unavailable/secret; skip when type
-		-- is a non-NPC category (dead, player, party, etc.) so gray doesn't mis-map.
-		if not factionIdx and not selTypeResolved and UnitSelectionColor then
+		-- RGB fallback when category is unknown (secret/unmapped selType). Skip only
+		-- when selType resolved to a known non-NPC category with no faction mapping.
+		if not factionIdx and UnitSelectionColor then
 			local sr, sg, sb = UnitSelectionColor(unit, false)
 			if F.NotSecret(sr) and F.NotSecret(sg) and F.NotSecret(sb) then
 				factionIdx = FactionIndexFromSelectionRGB(sr, sg, sb)
@@ -593,6 +780,17 @@ do
 			return nil
 		end
 
+		return ResolveFactionTint(factionIdx)
+	end
+
+	--- Map bright UnitSelectionColor RGB (what Blizzard just put on a nameplate bar)
+	--- to the darker FACTION_BAR_COLORS palette. Used when unit-token reaction
+	--- APIs are unreadable from tainted code but the bar colour is not secret.
+	function F.GetNpcReactionColorFromRGB(r, g, b)
+		if not (F.NotSecret(r) and F.NotSecret(g) and F.NotSecret(b)) then
+			return nil
+		end
+		local factionIdx = FactionIndexFromSelectionRGB(r, g, b)
 		return ResolveFactionTint(factionIdx)
 	end
 
@@ -630,6 +828,46 @@ do
 		end
 		local id = strmatch(guid, "^%a+%-%d+%-%d+%-%d+%-%d+%-(%d+)")
 		return tonumber(id)
+	end
+
+	--- Seconds since an NPC spawned, decoded from the GUID spawn UID (nil if unavailable/secret).
+	--- https://warcraft.wiki.gg/wiki/GUID#Spawn_UIDs
+	function F.GetNPCSpawnAge(guid)
+		if not guid or F.IsSecret(guid) then
+			return
+		end
+		if C_PlayerInfo and C_PlayerInfo.GUIDIsPlayer and C_PlayerInfo.GUIDIsPlayer(guid) then
+			return
+		end
+		local spawnUID = select(6, strsplit("-", guid))
+		if not spawnUID then
+			return
+		end
+		local serverTime = GetServerTime()
+		local epoch = 8388608 -- 2^23
+		local spawnEpoch = serverTime - (serverTime % epoch)
+		local spawnEpochOffset = bit.band(tonumber(spawnUID, 16) or 0, 0x7fffff)
+		local spawnTime = spawnEpoch + spawnEpochOffset
+		if spawnTime > serverTime then
+			spawnTime = spawnTime - (epoch - 1)
+		end
+		return serverTime - spawnTime
+	end
+
+	--- Compact duration for tooltip/debug readouts (e.g. 3m 12s).
+	function F.FormatShortDuration(seconds)
+		if not seconds or seconds <= 0 then
+			return "0s"
+		end
+		seconds = floor(seconds)
+		if seconds >= 86400 then
+			return format("%dd %dh", floor(seconds / 86400), floor((seconds % 86400) / 3600))
+		elseif seconds >= 3600 then
+			return format("%dh %dm", floor(seconds / 3600), floor((seconds % 3600) / 60))
+		elseif seconds >= 60 then
+			return format("%dm %ds", floor(seconds / 60), seconds % 60)
+		end
+		return format("%ds", seconds)
 	end
 end
 

@@ -35,6 +35,7 @@ local LBL = C.Colors.label
 local _G = _G
 local ipairs = ipairs
 local floor, min, max = math.floor, math.min, math.max
+local format = string.format
 local sort, tinsert = table.sort, table.insert
 local tonumber, tostring = tonumber, tostring
 
@@ -96,7 +97,7 @@ local function CreateVolumeDisplay()
 	frame:SetAllPoints()
 	frame:SetAlpha(0)
 
-	volumeText = F.CreateFS(frame, 30)
+	volumeText = F.CreatePlainFS(frame, 30)
 	volumeText:SetPoint("CENTER", frame, "CENTER", 0, 0)
 
 	volumeAnim = frame:CreateAnimationGroup()
@@ -135,7 +136,7 @@ local function OnMouseWheel(_, delta)
 		local value = min(100, max(0, GetVolume() + delta * step))
 
 		C_CVar.SetCVar("Sound_MasterVolume", tostring(value / 100))
-		volumeText:SetText(value .. "%")
+		F.SetPlainText(volumeText, value .. "%")
 		volumeText:SetTextColor(VolumeColor(value))
 		volumeAnim:Stop()
 		volumeAnim:Play()
@@ -899,17 +900,17 @@ local function QueueTimeFormat(seconds)
 
 	local hours = floor((seconds % 86400) / 3600)
 	if hours > 0 then
-		text:SetFormattedText(queueFmtH, hours)
+		F.SetPlainFormattedText(text, queueFmtH, hours)
 		return
 	end
 	local minutes = floor((seconds % 3600) / 60)
 	if minutes > 0 then
-		text:SetFormattedText(queueFmtM, minutes)
+		F.SetPlainFormattedText(text, queueFmtM, minutes)
 		return
 	end
 	local secs = floor(seconds % 60)
 	if secs > 0 then
-		text:SetFormattedText(queueFmtS, secs)
+		F.SetPlainFormattedText(text, queueFmtS, secs)
 	end
 end
 
@@ -917,7 +918,7 @@ local function ClearQueueStatus()
 	if not queueDisplay then
 		return
 	end
-	queueDisplay.text:SetText("")
+	F.SetPlainText(queueDisplay.text, "")
 	queueDisplay.title = nil
 	queueDisplay.queuedTime = nil
 	queueDisplay:SetScript("OnUpdate", nil)
@@ -993,7 +994,7 @@ local function ReskinQueueStatus()
 	-- Time-in-queue text under the eye.
 	queueDisplay = CreateFrame("Frame", nil, button)
 	QueueSuffix()
-	queueDisplay.text = F.CreateFS(queueDisplay, 13)
+	queueDisplay.text = F.CreatePlainFS(queueDisplay, 13)
 	queueDisplay.text:ClearAllPoints()
 	queueDisplay.text:SetPoint("CENTER", button, "CENTER", 0, -3)
 
@@ -1453,6 +1454,32 @@ end
 -- ---------------------------------------------------------------------------
 -- Module
 -- ---------------------------------------------------------------------------
+function Module:OnInitialize()
+	ns.Debug.BindModule(self, "minimap", {
+		title = L["Minimap"],
+		expectations = {
+			{
+				name = "Minimap frame present when module enabled",
+				test = function()
+					local cfg = ns.db.minimap
+					if not cfg or not cfg.enable then
+						return true
+					end
+					return Minimap ~= nil
+				end,
+			},
+		},
+		dump = function()
+			local cfg = ns.db.minimap
+			F.Print(format("  enable=%s collectButtons=%s border=%s", tostring(cfg and cfg.enable), tostring(cfg and cfg.collectButtons), tostring(cfg and cfg.border)))
+			if Minimap then
+				local shape = (Minimap.GetShape and Minimap:GetShape()) or "?"
+				F.Print(format("  Minimap shape=%s size=%.0fx%.0f", shape, Minimap:GetWidth(), Minimap:GetHeight()))
+			end
+		end,
+	})
+end
+
 function Module:OnEnable()
 	local cfg = ns.db.minimap
 	if not cfg.enable or not Minimap then

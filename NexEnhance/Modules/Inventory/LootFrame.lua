@@ -37,6 +37,9 @@ local MIN_PERCENT, MAX_PERCENT = 40, 90
 -- disable can put things back exactly as they were (no reload needed).
 local originalMaxHeight
 
+local eventHandles = {}
+local eventsRegistered = false
+
 local function Apply()
 	local frame = _G.LootFrame
 	if not frame then
@@ -74,20 +77,53 @@ function LootFrameModule:ADDON_LOADED(addon)
 	end
 end
 
-function LootFrameModule:OnEnable()
-	-- Re-anchor to screen size live; registered regardless of the toggle so a
-	-- later enable still tracks resolution/scale changes without a reload.
-	self:RegisterEvent("DISPLAY_SIZE_CHANGED")
-	self:RegisterEvent("UI_SCALE_CHANGED")
-
-	if _G.LootFrame then
-		Apply()
-	else
-		self:RegisterEvent("ADDON_LOADED")
+function LootFrameModule:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "DISPLAY_SIZE_CHANGED", "DISPLAY_SIZE_CHANGED")
+	self:TrackEvent(eventHandles, "UI_SCALE_CHANGED", "UI_SCALE_CHANGED")
+	if not _G.LootFrame then
+		self:TrackEvent(eventHandles, "ADDON_LOADED", "ADDON_LOADED")
 	end
 end
 
-function LootFrameModule:OnSettingChanged()
+function LootFrameModule:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function LootFrameModule:Stop()
+	self:UnregisterModuleEvents()
+	Apply()
+end
+
+function LootFrameModule:OnEnable()
+	if not ns.db.lootFrame.enable then
+		return
+	end
+	self:RegisterModuleEvents()
+	Apply()
+end
+
+function LootFrameModule:OnDisable()
+	self:Stop()
+end
+
+function LootFrameModule:OnSettingChanged(key, value)
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+			Apply()
+		else
+			self:Stop()
+		end
+		return
+	end
 	Apply()
 end
 

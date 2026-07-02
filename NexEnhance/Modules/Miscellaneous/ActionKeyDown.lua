@@ -12,6 +12,7 @@
 local _, ns = ...
 local L = ns.L
 
+local GetCVar = GetCVar
 local SetCVar = SetCVar
 local InCombatLockdown = InCombatLockdown
 
@@ -23,27 +24,89 @@ ns:RegisterDefaults({
 
 local ActionKeyDown = ns:NewModule("ActionKeyDown", "actionKeyDown", { group = "actionbars", title = L["Cast On Key Down"], order = 30 })
 
+local originalKeyDown
+local eventHandles = {}
+local eventsRegistered = false
+
+local function RestoreKeyDown()
+	if originalKeyDown == nil then
+		return
+	end
+	if InCombatLockdown() then
+		ActionKeyDown.pendingRestore = originalKeyDown
+		return
+	end
+	SetCVar("ActionButtonUseKeyDown", originalKeyDown)
+end
+
 local function Apply()
+	if originalKeyDown == nil then
+		originalKeyDown = GetCVar("ActionButtonUseKeyDown") or "0"
+	end
 	if InCombatLockdown() then
 		ActionKeyDown.pending = true
 		return
 	end
-	SetCVar("ActionButtonUseKeyDown", ns.db.actionKeyDown.enable and 1 or 0)
+	if not ns.db.actionKeyDown.enable then
+		SetCVar("ActionButtonUseKeyDown", originalKeyDown)
+		return
+	end
+	SetCVar("ActionButtonUseKeyDown", "1")
 end
 
 function ActionKeyDown:PLAYER_REGEN_ENABLED()
+	if self.pendingRestore then
+		SetCVar("ActionButtonUseKeyDown", self.pendingRestore)
+		self.pendingRestore = nil
+	end
 	if self.pending then
 		self.pending = nil
 		Apply()
 	end
 end
 
-function ActionKeyDown:OnEnable()
-	Apply()
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+function ActionKeyDown:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED")
 end
 
-function ActionKeyDown:OnSettingChanged()
+function ActionKeyDown:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function ActionKeyDown:OnEnable()
+	if not ns.db.actionKeyDown.enable then
+		return
+	end
+	self:RegisterModuleEvents()
+	Apply()
+end
+
+function ActionKeyDown:OnDisable()
+	self:UnregisterModuleEvents()
+	self.pending = nil
+	RestoreKeyDown()
+end
+
+function ActionKeyDown:OnSettingChanged(key)
+	if key == "enable" then
+		if ns.db.actionKeyDown.enable then
+			self:RegisterModuleEvents()
+			Apply()
+		else
+			self:UnregisterModuleEvents()
+			self.pending = nil
+			RestoreKeyDown()
+		end
+		return
+	end
 	Apply()
 end
 

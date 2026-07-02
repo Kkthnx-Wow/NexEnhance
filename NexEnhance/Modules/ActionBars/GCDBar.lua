@@ -18,18 +18,25 @@
 
 	Spark pattern (from ExpRep.lua):
 	  spark:SetPoint("CENTER", fill:GetStatusBarTexture(), "RIGHT", 0, 0)
-	  Rides the fill's right edge automatically as SetValue depletes.
+	  Rides the fill's right edge automatically as SetTimerDuration depletes.
+
+	Midnight: GCD timing is driven by C_Spell.GetSpellCooldownDuration +
+	SetTimerDuration so addon code never performs arithmetic on secret cooldown
+	values.
 --]]
 
 local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
 
-local GetTime = GetTime
 local math_max = math.max
 
 local GCD_SPELL_ID = 61304
 local SHADOW_H = 6 -- pixels of shadow below the bar body
 local SPARK_TEX = "Interface\\CastingBar\\UI-CastingBar-Spark"
+
+local C_Spell_GetSpellCooldownDuration = C_Spell and C_Spell.GetSpellCooldownDuration
+local Enum_StatusBarInterpolation = Enum.StatusBarInterpolation.Immediate
+local Enum_StatusBarTimerDirection = Enum.StatusBarTimerDirection.RemainingTime
 
 -- ---------------------------------------------------------------------------
 -- Defaults & module
@@ -49,6 +56,16 @@ local GCDBar = ns:NewModule("GCDBar", "gcdBar", {
 	order = 50,
 })
 
+local spellCooldownDispatchId
+local eventsRegistered = false
+local eventHandles = {}
+
+-- Poll while the bar is shown: SPELL_UPDATE_COOLDOWN alone does not always fire
+-- when the GCD finishes, leaving an empty bar + spark visible (stuck state).
+local pollFrame
+local pollElapsed = 0
+local POLL_INTERVAL = 0.05
+
 -- ---------------------------------------------------------------------------
 -- Frame handles and GCD state
 -- ---------------------------------------------------------------------------
@@ -57,40 +74,36 @@ local trough -- dark bg texture covering bar body portion
 local fillBar -- StatusBar covering bar body portion
 local sparkTex
 
-local gcdActive = false
-local gcdStart = 0
-local gcdDuration = 0
-
--- ---------------------------------------------------------------------------
--- GCD timing helper
--- ---------------------------------------------------------------------------
-local C_Spell_GetSpellCooldown = C_Spell and C_Spell.GetSpellCooldown
-
-local function GetGCDTiming()
-	if not C_Spell_GetSpellCooldown then
-		return nil, nil
-	end
-	local info = C_Spell_GetSpellCooldown(GCD_SPELL_ID)
-	if type(info) ~= "table" then
-		return nil, nil
-	end
-	local start = info.startTime
-	local dur = info.duration
-	if F.IsSecret(start) or F.IsSecret(dur) then
-		return nil, nil
-	end
-	if not start or not dur or dur <= 0 or start <= 0 then
-		return nil, nil
-	end
-	return start, dur
-end
-
 -- ---------------------------------------------------------------------------
 -- Bar show / hide
 -- ---------------------------------------------------------------------------
+local function IsGCDInactive()
+	if not C_Spell_GetSpellCooldownDuration then
+		return true
+	end
+	local durObj = C_Spell_GetSpellCooldownDuration(GCD_SPELL_ID)
+	if not durObj then
+		return true
+	end
+	if durObj.IsZero and durObj:IsZero() then
+		return true
+	end
+	return false
+end
+
+local function StopPoll()
+	if pollFrame then
+		pollFrame:SetScript("OnUpdate", nil)
+		pollFrame:Hide()
+	end
+	pollElapsed = 0
+end
+
 local function StopGCD()
-	gcdActive = false
 	if fillBar then
+		if fillBar.SetToTargetValue then
+			fillBar:SetToTargetValue()
+		end
 		fillBar:SetValue(0)
 	end
 	if sparkTex then
@@ -99,6 +112,30 @@ local function StopGCD()
 	if barFrame then
 		barFrame:Hide()
 	end
+	StopPoll()
+end
+
+local function StartPoll()
+	if not pollFrame then
+		pollFrame = CreateFrame("Frame")
+		pollFrame:Hide()
+	end
+	pollElapsed = 0
+	pollFrame:SetScript("OnUpdate", function(_, elapsed)
+		pollElapsed = pollElapsed + (elapsed or 0)
+		if pollElapsed < POLL_INTERVAL then
+			return
+		end
+		pollElapsed = 0
+		if not (barFrame and barFrame:IsShown()) then
+			StopPoll()
+			return
+		end
+		if IsGCDInactive() then
+			StopGCD()
+		end
+	end)
+	pollFrame:Show()
 end
 
 -- ---------------------------------------------------------------------------
@@ -108,39 +145,27 @@ local function OnSpellCooldownUpdate()
 	if not ns.db or not ns.db.gcdBar.enable then
 		return
 	end
-	local start, dur = GetGCDTiming()
-	if not start then
+	if not (fillBar and barFrame and C_Spell_GetSpellCooldownDuration) then
+		return
+	end
+
+	local durObj = C_Spell_GetSpellCooldownDuration(GCD_SPELL_ID)
+	if IsGCDInactive() then
 		StopGCD()
 		return
 	end
-	if GetTime() >= start + dur then
-		StopGCD()
-		return
+
+	barFrame:Show()
+	fillBar:SetMinMaxValues(0, 1)
+	fillBar:SetTimerDuration(durObj, Enum_StatusBarInterpolation, Enum_StatusBarTimerDirection)
+	if sparkTex then
+		sparkTex:SetShown(ns.db.gcdBar.showSpark)
 	end
-	gcdStart = start
-	gcdDuration = dur
-	if not gcdActive then
-		gcdActive = true
-		if barFrame then
-			barFrame:Show()
-		end
-	end
+	StartPoll()
 end
 
--- ---------------------------------------------------------------------------
--- OnUpdate — drives the fill; spark tracks automatically
--- ---------------------------------------------------------------------------
-local function OnBarUpdate()
-	if not gcdActive then
-		return
-	end
-	local elapsed = GetTime() - gcdStart
-	if elapsed >= gcdDuration then
-		StopGCD()
-		return
-	end
-	fillBar:SetValue(1 - (elapsed / gcdDuration))
-	sparkTex:SetShown(ns.db.gcdBar.showSpark)
+function GCDBar:ACTIONBAR_UPDATE_COOLDOWN()
+	OnSpellCooldownUpdate()
 end
 
 -- ---------------------------------------------------------------------------
@@ -182,13 +207,6 @@ local function BuildBar()
 
 	local base = barFrame:GetFrameLevel()
 
-	-- Shadow: fills entire barFrame. The uncovered strip at the bottom
-	-- (where trough/fill don't reach) is visible as a dark shadow.
-	-- local shadow = barFrame:CreateTexture(nil, "BACKGROUND", nil, -8)
-	-- shadow:SetAllPoints()
-	-- shadow:SetColorTexture(0, 0, 0, 0.65)
-	-- barFrame.shadow = shadow
-
 	-- Trough: near-black background, bar body only (not shadow strip).
 	trough = barFrame:CreateTexture(nil, "BACKGROUND", nil, -4)
 	trough:SetColorTexture(0.06, 0.06, 0.06, 0.95)
@@ -215,7 +233,6 @@ local function BuildBar()
 
 	ApplyBodyAnchors(h)
 
-	barFrame:SetScript("OnUpdate", OnBarUpdate)
 	barFrame:Hide()
 
 	F.CreateMover(barFrame, "GCDBar", L["GCD Bar"], "BOTTOM", 0, 112)
@@ -248,39 +265,47 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
-local eventFrame
-
-local function EnsureEventFrame()
-	if eventFrame then
+function GCDBar:RegisterModuleEvents()
+	if eventsRegistered then
 		return
 	end
-	eventFrame = CreateFrame("Frame")
-	eventFrame:SetScript("OnEvent", function(_, event)
-		if event == "SPELL_UPDATE_COOLDOWN" then
-			OnSpellCooldownUpdate()
-		end
-	end)
+	eventsRegistered = true
+	spellCooldownDispatchId = ns:RegisterCooldownDispatchCallback(OnSpellCooldownUpdate, "SPELL_UPDATE_COOLDOWN")
+	self:TrackEvent(eventHandles, "ACTIONBAR_UPDATE_COOLDOWN")
+end
+
+function GCDBar:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	if spellCooldownDispatchId then
+		ns:UnregisterCooldownDispatchCallback(spellCooldownDispatchId)
+		spellCooldownDispatchId = nil
+	end
+	ns:UnregisterModuleEventHandles(eventHandles)
+	StopGCD()
 end
 
 function GCDBar:OnEnable()
+	if not ns.db.gcdBar.enable then
+		return
+	end
 	BuildBar()
 	GCDBar:ApplyLayout()
-	EnsureEventFrame()
-	eventFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+	self:RegisterModuleEvents()
+end
+
+function GCDBar:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function GCDBar:OnSettingChanged(key, value)
 	if key == "enable" then
 		if value then
-			BuildBar()
-			GCDBar:ApplyLayout()
-			EnsureEventFrame()
-			eventFrame:RegisterEvent("SPELL_UPDATE_COOLDOWN")
+			self:OnEnable()
 		else
-			StopGCD()
-			if eventFrame then
-				eventFrame:UnregisterAllEvents()
-			end
+			self:OnDisable()
 		end
 		return
 	end

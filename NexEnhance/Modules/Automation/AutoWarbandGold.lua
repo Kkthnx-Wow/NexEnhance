@@ -37,6 +37,8 @@ ns:RegisterDefaults({
 
 local AutoWarbandGold = ns:NewModule("AutoWarbandGold", "autoWarbandGold", { group = "automation", title = L["Auto Warband Gold"], order = 120 })
 
+local eventHandles = {}
+
 local function AutoSync()
 	if not ns.db.autoWarbandGold.enable then
 		return
@@ -112,7 +114,7 @@ function AutoWarbandGold:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("BANKFRAME_OPENED")
+	self:TrackEvent(eventHandles, "BANKFRAME_OPENED")
 end
 
 function AutoWarbandGold:UnregisterModuleEvents()
@@ -120,8 +122,11 @@ function AutoWarbandGold:UnregisterModuleEvents()
 		return
 	end
 	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
 
-	ns:UnregisterEvent("BANKFRAME_OPENED", self.BANKFRAME_OPENED)
+function AutoWarbandGold:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoWarbandGold:OnSettingChanged(key, value)
@@ -131,7 +136,7 @@ function AutoWarbandGold:OnSettingChanged(key, value)
 	if value then
 		self:RegisterModuleEvents()
 	else
-		self:UnregisterModuleEvents()
+		self:OnDisable()
 	end
 end
 

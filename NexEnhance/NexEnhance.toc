@@ -2,7 +2,7 @@
 ## Title: |cff5C8BCFNex|r|cffffd100Enhance|r
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
-## Version: 1.5.0
+## Version: 1.5.5
 ## SavedVariables: NexEnhanceDB
 ## SavedVariablesPerCharacter: NexEnhanceCharDB
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64
@@ -37,12 +37,18 @@ Libs\LibEditMode\embed.xml
 # register their defaults.
 # ----------------------------------------------------------------------------
 Core\Engine.lua
+Core\DataLoad.lua
+Core\ZoneTrigger.lua
 Core\Constants.lua
 Core\Functions.lua
+Core\Runner.lua
+Core\CooldownDispatch.lua
 Core\Widgets.lua
 Core\Widgets.xml
 Core\API.lua
+Core\TransitionAPI.lua
 Core\Database.lua
+Core\Debug.lua
 
 # Plugin API (third-party extensions register via NexEnhance:RegisterPlugin).
 Core\Plugins.lua
@@ -66,6 +72,7 @@ Modules\Miscellaneous\CameraZoom.lua
 Modules\Miscellaneous\ActionKeyDown.lua
 Modules\Miscellaneous\NumberFormat.lua
 Modules\Miscellaneous\HideHelpTips.lua
+Modules\Miscellaneous\HideCombatErrors.lua
 Modules\Miscellaneous\HideUIElements.lua
 
 # Action Bars
@@ -107,6 +114,7 @@ Modules\Chat\ChannelRename.lua
 
 # Filters
 Modules\Filters\ChatFilter.lua
+Modules\Filters\SystemChatFilter.lua
 
 # Tooltip
 Modules\Tooltip\Tooltip.lua
@@ -126,6 +134,7 @@ Modules\Skins\MissingStats.lua
 Modules\Skins\ChatBubbles.lua
 Modules\Skins\Details.lua
 Modules\Skins\QuestNavigation.lua
+Modules\Skins\HeroTalentSwap.lua
 Modules\Skins\ColorPicker.lua
 
 # DataText
@@ -148,6 +157,10 @@ Modules\Automation\AutoVendor.lua
 Modules\Automation\AutoGreed.lua
 Modules\Automation\QuickQuest.lua
 Modules\Automation\FasterLoot.lua
+Modules\Automation\SmartFishing.lua
+Modules\Automation\AuctionSearch.lua
+Modules\Automation\AuctionSearchHistory.lua
+Modules\Automation\SmartTracking.lua
 Modules\Automation\MovieSkip.lua
 Modules\Automation\DeclineDuel.lua
 Modules\Automation\CancelBadBuffs.lua
@@ -180,6 +193,7 @@ Modules\Miscellaneous\MenuButtons.lua
 Modules\Miscellaneous\QueueTimer.lua
 Modules\Miscellaneous\TradeTargetInfo.lua
 Modules\Miscellaneous\QuickDelete.lua
+Modules\Miscellaneous\PopupQoL.lua
 Modules\Miscellaneous\DragEmAll.lua
 Modules\Miscellaneous\WidgetMovers.lua
 Modules\Miscellaneous\AlertFrames.lua

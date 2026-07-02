@@ -303,6 +303,8 @@ end
 local FADE_DURATION = 0.25
 local FADE_OUT_DELAY = 0.75
 local fadeEventFrame
+local fadeCombatEnterId
+local fadeCombatLeaveId
 local hideTimer
 local isMouseOver = false
 
@@ -361,18 +363,30 @@ local function ApplyFadeState()
 end
 
 -- (Re)gate the combat/target events to the current fade settings.
+local function UnregisterFadeCombat()
+	if fadeCombatEnterId then
+		ns:UnregisterCombatEnterCallback(fadeCombatEnterId)
+		fadeCombatEnterId = nil
+	end
+	if fadeCombatLeaveId then
+		ns:UnregisterCombatLeaveCallback(fadeCombatLeaveId)
+		fadeCombatLeaveId = nil
+	end
+end
+
 local function RefreshFade()
 	if not fadeEventFrame then
 		fadeEventFrame = CreateFrame("Frame")
 		fadeEventFrame:SetScript("OnEvent", ApplyFadeState)
 	end
 	fadeEventFrame:UnregisterAllEvents()
+	UnregisterFadeCombat()
 
 	local cfg = ns.db.expRep
 	if cfg.fade then
 		if cfg.fadeCombat then
-			fadeEventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
-			fadeEventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+			fadeCombatEnterId = ns:RegisterCombatEnterCallback(ApplyFadeState)
+			fadeCombatLeaveId = ns:RegisterCombatLeaveCallback(ApplyFadeState)
 		end
 		if cfg.fadeTarget then
 			fadeEventFrame:RegisterEvent("PLAYER_TARGET_CHANGED")
@@ -1017,12 +1031,6 @@ local function BuildBar()
 	text:SetDrawLayer("OVERLAY", 7)
 	f.text = text
 
-	for i = 1, #EVENTS do
-		-- pcall guards against a client that lacks a given (retail-only) event,
-		-- e.g. AZERITE_ITEM_EXPERIENCE_CHANGED, so one unknown event can't abort
-		-- registration of the rest.
-		pcall(f.RegisterEvent, f, EVENTS[i])
-	end
 	f:SetScript("OnEvent", OnBarEvent)
 	f:SetScript("OnEnter", OnEnter)
 	f:SetScript("OnLeave", OnLeave)
@@ -1116,6 +1124,24 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local function RegisterBarEvents()
+	if not bar or bar.nexEventsRegistered then
+		return
+	end
+	for i = 1, #EVENTS do
+		pcall(bar.RegisterEvent, bar, EVENTS[i])
+	end
+	bar.nexEventsRegistered = true
+end
+
+local function UnregisterBarEvents()
+	if not bar or not bar.nexEventsRegistered then
+		return
+	end
+	bar:UnregisterAllEvents()
+	bar.nexEventsRegistered = nil
+end
+
 function ExpRep:Setup()
 	if self.setupDone then
 		return
@@ -1131,6 +1157,7 @@ function ExpRep:Setup()
 	RequestHousingFavor()
 	RequestEndeavorInfo()
 	UpdateBar(bar)
+	RegisterBarEvents()
 end
 
 function ExpRep:OnEnable()
@@ -1138,15 +1165,30 @@ function ExpRep:OnEnable()
 		return
 	end
 	self:Setup()
+	if bar then
+		bar:Show()
+		RegisterBarEvents()
+		UpdateBar(bar)
+	end
+end
+
+function ExpRep:OnDisable()
+	UnregisterBarEvents()
+	UnregisterFadeCombat()
+	if fadeEventFrame then
+		fadeEventFrame:UnregisterAllEvents()
+	end
+	if bar then
+		bar:Hide()
+	end
 end
 
 function ExpRep:OnSettingChanged(key, value)
 	if key == "enable" then
 		if value then
-			self:Setup()
-			UpdateBar(bar)
-		elseif bar then
-			bar:Hide()
+			self:OnEnable()
+		else
+			self:OnDisable()
 		end
 		return
 	end

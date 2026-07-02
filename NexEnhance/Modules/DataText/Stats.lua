@@ -369,6 +369,7 @@ end
 -- discarded and the readout starts fresh, centred under the minimap.
 local MOVER_KEY = "statsAnchor2"
 local moverRegistered
+local positionHandle
 
 -- Returns the minimap only when it is a real, anchorable, laid-out region. On a
 -- /reload Blizzard frames can be transiently *forbidden*, and anchoring to a
@@ -481,7 +482,25 @@ function DataText:Create()
 	UpdateStat(stat)
 
 	_G.C_Timer.After(0, SetupPosition)
-	ns:RegisterEvent("PLAYER_ENTERING_WORLD", SetupPosition)
+	if not positionHandle then
+		positionHandle = ns:RegisterEvent("PLAYER_ENTERING_WORLD", SetupPosition)
+	end
+end
+
+function DataText:Destroy()
+	if positionHandle then
+		ns:UnregisterEvent("PLAYER_ENTERING_WORLD", positionHandle)
+		positionHandle = nil
+	end
+	if stat then
+		stat:UnregisterEvent("MODIFIER_STATE_CHANGED")
+		stat:SetScript("OnUpdate", nil)
+		stat:Hide()
+		stat = nil
+		moverRegistered = nil
+		entered = nil
+		tooltipElapsed = 0
+	end
 end
 
 function DataText:OnEnable()
@@ -492,13 +511,17 @@ function DataText:OnEnable()
 	self:Create()
 end
 
+function DataText:OnDisable()
+	self:Destroy()
+end
+
 function DataText:OnSettingChanged(key, value)
 	cfg = ns.db.datatext
 	if key == "enable" then
 		if value then
 			self:Create()
-		elseif stat then
-			stat:Hide()
+		else
+			self:Destroy()
 		end
 	elseif stat then
 		-- display / flip / class-colour changes apply live.

@@ -84,6 +84,8 @@ ns:RegisterDefaults({
 
 local GuildInviteFilter = ns:NewModule("GuildInviteFilter", "guildInviteFilter", { group = "automation", title = L["Guild Invite Filter"], order = 65, since = "1.2.9" })
 
+local eventHandles = {}
+
 -- Lower-cased, realm-stripped name. Returns nil when the value is missing or a
 -- secret value (string ops on a secret would error), which all callers treat as
 -- "can't evaluate".
@@ -293,9 +295,18 @@ function GuildInviteFilter:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("GUILD_INVITE_REQUEST")
-	self:RegisterEvent("GUILD_ROSTER_UPDATE")
-	self:RegisterEvent("PLAYER_GUILD_UPDATE")
+	self:TrackEvent(eventHandles, "GUILD_INVITE_REQUEST", "GUILD_INVITE_REQUEST")
+	self:TrackEvent(eventHandles, "GUILD_ROSTER_UPDATE", "GUILD_ROSTER_UPDATE")
+	self:TrackEvent(eventHandles, "PLAYER_GUILD_UPDATE", "PLAYER_GUILD_UPDATE")
+end
+
+function GuildInviteFilter:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+
+	ns:UnregisterModuleEventHandles(eventHandles)
 end
 
 -- GetAutoDeclineGuildInvites returns a numeric flag (1/0), and 0 is truthy in
@@ -347,8 +358,13 @@ function GuildInviteFilter:OnSettingChanged(key, value)
 		self:RegisterModuleEvents()
 		self:SuppressBlizzardAutoDecline()
 	else
-		self:RestoreBlizzardAutoDecline()
+		self:OnDisable()
 	end
+end
+
+function GuildInviteFilter:OnDisable()
+	self:UnregisterModuleEvents()
+	self:RestoreBlizzardAutoDecline()
 end
 
 function GuildInviteFilter:OnEnable()

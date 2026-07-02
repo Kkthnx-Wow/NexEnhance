@@ -114,6 +114,8 @@ ns:RegisterDefaults({ autoVendor = { junkList = {} } }, "global")
 
 local AutoVendor = ns:NewModule("AutoVendor", "autoVendor", { group = "automation", title = L["Auto Vendor"], order = 10 })
 
+local eventHandles = {}
+
 -- ---------------------------------------------------------------------------
 -- Selling (throttled + stop-on-error)
 -- ---------------------------------------------------------------------------
@@ -332,8 +334,12 @@ end
 -- Options & lifecycle
 -- ---------------------------------------------------------------------------
 function AutoVendor:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:RegisterModuleEvents()
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+		else
+			self:OnDisable()
+		end
 	end
 end
 
@@ -356,10 +362,22 @@ function AutoVendor:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("MERCHANT_SHOW")
-	self:RegisterEvent("MERCHANT_CLOSED")
-	self:RegisterEvent("UI_ERROR_MESSAGE")
-	self:RegisterEvent("GOSSIP_SHOW")
+	self:TrackEvent(eventHandles, "MERCHANT_SHOW")
+	self:TrackEvent(eventHandles, "MERCHANT_CLOSED")
+	self:TrackEvent(eventHandles, "UI_ERROR_MESSAGE")
+	self:TrackEvent(eventHandles, "GOSSIP_SHOW")
+end
+
+function AutoVendor:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function AutoVendor:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoVendor:OnEnable()

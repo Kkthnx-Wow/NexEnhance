@@ -9,8 +9,8 @@
 	Peterodox). This is an independent NexEnhance implementation - rewritten
 	against the project optimisation guide rather than copied:
 	  * Purely event-driven. PLAYER_CHOICE_UPDATE is registered only while we
-	    are actually inside a Delve (gated by PLAYER_ENTERING_WORLD /
-	    PLAYER_MAP_CHANGED), so player choices outside Delves are never touched.
+	    are actually inside a Delve (gated via ns:CreateStateTrigger), so
+	    player choices outside Delves are never touched.
 	  * No OnUpdate polling - delve state is recomputed from cheap events.
 	  * Every API used in the handler is localised; the handler runs
 	    cheapest-filter-first and bails on anything that isn't a lone,
@@ -23,7 +23,6 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local format = string.format
-local C_Timer_After = C_Timer and C_Timer.After
 local C_PartyInfo_IsPartyWalkIn = C_PartyInfo and C_PartyInfo.IsPartyWalkIn
 local C_PlayerChoice_GetCurrentPlayerChoiceInfo = C_PlayerChoice and C_PlayerChoice.GetCurrentPlayerChoiceInfo
 local C_PlayerChoice_SendPlayerChoiceResponse = C_PlayerChoice and C_PlayerChoice.SendPlayerChoiceResponse
@@ -42,6 +41,8 @@ ns:RegisterDefaults({
 })
 
 local DelvesAutomation = ns:NewModule("DelvesAutomation", "delvesAutomation", { group = "automation", title = L["Delves Automation"], order = 95 })
+
+local delveGate
 
 local function db()
 	return ns.db.delvesAutomation
@@ -92,7 +93,7 @@ local function OnPlayerChoice()
 end
 
 -- ---------------------------------------------------------------------------
--- Subscription gating
+-- Subscription gating (via CreateStateTrigger)
 -- ---------------------------------------------------------------------------
 local choiceSubscribed = false
 
@@ -112,79 +113,45 @@ local function UnsubscribeChoice()
 	ns:UnregisterEvent("PLAYER_CHOICE_UPDATE", OnPlayerChoice)
 end
 
--- Listen for the borrowed-power popup only when standing inside a Delve.
-local function RefreshDelveState()
-	if db().enable and IsInDelve() then
-		SubscribeChoice()
-	else
-		UnsubscribeChoice()
+local function EnsureDelveGate()
+	if delveGate then
+		return delveGate
 	end
-end
-
--- IsPartyWalkIn() is stale at the exact moment you cross a Delve boundary (it
--- still reports the old state on PLAYER_ENTERING_WORLD), so the gate events
--- only schedule a re-check a beat later rather than reading it immediately. A
--- single pending flag coalesces a burst of boundary events into one timer.
-local refreshPending = false
-
-local function RunScheduledRefresh()
-	refreshPending = false
-	RefreshDelveState()
-end
-
-local function ScheduleRefresh()
-	if refreshPending then
-		return
-	end
-	refreshPending = true
-	if C_Timer_After then
-		C_Timer_After(0.5, RunScheduledRefresh)
-	else
-		RunScheduledRefresh()
-	end
+	local extraEvents = HAS_WALK_IN_EVENT and { "WALK_IN_DATA_UPDATE" } or {}
+	delveGate = ns:CreateStateTrigger(
+		function()
+			return db().enable and IsInDelve()
+		end,
+		SubscribeChoice,
+		UnsubscribeChoice,
+		{ debounce = 0.5, events = extraEvents }
+	)
+	return delveGate
 end
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
-local gateRegistered = false
-
-local function Setup()
-	if not gateRegistered then
-		gateRegistered = true
-		ns:RegisterEvent("PLAYER_ENTERING_WORLD", ScheduleRefresh)
-		ns:RegisterEvent("PLAYER_MAP_CHANGED", ScheduleRefresh)
-		if HAS_WALK_IN_EVENT then
-			ns:RegisterEvent("WALK_IN_DATA_UPDATE", ScheduleRefresh)
-		end
+function DelvesAutomation:OnEnable()
+	if db().enable then
+		EnsureDelveGate():Enable()
 	end
-	-- Catch the case where the module is enabled while already inside a Delve.
-	ScheduleRefresh()
 end
 
-local function Teardown()
-	if gateRegistered then
-		gateRegistered = false
-		ns:UnregisterEvent("PLAYER_ENTERING_WORLD", ScheduleRefresh)
-		ns:UnregisterEvent("PLAYER_MAP_CHANGED", ScheduleRefresh)
-		if HAS_WALK_IN_EVENT then
-			ns:UnregisterEvent("WALK_IN_DATA_UPDATE", ScheduleRefresh)
-		end
+function DelvesAutomation:OnDisable()
+	if delveGate then
+		delveGate:Disable()
 	end
 	UnsubscribeChoice()
 end
 
-function DelvesAutomation:OnEnable()
-	if db().enable then
-		Setup()
-	end
-end
-
 function DelvesAutomation:OnSettingChanged()
 	if db().enable then
-		Setup()
+		EnsureDelveGate():Enable()
+	elseif delveGate then
+		delveGate:Disable()
 	else
-		Teardown()
+		UnsubscribeChoice()
 	end
 end
 

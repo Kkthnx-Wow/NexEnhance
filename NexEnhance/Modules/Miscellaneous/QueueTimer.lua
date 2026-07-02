@@ -50,6 +50,7 @@ ns:RegisterDefaults({
 })
 
 local QueueTimer = ns:NewModule("QueueTimer", "queueTimer", { group = "alerts", title = L["Queue Timer"], order = 30 })
+local eventHandles = {}
 
 -- State.
 local remainingPvETime = 0
@@ -359,12 +360,12 @@ function QueueTimer:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self._evtProposalShow = self:RegisterEvent("LFG_PROPOSAL_SHOW")
-	self._evtProposalUpdate = self:RegisterEvent("LFG_PROPOSAL_UPDATE")
-	self._evtProposalSucceeded = self:RegisterEvent("LFG_PROPOSAL_SUCCEEDED", "LFG_PROPOSAL_ENDED")
-	self._evtProposalDone = self:RegisterEvent("LFG_PROPOSAL_DONE", "LFG_PROPOSAL_ENDED")
-	self._evtProposalFailed = self:RegisterEvent("LFG_PROPOSAL_FAILED", "LFG_PROPOSAL_ENDED")
-	self._evtBattlefieldStatus = self:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
+	self:TrackEvent(eventHandles, "LFG_PROPOSAL_SHOW")
+	self:TrackEvent(eventHandles, "LFG_PROPOSAL_UPDATE")
+	self:TrackEvent(eventHandles, "LFG_PROPOSAL_SUCCEEDED", "LFG_PROPOSAL_ENDED")
+	self:TrackEvent(eventHandles, "LFG_PROPOSAL_DONE", "LFG_PROPOSAL_ENDED")
+	self:TrackEvent(eventHandles, "LFG_PROPOSAL_FAILED", "LFG_PROPOSAL_ENDED")
+	self:TrackEvent(eventHandles, "UPDATE_BATTLEFIELD_STATUS")
 
 	if not self._hooksInstalled then
 		self._hooksInstalled = true
@@ -399,23 +400,15 @@ function QueueTimer:UnregisterModuleEvents()
 	end
 	self.eventsRegistered = false
 
-	ns:UnregisterEvent("LFG_PROPOSAL_SHOW", self._evtProposalShow)
-	ns:UnregisterEvent("LFG_PROPOSAL_UPDATE", self._evtProposalUpdate)
-	ns:UnregisterEvent("LFG_PROPOSAL_SUCCEEDED", self._evtProposalSucceeded)
-	ns:UnregisterEvent("LFG_PROPOSAL_DONE", self._evtProposalDone)
-	ns:UnregisterEvent("LFG_PROPOSAL_FAILED", self._evtProposalFailed)
-	ns:UnregisterEvent("UPDATE_BATTLEFIELD_STATUS", self._evtBattlefieldStatus)
-
-	self._evtProposalShow = nil
-	self._evtProposalUpdate = nil
-	self._evtProposalSucceeded = nil
-	self._evtProposalDone = nil
-	self._evtProposalFailed = nil
-	self._evtBattlefieldStatus = nil
+	ns:UnregisterModuleEventHandles(eventHandles)
 
 	remainingPvETime = 0
 	activePvPIndex = nil
 	StopTicker()
+end
+
+function QueueTimer:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function QueueTimer:OnEnable()
@@ -430,7 +423,7 @@ function QueueTimer:OnSettingChanged(key, value)
 		if value then
 			self:RegisterModuleEvents()
 		else
-			self:UnregisterModuleEvents()
+			self:OnDisable()
 		end
 	end
 end

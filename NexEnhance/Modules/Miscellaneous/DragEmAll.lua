@@ -26,6 +26,9 @@ ns:RegisterDefaults({
 
 local DragEmAll = ns:NewModule("DragEmAll", "dragEmAll", { group = "movers", title = L["Drag Frames"], order = 10 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
 -- ["FrameName"] = true  -> drag moves the frame's PARENT
 -- ["FrameName"] = false -> drag moves the frame itself
 -- For child frames without a global name use "Parent.ChildKey" (dots allowed).
@@ -128,6 +131,9 @@ local lodFrames = {
 local parentFrame, hooked = {}, {}
 
 local function MouseDownHandler(frame, button)
+	if not ns.db.dragEmAll.enable then
+		return
+	end
 	-- Don't start moving a Blizzard window mid-combat: a few of these frames
 	-- carry secure children, and StartMoving on a protected frame is blocked in
 	-- the lockdown. Combat is also exactly when you don't want to be dragging UI.
@@ -142,6 +148,9 @@ local function MouseDownHandler(frame, button)
 end
 
 local function MouseUpHandler(frame, button)
+	if not ns.db.dragEmAll.enable then
+		return
+	end
 	frame = parentFrame[frame] or frame
 	if frame and button == "LeftButton" then
 		frame:StopMovingOrSizing()
@@ -202,6 +211,22 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+function DragEmAll:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "ADDON_LOADED", "ADDON_LOADED")
+end
+
+function DragEmAll:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
 function DragEmAll:ADDON_LOADED(addon)
 	local frameList = lodFrames[addon]
 	if frameList then
@@ -214,9 +239,24 @@ function DragEmAll:OnEnable()
 		return
 	end
 	HookFrames(frames)
-	self:RegisterEvent("ADDON_LOADED")
+	self:RegisterModuleEvents()
+end
+
+function DragEmAll:OnDisable()
+	self:UnregisterModuleEvents()
+end
+
+function DragEmAll:OnSettingChanged(key, value)
+	if key == "enable" then
+		if value then
+			HookFrames(frames)
+			self:RegisterModuleEvents()
+		else
+			self:UnregisterModuleEvents()
+		end
+	end
 end
 
 function DragEmAll:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Drag Frames"], L["Click and drag most Blizzard windows to move them (reload to disable)."])
+	builder:Checkbox(category, self, "enable", L["Enable Drag Frames"], L["Click and drag most Blizzard windows to move them."])
 end

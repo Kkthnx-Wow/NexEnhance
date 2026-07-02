@@ -149,16 +149,6 @@ local choiceQueue
 -- Set true the moment we auto-select a lone "<Skip ...>" option, so the follow-up
 -- GOSSIP_CONFIRM popup it can raise gets auto-accepted (free skips only - see below).
 local pendingSkipConfirm
-local regenRetryRegistered = false
-local regenRetryCallback
-
-local function CancelRegenRetry()
-	if not regenRetryRegistered then
-		return
-	end
-	regenRetryRegistered = false
-	ns:UnregisterEvent("PLAYER_REGEN_ENABLED", regenRetryCallback)
-end
 
 -- Events are collected here at load but only registered in the shared dispatcher
 -- while the module is enabled (see SetEventsActive). Quick Quest defaults to OFF, so
@@ -201,44 +191,27 @@ local function SetEventsActive(state)
 		end
 	elseif eventsActive then
 		eventsActive = false
-		-- Clears the gated events plus any transient PLAYER_REGEN_ENABLED retry.
 		for i = 1, #registeredEvents do
 			local entry = registeredEvents[i]
 			ns:UnregisterEvent(entry[1], entry[2])
 		end
-		CancelRegenRetry()
 	end
 end
 
 -- Blizzard can surface gossip/quest-list entries before the quest record is
 -- cached. If we decide from uncached data, the trivial/repeatable flags can be
 -- wrong, so retry the same handler once QUEST_DATA_LOAD_RESULT arrives.
-local questDataQueue = {}
-
 local function WaitForQuestData(questID, callback)
-	if not (questID and C_QuestLog_RequestLoadQuestByID) then
+	if not ns:RequestQuestData(questID, function(success)
+		if success == false then
+			return
+		end
+		callback()
+	end) then
 		return false
 	end
-	questDataQueue[questID] = callback
-	C_QuestLog_RequestLoadQuestByID(questID)
 	return true
 end
-
-Register("QUEST_DATA_LOAD_RESULT", function(questID, success)
-	local callback = questDataQueue[questID]
-	if not callback then
-		return
-	end
-	questDataQueue[questID] = nil
-	if QuickQuest.debug then
-		Dbg("QUEST_DATA_LOAD_RESULT quest=%s success=%s", tostring(questID), tostring(success))
-	end
-	if success ~= false then
-		callback()
-	elseif QuickQuest.debug then
-		Dbg("quest data load failed for %s; not retrying", tostring(questID))
-	end
-end)
 
 -- ---------------------------------------------------------------------------
 -- Ignore list (built-in NPCs + per-character overrides)
@@ -359,7 +332,15 @@ do
 end
 
 local function IsCraftingReagent(itemID)
-	return select(17, C_Item_GetItemInfo(itemID)) and true or false
+	if not itemID then
+		return false
+	end
+	local isReagent = select(17, C_Item_GetItemInfo(itemID))
+	if isReagent == nil and ns.RequestItemData then
+		ns:RequestItemData(itemID, function() end)
+		return true
+	end
+	return isReagent and true or false
 end
 
 local function IsItemAccountBound(itemID)
@@ -643,6 +624,25 @@ local autoSelectFirstOptionList = {
 	[167839] = true, -- Soul Remnant, Torghast
 }
 
+-- Utility gossip options (non-quest): auto-select by gossipOptionID when present.
+-- Sourced from p3lim/Inomena; override key bypasses via Automating().
+local utilityGossipOptions = {
+	[123878] = true, -- Nerub-ar Palace speed
+	[122627] = true, -- Vaskarn skip to vendor
+	[125367] = true, -- D.R.I.V.E
+	[36816] = "HUNTER", -- skip to stable UI
+}
+
+local function IsUtilityGossipOption(optionID)
+	local rule = utilityGossipOptions[optionID]
+	if rule == true then
+		return true
+	end
+	if rule == "HUNTER" and ns.C and ns.C.Player and ns.C.Player.class == "HUNTER" then
+		return true
+	end
+end
+
 -- Newer retail quest/task gossip options that are not always flagged like normal
 -- quests. Sourced from p3lim's QuickQuest data and kept option-ID based so we
 -- don't accidentally match unrelated NPC text.
@@ -682,18 +682,112 @@ local ignoreInstances = {
 
 local QUEST_STRING = "cFF0000FF.-" .. TRANSMOG_SOURCE_2
 
--- Blizzard wraps "skip" gossip instructions in angle brackets - "<Skip the Argus
--- Campaign>", "<Skip the scenario and begin your journey on Broken Shore.>",
--- "<Skip conversation>". They are sometimes coloured red (campaign skips) and
--- sometimes plain (scenario skips), and the bracketed marker can trail a white
--- lead-in line (e.g. "I've heard this tale before... <Skip the scenario...>").
--- So rather than matching a specific colour or anchoring to the start, we look
--- for any <...> segment anywhere in the option text. Brackets are colour- and
--- locale-independent, so this catches every encoding on every client. The
--- single-option auto-walk path treats brackets as "unsafe" (HasUnsafeGossipOption)
--- for the same reason - bracketed options are special and handled deliberately.
+-- Blizzard wraps skip gossip in angle brackets: "<Skip the Argus Campaign>",
+-- "<Skip conversation>", "<Skip Mini Game.>", etc. Lead-in lines can also use
+-- brackets ("<Convince Rommath...> <Skip Mini Game.>"), so we must not treat
+-- every <...> segment as a story skip.
+local function IsMiniGameSkipGossip(name)
+	if not name or F.IsSecret(name) then
+		return false
+	end
+	local upper = strupper(name)
+	if not strfind(upper, "<") or not strfind(upper, "SKIP") then
+		return false
+	end
+	if strfind(upper, "MINI GAME") or strfind(upper, "MINIGAME") then
+		return true
+	end
+	local miniGameLabel = _G["11_0_0_DELVES_MINIGAME_01"]
+	if miniGameLabel and F.NotSecret(miniGameLabel) then
+		return strfind(upper, strupper(miniGameLabel), 1, true) ~= nil
+	end
+	return false
+end
+
 local function IsSkipGossip(name)
-	return strfind(name, "<[^>]+>") ~= nil
+	if not name or F.IsSecret(name) or IsMiniGameSkipGossip(name) then
+		return false
+	end
+	return strfind(strupper(name), "<SKIP") ~= nil
+end
+
+local function TrySelectMiniGameSkipGossip(gossipInfoTable)
+	if not gossipInfoTable then
+		return false
+	end
+	local skipID, numSkips
+	for i = 1, #gossipInfoTable do
+		local option = gossipInfoTable[i]
+		local name = option and option.name
+		local optionID = option and option.gossipOptionID
+		if name and optionID and IsMiniGameSkipGossip(name) and not ignoreGossipOptions[optionID] then
+			numSkips = (numSkips or 0) + 1
+			skipID = optionID
+		end
+	end
+	if numSkips ~= 1 or not skipID then
+		return false
+	end
+	pendingSkipConfirm = true
+	Dbg("GOSSIP_SHOW: mini-game skip option %s", skipID)
+	C_GossipInfo_SelectOption(skipID)
+	return true
+end
+
+-- Quest gossip that lets rogues/druids skip an invisibility tutorial mini-chain.
+-- Option text ends with "[Requires a Stealth Class.]" (quest DB string; shown on
+-- the gossip line in red). Auto-select when exactly one such option is offered.
+local STEALTH_CLASS_SKIP = {
+	ROGUE = true,
+	DRUID = true,
+}
+
+local function IsStealthClassPlayer()
+	local class = ns.C and ns.C.Player and ns.C.Player.class
+	return class and STEALTH_CLASS_SKIP[class]
+end
+
+local function IsGossipOptionSelectable(option)
+	if not option or not option.gossipOptionID then
+		return false
+	end
+	local status = option.status
+	if status == nil then
+		return true
+	end
+	return status == Enum.GossipOptionStatus.Available
+		or status == Enum.GossipOptionStatus.AlreadyComplete
+end
+
+local function IsStealthClassSkipGossip(name)
+	if not name or F.IsSecret(name) then
+		return false
+	end
+	local upper = strupper(name)
+	return strfind(upper, "STEALTH CLASS", 1, true) ~= nil
+end
+
+local function TrySelectStealthClassSkipGossip(gossipInfoTable)
+	if not gossipInfoTable or not IsStealthClassPlayer() then
+		return false
+	end
+	local skipID, numSkips
+	for i = 1, #gossipInfoTable do
+		local option = gossipInfoTable[i]
+		local name = option and option.name
+		local optionID = option and option.gossipOptionID
+		if name and optionID and IsGossipOptionSelectable(option) and IsStealthClassSkipGossip(name)
+			and not ignoreGossipOptions[optionID] then
+			numSkips = (numSkips or 0) + 1
+			skipID = optionID
+		end
+	end
+	if numSkips ~= 1 or not skipID then
+		return false
+	end
+	Dbg("GOSSIP_SHOW: stealth-class skip option %s", skipID)
+	C_GossipInfo_SelectOption(skipID)
+	return true
 end
 
 local function IsQuestLabelPrepend(flags)
@@ -726,6 +820,29 @@ end
 Register("GOSSIP_SHOW", function()
 	-- Reset any pending skip-confirm from a prior window; re-armed below if we skip.
 	pendingSkipConfirm = nil
+
+	if Automating() then
+		local gossipInfoTable = C_GossipInfo_GetOptions()
+		if gossipInfoTable then
+			if TrySelectMiniGameSkipGossip(gossipInfoTable) then
+				Dbg("GOSSIP_SHOW: mini-game skip selected")
+				return
+			end
+			if TrySelectStealthClassSkipGossip(gossipInfoTable) then
+				Dbg("GOSSIP_SHOW: stealth-class skip selected")
+				return
+			end
+			for i = 1, #gossipInfoTable do
+				local option = gossipInfoTable[i]
+				local optionID = option.gossipOptionID
+				if optionID and IsUtilityGossipOption(optionID) then
+					Dbg("GOSSIP_SHOW: utility gossip option", optionID)
+					return C_GossipInfo_SelectOption(optionID)
+				end
+			end
+		end
+	end
+
 	if ProcessGossipQuests() then
 		Dbg("GOSSIP_SHOW: quest selected from gossip list")
 		return
@@ -1022,6 +1139,50 @@ local cashRewards = {
 	[138133] = 27,
 }
 
+local function PickBestQuestReward()
+	local choices = GetNumQuestChoices()
+	if choices <= 1 then
+		GetQuestReward(1)
+		return
+	end
+
+	local bestValue, bestIndex = 0, nil
+	local pendingItemID
+
+	for index = 1, choices do
+		local link = GetQuestItemLink("choice", index)
+		if link then
+			local value = select(11, C_Item_GetItemInfo(link))
+			local itemID = GetItemInfoFromHyperlink(link)
+			if not value and itemID and ns.RequestItemData then
+				pendingItemID = itemID
+			else
+				value = cashRewards[itemID] or value
+				if value and value > bestValue then
+					bestValue, bestIndex = value, index
+				end
+			end
+		else
+			choiceQueue = "QUEST_COMPLETE"
+			return GetQuestItemInfo("choice", index)
+		end
+	end
+
+	if pendingItemID then
+		ns:RequestItemData(pendingItemID, function()
+			if Automating() and QuestFrame and QuestFrame:IsShown() then
+				PickBestQuestReward()
+			end
+		end)
+		return
+	end
+
+	local button = bestIndex and QuestInfoRewardsFrame.RewardButtons[bestIndex]
+	if button then
+		QuestInfoItem_OnClick(button)
+	end
+end
+
 Register("QUEST_COMPLETE", function()
 	-- Blingtron 6000 only!
 	local npcID = GetNPCID()
@@ -1034,42 +1195,8 @@ Register("QUEST_COMPLETE", function()
 		return
 	end
 
-	local choices = GetNumQuestChoices()
-	if choices <= 1 then
-		GetQuestReward(1)
-	elseif choices > 1 then
-		local bestValue, bestIndex = 0, nil
-
-		for index = 1, choices do
-			local link = GetQuestItemLink("choice", index)
-			if link then
-				local value = select(11, C_Item_GetItemInfo(link))
-				local itemID = GetItemInfoFromHyperlink(link)
-				value = cashRewards[itemID] or value
-
-				if value and value > bestValue then
-					bestValue, bestIndex = value, index
-				end
-			else
-				choiceQueue = "QUEST_COMPLETE"
-				return GetQuestItemInfo("choice", index)
-			end
-		end
-
-		local button = bestIndex and QuestInfoRewardsFrame.RewardButtons[bestIndex]
-		if button then
-			QuestInfoItem_OnClick(button)
-		end
-	end
+	PickBestQuestReward()
 end)
-
-local function RegisterRegenRetry()
-	if regenRetryRegistered then
-		return
-	end
-	regenRetryRegistered = true
-	ns:RegisterEvent("PLAYER_REGEN_ENABLED", regenRetryCallback)
-end
 
 local function AttemptAutoComplete()
 	local numPopUps = GetNumAutoQuestPopUps()
@@ -1086,7 +1213,11 @@ local function AttemptAutoComplete()
 
 	-- Auto-quest popups taint while dead/in combat; retry once it lifts.
 	if UnitIsDeadOrGhost("player") or InCombatLockdown() then
-		RegisterRegenRetry()
+		ns:AfterCombatCallback(function()
+			if Automating() then
+				AttemptAutoComplete()
+			end
+		end)
 		return
 	end
 
@@ -1108,14 +1239,6 @@ local function AttemptAutoComplete()
 	end
 end
 Register("QUEST_LOG_UPDATE", AttemptAutoComplete)
-
--- Dedicated, self-unregistering combat retry for auto-quest popups.
-regenRetryCallback = function()
-	CancelRegenRetry()
-	if Automating() then
-		AttemptAutoComplete()
-	end
-end
 
 -- ---------------------------------------------------------------------------
 -- Per-NPC ignore toggle (Alt-click the NPC name marker)
@@ -1209,6 +1332,10 @@ function QuickQuest:OnEnable()
 	SetEventsActive(EventsShouldRun())
 end
 
+function QuickQuest:OnDisable()
+	SetEventsActive(false)
+end
+
 function QuickQuest:OnSettingChanged(key, value)
 	if key == "enable" then
 		SetEventsActive(EventsShouldRun())
@@ -1253,3 +1380,12 @@ function QuickQuest:RegisterOptions(category, builder)
 		builder:DependsOn(keyInit, enableInit)
 	end
 end
+
+ns.Debug.RegisterScope("quickquest", {
+	title = L["Quick Quest"],
+	module = QuickQuest,
+	dump = function()
+		F.Print(format("  trace logging: %s", QuickQuest.debug and "ON" or "OFF"))
+		F.Print(format("  module enabled: %s", QuickQuest:IsEnabled() and "yes" or "no"))
+	end,
+})

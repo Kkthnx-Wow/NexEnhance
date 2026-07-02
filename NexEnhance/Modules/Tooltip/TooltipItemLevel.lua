@@ -44,6 +44,10 @@ local function checkUnitGUID(unit)
 	return F.NotSecret(guid) and guid
 end
 
+local function ItemIDFromLink(link)
+	return link and tonumber(link:match("item:(%d+)"))
+end
+
 -- Scan equipped slots and compute an effective item level for `unit`.
 local function GetUnitItemLevel(unit)
 	if not unit or checkUnitGUID(unit) ~= currentGUID then
@@ -71,6 +75,14 @@ local function GetUnitItemLevel(unit)
 					local _, _, quality, level, _, _, _, _, slot = GetItemInfo(itemLink)
 					if (not quality) or not level then
 						delay = true
+						local itemID = ItemIDFromLink(itemLink)
+						if itemID and ns.RequestItemData then
+							ns:RequestItemData(itemID, function()
+								if currentGUID == checkUnitGUID(unit) then
+									InspectUnit(unit, true)
+								end
+							end)
+						end
 					else
 						if quality == Enum.ItemQuality.Heirloom then
 							boa = boa + 1
@@ -194,8 +206,8 @@ end)
 
 local function InspectUnit(unit, forced)
 	local level
-	local isPlayerUnit = UnitIsUnit(unit, "player")
-	if F.NotSecret(isPlayerUnit) and isPlayerUnit then
+	local isPlayerUnit = F.SafeUnitIsUnit(unit, "player")
+	if isPlayerUnit then
 		level = GetUnitItemLevel("player")
 		SetupItemLevelLine(level)
 		return
@@ -294,6 +306,14 @@ end
 
 -- Registered from OnEnable.
 function Tooltip:SetupItemLevel()
-	self:RegisterEvent("UNIT_INVENTORY_CHANGED")
-	self:RegisterEvent("INSPECT_READY")
+	if self._itemLevelEventsRegistered then
+		return
+	end
+	self._itemLevelEventsRegistered = true
+	local handles = self.eventHandles
+	if not handles then
+		return
+	end
+	self:TrackEvent(handles, "UNIT_INVENTORY_CHANGED")
+	self:TrackEvent(handles, "INSPECT_READY")
 end

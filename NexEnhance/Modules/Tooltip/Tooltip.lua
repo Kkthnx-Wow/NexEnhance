@@ -96,6 +96,7 @@ ns:RegisterDefaults({
 		statusBarHeight = 6,
 		healthBarText = "both", -- "current" | "both"
 		showIDs = true,
+		showNPCSpawnAge = true,
 		showIcons = true,
 		showItemLevel = true,
 		itemLevelByShift = true,
@@ -109,6 +110,8 @@ local Tooltip = ns:NewModule("Tooltip", "tooltip", { group = "tooltip", title = 
 
 -- Active settings table; bound in OnEnable, read live everywhere.
 local cfg
+local eventHandles = {}
+Tooltip.eventHandles = eventHandles
 
 -- Forward declaration: the health-text updater is defined below but referenced
 -- by the unit post-call above it.
@@ -216,8 +219,8 @@ function Tooltip:GetTarget(unit)
 	if F.IsSecret(unit) then
 		return ""
 	end
-	local isPlayerTarget = UnitIsUnit(unit, "player")
-	if F.NotSecret(isPlayerTarget) and isPlayerTarget then
+	local isPlayerTarget = F.SafeUnitIsUnit(unit, "player")
+	if isPlayerTarget then
 		return format("|cffff0000%s|r", ">" .. strupper(YOU) .. "<")
 	end
 	local name = UnitName(unit)
@@ -547,6 +550,12 @@ function Tooltip:OnTooltipSetUnit(data)
 		if npcID then
 			self:AddLine(format(npcIDstring, "NpcID:", npcID))
 		end
+		if cfg.showNPCSpawnAge then
+			local age = F.GetNPCSpawnAge(guid)
+			if age then
+				self:AddLine(format(npcIDstring, L["Spawn Age"] .. ":", F.FormatShortDuration(age)))
+			end
+		end
 	end
 
 	if isPlayer then
@@ -829,9 +838,9 @@ function Tooltip:OnEnable()
 		Tooltip:SetupPawnIntegration()
 	end
 
-	self:RegisterEvent("MODIFIER_STATE_CHANGED", "ResetUnit")
+	self:TrackEvent(eventHandles, "MODIFIER_STATE_CHANGED", "ResetUnit")
 
-	self:RegisterEvent("ADDON_LOADED")
+	self:TrackEvent(eventHandles, "ADDON_LOADED")
 	-- Run any registrations for addons already loaded this session.
 	for addon, func in pairs(tipTable) do
 		if C_AddOns.IsAddOnLoaded(addon) then
@@ -839,6 +848,11 @@ function Tooltip:OnEnable()
 			tipTable[addon] = nil
 		end
 	end
+end
+
+function Tooltip:OnDisable()
+	ns:UnregisterModuleEventHandles(eventHandles)
+	self._itemLevelEventsRegistered = false
 end
 
 function Tooltip:OnSettingChanged(key)
@@ -876,6 +890,7 @@ function Tooltip:RegisterOptions(category, builder)
 	local _, ilvlInit = builder:Checkbox(category, self, "showItemLevel", L["Show Item Level"], L["Show the inspected player's item level on their tooltip."])
 	local _, ilvlShiftInit = builder:Checkbox(category, self, "itemLevelByShift", L["Item Level on Shift"], L["Only show the inspected item level while holding Shift."])
 	local _, idsInit = builder:Checkbox(category, self, "showIDs", L["Show IDs"], L["Append spell, item, quest and other IDs to tooltips."])
+	local _, spawnAgeInit = builder:Checkbox(category, self, "showNPCSpawnAge", L["Show NPC Spawn Age"], L["While holding Shift on NPC tooltips, show how long ago the unit spawned."])
 	local iconsTip = self.GetPawnIconsOverrideTip and self:GetPawnIconsOverrideTip(L["Show an icon next to the tooltip title for spells, items and more."]) or L["Show an icon next to the tooltip title for spells, items and more."]
 	local _, iconsInit = builder:Checkbox(category, self, "showIcons", L["Show Icons"], iconsTip)
 	local _, hoverInit = builder:Checkbox(category, self, "hoverTips", L["Hyperlink Hover Tips"], L["Show a tooltip when hovering item/spell links in chat."])
@@ -901,6 +916,8 @@ function Tooltip:RegisterOptions(category, builder)
 	builder:DependsOn(borderInit, enableInit)
 	builder:DependsOn(ilvlInit, enableInit)
 	builder:DependsOn(idsInit, enableInit)
+	builder:DependsOn(spawnAgeInit, enableInit)
+	builder:DependsOn(spawnAgeInit, idsInit)
 	builder:DependsOn(iconsInit, enableInit)
 	builder:DependsOn(hoverInit, enableInit)
 	builder:DependsOn(mountInit, enableInit)

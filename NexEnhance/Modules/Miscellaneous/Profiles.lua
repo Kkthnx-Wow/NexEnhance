@@ -302,21 +302,36 @@ StaticPopupDialogs["NEXENHANCE_PROFILE_NEWNAME"] = {
 	button2 = _G.CANCEL,
 	hasEditBox = true,
 	maxLetters = 64,
-	OnShow = function(self)
-		self.editBox:SetText("")
-		self.editBox:SetFocus()
+	OnShow = function(dialog)
+		local editBox = dialog:GetEditBox()
+		if not editBox then
+			return
+		end
+		if editBox.ClearText then
+			editBox:ClearText()
+		else
+			editBox:SetText("")
+		end
+		editBox:SetFocus()
 	end,
-	OnAccept = function(self, data)
-		local name = gsub(gsub(self.editBox:GetText(), "^%s+", ""), "%s+$", "")
+	OnAccept = function(dialog, data)
+		local editBox = dialog:GetEditBox()
+		if not editBox then
+			return
+		end
+		local name = gsub(gsub(editBox:GetText(), "^%s+", ""), "%s+$", "")
 		if name ~= "" and data and data.func then
 			data.func(name)
 		end
 	end,
-	EditBoxOnEnterPressed = function(self)
-		self:GetParent().button1:Click()
+	EditBoxOnEnterPressed = function(editBox)
+		local dialog = editBox:GetParent()
+		if dialog and dialog.GetButton1 then
+			dialog:GetButton1():Click()
+		end
 	end,
-	EditBoxOnEscapePressed = function(self)
-		self:GetParent():Hide()
+	EditBoxOnEscapePressed = function(editBox)
+		editBox:GetParent():Hide()
 	end,
 	timeout = 0,
 	whileDead = true,

@@ -326,6 +326,18 @@ function QuestNotification:OnEnable()
 	self:Update()
 end
 
+function QuestNotification:OnDisable()
+	if self.registered then
+		wipe(completedQuest)
+		wipe(objectiveProgress)
+		initComplete = nil
+		for i = 1, #subscriptions do
+			ns:UnregisterEvent(subscriptions[i][1], subscriptions[i][2])
+		end
+		self.registered = nil
+	end
+end
+
 function QuestNotification:OnSettingChanged()
 	self:Update()
 end
@@ -338,3 +350,12 @@ function QuestNotification:RegisterOptions(category, builder)
 	builder:DependsOn(progressInit, enableInit)
 	builder:DependsOn(ringInit, enableInit)
 end
+
+ns.Debug.RegisterScope("questnotify", {
+	title = L["Quest Notification"],
+	module = QuestNotification,
+	dump = function()
+		F.Print(format("  self-test debug: %s", QuestNotification.debug and "ON" or "OFF"))
+		F.Print(format("  module enabled: %s", QuestNotification:IsEnabled() and "yes" or "no"))
+	end,
+})

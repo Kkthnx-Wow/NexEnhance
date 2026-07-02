@@ -35,10 +35,17 @@ ns:RegisterDefaults({
 
 local AlertFrames = ns:NewModule("AlertFrames", "alertFrames", { group = "alerts", title = L["Alert Frames"], order = 10 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
 -- Current stacking direction; flipped by AlertFrame_UpdateAnchor depending on
 -- whether the anchor sits in the top or bottom half of the screen.
 local POSITION, ANCHOR_POINT, YOFFSET = "TOP", "BOTTOM", -10
 local parentFrame
+
+local function IsActive()
+	return ns.db.alertFrames.enable and parentFrame ~= nil
+end
 
 -- ---------------------------------------------------------------------------
 -- Anchor maths (ported 1:1 from NDui; `self` is the alert subsystem/frame)
@@ -73,6 +80,9 @@ local function AlertFrame_AdjustAnchorsNonAlert(self, relativeAlert)
 end
 
 local function AlertFrame_AdjustPosition(self)
+	if not IsActive() then
+		return
+	end
 	if self.alertFramePool then
 		self.AdjustAnchors = AlertFrame_AdjustQueuedAnchors
 	elseif not self.anchorFrame then
@@ -83,6 +93,9 @@ local function AlertFrame_AdjustPosition(self)
 end
 
 local function AlertFrame_UpdateAnchor(self)
+	if not IsActive() then
+		return
+	end
 	local y = select(2, parentFrame:GetCenter())
 	local screenHeight = UIParent:GetTop()
 	if y and screenHeight and y > screenHeight / 2 then
@@ -98,6 +111,9 @@ local function AlertFrame_UpdateAnchor(self)
 end
 
 local function UpdateGroupLootContainer(self)
+	if not IsActive() then
+		return
+	end
 	local lastIdx
 	for i = 1, self.maxIndex do
 		local frame = self.rollFrames[i]
@@ -177,12 +193,36 @@ function AlertFrames:OnEnable()
 	hooksecurefunc("GroupLootContainer_Update", UpdateGroupLootContainer)
 
 	NoTalkingHeads()
-	self:RegisterEvent("ADDON_LOADED")
+	self:RegisterModuleEvents()
 end
 
-function AlertFrames:OnSettingChanged()
-	-- Enabling the hide can apply live; turning it back off needs a reload.
+function AlertFrames:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "ADDON_LOADED", "ADDON_LOADED")
+end
+
+function AlertFrames:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function AlertFrames:OnDisable()
+	self:UnregisterModuleEvents()
+end
+
+function AlertFrames:OnSettingChanged(key, value)
 	NoTalkingHeads()
+	if key == "enable" and not value then
+		self:UnregisterModuleEvents()
+	elseif key == "enable" and value then
+		self:RegisterModuleEvents()
+	end
 end
 
 function AlertFrames:RegisterOptions(category, builder)

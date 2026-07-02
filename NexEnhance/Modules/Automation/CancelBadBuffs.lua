@@ -64,6 +64,8 @@ ns:RegisterDefaults({
 
 local CancelBadBuffs = ns:NewModule("CancelBadBuffs", "cancelBadBuffs", { group = "automation", title = L["Cancel Bad Buffs"], order = 55 })
 
+local eventHandles = {}
+
 -- Reused scratch tables so a sweep never allocates (guide: wipe/reuse, don't {}).
 local badIndices, badNames = {}, {}
 
@@ -138,14 +140,30 @@ function CancelBadBuffs:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterUnitEvent("UNIT_AURA", nil, "player")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:TrackUnitEvent(eventHandles, "UNIT_AURA", nil, "player")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED")
+end
+
+function CancelBadBuffs:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function CancelBadBuffs:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function CancelBadBuffs:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:RegisterModuleEvents()
-		self:Sweep()
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+			self:Sweep()
+		else
+			self:OnDisable()
+		end
 	end
 end
 

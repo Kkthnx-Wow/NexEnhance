@@ -72,6 +72,13 @@ ns:RegisterDefaults({
 
 local DeleteCheapest = ns:NewModule("DeleteCheapest", "deleteCheapest", { group = "inventory", title = L["Delete Cheapest"], order = 60 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
+local function ItemIDFromLink(link)
+	return link and tonumber(link:match("item:(%d+)"))
+end
+
 -- ---------------------------------------------------------------------------
 -- Scan
 -- ---------------------------------------------------------------------------
@@ -79,6 +86,10 @@ local DeleteCheapest = ns:NewModule("DeleteCheapest", "deleteCheapest", { group 
 local function IsFiltered(link)
 	local classID = select(12, C_Item_GetItemInfo(link))
 	if not classID then
+		local itemID = ItemIDFromLink(link)
+		if itemID and ns.RequestItemData then
+			ns:RequestItemData(itemID, function() end)
+		end
 		return false
 	end
 	local key = FILTER_KEYS[classID]
@@ -95,6 +106,12 @@ local function FindCheapest()
 			local info = C_Container_GetContainerItemInfo(bag, slot)
 			if info and not info.hasNoValue and info.hyperlink then
 				local sellPrice = select(11, C_Item_GetItemInfo(info.hyperlink))
+				if not sellPrice then
+					local itemID = ItemIDFromLink(info.hyperlink)
+					if itemID and ns.RequestItemData then
+						ns:RequestItemData(itemID, function() end)
+					end
+				end
 				-- sellPrice is static item data (not Secret); guard anyway.
 				if sellPrice and F.NotSecret(sellPrice) and sellPrice > 0 and not IsFiltered(info.hyperlink) then
 					-- Stack count can be Secret in combat; only multiply when
@@ -307,12 +324,9 @@ function DeleteCheapest:OnSettingChanged(key, value)
 		return
 	end
 	if value then
-		CreateButton()
-		if button then
-			button:Show()
-		end
-	elseif button then
-		button:Hide()
+		self:OnEnable()
+	else
+		self:OnDisable()
 	end
 end
 
@@ -345,8 +359,24 @@ function DeleteCheapest:BAG_UPDATE_DELAYED()
 end
 
 function DeleteCheapest:OnEnable()
+	if not ns.db.deleteCheapest.enable then
+		return
+	end
 	CreateButton()
-	if not button then
-		self:RegisterEvent("BAG_UPDATE_DELAYED")
+	if button then
+		button:Show()
+		return
+	end
+	if not eventsRegistered then
+		eventsRegistered = true
+		self:TrackEvent(eventHandles, "BAG_UPDATE_DELAYED")
+	end
+end
+
+function DeleteCheapest:OnDisable()
+	ns:UnregisterModuleEventHandles(eventHandles)
+	eventsRegistered = false
+	if button then
+		button:Hide()
 	end
 end

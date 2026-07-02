@@ -308,7 +308,6 @@ function CharacterFrames:StyleCharacterFrame()
 	local itemLevelValue = CharacterStatsPane.ItemLevelFrame.Value
 	local ilvlFont, _, ilvlFlags = itemLevelValue:GetFont()
 	itemLevelValue:SetFont(ilvlFont, 20, ilvlFlags)
-	itemLevelValue:SetShadowOffset(1, -1)
 
 	local function StyleTitleChildren(...)
 		for i = 1, select("#", ...) do
@@ -440,11 +439,12 @@ function CharacterFrames:StyleInspectFrame()
 	InspectModelFrame:SetPoint("BOTTOMRIGHT", InspectFrame.Inset, 0, 30)
 	InspectModelFrame:SetCamDistanceScale(1.1)
 
-	local averageItemLevelText = InspectPaperDollItemsFrame:CreateFontString(nil, "ARTWORK")
-	averageItemLevelText:SetFontObject("GameFontNormal")
+	local averageItemLevelText = F.CreatePlainFS(InspectPaperDollItemsFrame, 12)
 	local aiFont, _, aiFlags = averageItemLevelText:GetFont()
 	averageItemLevelText:SetFont(aiFont, 12, aiFlags)
-	averageItemLevelText:SetShadowOffset(1, -1)
+	if averageItemLevelText.nexShadow then
+		averageItemLevelText.nexShadow:SetFont(aiFont, 12, aiFlags)
+	end
 	averageItemLevelText:SetJustifyH("CENTER")
 	averageItemLevelText:SetPoint("BOTTOM", InspectFrame.Inset, "BOTTOM", 0, 46)
 	InspectPaperDollItemsFrame.AverageItemLevelText = averageItemLevelText
@@ -460,7 +460,7 @@ function CharacterFrames:StyleInspectFrame()
 			end
 			local ilvl = _G.C_PaperDollInfo.GetInspectItemLevel(unit)
 			if ilvl and F.NotSecret(ilvl) then
-				averageItemLevelText:SetFormattedText(_G.DUNGEON_SCORE_LINK_ITEM_LEVEL or "Item Level %d", ilvl)
+				F.SetPlainFormattedText(averageItemLevelText, _G.DUNGEON_SCORE_LINK_ITEM_LEVEL or "Item Level %d", ilvl)
 			end
 		end)
 	end

@@ -448,7 +448,7 @@ L["Below this many seconds the countdown shows raw seconds; at or above it switc
 L["Minimum Cooldown Duration"] = "Minimum Cooldown Duration"
 L["Hide countdown text for cooldowns shorter than this many seconds. Keeps 1.5s GCDs and other short cooldowns quiet."] = "Hide countdown text for cooldowns shorter than this many seconds. Keeps 1.5s GCDs and other short cooldowns quiet."
 L["Scale Cooldown Text"] = "Scale Cooldown Text"
-L["Scale the countdown text with the button size and hide it on very small cooldowns."] = "Scale the countdown text with the button size and hide it on very small cooldowns."
+L["Grow or shrink countdown numbers with the button size. Turn off for a fixed font size on every cooldown."] = "Grow or shrink countdown numbers with the button size. Turn off for a fixed font size on every cooldown."
 L["Minimum Text Scale"] = "Minimum Text Scale"
 L["Hide the countdown text once its scale drops below this fraction of a normal button (needs Scale Cooldown Text)."] = "Hide the countdown text once its scale drops below this fraction of a normal button (needs Scale Cooldown Text)."
 
@@ -466,7 +466,7 @@ L["Add R/G/B input boxes and class-color swatches to Blizzard's color picker (re
 
 -- ClassColors
 L["Enable Class-Coloured Health"] = "Enable Class-Coloured Health"
-L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."] = "Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."
+L["Colour HUD unit-frame health bars by class for players and by reaction for NPCs (player, pet, target, focus, boss, party portraits). Offline players use a grey desaturated health bar, desaturated portrait, and disconnect icon on target/focus (matching party frames). Compact raid/party frames use Blizzard's own Class Colors option."] = "Colour HUD unit-frame health bars by class for players and by reaction for NPCs (player, pet, target, focus, boss, party portraits). Offline players use a grey desaturated health bar, desaturated portrait, and disconnect icon on target/focus (matching party frames). Compact raid/party frames use Blizzard's own Class Colors option."
 L["Neutral Target Strip"] = "Neutral Target Strip"
 L["Target Frame Layout"] = "Target Frame Layout"
 L["Player-Style Target Frame"] = "Player-Style Target Frame"
@@ -522,7 +522,7 @@ L["CONTROL"] = "Control"
 L["Block in Raids & Instances"] = "Block in Raids & Instances"
 L["Skip single-option gossip auto-selection while in raids and certain instances."] = "Skip single-option gossip auto-selection while in raids and certain instances."
 L["Auto-Skip Story Gossip"] = "Auto-Skip Story Gossip"
-L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'] = 'Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'
+	L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'] = 'Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read. "<Skip Mini Game>" gossip is always auto-selected while Quick Quest is enabled.'
 L["Alt-click to toggle Quick Quest for this NPC."] = "Alt-click to toggle Quick Quest for this NPC."
 L["Quick Quest debug ON - talk to an NPC to trace gossip/accept flow."] = "Quick Quest debug ON - talk to an NPC to trace gossip/accept flow."
 L["Quick Quest debug OFF."] = "Quick Quest debug OFF."
@@ -533,11 +533,11 @@ L["Skipped story dialogue."] = "Skipped story dialogue."
 -- UIScale
 L["UI Scale"] = "UI Scale"
 L["Enable UI Scale"] = "Enable UI Scale"
-L["Let NexEnhance set the UIParent scale (reload-safe; ignores changes made in combat)."] = "Let NexEnhance set the UIParent scale (reload-safe; ignores changes made in combat)."
+L["Let NexEnhance set the UIParent scale (reload-safe; ignores changes made in combat). While enabled, Blizzard's Graphics > Use UI Scale is turned off so the two systems do not stack."] = "Let NexEnhance set the UIParent scale (reload-safe; ignores changes made in combat). While enabled, Blizzard's Graphics > Use UI Scale is turned off so the two systems do not stack."
 L["Auto (Pixel-Perfect)"] = "Auto (Pixel-Perfect)"
 L["Automatically pick the scale that maps 1 UI pixel to 1 screen pixel for your resolution."] = "Automatically pick the scale that maps 1 UI pixel to 1 screen pixel for your resolution."
-L["Manual Scale"] = "Manual Scale"
-L["Scale used when Auto is disabled."] = "Scale used when Auto is disabled."
+L["Scale"] = "Scale"
+L["Current UI scale. Auto (Pixel-Perfect) updates this to the calculated value for your resolution."] = "Current UI scale. Auto (Pixel-Perfect) updates this to the calculated value for your resolution."
 
 -- Number Format
 L["Number Format"] = "Number Format"
@@ -564,6 +564,10 @@ L["Action buttons fire when a key is pressed instead of when it is released."] =
 L["Hide Help Tips"] = "Hide Help Tips"
 L["Suppress Blizzard's tutorial and help-tip pop-ups (micro-button alerts, new-player pointers, panel hints). NexEnhance's own tips are kept."] = "Suppress Blizzard's tutorial and help-tip pop-ups (micro-button alerts, new-player pointers, panel hints). NexEnhance's own tips are kept."
 
+-- Hide Combat Errors
+L["Hide Combat Errors"] = "Hide Combat Errors"
+L["Hide red error messages while in combat (Not enough mana, Ability not ready, etc.). Yellow info messages still show."] = "Hide red error messages while in combat (Not enough mana, Ability not ready, etc.). Yellow info messages still show."
+
 -- Hide UI Elements
 L["Hide UI Elements"] = "Hide UI Elements"
 L["Hide Aura Collapse Arrow"] = "Hide Aura Collapse Arrow"
@@ -574,6 +578,12 @@ L["Hide Portrait Damage Text"] = "Hide Portrait Damage Text"
 L["Hide the incoming damage numbers that flash over your player portrait."] = "Hide the incoming damage numbers that flash over your player portrait."
 L["Hide Portrait Healing Text"] = "Hide Portrait Healing Text"
 L["Hide the incoming healing numbers that flash over your player portrait."] = "Hide the incoming healing numbers that flash over your player portrait."
+L["Hide PvP Badge"] = "Hide PvP Badge"
+L["Hide PvP status icons, timers, and prestige badges on the Player, Target, and Focus frames."] = "Hide PvP status icons, timers, and prestige badges on the Player, Target, and Focus frames."
+L["Hide Boss Banner"] = "Hide Boss Banner"
+L["Suppress the boss defeat banner that shows the kill and personal loot."] = "Suppress the boss defeat banner that shows the kill and personal loot."
+L["Hide Event Toasts"] = "Hide Event Toasts"
+L["Suppress automatic event toasts such as level-ups, encounter objectives, and weekly-reward pop-ups. Scoreboards with a close button are kept."] = "Suppress automatic event toasts such as level-ups, encounter objectives, and weekly-reward pop-ups. Scoreboards with a close button are kept."
 
 -- Widget Movers
 L["Widget Movers"] = "Widget Movers"
@@ -593,7 +603,7 @@ L["Suppress the Talking Head dialog frame (reload to re-enable it)."] = "Suppres
 -- LootRoll
 L["Loot Roll"] = "Loot Roll"
 L["Enable Loot Roll"] = "Enable Loot Roll"
-L["Replace the default group loot roll bars with NexEnhance's own (reload to disable)."] = "Replace the default group loot roll bars with NexEnhance's own (reload to disable)."
+L["Replace the default group loot roll bars with NexEnhance's own. Disable to restore Blizzard's frames without /reload."] = "Replace the default group loot roll bars with NexEnhance's own. Disable to restore Blizzard's frames without /reload."
 L["Max Bars"] = "Max Bars"
 L["How many roll bars can show at once; extra rolls queue for a free slot."] = "How many roll bars can show at once; extra rolls queue for a free slot."
 L["Width"] = "Width"
@@ -615,6 +625,62 @@ L["Press Space, Enter or Escape to instantly confirm the movie/cinematic skip di
 L["Faster Loot"] = "Faster Loot"
 L["Enable Faster Loot"] = "Enable Faster Loot"
 L["Instantly clear loot when auto-loot is active."] = "Instantly clear loot when auto-loot is active."
+
+-- Smart Fishing
+L["Smart Fishing"] = "Smart Fishing"
+L["Enable Smart Fishing"] = "Enable Smart Fishing"
+L["While fishing: widen soft-target interact, mute ambience, and rebind your fishing button key to interact with the bobber. Hold Shift when casting to skip."] = "While fishing: widen soft-target interact, mute ambience, and rebind your fishing button key to interact with the bobber. Hold Shift when casting to skip."
+
+-- Auction Search Fallback
+L["Auction Search Fallback"] = "Auction Search Fallback"
+L["Enable Auction Search Fallback"] = "Enable Auction Search Fallback"
+L["When a browse search returns no results with Current Expansion Only enabled, automatically widen the search and retry once."] = "When a browse search returns no results with Current Expansion Only enabled, automatically widen the search and retry once."
+
+-- Auction Search History
+L["Auction Search History"] = "Auction Search History"
+L["Enable Auction Search History"] = "Enable Auction Search History"
+L["Show recent Auction House browse searches when you focus the search box."] = "Show recent Auction House browse searches when you focus the search box."
+L["Recent Search Count"] = "Recent Search Count"
+L["How many previous browse searches to remember (account-wide)."] = "How many previous browse searches to remember (account-wide)."
+
+-- Smart Minimap Tracking
+L["Smart Minimap Tracking"] = "Smart Minimap Tracking"
+L["Enable Smart Minimap Tracking"] = "Enable Smart Minimap Tracking"
+L["Auto-enable repair-vendor tracking when gear is damaged, and mailbox tracking when you have pending mail."] = "Auto-enable repair-vendor tracking when gear is damaged, and mailbox tracking when you have pending mail."
+
+-- Hero Talent Swap
+L["Hero Talent Swap"] = "Hero Talent Swap"
+L["Enable Hero Talent Swap"] = "Enable Hero Talent Swap"
+L["Right-click the hero talent button on the Talents pane to swap to your inactive hero spec."] = "Right-click the hero talent button on the Talents pane to swap to your inactive hero spec."
+L["Hero Talent Swap Hint"] = "Switch to %s %s"
+
+-- Popup QoL
+L["Popup QoL"] = "Popup QoL"
+L["Enable Popup QoL"] = "Enable Popup QoL"
+L["Reduce popup friction for loot, tradeables, purchases, and event toasts. Sub-options below are off by default except click-through toasts."] = "Reduce popup friction for loot, tradeables, purchases, and event toasts. Sub-options below are off by default except click-through toasts."
+L["Auto-Confirm BoP Loot"] = "Auto-Confirm BoP Loot"
+L["Automatically confirm loot that binds on pickup."] = "Automatically confirm loot that binds on pickup."
+L["Auto-Confirm Tradeable Equip"] = "Auto-Confirm Tradeable Equip"
+L["Automatically equip BoE items still within the trade window."] = "Automatically equip BoE items still within the trade window."
+L["Auto-Confirm Tradeable Sell"] = "Auto-Confirm Tradeable Sell"
+L["Automatically sell BoE items still within the trade window at vendors."] = "Automatically sell BoE items still within the trade window at vendors."
+L["Click-Through Event Toasts"] = "Click-Through Event Toasts"
+L["Let the mouse pass through event toasts so they do not block clicks."] = "Let the mouse pass through event toasts so they do not block clicks."
+L["Enter Accepts Purchases"] = "Enter Accepts Purchases"
+L["Press Enter to accept non-refundable purchase confirmations."] = "Press Enter to accept non-refundable purchase confirmations."
+L["Alt+Right-Click Stack Buy"] = "Alt+Right-Click Stack Buy"
+L["Hold Alt and right-click a merchant item to buy a full stack. Asks once per item until you reload."] = "Hold Alt and right-click a merchant item to buy a full stack. Asks once per item until you reload."
+L["Stack Buying Check"] = "Buy the maximum stack of this item?"
+
+-- System Chat Filter
+L["System Chat Filter"] = "System Chat Filter"
+L["Enable System Chat Filter"] = "Enable System Chat Filter"
+L["Hide learn and unlearn spell system messages when changing talents."] = "Hide learn and unlearn spell system messages when changing talents."
+
+-- Tooltip spawn age
+L["Show NPC Spawn Age"] = "Show NPC Spawn Age"
+L["While holding Shift on NPC tooltips, show how long ago the unit spawned."] = "While holding Shift on NPC tooltips, show how long ago the unit spawned."
+L["Spawn Age"] = "Spawn Age"
 
 -- LootFrame
 L["Loot Frame"] = "Loot Frame"
@@ -670,7 +736,7 @@ L["How transparent the map becomes while moving."] = "How transparent the map be
 L["Wowhead Links"] = "Wowhead Links"
 L["Enable Wowhead Links"] = "Enable Wowhead Links"
 L["Add a copyable Wowhead link to the world map (tracked quest) and the achievement frame."] = "Add a copyable Wowhead link to the world map (tracked quest) and the achievement frame."
-L["Press To Copy"] = "Press To Copy"
+L["Press Ctrl-C to copy"] = "Press Ctrl-C to copy"
 
 -- Map Reveal
 L["Map Reveal"] = "Map Reveal"
@@ -726,6 +792,8 @@ L["Test mode on - drag the anchor in Edit Mode."] = "Test mode on - drag the anc
 L["Test mode off."] = "Test mode off."
 L["Icon Size"] = "Icon Size"
 L["Size of the buff reminder icons. Preview with /nex reminder."] = "Size of the buff reminder icons. Preview with /nex reminder."
+L["Reminder Glow"] = "Reminder Glow"
+L["Draw a soft red halo around missing-buff icons (retail tutorial glow). Preview with /nex reminder."] = "Pulse a soft red glow around missing-buff icons. Preview with /nex reminder."
 
 -- Animation
 L["Animation"] = "Animation"
@@ -813,7 +881,7 @@ L['Perform a random taunt emote at your victim (or /hug without "Make Love, Not 
 
 -- HideDpsRole
 L["Hide DPS Role Icon"] = "Hide DPS Role Icon"
-L["Hide the DPS (sword) role icon from party and raid frames. Tank and healer icons remain visible."] = "Hide the DPS (sword) role icon from party and raid frames. Tank and healer icons remain visible."
+L["Hide the DPS (sword) role icon from standard party portraits and compact party/raid frames. Tank and healer icons remain visible."] = "Hide the DPS (sword) role icon from standard party portraits and compact party/raid frames. Tank and healer icons remain visible."
 
 -- LevelAnnouncer
 L["Level Announcer"] = "Level Announcer"
@@ -999,7 +1067,7 @@ L["Void Assaults"] = "Void Assaults"
 L["Weekly Meta"] = "Weekly Meta"
 L["Show Legacy World Events"] = "Show Legacy World Events"
 L["Track pre-Midnight world events (Legion invasions, faction assaults, elemental storms, Grand Hunt, Community Feast) and the old daily-quest checklist. Hold SHIFT over the clock to see the timers."] = "Track pre-Midnight world events (Legion invasions, faction assaults, elemental storms, Grand Hunt, Community Feast) and the old daily-quest checklist. Hold SHIFT over the clock to see the timers."
-L["Show a clock on the minimap with a lockout / reset tooltip (reload to disable)."] = "Show a clock on the minimap with a lockout / reset tooltip (reload to disable)."
+L["Show a clock on the minimap with a lockout / reset tooltip."] = "Show a clock on the minimap with a lockout / reset tooltip."
 L["Colour the clock with your class colour."] = "Colour the clock with your class colour."
 L["Local Time"] = "Local Time"
 L["Realm Time"] = "Realm Time"
@@ -1079,7 +1147,7 @@ L["Automatically confirm the bind/soulbound popup for rolls this module made."] 
 
 L["Location"] = "Location"
 L["Enable Location"] = "Enable Location"
-L["Show zone and sub-zone text at the top of the minimap (reload to disable)."] = "Show zone and sub-zone text at the top of the minimap (reload to disable)."
+L["Show zone and sub-zone text at the top of the minimap."] = "Show zone and sub-zone text at the top of the minimap."
 L["Show on Mouseover"] = "Show on Mouseover"
 L["Only show the zone text while hovering the minimap."] = "Only show the zone text while hovering the minimap."
 
@@ -1090,9 +1158,40 @@ L["Add /rl, /reloadui, // and /. slash commands to reload the interface (reload 
 
 -- Install / First-Run
 L["Welcome to NexEnhance"] = "Welcome to NexEnhance"
-L["Open the setup screen"] = "Open the setup screen"
+L["Dump UI scale and chat dock debug info"] = "Dump UI scale and chat dock debug info"
+L["Debug system help (dumps, logging, export)"] = "Debug system help (dumps, logging, export)"
+L["Debug commands"] = "Debug commands"
+L["Debug scopes"] = "Debug scopes"
+L["Debug environment"] = "Debug environment"
+L["Debug log (last %d of %d)"] = "Debug log (last %d of %d)"
+L["Debug scope '%s': %s"] = "Debug scope '%s': %s"
+L["Unknown debug scope '%s'."] = "Unknown debug scope '%s'."
+L["Debug recordAll: %s"] = "Debug recordAll: %s"
+L["session"] = "session"
+L["saved"] = "saved"
+L["off"] = "off"
+L["ON"] = "ON"
+L["OFF"] = "OFF"
+L["UIScale apply requested"] = "UIScale apply requested"
+L["Force UI scale apply now"] = "Force UI scale apply now"
 L["Install"] = "Install"
 L["Not Now"] = "Not Now"
+L["Back"] = "Back"
+L["Next"] = "Next"
+L["Install wizard welcome title"] = "Quick setup"
+L["Install welcome body intro"] = "One click applies these recommended Blizzard settings:"
+L["Install option blizzard QoL"] = "General quality-of-life"
+L["Install option blizzard QoL tip"] = "Auto-loot, compare items on hover, self-cast on right-click, loot under mouse."
+L["Install option action bars"] = "Action bars"
+L["Install option action bars tip"] = "Lock action bars and always show them."
+L["Install option nameplates"] = "Nameplates"
+L["Install option nameplates tip"] = "Moving nameplates that show all enemies."
+L["Install option combat text"] = "Floating combat text"
+L["Install option combat text tip"] = "Cleaner scrolling damage and healing numbers."
+L["Install option raid frames"] = "Raid frames"
+L["Install option raid frames tip"] = "Class-coloured party/raid frames with power bars and no border clutter."
+L["Install option chat layout"] = "Chat layout"
+L["Install option chat layout tip"] = "Sorted tabs: General, Whispers, Trade, Loot, plus a locked Combat Log."
 L["Loaded. Type /nex for options."] = "Loaded. Type /nex for options."
 L["Set up NexEnhance with a handful of recommended Blizzard settings:"] = "Set up NexEnhance with a handful of recommended Blizzard settings:"
 L["Auto-loot, compare items on hover and self-cast on right-click."] = "Auto-loot, compare items on hover and self-cast on right-click."

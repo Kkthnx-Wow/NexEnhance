@@ -27,6 +27,13 @@
 	    Only the PlayerFrame and PetFrame carry this in modern retail - the target
 	    frame has no combat feedback - so there is nothing to toggle there.
 
+	  * Boss banner: unregister BOSS_KILL / ENCOUNTER_LOOT_RECEIVED on the
+	    global BossBanner frame (Blizzard_FrameXML/BossBannerToast.lua).
+
+	  * Event toasts: post-hook EventToastManagerFrame:Show and immediately
+	    dismiss auto-hiding toasts (level-ups, objectives, etc.). Scoreboards and
+	    other toasts with Blizzard's close button are kept.
+
 	No Secret-value concerns: this is visibility only. The combat-feedback hook
 	only reads the event name Blizzard passes us, never any unit/combat amount.
 --]]
@@ -47,10 +54,13 @@ ns:RegisterDefaults({
 		portraitDamage = false,
 		portraitHealing = false,
 		pvpBadge = false,
+		bossBanner = false,
+		eventToasts = false,
 	},
 })
 
 local Module = ns:NewModule("HideUIElements", "hideUIElements", { group = "general", title = L["Hide UI Elements"], order = 41 })
+local eventHandles = {}
 
 -- ---------------------------------------------------------------------------
 -- Aura collapse arrow
@@ -280,8 +290,102 @@ local function HookPvPBadge()
 end
 
 -- ---------------------------------------------------------------------------
+-- Boss banner (boss kill / personal loot popup)
+-- ---------------------------------------------------------------------------
+local BOSS_BANNER_EVENTS = { "BOSS_KILL", "ENCOUNTER_LOOT_RECEIVED" }
+
+local function ApplyBossBanner()
+	local banner = _G.BossBanner
+	if not banner or not banner.RegisterEvent then
+		return
+	end
+
+	local suppress = Module.hideBossBanner
+	for i = 1, #BOSS_BANNER_EVENTS do
+		local event = BOSS_BANNER_EVENTS[i]
+		if suppress then
+			banner:UnregisterEvent(event)
+		else
+			banner:RegisterEvent(event)
+		end
+	end
+
+	if suppress and banner:IsShown() and type(_G.BossBanner_Stop) == "function" then
+		_G.BossBanner_Stop(banner)
+	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Event toasts (level-up, objectives, weekly rewards, etc.)
+-- ---------------------------------------------------------------------------
+local function DismissAutoEventToast(manager)
+	local hideButton = manager.HideButton
+	if hideButton and hideButton:IsShown() then
+		return
+	end
+
+	local toast = manager.currentDisplayingToast
+	if toast and toast.OnAnimatedOut then
+		toast:OnAnimatedOut()
+	end
+end
+
+local function InstallEventToastHook()
+	if Module.eventToastHooked then
+		return
+	end
+	local manager = _G.EventToastManagerFrame
+	if not manager then
+		return
+	end
+	Module.eventToastHooked = true
+	hooksecurefunc(manager, "Show", function(frame)
+		if Module.hideEventToasts then
+			DismissAutoEventToast(frame)
+		end
+	end)
+end
+
+local function ApplyEventToasts()
+	InstallEventToastHook()
+	if not Module.hideEventToasts then
+		return
+	end
+
+	local manager = _G.EventToastManagerFrame
+	if not manager or not manager.IsShown or not manager:IsShown() then
+		return
+	end
+	if manager.StopToasting then
+		manager:StopToasting()
+	elseif manager.CloseActiveToasts then
+		manager:CloseActiveToasts()
+	end
+end
+
+-- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+function Module:RegisterModuleEvents()
+	if self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED")
+end
+
+function Module:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function Module:OnDisable()
+	self:UnregisterModuleEvents()
+end
+
 function Module:PLAYER_REGEN_ENABLED()
 	if self.pendingMicroBags then
 		self.pendingMicroBags = nil
@@ -295,15 +399,18 @@ function Module:OnEnable()
 	self.hidePortraitDamage = ns.db.hideUIElements.portraitDamage
 	self.hidePortraitHealing = ns.db.hideUIElements.portraitHealing
 	self.hidePvPBadge = ns.db.hideUIElements.pvpBadge
+	self.hideBossBanner = ns.db.hideUIElements.bossBanner
+	self.hideEventToasts = ns.db.hideUIElements.eventToasts
 
 	ApplyAuraCollapse()
 	ApplyMicroBags()
 	InstallPortraitHook()
 	HookPvPBadge()
 	ApplyPvPBadge()
+	ApplyBossBanner()
+	ApplyEventToasts()
 
-	-- Only needed to flush a combat-deferred micro/bags hide.
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:RegisterModuleEvents()
 end
 
 function Module:OnSettingChanged(key)
@@ -312,6 +419,8 @@ function Module:OnSettingChanged(key)
 	self.hidePortraitDamage = ns.db.hideUIElements.portraitDamage
 	self.hidePortraitHealing = ns.db.hideUIElements.portraitHealing
 	self.hidePvPBadge = ns.db.hideUIElements.pvpBadge
+	self.hideBossBanner = ns.db.hideUIElements.bossBanner
+	self.hideEventToasts = ns.db.hideUIElements.eventToasts
 
 	if key == "auraCollapse" then
 		ApplyAuraCollapse()
@@ -323,6 +432,10 @@ function Module:OnSettingChanged(key)
 		InstallPortraitHook()
 	elseif key == "pvpBadge" then
 		ApplyPvPBadge()
+	elseif key == "bossBanner" then
+		ApplyBossBanner()
+	elseif key == "eventToasts" then
+		ApplyEventToasts()
 	end
 end
 
@@ -332,4 +445,6 @@ function Module:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "portraitDamage", L["Hide Portrait Damage Text"], L["Hide the incoming damage numbers that flash over your player portrait."])
 	builder:Checkbox(category, self, "portraitHealing", L["Hide Portrait Healing Text"], L["Hide the incoming healing numbers that flash over your player portrait."])
 	builder:Checkbox(category, self, "pvpBadge", L["Hide PvP Badge"], L["Hide PvP status icons, timers, and prestige badges on the Player, Target, and Focus frames."])
+	builder:Checkbox(category, self, "bossBanner", L["Hide Boss Banner"], L["Suppress the boss defeat banner that shows the kill and personal loot."])
+	builder:Checkbox(category, self, "eventToasts", L["Hide Event Toasts"], L["Suppress automatic event toasts such as level-ups, encounter objectives, and weekly-reward pop-ups. Scoreboards with a close button are kept."])
 end

@@ -43,6 +43,7 @@ local RANGE_INDICATOR = RANGE_INDICATOR
 local TOOLTIP_UPDATE_TIME = TOOLTIP_UPDATE_TIME or 0.2
 
 local C_Item = C_Item
+local C_DurationUtil_CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
 -- Pulled out of C_Item because it's the only member called from OnUpdate; the
 -- rest live in event-driven paths where a namespace lookup is noise.
 local IsItemInRange = C_Item.IsItemInRange
@@ -79,6 +80,8 @@ ns:RegisterDefaults({
 })
 
 local EQB = ns:NewModule("ExtraQuestButton", "extraQuestButton", { group = "actionbars", title = L["Extra Quest Button"], order = 60 })
+local eventHandles = {}
+local bagCooldownDispatchId
 
 -- ---------------------------------------------------------------------------
 -- p3lim's data tables (questID/itemID keyed; comments are his)
@@ -639,15 +642,32 @@ local button -- the secure button, built lazily in Setup
 local anchor -- plain frame carrying the Edit Mode mover
 
 local function Button_BagUpdateCooldown(self)
-	if self:IsShown() and self.itemID then
+	if not (self:IsShown() and self.itemID) then
+		return
+	end
+	local cd = self.Cooldown
+	if not cd then
+		return
+	end
+	if C_DurationUtil_CreateDuration then
+		local start, duration = C_Item.GetItemCooldown(self.itemID)
+		if NotSecret(duration) and duration and duration > 0 and NotSecret(start) then
+			local durObj = C_DurationUtil_CreateDuration()
+			durObj:SetTimeFromStart(start, duration)
+			cd:SetCooldownFromDurationObject(durObj)
+			F.MaskCooldownSwipeFromDurationObject(cd, durObj)
+			cd:Show()
+			return
+		end
+	else
 		local start, duration = C_Item.GetItemCooldown(self.itemID)
 		if duration and NotSecret(duration) and duration > 0 then
-			self.Cooldown:SetCooldown(start, duration)
-			self.Cooldown:Show()
-		else
-			self.Cooldown:Hide()
+			cd:SetCooldown(start, duration)
+			cd:Show()
+			return
 		end
 	end
+	cd:Hide()
 end
 
 local function Button_UpdateCount(self)
@@ -1058,20 +1078,42 @@ function EQB:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
-	self:RegisterEvent("UPDATE_BINDINGS", "RefreshHotKey")
-	self:RegisterEvent("BAG_UPDATE_COOLDOWN", "OnBagCooldown")
-	self:RegisterEvent("BAG_UPDATE_DELAYED", "OnBagDelayed")
-	self:RegisterEvent("QUEST_LOG_UPDATE", "OnQuestEvent")
-	self:RegisterEvent("QUEST_POI_UPDATE", "OnQuestEvent")
-	self:RegisterEvent("QUEST_WATCH_LIST_CHANGED", "OnQuestEvent")
-	self:RegisterEvent("QUEST_ACCEPTED", "OnQuestEvent")
-	self:RegisterEvent("PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED", "OnQuestEvent")
-	self:RegisterEvent("WAYPOINT_UPDATE", "OnQuestEvent")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED", "OnTargetChanged")
-	self:RegisterEvent("ZONE_CHANGED", "OnQuestEvent")
-	self:RegisterEvent("ZONE_CHANGED_NEW_AREA", "OnQuestEvent")
-	self:RegisterUnitEvent("UNIT_AURA", "OnQuestEvent", "player")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED")
+	self:TrackEvent(eventHandles, "UPDATE_BINDINGS", "RefreshHotKey")
+	bagCooldownDispatchId = ns:RegisterCooldownDispatchCallback(function()
+		EQB:OnBagCooldown()
+	end, "BAG_UPDATE_COOLDOWN")
+	self:TrackEvent(eventHandles, "BAG_UPDATE_DELAYED", "OnBagDelayed")
+	self:TrackEvent(eventHandles, "QUEST_LOG_UPDATE", "OnQuestEvent")
+	self:TrackEvent(eventHandles, "QUEST_POI_UPDATE", "OnQuestEvent")
+	self:TrackEvent(eventHandles, "QUEST_WATCH_LIST_CHANGED", "OnQuestEvent")
+	self:TrackEvent(eventHandles, "QUEST_ACCEPTED", "OnQuestEvent")
+	self:TrackEvent(eventHandles, "PLAYER_INSIDE_QUEST_BLOB_STATE_CHANGED", "OnQuestEvent")
+	self:TrackEvent(eventHandles, "WAYPOINT_UPDATE", "OnQuestEvent")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "OnTargetChanged")
+	self:TrackEvent(eventHandles, "ZONE_CHANGED", "OnQuestEvent")
+	self:TrackEvent(eventHandles, "ZONE_CHANGED_NEW_AREA", "OnQuestEvent")
+	self:TrackUnitEvent(eventHandles, "UNIT_AURA", "OnQuestEvent", "player")
+end
+
+function EQB:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	if bagCooldownDispatchId then
+		ns:UnregisterCooldownDispatchCallback(bagCooldownDispatchId)
+		bagCooldownDispatchId = nil
+	end
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function EQB:OnDisable()
+	self:UnregisterModuleEvents()
+	self.pendingEnable = nil
+	if button then
+		button:Hide()
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -1092,6 +1134,8 @@ function EQB:OnSettingChanged(key, value)
 			-- button cannot be safely destroyed, so a reload is cleanest to
 			-- fully remove it - matches our other secure modules).
 			EnsureActive()
+		else
+			self:OnDisable()
 		end
 		return
 	end
@@ -1114,3 +1158,14 @@ function EQB:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "zoneOnly", L["Only Current Zone"], L["Only show quest items for quests in your current zone."])
 	builder:Slider(category, self, "distanceYd", L["Tracking Distance"], L["Maximum quest distance, in yards."], 5, 10000, 1)
 end
+
+ns.Debug.RegisterScope("extraQuestButton", {
+	title = L["Extra Quest Button"],
+	module = EQB,
+	dump = function()
+		F.Print(format("  eventsRegistered=%s pendingEnable=%s", tostring(EQB.eventsRegistered), tostring(EQB.pendingEnable)))
+		if button then
+			F.Print(format("  button shown=%s item=%s", tostring(button:IsShown()), tostring(button.itemID)))
+		end
+	end,
+})

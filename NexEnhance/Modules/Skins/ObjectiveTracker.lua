@@ -46,9 +46,10 @@ local function GetBarColor()
 end
 
 local function ReskinBar(bar)
-	if bar then
-		bar:SetStatusBarColor(GetBarColor())
+	if not bar or not ObjectiveTracker:IsEnabled() then
+		return
 	end
+	bar:SetStatusBarColor(GetBarColor())
 end
 
 -- ---------------------------------------------------------------------------
@@ -183,8 +184,16 @@ function ObjectiveTracker:OnEnable()
 	end
 end
 
+function ObjectiveTracker:OnDisable()
+	-- hooksecurefunc cannot be removed; ReskinBar gates on IsEnabled().
+end
+
 -- Live re-tint when the class-colour toggle flips.
-function ObjectiveTracker:OnSettingChanged(key)
+function ObjectiveTracker:OnSettingChanged(key, value)
+	if key == "enable" and not value then
+		self:OnDisable()
+		return
+	end
 	if key == "classColor" and self.trackers then
 		for i = 1, #self.trackers do
 			if self.trackers[i] then

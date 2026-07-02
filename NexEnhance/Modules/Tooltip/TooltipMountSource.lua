@@ -84,8 +84,8 @@ local function HandleAura(tip, unit, spellID)
 		return
 	end
 	local isPlayer = UnitIsPlayer(unit)
-	local isSelf = UnitIsUnit(unit, "player")
-	if F.IsSecret(isPlayer) or not isPlayer or F.IsSecret(isSelf) or isSelf then
+	local isSelf = F.SafeUnitIsUnit(unit, "player")
+	if F.IsSecret(isPlayer) or not isPlayer or isSelf then
 		return
 	end
 

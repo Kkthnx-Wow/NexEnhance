@@ -31,6 +31,11 @@ ns:RegisterDefaults({
 
 local Animation = ns:NewModule("Animation", "animation", { group = "misc", title = L["Animation"], order = 60 })
 
+local eventHandles = {}
+local combatHandles = {}
+local eventsRegistered = false
+local combatEventsRegistered = false
+
 -- ---------------------------------------------------------------------------
 -- Shared animation builders
 -- ---------------------------------------------------------------------------
@@ -162,9 +167,6 @@ function Animation:SetupCombatText()
 		return
 	end
 
-	---@diagnostic disable-next-line: undefined-field
-	local ENTERING_COMBAT, LEAVING_COMBAT = _G.ENTERING_COMBAT, _G.LEAVING_COMBAT
-
 	local cfg = {
 		slideInDist = 350,
 		nudgeDist = -40,
@@ -203,35 +205,99 @@ function Animation:SetupCombatText()
 		frame:Hide()
 	end)
 
+	frame.text = text
+	frame.anim = anim
 	combatFrame = frame
+end
 
-	local function updateCombatState(event)
-		if not ns.db.animation.combatText then
-			return
-		end
-		if event == "PLAYER_REGEN_DISABLED" then
-			text:SetText(ENTERING_COMBAT)
-			text:SetTextColor(1, 0.1, 0.1)
-		else
-			text:SetText(LEAVING_COMBAT)
-			text:SetTextColor(0.1, 1, 0.1)
-		end
-		anim:Stop()
-		frame:Show()
-		anim:Play()
+function Animation:PLAYER_REGEN_DISABLED()
+	if not ns.db.animation.combatText or not combatFrame then
+		return
 	end
-	ns:RegisterEvent("PLAYER_REGEN_ENABLED", updateCombatState)
-	ns:RegisterEvent("PLAYER_REGEN_DISABLED", updateCombatState)
+	---@diagnostic disable-next-line: undefined-field
+	local ENTERING_COMBAT = _G.ENTERING_COMBAT
+	local text = combatFrame.text
+	local anim = combatFrame.anim
+	if not text or not anim then
+		return
+	end
+	text:SetText(ENTERING_COMBAT)
+	text:SetTextColor(1, 0.1, 0.1)
+	anim:Stop()
+	combatFrame:Show()
+	anim:Play()
+end
+
+function Animation:PLAYER_REGEN_ENABLED()
+	if not ns.db.animation.combatText or not combatFrame then
+		return
+	end
+	---@diagnostic disable-next-line: undefined-field
+	local LEAVING_COMBAT = _G.LEAVING_COMBAT
+	local text = combatFrame.text
+	local anim = combatFrame.anim
+	if not text or not anim then
+		return
+	end
+	text:SetText(LEAVING_COMBAT)
+	text:SetTextColor(0.1, 1, 0.1)
+	anim:Stop()
+	combatFrame:Show()
+	anim:Play()
+end
+
+function Animation:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "PLAYER_ENTERING_WORLD")
+end
+
+function Animation:RegisterCombatEvents()
+	if combatEventsRegistered then
+		return
+	end
+	combatEventsRegistered = true
+	self:TrackEvent(combatHandles, "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_DISABLED")
+	self:TrackEvent(combatHandles, "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_ENABLED")
+end
+
+function Animation:UnregisterCombatEvents()
+	if not combatEventsRegistered then
+		return
+	end
+	combatEventsRegistered = false
+	ns:UnregisterModuleEventHandles(combatHandles)
+end
+
+function Animation:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+	moveWatcher:UnregisterEvent("PLAYER_STARTED_MOVING")
+	needAnimation = false
+end
+
+function Animation:Stop()
+	self:UnregisterModuleEvents()
+	self:UnregisterCombatEvents()
+	if combatFrame then
+		combatFrame:Hide()
+	end
 end
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function Animation:OnEnable()
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
+	self:RegisterModuleEvents()
 
 	if ns.db.animation.combatText then
 		self:SetupCombatText()
+		self:RegisterCombatEvents()
 	end
 
 	SlashCmdList["NEXLOGO"] = function()
@@ -240,14 +306,25 @@ function Animation:OnEnable()
 	SLASH_NEXLOGO1 = "/nexlogo"
 end
 
-function Animation:OnSettingChanged()
-	-- Enabling the combat banner can build live; disabling it needs a reload.
-	if ns.db.animation.combatText then
-		self:SetupCombatText()
+function Animation:OnDisable()
+	self:Stop()
+end
+
+function Animation:OnSettingChanged(key, value)
+	if key == "combatText" then
+		if value then
+			self:SetupCombatText()
+			self:RegisterCombatEvents()
+		else
+			self:UnregisterCombatEvents()
+			if combatFrame then
+				combatFrame:Hide()
+			end
+		end
 	end
 end
 
 function Animation:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "loginLogo", L["Login Logo"], L["Play a logo flyby the first time you move after logging in. Replay it with /nexlogo."])
-	builder:Checkbox(category, self, "combatText", L["Combat Text"], L["Show an animated Entering/Leaving Combat banner (reload to disable)."])
+	builder:Checkbox(category, self, "combatText", L["Combat Text"], L["Show an animated Entering/Leaving Combat banner."])
 end

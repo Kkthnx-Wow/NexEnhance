@@ -278,6 +278,9 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local eventHandles = {}
+local eventsRegistered = false
+
 local function RefreshTab()
 	if button then
 		OnEvent(button, "UPDATE_INVENTORY_DURABILITY")
@@ -345,18 +348,82 @@ function Durability:Bootstrap()
 	RefreshTab()
 end
 
+function Durability:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "Bootstrap")
+	self:TrackEvent(eventHandles, "UPDATE_INVENTORY_ALERTS", "Bootstrap")
+	self:TrackEvent(eventHandles, "UPDATE_INVENTORY_DURABILITY", "Bootstrap")
+	self:TrackEvent(eventHandles, "PLAYER_EQUIPMENT_CHANGED", "Bootstrap")
+end
+
+function Durability:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+-- Live disable must stop module-level Bootstrap listeners too — hiding the tab
+-- alone left PLAYER_EQUIPMENT_CHANGED firing into Create() on every gear swap.
+function Durability:Stop()
+	self:UnregisterModuleEvents()
+	if button then
+		button:UnregisterAllEvents()
+		button:Hide()
+		_G.HelpTip:Hide(button, L["DurabilityHelpTip"])
+	end
+end
+
+function Durability:OnInitialize()
+	ns.Debug.BindModule(self, "durability", {
+		title = L["Durability"],
+		expectations = {
+			{
+				name = "module events match enable toggle",
+				test = function()
+					local en = ns.db.durability.enable
+					return en and eventsRegistered or not eventsRegistered
+				end,
+				detail = function()
+					return format("enable=%s eventsRegistered=%s", tostring(ns.db.durability.enable), tostring(eventsRegistered))
+				end,
+			},
+			{
+				name = "tab hidden when disabled",
+				test = function()
+					if ns.db.durability.enable then
+						return true
+					end
+					return not button or not button:IsShown()
+				end,
+			},
+		},
+		dump = function()
+			F.Print(format("  enable=%s eventsRegistered=%s button=%s", tostring(ns.db.durability.enable), tostring(eventsRegistered), button and "yes" or "no"))
+			if button then
+				F.Print(format("  button shown=%s", tostring(button:IsShown())))
+			end
+		end,
+	})
+end
+
 function Durability:OnEnable()
 	if not ns.db.durability.enable then
 		return
 	end
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "Bootstrap")
-	self:RegisterEvent("UPDATE_INVENTORY_ALERTS", "Bootstrap")
-	self:RegisterEvent("UPDATE_INVENTORY_DURABILITY", "Bootstrap")
-	self:RegisterEvent("PLAYER_EQUIPMENT_CHANGED", "Bootstrap")
+	self:RegisterModuleEvents()
 	self:Bootstrap()
 	C_Timer.After(0, function()
 		Durability:Bootstrap()
 	end)
+end
+
+function Durability:OnDisable()
+	self:Stop()
 end
 
 function Durability:OnSettingChanged(key, value)
@@ -364,12 +431,10 @@ function Durability:OnSettingChanged(key, value)
 		return
 	end
 	if value then
+		self:RegisterModuleEvents()
 		self:Bootstrap()
-	elseif button then
-		-- Go fully idle: a hidden tab shouldn't keep processing durability events.
-		button:UnregisterAllEvents()
-		button:Hide()
-		_G.HelpTip:Hide(button, L["DurabilityHelpTip"])
+	else
+		self:Stop()
 	end
 end
 

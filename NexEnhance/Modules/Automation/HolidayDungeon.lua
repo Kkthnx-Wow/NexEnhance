@@ -56,6 +56,8 @@ ns:RegisterDefaults({
 local HolidayDungeon = ns:NewModule("HolidayDungeon", "holidayDungeon", { group = "automation", title = L["Holiday Dungeon"], order = 92 })
 
 local candidates = {}
+local eventHandles = {}
+local eventsRegistered = false
 
 local function db()
 	return ns.db.holidayDungeon
@@ -194,13 +196,9 @@ function HolidayDungeon:TrySetup()
 	end
 
 	self.waiting = true
-	local handle
-	handle = ns:RegisterEvent("ADDON_LOADED", function(_, addon)
-		if addon == "Blizzard_GroupFinder" then
-			self.waiting = nil
-			ns:UnregisterEvent("ADDON_LOADED", handle)
-			self:HookLFDFrame()
-		end
+	ns:RegisterAddOnLoadedCallback("Blizzard_GroupFinder", function()
+		self.waiting = nil
+		self:HookLFDFrame()
 	end)
 end
 
@@ -209,18 +207,43 @@ function HolidayDungeon:PLAYER_LOGIN()
 	self.nudgePending = nil
 end
 
+function HolidayDungeon:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_LOGIN")
+	self:TrackEvent(eventHandles, "LFG_UPDATE_RANDOM_INFO")
+end
+
+function HolidayDungeon:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
 function HolidayDungeon:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:TrySetup()
+	if key == "enable" then
+		if value then
+			self:OnEnable()
+		else
+			self:OnDisable()
+		end
 	end
 end
 
 function HolidayDungeon:OnEnable()
-	self:RegisterEvent("PLAYER_LOGIN")
-	self:RegisterEvent("LFG_UPDATE_RANDOM_INFO")
-	if db().enable then
-		self:TrySetup()
+	if not db().enable then
+		return
 	end
+	self:RegisterModuleEvents()
+	self:TrySetup()
+end
+
+function HolidayDungeon:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function HolidayDungeon:RegisterOptions(category, builder)

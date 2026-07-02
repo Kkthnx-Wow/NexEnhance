@@ -1,9 +1,8 @@
 --[[
 	NexEnhance - Wowhead Links
 	-------------------------------------------------------------------------
-	Adds small, copyable Wowhead-link edit boxes to the World Map (for the
-	tracked/opened quest) and the Achievement frame (for the open achievement).
-	Hover to highlight, drag-select to copy.
+	Adds copyable Wowhead-link edit boxes to the world map (tracked/opened quest)
+	and the achievement frame. Hover to highlight; Ctrl+C copies when focused.
 
 	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
 	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Maps/Elements/WowHeadLink.lua
@@ -26,7 +25,35 @@ local GetQuestLink = GetQuestLink
 local C_AddOns_IsAddOnLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
 local C_SuperTrack = C_SuperTrack
 
-local function noop() end
+local COPY_HINT = L["Press Ctrl-C to copy"]
+
+-- PortraitFrame TitleContainer sits at frame level 510; WorldMap enables mouse on
+-- it for title-bar dragging, so our link box must stack above or it never receives
+-- hover, tooltip, or copy input.
+local function RaiseAboveTitleBar(frame, borderFrame)
+	if not frame or not borderFrame then
+		return
+	end
+	local titleContainer = borderFrame.TitleContainer
+	local titleLevel = (titleContainer and titleContainer.GetFrameLevel and titleContainer:GetFrameLevel()) or 510
+	frame:SetFrameStrata(borderFrame.GetFrameStrata and borderFrame:GetFrameStrata() or "HIGH")
+	frame:SetFrameLevel(titleLevel + 15)
+	frame:EnableMouse(true)
+end
+
+local function SetMapTitleShown(borderFrame, shown)
+	if not borderFrame then
+		return
+	end
+	local titleText = borderFrame.TitleContainer and borderFrame.TitleContainer.TitleText
+	if titleText then
+		titleText:SetShown(shown)
+	end
+	-- Pre-Dragonflight global; harmless if absent.
+	if _G.WorldMapFrameTitleText then
+		_G.WorldMapFrameTitleText:SetShown(shown)
+	end
+end
 
 -- Map client locales to their Wowhead subdomain (default www).
 local subDomain = setmetatable({
@@ -64,7 +91,16 @@ local function FormatLink(id, kind)
 	return urlIcon .. "https://" .. wowheadLoc .. "/" .. kind .. "=" .. id
 end
 
--- A read-only edit box that highlights its text on hover/click for copying.
+-- A read-only edit box that highlights its text on hover; Ctrl+C copies when focused.
+local function LinkEditBox_OnKeyDown(self, key)
+	if IsControlKeyDown() and key == "C" then
+		return
+	end
+	if key == "ESCAPE" then
+		self:ClearFocus()
+	end
+end
+
 local function CreateLinkEditBox(parent, point, x, y, fontObject)
 	local eb = CreateFrame("EditBox", nil, parent)
 	eb:SetHeight(16)
@@ -72,11 +108,18 @@ local function CreateLinkEditBox(parent, point, x, y, fontObject)
 	eb:SetFontObject(fontObject)
 	eb:SetBlinkSpeed(0)
 	eb:SetAutoFocus(false)
-	eb:EnableKeyboard(false)
-	eb:SetScript("OnKeyDown", noop)
+	eb:EnableKeyboard(true)
+	eb:SetScript("OnKeyDown", LinkEditBox_OnKeyDown)
 
 	eb.hiddenText = eb:CreateFontString(nil, "ARTWORK", fontObject)
 	eb.hiddenText:Hide()
+
+	eb:SetScript("OnTextChanged", function(self, userInput)
+		if userInput and self.linkText then
+			self:SetText(self.linkText)
+			self:HighlightText()
+		end
+	end)
 
 	eb:SetScript("OnMouseUp", function(self)
 		if self:IsMouseOver() then
@@ -118,11 +161,12 @@ local function InitAchievementLink()
 
 		local url = FormatLink(achievementID, "achievement")
 		eb:SetText(url)
+		eb.linkText = url
 		eb.hiddenText:SetText(url)
 		eb:SetWidth(eb.hiddenText:GetStringWidth() + 90)
 
 		local link = GetAchievementLink(achievementID)
-		eb.tooltipText = link and (strmatch(link, "%[(.-)%]") .. "|n" .. L["Press To Copy"]) or ""
+		eb.tooltipText = link and (strmatch(link, "%[(.-)%]") .. "|n" .. COPY_HINT) or ""
 
 		eb:Show()
 		lastLink = eb:GetText()
@@ -166,7 +210,7 @@ local function InitQuestLink()
 	end
 
 	local eb = CreateLinkEditBox(wmf.BorderFrame, "TOPLEFT", 100, -4, "GameFontNormal")
-	eb:SetFrameLevel(501)
+	RaiseAboveTitleBar(eb, wmf.BorderFrame)
 	eb:SetHitRectInsets(0, 90, 0, 0)
 	questEditBox = eb
 
@@ -180,11 +224,12 @@ local function InitQuestLink()
 		if questID and questID ~= 0 then
 			local url = FormatLink(questID, "quest")
 			eb:SetText(url)
+			eb.linkText = url
 			eb.hiddenText:SetText(url)
 			eb:SetWidth(eb.hiddenText:GetStringWidth() + 90)
 
 			local link = GetQuestLink(questID)
-			eb.tooltipText = link and (strmatch(link, "%[(.-)%]") .. "|n" .. L["Press To Copy"]) or ""
+			eb.tooltipText = link and (strmatch(link, "%[(.-)%]") .. "|n" .. COPY_HINT) or ""
 			if not link and eb:IsMouseOver() then
 				GameTooltip:Hide()
 			end
@@ -220,20 +265,23 @@ local function InitQuestLink()
 		GameTooltip:Hide()
 		UpdateQuestURL()
 	end)
+
+	wmf:HookScript("OnShow", function()
+		RaiseAboveTitleBar(eb, wmf.BorderFrame)
+		UpdateQuestURL()
+	end)
 end
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
--- One-shot wait for the load-on-demand achievement UI. Registered through the
--- engine's event API (not the module helper) so it can cleanly unregister
--- itself by callback once the addon has loaded.
-local function OnAchievementUILoaded(_, addon)
-	if addon ~= "Blizzard_AchievementUI" then
-		return
+local function OnWorldMapReady()
+	InitQuestLink()
+	local wmf = _G.WorldMapFrame
+	if wmf and wmf.BorderFrame and questEditBox then
+		RaiseAboveTitleBar(questEditBox, wmf.BorderFrame)
+		SetMapTitleShown(wmf.BorderFrame, not ns.db.wowheadLink.enable)
 	end
-	InitAchievementLink()
-	ns:UnregisterEvent("ADDON_LOADED", OnAchievementUILoaded)
 end
 
 function WowheadLink:Setup()
@@ -245,22 +293,28 @@ function WowheadLink:Setup()
 	end
 	self.started = true
 
-	if C_AddOns_IsAddOnLoaded and C_AddOns_IsAddOnLoaded("Blizzard_AchievementUI") then
-		InitAchievementLink()
-	else
-		ns:RegisterEvent("ADDON_LOADED", OnAchievementUILoaded)
-	end
+	ns:RegisterAddOnLoadedCallback("Blizzard_AchievementUI", InitAchievementLink)
+	ns:RegisterAddOnLoadedCallback("Blizzard_WorldMap", OnWorldMapReady)
 
 	InitQuestLink()
-
-	-- Hide the default map title to make room for the quest link edit box.
-	if _G.WorldMapFrameTitleText then
-		_G.WorldMapFrameTitleText:Hide()
+	local wmf = _G.WorldMapFrame
+	if wmf and wmf.BorderFrame then
+		if questEditBox then
+			RaiseAboveTitleBar(questEditBox, wmf.BorderFrame)
+		end
+		SetMapTitleShown(wmf.BorderFrame, not ns.db.wowheadLink.enable)
 	end
 end
 
 -- Show/hide the boxes live when the option is toggled.
 function WowheadLink:Refresh()
+	local wmf = _G.WorldMapFrame
+	if wmf and wmf.BorderFrame then
+		SetMapTitleShown(wmf.BorderFrame, not ns.db.wowheadLink.enable)
+		if questEditBox then
+			RaiseAboveTitleBar(questEditBox, wmf.BorderFrame)
+		end
+	end
 	if achievementEditBox and not ns.db.wowheadLink.enable then
 		achievementEditBox:Hide()
 	end

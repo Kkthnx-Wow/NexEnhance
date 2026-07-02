@@ -28,6 +28,8 @@ ns:RegisterDefaults({
 local AchievementScreenshot = ns:NewModule("AchievementScreenshot", "achievementScreenshot", { group = "automation", title = L["Achievement Screenshot"], order = 110 })
 
 local captureFrame
+local eventHandles = {}
+local eventsRegistered = false
 
 local function CountdownOnUpdate(self, elapsed)
 	self.delay = self.delay - elapsed
@@ -55,26 +57,43 @@ function AchievementScreenshot:ACHIEVEMENT_EARNED(_, alreadyEarnedOnAccount)
 	captureFrame:Show()
 end
 
-function AchievementScreenshot:Setup()
-	if self.registered then
+function AchievementScreenshot:RegisterModuleEvents()
+	if eventsRegistered then
 		return
 	end
-	self.registered = true
-	self:RegisterEvent("ACHIEVEMENT_EARNED")
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "ACHIEVEMENT_EARNED", "ACHIEVEMENT_EARNED")
+end
+
+function AchievementScreenshot:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+	if captureFrame then
+		captureFrame:Hide()
+	end
 end
 
 function AchievementScreenshot:OnEnable()
-	self:Setup()
+	if not ns.db.achievementScreenshot.enable then
+		return
+	end
+	self:RegisterModuleEvents()
+end
+
+function AchievementScreenshot:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AchievementScreenshot:OnSettingChanged(key, value)
-	-- Enabling after login: OnEnable already ran (or didn't), so make sure the
-	-- event is hooked. Disabling is handled by the in-handler enable check, and
-	-- the idle frame never polls, so there's nothing to tear down.
-	if key == "enable" and value then
-		self:Setup()
-	elseif key == "enable" and not value and captureFrame then
-		captureFrame:Hide()
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+		else
+			self:UnregisterModuleEvents()
+		end
 	end
 end
 

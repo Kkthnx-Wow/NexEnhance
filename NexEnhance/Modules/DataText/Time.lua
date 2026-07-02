@@ -74,6 +74,8 @@ local Clock = ns:NewModule("Clock", "timeText", { group = "datatext", title = L[
 
 local cfg
 local clock
+local eventHandles = {}
+local eventsRegistered = false
 local entered
 local isTimeWalker
 local walkerTexture
@@ -308,8 +310,21 @@ local function GetItemLink(itemID)
 	if not C_Item or not C_Item.GetItemInfo then
 		return nil
 	end
-	if not itemCache[itemID] then
-		itemCache[itemID] = select(2, C_Item.GetItemInfo(itemID))
+	if itemCache[itemID] then
+		return itemCache[itemID]
+	end
+	local link = select(2, C_Item.GetItemInfo(itemID))
+	if link then
+		itemCache[itemID] = link
+		return link
+	end
+	if ns.RequestItemData then
+		ns:RequestItemData(itemID, function()
+			local loaded = select(2, C_Item.GetItemInfo(itemID))
+			if loaded then
+				itemCache[itemID] = loaded
+			end
+		end)
 	end
 	return itemCache[itemID]
 end
@@ -1326,9 +1341,29 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local function StartClockTicker(self)
+	local elapsed = 5
+	self:SetScript("OnUpdate", function(frame, e)
+		elapsed = elapsed + (e or 0)
+		if elapsed < 5 then
+			return
+		end
+		elapsed = 0
+		UpdateClock(frame)
+		if entered then
+			tooltipElapsed = tooltipElapsed + 5
+			if tooltipElapsed >= 30 then
+				OnEnter(frame)
+			end
+		end
+	end)
+end
+
 function Clock:Create()
 	if clock then
+		StartClockTicker(clock)
 		clock:Show()
+		UpdateClock(clock)
 		return
 	end
 
@@ -1359,23 +1394,35 @@ function Clock:Create()
 		end
 	end)
 
-	local elapsed = 5
-	clock:SetScript("OnUpdate", function(self, e)
-		elapsed = elapsed + (e or 0)
-		if elapsed < 5 then
-			return
-		end
-		elapsed = 0
-		UpdateClock(self)
-		if entered then
-			tooltipElapsed = tooltipElapsed + 5
-			if tooltipElapsed >= 30 then
-				OnEnter(self)
-			end
-		end
-	end)
+	StartClockTicker(clock)
 
 	UpdateClock(clock)
+end
+
+function Clock:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "CheckTimeWalker")
+end
+
+function Clock:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function Clock:Stop()
+	self:UnregisterModuleEvents()
+	entered = false
+	if clock then
+		clock:UnregisterEvent("MODIFIER_STATE_CHANGED")
+		clock:SetScript("OnUpdate", nil)
+		clock:Hide()
+	end
 end
 
 function Clock:OnEnable()
@@ -1384,7 +1431,11 @@ function Clock:OnEnable()
 		return
 	end
 	self:Create()
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "CheckTimeWalker")
+	self:RegisterModuleEvents()
+end
+
+function Clock:OnDisable()
+	self:Stop()
 end
 
 function Clock:OnSettingChanged(key, value)
@@ -1392,16 +1443,19 @@ function Clock:OnSettingChanged(key, value)
 	if key == "enable" then
 		if value then
 			self:Create()
-		elseif clock then
-			clock:Hide()
+			self:RegisterModuleEvents()
+		else
+			self:Stop()
 		end
-	elseif clock then
+		return
+	end
+	if clock and cfg.enable then
 		UpdateClock(clock)
 	end
 end
 
 function Clock:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Clock"], L["Show a clock on the minimap with a lockout / reset tooltip (reload to disable)."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Clock"], L["Show a clock on the minimap with a lockout / reset tooltip."])
 	local _, classColorInit = builder:Checkbox(category, self, "classColor", L["Class-Coloured Numbers"], L["Colour the clock with your class colour."])
 	local _, legacyInit = builder:Checkbox(category, self, "showLegacy", L["Show Legacy World Events"], L["Track pre-Midnight world events (Legion invasions, faction assaults, elemental storms, Grand Hunt, Community Feast) and the old daily-quest checklist. Hold SHIFT over the clock to see the timers."])
 

@@ -47,6 +47,7 @@ local F, L = ns.F, ns.L
 local _G = _G
 local hooksecurefunc = hooksecurefunc
 local ipairs = ipairs
+local format = string.format
 
 local UnitEffectiveLevel = UnitEffectiveLevel
 local UnitClassification = UnitClassification
@@ -74,6 +75,9 @@ ns:RegisterDefaults({
 })
 
 local LevelColors = ns:NewModule("LevelColors", "levelColors", { group = "unitframes", title = L["Level Colours"], order = 15 })
+
+local eventHandles = {}
+local eventsRegistered = false
 
 -- ---------------------------------------------------------------------------
 -- Region resolution
@@ -291,25 +295,89 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local function RestoreBlizzardLevel()
+	-- Our always-show mode hides the skull and rewrites LevelText. CheckLevel
+	-- puts Blizzard's display back — call it when toggling off live.
+	ForEachFrame(function(f)
+		if type(f.CheckLevel) == "function" then
+			f:CheckLevel()
+		end
+	end)
+end
+
 function LevelColors:RefreshEvent()
 	Refresh()
 end
 
-function LevelColors:OnEnable()
-	self:InstallHooks()
-
-	-- CheckLevel covers target/focus changes; these catch combat-exit (when
-	-- secret reads clear) and initial state where CheckLevel may not re-fire.
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "RefreshEvent")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED", "RefreshEvent")
-	self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
-
-	Refresh()
+function LevelColors:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshEvent")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED", "RefreshEvent")
+	self:TrackEvent(eventHandles, "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
 end
 
-function LevelColors:OnSettingChanged()
+function LevelColors:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function LevelColors:OnEnable()
 	self:InstallHooks()
+	self:RegisterModuleEvents()
 	Refresh()
+
+	ns.Debug.BindModule(self, "levelColors", {
+		title = L["Level Colours"],
+		expectations = {
+			{
+				name = "hooks and events when enabled",
+				test = function()
+					local c = ns.db.levelColors
+					if not c.enable then
+						return not eventsRegistered
+					end
+					return LevelColors.hooksInstalled and eventsRegistered
+				end,
+				detail = function()
+					local c = ns.db.levelColors
+					return format("enable=%s hooks=%s eventsRegistered=%s", tostring(c.enable), tostring(LevelColors.hooksInstalled), tostring(eventsRegistered))
+				end,
+			},
+		},
+		dump = function()
+			local cfg = ns.db.levelColors
+			F.Print(format("  enable=%s alwaysShowLevel=%s hooks=%s eventsRegistered=%s", tostring(cfg.enable), tostring(cfg.alwaysShowLevel), tostring(LevelColors.hooksInstalled), tostring(eventsRegistered)))
+		end,
+	})
+end
+
+function LevelColors:OnDisable()
+	self:UnregisterModuleEvents()
+	RestoreBlizzardLevel()
+end
+
+function LevelColors:OnSettingChanged(key)
+	self:InstallHooks()
+	if key == "enable" then
+		if ns.db.levelColors.enable then
+			self:RegisterModuleEvents()
+			Refresh()
+		else
+			self:OnDisable()
+		end
+		return
+	end
+	if ns.db.levelColors.enable then
+		Refresh()
+	else
+		RestoreBlizzardLevel()
+	end
 end
 
 function LevelColors:RegisterOptions(category, builder)

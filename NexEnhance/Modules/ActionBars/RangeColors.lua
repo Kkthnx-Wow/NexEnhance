@@ -91,6 +91,7 @@ local registered = {} -- button -> true (every button we've hooked)
 local active = false -- feature currently on?
 local hooksInstalled = false -- one-time secure hooks in place?
 local eventsRegistered = false -- one-time module events in place?
+local eventHandles = {} -- tracked for teardown when deactivated
 
 local function RebuildColors()
 	local cfg = db()
@@ -357,6 +358,14 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local function UnregisterEvents()
+	if not eventsRegistered then
+		return
+	end
+	ns:UnregisterModuleEventHandles(eventHandles)
+	eventsRegistered = false
+end
+
 local function Activate()
 	RebuildColors()
 	if active then
@@ -368,8 +377,8 @@ local function Activate()
 
 	if not eventsRegistered then
 		eventsRegistered = true
-		RangeColors:RegisterUnitEvent("UNIT_POWER_UPDATE", "UNIT_POWER_UPDATE", "pet")
-		RangeColors:RegisterEvent("PLAYER_ENTERING_WORLD", "RefreshAll")
+		RangeColors:TrackUnitEvent(eventHandles, "UNIT_POWER_UPDATE", "UNIT_POWER_UPDATE", "pet")
+		RangeColors:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshAll")
 	end
 
 	RangeColors:RefreshAll()
@@ -380,6 +389,7 @@ local function Deactivate()
 		return
 	end
 	active = false
+	UnregisterEvents()
 	RestoreAll()
 end
 
@@ -387,6 +397,10 @@ function RangeColors:OnEnable()
 	if db().enable then
 		Activate()
 	end
+end
+
+function RangeColors:OnDisable()
+	Deactivate()
 end
 
 function RangeColors:OnSettingChanged(key, value)

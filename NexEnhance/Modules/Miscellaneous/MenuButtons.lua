@@ -100,8 +100,8 @@ local function IsSelf(data)
 	if not (unit and F.NotSecret(unit)) then
 		return false
 	end
-	local same = UnitIsUnit(unit, "player")
-	return F.NotSecret(same) and same and true or false
+	local same = F.SafeUnitIsUnit(unit, "player")
+	return same
 end
 
 -- "Invite to <YourGuild>" when guilded, else a generic label. The guild name is

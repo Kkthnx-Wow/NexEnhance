@@ -34,6 +34,8 @@ ns:RegisterDefaults({
 
 local DeclineDuel = ns:NewModule("DeclineDuel", "declineDuel", { group = "automation", title = L["Decline Duels"], order = 50 })
 
+local eventHandles = {}
+
 function DeclineDuel:DUEL_REQUESTED(name)
 	if not ns.db.declineDuel.enable then
 		return
@@ -68,13 +70,29 @@ function DeclineDuel:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("DUEL_REQUESTED")
-	self:RegisterEvent("PET_BATTLE_PVP_DUEL_REQUESTED")
+	self:TrackEvent(eventHandles, "DUEL_REQUESTED")
+	self:TrackEvent(eventHandles, "PET_BATTLE_PVP_DUEL_REQUESTED")
+end
+
+function DeclineDuel:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function DeclineDuel:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function DeclineDuel:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:RegisterModuleEvents()
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+		else
+			self:OnDisable()
+		end
 	end
 end
 

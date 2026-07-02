@@ -57,6 +57,7 @@ local PlayerCastBar = ns:NewModule("PlayerCastBar", "playerCastBar", { group = "
 local active = false
 local overlay -- visual mirror (icon + time); hidden when idle
 local driver -- invisible OnUpdate host; shown only while a cast is on screen
+local eventHandles = {}
 local eventsRegistered = false
 local suppressionHooked = false
 local overlayReplacing = false
@@ -268,6 +269,25 @@ local function WakeDriver()
 	UpdateMirror()
 end
 
+local function RegisterDriverEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	PlayerCastBar:TrackUnitEvent(eventHandles, "UNIT_SPELLCAST_START", WakeDriver, "player", "vehicle")
+	PlayerCastBar:TrackUnitEvent(eventHandles, "UNIT_SPELLCAST_CHANNEL_START", WakeDriver, "player", "vehicle")
+	PlayerCastBar:TrackUnitEvent(eventHandles, "UNIT_SPELLCAST_EMPOWER_START", WakeDriver, "player", "vehicle")
+	PlayerCastBar:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "PLAYER_ENTERING_WORLD")
+end
+
+local function UnregisterDriverEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
 -- ---------------------------------------------------------------------------
 -- Activation
 -- ---------------------------------------------------------------------------
@@ -280,23 +300,13 @@ local function Activate()
 	end
 
 	active = true
-
-	-- Register cast-start signals once. We only use them to wake the driver -
-	-- we never read the spell/cast payload, so there are no Secret concerns.
-	if not eventsRegistered then
-		eventsRegistered = true
-		PlayerCastBar:RegisterUnitEvent("UNIT_SPELLCAST_START", WakeDriver, "player", "vehicle")
-		PlayerCastBar:RegisterUnitEvent("UNIT_SPELLCAST_CHANNEL_START", WakeDriver, "player", "vehicle")
-		PlayerCastBar:RegisterUnitEvent("UNIT_SPELLCAST_EMPOWER_START", WakeDriver, "player", "vehicle")
-	end
-
-	-- Catch a cast that is already in progress (e.g. enabled mid-cast / login).
 	WakeDriver()
 	return true
 end
 
 local function Deactivate()
 	active = false
+	UnregisterDriverEvents()
 	if driver then
 		driver:Hide()
 	end
@@ -307,24 +317,32 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function PlayerCastBar:PLAYER_ENTERING_WORLD()
-	if active then
+	if not ns.db.playerCastBar.enable then
+		return
+	end
+	if not active then
+		Activate()
+	elseif active then
 		WakeDriver()
 	end
 end
 
 function PlayerCastBar:OnEnable()
-	-- PlayerCastingBarFrame ships with Blizzard_UIPanels_Game (not load-on-
-	-- demand), so it exists by PLAYER_LOGIN; retry on entering world just in
-	-- case it is built late.
-	if not Activate() then
-		self:RegisterEvent("PLAYER_ENTERING_WORLD", "PLAYER_ENTERING_WORLD")
-		active = true
+	if not ns.db.playerCastBar.enable then
+		return
 	end
+	RegisterDriverEvents()
+	Activate()
+end
+
+function PlayerCastBar:OnDisable()
+	Deactivate()
 end
 
 function PlayerCastBar:OnSettingChanged(key, value)
 	if key == "enable" then
 		if value then
+			RegisterDriverEvents()
 			Activate()
 		else
 			Deactivate()

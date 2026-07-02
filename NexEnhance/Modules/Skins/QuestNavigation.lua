@@ -14,14 +14,14 @@
 
 	Integration notes:
 	  * SuperTrackedFrame lives in the load-on-demand Blizzard_QuestNavigation
-	    addon, so we style on its ADDON_LOADED if it isn't ready yet.
+	    addon; we style via ns:RegisterAddOnLoadedCallback when needed.
 	  * Purely cosmetic / read-only: the OnUpdate is throttled to 0.5s and we
 	    only hook via HookScript / hooksecurefunc, so it stays taint-safe.
 --]]
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local C, F, L = ns.C, ns.F, ns.L
+local C, L, F = ns.C, ns.L, ns.F
 
 local _G = _G
 local abs, floor, max = math.abs, math.floor, math.max
@@ -51,6 +51,9 @@ local function HideTime(self)
 end
 
 local function UpdateArrival(self, elapsed)
+	if not QuestNavigation:IsEnabled() then
+		return
+	end
 	if not GetDistance then
 		return
 	end
@@ -89,7 +92,7 @@ local function UpdateArrival(self, elapsed)
 
 	local eta = abs(distance / max(emaSpeed, 0.1))
 	if self.TimeText then
-		F.SetPlainFormattedText(self.TimeText, TIMER_MINUTES_DISPLAY, floor(eta / 60), floor(eta % 60))
+		self.TimeText:SetFormattedText(TIMER_MINUTES_DISPLAY, floor(eta / 60), floor(eta % 60))
 		self.TimeText:Show()
 	end
 end
@@ -113,11 +116,22 @@ function QuestNavigation:Style()
 	end
 	self.styled = true
 
-	-- Match the addon font on the existing distance text.
+	-- Match the addon font on the existing distance text (keep GameFontNormal's
+	-- native shadow — it still renders correctly on this world-anchored frame).
 	local _, size, flags = frame.DistanceText:GetFont()
 	frame.DistanceText:SetFont(C.Media.Fonts.normal, size or 12, flags)
 
-	local time = F.CreatePlainFS(frame, size or 12)
+	-- ETA timer: do NOT use CreatePlainFS here. The manual nexShadow duplicate
+	-- offsets badly on SuperTrackedFrame's 3D text; copy DistanceText's shadow
+	-- instead (same approach as the 12.0.7 UI pass notes in the patch guide).
+	local time = frame:CreateFontString(nil, "BACKGROUND")
+	time:SetFont(C.Media.Fonts.normal, size or 12, flags)
+	local sox, soy = frame.DistanceText:GetShadowOffset()
+	time:SetShadowOffset(sox, soy)
+	local sr, sg, sb, sa = frame.DistanceText:GetShadowColor()
+	time:SetShadowColor(sr, sg, sb, sa)
+	local tr, tg, tb = frame.DistanceText:GetTextColor()
+	time:SetTextColor(tr, tg, tb)
 	time:SetPoint("TOP", frame.DistanceText, "BOTTOM", 0, -2)
 	time:SetHeight(20)
 	time:SetJustifyV("TOP")
@@ -131,20 +145,23 @@ function QuestNavigation:Style()
 	frame:HookScript("OnHide", HideTime)
 end
 
-local function OnQuestNavLoaded(_, addon)
-	if addon == "Blizzard_QuestNavigation" then
-		QuestNavigation.waiting = nil
-		QuestNavigation:Style()
-		ns:UnregisterEvent("ADDON_LOADED", OnQuestNavLoaded)
-	end
-end
-
 function QuestNavigation:OnEnable()
 	if _G.SuperTrackedFrame or C_AddOns.IsAddOnLoaded("Blizzard_QuestNavigation") then
 		self:Style()
-	elseif not self.waiting then
-		self.waiting = true
-		ns:RegisterEvent("ADDON_LOADED", OnQuestNavLoaded)
+	else
+		ns:RegisterAddOnLoadedCallback("Blizzard_QuestNavigation", function()
+			QuestNavigation:Style()
+		end)
+	end
+end
+
+function QuestNavigation:OnDisable()
+	lastDistance, lastUpdate, emaSpeed = nil, 0, nil
+end
+
+function QuestNavigation:OnSettingChanged(key, value)
+	if key == "enable" and not value then
+		self:OnDisable()
 	end
 end
 

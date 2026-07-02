@@ -77,6 +77,8 @@ ns:RegisterDefaults({
 
 local AutoResurrect = ns:NewModule("AutoResurrect", "autoResurrect", { group = "automation", title = L["Auto Resurrect"], order = 80 })
 
+local eventHandles = {}
+
 function AutoResurrect:RESURRECT_REQUEST(name)
 	if not ns.db.autoResurrect.enable then
 		return
@@ -115,8 +117,7 @@ function AutoResurrect:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	-- Keep the callback handle so we can unregister precisely on disable.
-	self._resurrectCallback = self:RegisterEvent("RESURRECT_REQUEST")
+	self:TrackEvent(eventHandles, "RESURRECT_REQUEST", "RESURRECT_REQUEST")
 end
 
 function AutoResurrect:UnregisterModuleEvents()
@@ -125,8 +126,7 @@ function AutoResurrect:UnregisterModuleEvents()
 	end
 	self.eventsRegistered = false
 
-	ns:UnregisterEvent("RESURRECT_REQUEST", self._resurrectCallback)
-	self._resurrectCallback = nil
+	ns:UnregisterModuleEventHandles(eventHandles)
 end
 
 function AutoResurrect:OnSettingChanged(key, value)
@@ -136,12 +136,16 @@ function AutoResurrect:OnSettingChanged(key, value)
 	if value then
 		self:RegisterModuleEvents()
 	else
-		self:UnregisterModuleEvents()
+		self:OnDisable()
 	end
 end
 
 function AutoResurrect:OnEnable()
 	self:RegisterModuleEvents()
+end
+
+function AutoResurrect:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoResurrect:RegisterOptions(category, builder)

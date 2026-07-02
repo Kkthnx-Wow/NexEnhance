@@ -44,6 +44,9 @@ ns:RegisterDefaults({
 
 local SocialColors = ns:NewModule("SocialColors", "socialColors", { group = "misc", title = L["Social Colours"], order = 10 })
 
+local eventHandles = {}
+local eventsRegistered = false
+
 -- ---------------------------------------------------------------------------
 -- Colour helpers
 -- ---------------------------------------------------------------------------
@@ -387,17 +390,40 @@ function SocialColors:OnEnable()
 	if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("Blizzard_GuildUI") then
 		self:HookGuild()
 	else
-		self:RegisterEvent("ADDON_LOADED")
+		self:RegisterModuleEvents()
 	end
 end
 
+function SocialColors:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "ADDON_LOADED", "ADDON_LOADED")
+end
+
+function SocialColors:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function SocialColors:OnDisable()
+	self:UnregisterModuleEvents()
+end
+
 function SocialColors:OnSettingChanged(key, value)
-	-- Enabling later installs the hooks (they no-op while disabled via IsActive).
-	if key == "enable" and value then
-		self:OnEnable()
+	if key == "enable" then
+		if value then
+			self:OnEnable()
+		else
+			self:UnregisterModuleEvents()
+		end
 	end
 end
 
 function SocialColors:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Social Class Colours"], L["Class-colour names and difficulty-colour levels in the Friends, Who and Guild panels (reload to disable)."])
+	builder:Checkbox(category, self, "enable", L["Enable Social Class Colours"], L["Class-colour names and difficulty-colour levels in the Friends, Who and Guild panels."])
 end

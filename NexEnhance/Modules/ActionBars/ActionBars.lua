@@ -79,6 +79,7 @@ ns:RegisterDefaults({
 })
 
 local ActionBars = ns:NewModule("ActionBars", "actionbars", { group = "actionbars", title = L["Action Bars"], order = 10 })
+local eventHandles = {}
 local zoneAbilityHooked
 local pendingStyling = false
 
@@ -794,6 +795,7 @@ function ActionBars:OnSettingChanged(key, value)
 	-- full disable cannot unhook secure post-hooks, but re-enabling can restyle
 	-- right away.
 	if key == "enable" and not value then
+		self:OnDisable()
 		return
 	end
 	if key == "enable" and value then
@@ -866,14 +868,24 @@ function ActionBars:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	-- Re-style when bars are toggled/created (e.g. entering/leaving a vehicle
-	-- or when the player enables extra bars). Cheap and event-driven.
-	self:RegisterEvent("UPDATE_BINDINGS", "RefreshActionBarStyling")
-	self:RegisterEvent("ACTIONBAR_PAGE_CHANGED", "RefreshActionBarStyling")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "RefreshActionBarStyling")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
-	self:RegisterEvent("PLAYER_REGEN_DISABLED", "UpdateMouseoverVisibility")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED", "UpdateMouseoverVisibility")
+	self:TrackEvent(eventHandles, "UPDATE_BINDINGS", "RefreshActionBarStyling")
+	self:TrackEvent(eventHandles, "ACTIONBAR_PAGE_CHANGED", "RefreshActionBarStyling")
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshActionBarStyling")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_DISABLED", "UpdateMouseoverVisibility")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "UpdateMouseoverVisibility")
+end
+
+function ActionBars:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function ActionBars:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 -- Re-apply any scale, styling, or equip-glow change that was blocked in combat.

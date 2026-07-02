@@ -34,6 +34,9 @@ local SetCVar = SetCVar
 local GetCVar = GetCVar
 local pairs = pairs
 local Enum = Enum
+local C_Timer = C_Timer
+local max = math.max
+local min = math.min
 local Round = Round or function(n)
 	return math.floor(n + 0.5)
 end
@@ -59,8 +62,8 @@ ns:RegisterDefaults({
 		style = 1, -- 1 colored+decimals, 2 colored, 3 plain+decimals, 4 plain
 		mmssThreshold = 90, -- seconds: below this show raw seconds, then mm:ss
 		minDuration = 3, -- hide text for cooldowns shorter than this many seconds
-		scaleText = false, -- shrink text on small cooldowns (relative to a default button)
-		minScale = 0.6, -- hide text once the relative scale drops below this
+		scaleText = true, -- scale countdown text with button/cooldown width
+		minScale = 0.5, -- hide text once relative scale drops below this
 		fontSize = 15,
 		fontOutline = "OUTLINE",
 	},
@@ -142,14 +145,83 @@ local function GetStyle()
 	return ns.db.cooldowns.style or 1
 end
 
--- Apply the NexEnhance font to the countdown FontString. Called once on init
--- and again from UpdateFormat when the user changes font settings. NOT called
--- on every SetCooldown event — that's the old costly path.
+-- 12.0.7 SetFont rejects "NONE"; omit flags or pass "" instead.
+local function NormalizeFontFlags(flags)
+	if not flags or flags == "NONE" or flags == "None" then
+		return ""
+	end
+	return flags
+end
+
+local function SetCountdownFontString(fs, fontSize, flags)
+	flags = NormalizeFontFlags(flags)
+	if flags == "" then
+		fs:SetFont(C.Media.Fonts.number, fontSize)
+	else
+		fs:SetFont(C.Media.Fonts.number, fontSize, flags)
+	end
+end
+
+local function ResolveCooldownWidth(cooldown)
+	local width = cooldown:GetWidth()
+	if F.CanAccessValue(width) and width and width > 0 then
+		return width
+	end
+	local parent = cooldown:GetParent()
+	if parent then
+		width = parent:GetWidth()
+		if F.CanAccessValue(width) and width and width > 0 then
+			return width
+		end
+	end
+	return nil
+end
+
+-- Width of the cooldown (or its parent button) times ancestor SetScale factors.
+local function GetCooldownScaleFactor(cooldown)
+	local factor = 1
+	local width = ResolveCooldownWidth(cooldown)
+	if width then
+		factor = width / SCALE_BASE
+	end
+	local frame = cooldown:GetParent()
+	while frame and frame ~= UIParent do
+		local s = frame:GetScale()
+		if F.CanAccessValue(s) and s then
+			factor = factor * s
+		end
+		frame = frame:GetParent()
+	end
+	return factor
+end
+
+-- Apply font size, optional button scaling, and visibility on tiny cooldowns.
 local function ApplyFont(cooldown)
 	local fs = cooldown:GetCountdownFontString()
-	if fs then
-		fs:SetFont(C.Media.Fonts.number, ns.db.cooldowns.fontSize, ns.db.cooldowns.fontOutline)
+	if not fs then
+		return
 	end
+
+	local cfg = ns.db.cooldowns
+	local fontSize = cfg.fontSize or 15
+	local flags = cfg.fontOutline
+
+	if cfg.scaleText and Cooldowns:IsEnabled() then
+		local factor = GetCooldownScaleFactor(cooldown)
+		local minScale = cfg.minScale or 0
+		if factor < minScale then
+			fs:SetAlpha(0)
+			return
+		end
+		fs:SetAlpha(1)
+		fs:SetScale(1)
+		fontSize = Round(max(8, min(40, fontSize * factor)))
+	else
+		fs:SetScale(1)
+		fs:SetAlpha(1)
+	end
+
+	SetCountdownFontString(fs, fontSize, flags)
 end
 
 -- Apply the minimum-duration threshold. The client suppresses countdown text
@@ -160,38 +232,10 @@ local function ApplyMinDuration(cooldown)
 	end
 end
 
--- Scale the countdown text relative to the button size and hide it on buttons
--- that end up too small (so 1-pixel aura cooldowns don't show unreadable text).
-local function UpdateCooldownTextScale(cooldown, width)
-	local fs = cooldown:GetCountdownFontString()
-	if not fs then
-		return
-	end
-
-	if not ns.db.cooldowns.scaleText or not Cooldowns:IsEnabled() then
-		fs:SetScale(1)
-		fs:SetAlpha(1)
-		return
-	end
-
-	local scale, alpha = 1, 1
-	if width == nil then
-		width = cooldown:GetWidth()
-	end
-	-- Width can be a 12.0 secret value on some cooldown frames; gate reads on it.
-	if F.CanAccessValue(width) and width and width > 0 then
-		scale = Round(width) / SCALE_BASE
-		local minScale = ns.db.cooldowns.minScale or 0
-		alpha = (Round(scale * 100) >= Round(minScale * 100)) and 1 or 0
-	end
-	fs:SetScale(scale)
-	fs:SetAlpha(alpha)
-end
-
 -- HookScript passes (self, width, height); one shared handler, no per-frame
 -- closure.
-local function OnCooldownSizeChanged(cooldown, width)
-	UpdateCooldownTextScale(cooldown, width)
+local function OnCooldownSizeChanged(cooldown)
+	ApplyFont(cooldown)
 end
 
 -- Hook handler shared by all cooldown methods. hooksecurefunc passes the
@@ -206,15 +250,23 @@ end
 -- in UpdateFormat (for live settings changes). The old code ran SetFont +
 -- GetWidth + SetScale on every single SetCooldown call, which fires on every
 -- GCD and every ability press.
-local function OnCooldownSet(cooldown)
+local function OnCooldownSet(cooldown, arg2)
 	if not cooldown or cooldown.noCooldownCount then
 		return
 	end
 	if not Cooldowns:IsEnabled() then
 		return
 	end
+	-- SetCooldown passes (start, duration) numbers; only DurationObject hooks
+	-- carry a maskable object in arg2 (SetCooldownFromDurationObject, etc.).
+	local argType = type(arg2)
+	if (argType == "table" or argType == "userdata") and arg2.IsZero then
+		F.MaskCooldownSwipeFromDurationObject(cooldown, arg2)
+	end
 	if hookedCooldowns[cooldown] then
-		return -- already initialised; nothing to do
+		-- Blizzard may reset the countdown FontString each tick; keep our size.
+		ApplyFont(cooldown)
+		return
 	end
 
 	-- First sighting: set up the formatter, font, min-duration and size hook.
@@ -223,7 +275,14 @@ local function OnCooldownSet(cooldown)
 	ApplyFont(cooldown)
 	ApplyMinDuration(cooldown)
 	cooldown:HookScript("OnSizeChanged", OnCooldownSizeChanged)
-	UpdateCooldownTextScale(cooldown, cooldown:GetWidth())
+	if ns.db.cooldowns.scaleText then
+		-- Cooldown width is often 0 on the first SetCooldown; re-measure next frame.
+		C_Timer.After(0, function()
+			if cooldown and hookedCooldowns[cooldown] then
+				ApplyFont(cooldown)
+			end
+		end)
+	end
 end
 
 -- ---------------------------------------------------------------------------
@@ -260,7 +319,6 @@ function Cooldowns:UpdateFormat()
 			ApplyFont(cooldown)
 			ApplyMinDuration(cooldown)
 		end
-		UpdateCooldownTextScale(cooldown, cooldown:GetWidth())
 	end
 end
 
@@ -288,7 +346,7 @@ function Cooldowns:RegisterOptions(category, builder)
 	})
 	builder:Slider(category, self, "mmssThreshold", L["Minutes Format Threshold"], L["Below this many seconds the countdown shows raw seconds; at or above it switches to mm:ss."], 60, 300, 5)
 	builder:Slider(category, self, "minDuration", L["Minimum Cooldown Duration"], L["Hide countdown text for cooldowns shorter than this many seconds. Keeps 1.5s GCDs and other short cooldowns quiet."], 0, 10, 0.5)
-	builder:Checkbox(category, self, "scaleText", L["Scale Cooldown Text"], L["Scale the countdown text with the button size and hide it on very small cooldowns."])
+	builder:Checkbox(category, self, "scaleText", L["Scale Cooldown Text"], L["Grow or shrink countdown numbers with the button size. Turn off for a fixed font size on every cooldown."])
 	builder:Slider(category, self, "minScale", L["Minimum Text Scale"], L["Hide the countdown text once its scale drops below this fraction of a normal button (needs Scale Cooldown Text)."], 0, 1, 0.05)
 end
 

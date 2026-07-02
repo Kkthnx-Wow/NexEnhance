@@ -30,7 +30,6 @@ local GetNamePlates = C_NamePlate.GetNamePlates
 local UnitIsRelatedToActiveQuest = C_QuestLog and C_QuestLog.UnitIsRelatedToActiveQuest
 local GetUnitTooltipInfo = C_TooltipInfo and C_TooltipInfo.GetUnit
 local UnitIsPlayer = UnitIsPlayer
-local UnitIsUnit = UnitIsUnit
 local IsInInstance = IsInInstance
 local CanAccess = F.CanAccessValue
 local IsSecret = F.IsSecret
@@ -81,6 +80,9 @@ local inInstance = false
 local modifierDown = false
 local lastHoverWidget
 local running = false -- module active (toggled live via OnSettingChanged)
+local eventHandles = {}
+local refreshRunner
+local REFRESH_BATCH_THRESHOLD = 6
 
 -- ---------------------------------------------------------------------------
 -- Progress text extraction (secret-guarded before any string work).
@@ -289,12 +291,10 @@ local function AttachToNameplate(nameplate, unit)
 
 	widget.unit = unit
 	widget.isHover = false
-	-- Target check is identity-restricted in instances; gate on CanAccess so we
-	-- never store/compare a secret boolean (it would error in SetShown later).
+	-- Target check is identity-restricted in instances; SafeUnitIsUnit handles it.
 	local isTarget = false
 	if cfg.progressMode == MODE_TARGET then
-		local t = UnitIsUnit("target", unit)
-		isTarget = CanAccess(t) and t or false
+		isTarget = F.SafeUnitIsUnit("target", unit)
 	end
 	widget.isTarget = isTarget
 
@@ -339,7 +339,25 @@ function Module:ForEachActive(method)
 end
 
 function Module:RefreshAllQuests()
-	self:ForEachActive(Widget_UpdateQuest)
+	local list = {}
+	for widget in pairs(active) do
+		if widget:IsShown() then
+			list[#list + 1] = widget
+		end
+	end
+	if #list == 0 then
+		return
+	end
+	if #list <= REFRESH_BATCH_THRESHOLD then
+		for i = 1, #list do
+			Widget_UpdateQuest(list[i])
+		end
+		return
+	end
+	if not refreshRunner then
+		refreshRunner = ns:CreateRunner("QuestIndicator", 6)
+	end
+	refreshRunner:Run(list, Widget_UpdateQuest)
 end
 
 function Module:RefreshAllProgress()
@@ -376,8 +394,7 @@ function Module:PLAYER_TARGET_CHANGED()
 	end
 	for widget in pairs(active) do
 		if widget:IsShown() and widget.unit then
-			local t = UnitIsUnit("target", widget.unit)
-			widget.isTarget = CanAccess(t) and t or false
+			widget.isTarget = F.SafeUnitIsUnit("target", widget.unit)
 			Widget_UpdateProgressShown(widget)
 		end
 	end
@@ -495,13 +512,31 @@ function Module:EnsureEvents()
 		Module:RefreshAllQuests()
 	end)
 
-	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-	self:RegisterEvent("NAME_PLATE_UNIT_REMOVED")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED")
-	self:RegisterEvent("MODIFIER_STATE_CHANGED")
-	self:RegisterEvent("UNIT_QUEST_LOG_CHANGED", "OnQuestLogChanged")
-	self:RegisterEvent("QUEST_LOG_UPDATE", "OnQuestLogChanged")
+	self:TrackEvent(eventHandles, "NAME_PLATE_UNIT_ADDED")
+	self:TrackEvent(eventHandles, "NAME_PLATE_UNIT_REMOVED")
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED")
+	self:TrackEvent(eventHandles, "MODIFIER_STATE_CHANGED")
+	self:TrackEvent(eventHandles, "UNIT_QUEST_LOG_CHANGED", "OnQuestLogChanged")
+	self:TrackEvent(eventHandles, "QUEST_LOG_UPDATE", "OnQuestLogChanged")
+end
+
+function Module:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+	self.RefreshQuestsDebounced = nil
+end
+
+function Module:OnDisable()
+	running = false
+	if refreshRunner then
+		refreshRunner:Cancel()
+	end
+	self:HideAll()
+	self:UnregisterModuleEvents()
 end
 
 function Module:HideAll()
@@ -530,8 +565,7 @@ function Module:OnSettingChanged(key, value)
 			self:EnsureEvents()
 			self:Apply()
 		else
-			running = false
-			self:HideAll()
+			self:OnDisable()
 		end
 		return
 	end

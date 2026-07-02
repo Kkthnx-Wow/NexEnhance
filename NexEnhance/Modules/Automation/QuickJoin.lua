@@ -66,6 +66,9 @@ ns:RegisterDefaults({
 
 local QuickJoin = ns:NewModule("QuickJoin", "quickJoin", { group = "automation", title = L["Quick Join"], order = 35, since = "1.2.9" })
 
+local eventHandles = {}
+local eventsRegistered = false
+
 -- ---------------------------------------------------------------------------
 -- Score helper (mirrors the Tooltip module's GetDungeonScore colouring)
 -- ---------------------------------------------------------------------------
@@ -285,7 +288,36 @@ function QuickJoin:Setup()
 
 	-- Auto-accept applicants.
 	self:CreateAutoAcceptCheck()
-	self:RegisterEvent("LFG_LIST_APPLICANT_LIST_UPDATED")
+	self:RegisterModuleEvents()
+end
+
+function QuickJoin:RegisterModuleEvents()
+	if eventsRegistered or not self.setupDone then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "LFG_LIST_APPLICANT_LIST_UPDATED", "LFG_LIST_APPLICANT_LIST_UPDATED")
+end
+
+function QuickJoin:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function QuickJoin:StopWaiting()
+	if self.addonLoadHandle then
+		ns:UnregisterEvent("ADDON_LOADED", self.addonLoadHandle)
+		self.addonLoadHandle = nil
+	end
+	self.waiting = nil
+end
+
+function QuickJoin:Stop()
+	self:UnregisterModuleEvents()
+	self:StopWaiting()
 end
 
 -- Blizzard_GroupFinder is load-on-demand, so set up now if it's already here,
@@ -302,19 +334,25 @@ function QuickJoin:TrySetup()
 	end
 
 	self.waiting = true
-	local handle
-	handle = ns:RegisterEvent("ADDON_LOADED", function(_, addon)
+	self.addonLoadHandle = ns:RegisterEvent("ADDON_LOADED", function(_, addon)
 		if addon == "Blizzard_GroupFinder" then
-			self.waiting = nil
-			ns:UnregisterEvent("ADDON_LOADED", handle)
-			self:Setup()
+			QuickJoin:StopWaiting()
+			QuickJoin:Setup()
 		end
 	end)
 end
 
+function QuickJoin:OnDisable()
+	self:Stop()
+end
+
 function QuickJoin:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:TrySetup()
+	if key == "enable" then
+		if value then
+			self:TrySetup()
+		else
+			self:Stop()
+		end
 	end
 end
 

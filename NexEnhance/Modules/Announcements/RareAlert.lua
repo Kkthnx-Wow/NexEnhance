@@ -1011,6 +1011,10 @@ function RareAlert:OnEnable()
 	end
 end
 
+function RareAlert:OnDisable()
+	Teardown()
+end
+
 function RareAlert:OnSettingChanged(key, value)
 	if not db().enable then
 		Teardown()

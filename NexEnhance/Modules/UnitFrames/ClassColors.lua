@@ -4,11 +4,16 @@
 	Re-colours the health bars of the default Blizzard unit frames:
 	  * players -> their class colour;
 	  * NPCs    -> their reaction colour (hostile red, unfriendly orange, neutral
-	               yellow, friendly green). Category from UnitSelectionType (same
-	               as nameplates); tint from FACTION_BAR_COLORS with unfriendly
-	               orange boosted for HUD bars. UnitReaction fallback when secret.
+	               yellow, friendly green). Player pets and other friendly
+	               player-controlled units stay green (or class-coloured when
+	               available), never hostile NPC reaction.
 	Covered frames: player, pet, target, target-of-target, focus, focus-target,
-	the raid boss frames (Boss1..Boss5), party and the raid-style/compact frames.
+	the raid boss frames (Boss1..Boss5), and the Dragonflight party HUD portraits.
+	Offline players: grey desaturated health (via GetUnitHealthColor), plus on
+	target/focus/toT/boss HUD frames a desaturated portrait and the standard
+	Disconnect-Icon overlay (party portraits already get this from Blizzard).
+	Compact raid/party frames (Edit Mode) are left to Blizzard — they already
+	expose a "Class Colors" raid-profile option via CompactUnitFrame_UpdateHealthColor.
 
 	Why NPCs needed fixing: the default atlas health bar is GREEN for everyone
 	(target/focus/boss bars all share "UI-HUD-UnitFrame-Target-...-Bar-Health",
@@ -29,11 +34,6 @@
 	    the name). Blizzard tints it with `UnitSelectionColor` (reaction green,
 	    hostile red, NPC rep, etc.) inside `CheckFaction`. See TargetFrameLayout
 	    for optional player-style strip/name tweaks.
-	  * Compact frames (raid-style party / raid / arena) colour through
-	    `CompactUnitFrame_UpdateHealthColor(frame)`. Their bars use a plain
-	    texture, so no desaturation is needed - just SetStatusBarColor. We skip
-	    nameplates (forbidden / secret healthBar) and defer to Blizzard when
-	    threat-colouring is enabled on the frame.
 
 	hooksecurefunc is used for both, so we never taint the secure unit buttons.
 	SetStatusBarColor / SetStatusBarDesaturated accept tainted callers (12.0+).
@@ -56,19 +56,24 @@ local F, L = ns.F, ns.L
 -- Localised globals.
 local _G = _G
 local UnitClass = UnitClass
+local UnitExists = UnitExists
 local UnitIsPlayer = UnitIsPlayer
 local UnitIsConnected = UnitIsConnected
-local UnitThreatSituation = UnitThreatSituation
 local UnitTreatAsPlayerForDisplay = UnitTreatAsPlayerForDisplay
+local SetDesaturation = SetDesaturation
 local hooksecurefunc = hooksecurefunc
 local ipairs = ipairs
-local strfind = string.find
 
 -- Shared secret-value gate (Core/Functions.lua). It accepts any value and never
 -- errors, so it is safe to call before we branch on a possibly-secret result.
 local IsSecret = F.IsSecret
 
 local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS
+
+-- Blizzard uses 0.5 grey for offline bars (UnitFrameHealthBar_Update,
+-- CompactUnitFrame_UpdateHealthColor). HUD atlas bars need desaturation too.
+local DISCONNECTED_COLOR = { r = 0.5, g = 0.5, b = 0.5 }
+local DISCONNECT_ICON = "Interface\\CharacterFrame\\Disconnect-Icon"
 
 ns:RegisterDefaults({
 	classColors = {
@@ -78,8 +83,11 @@ ns:RegisterDefaults({
 
 local ClassColors = ns:NewModule("ClassColors", "classColors", { group = "unitframes", title = L["Class Colours"], order = 10 })
 
--- Returns the class colour for a unit, or nil if it should keep Blizzard's
--- default colour (NPC, disconnected, classless, or identity-restricted/secret).
+local eventHandles = {}
+local eventsRegistered = false
+
+-- Returns the class colour for a unit, or DISCONNECTED_COLOR when offline,
+-- or nil if it should keep Blizzard's default (NPC, classless, or secret).
 -- Each identity read is gated by F.IsSecret *before* we boolean-test it,
 -- so this never errors on a secret value under tainted execution.
 local function GetPlayerClassColor(unit)
@@ -99,8 +107,11 @@ local function GetPlayerClassColor(unit)
 	end
 
 	local connected = UnitIsConnected(unit)
-	if IsSecret(connected) or not connected then
+	if IsSecret(connected) then
 		return nil
+	end
+	if not connected then
+		return DISCONNECTED_COLOR
 	end
 
 	local _, class = UnitClass(unit)
@@ -119,16 +130,21 @@ local function GetUnitHealthColor(unit)
 		return nil
 	end
 
-	local isPlayer = UnitIsPlayer(unit)
-	if IsSecret(isPlayer) then
+	local connected = UnitIsConnected(unit)
+	local connectedKnown = F.BooleanIsTrue(connected)
+	if connectedKnown == nil then
+		return nil
+	end
+	if not connectedKnown then
+		return DISCONNECTED_COLOR.r, DISCONNECTED_COLOR.g, DISCONNECTED_COLOR.b
+	end
+
+	local isPlayer = F.BooleanIsTrue(UnitIsPlayer(unit))
+	if isPlayer == nil then
 		return nil
 	end
 
 	if isPlayer then
-		local connected = UnitIsConnected(unit)
-		if IsSecret(connected) or not connected then
-			return nil
-		end
 		local _, class = UnitClass(unit)
 		if IsSecret(class) or not class then
 			return nil
@@ -140,7 +156,110 @@ local function GetUnitHealthColor(unit)
 		return nil
 	end
 
+	-- Pets/guardians: never run NPC reaction (hostile red) on player-controlled units.
+	if F.IsFriendlyControlledUnit(unit) then
+		local color = GetPlayerClassColor(unit)
+		if color then
+			return color.r, color.g, color.b
+		end
+		local friendly = _G.FACTION_BAR_COLORS and _G.FACTION_BAR_COLORS[5]
+		if friendly then
+			return friendly.r, friendly.g, friendly.b
+		end
+		return 0, 1, 0
+	end
+
+	local treatAsPlayer = UnitTreatAsPlayerForDisplay and UnitTreatAsPlayerForDisplay(unit)
+	if not IsSecret(treatAsPlayer) and treatAsPlayer then
+		local _, class = UnitClass(unit)
+		if not IsSecret(class) and class then
+			local color = CLASS_COLORS[class]
+			if color then
+				return color.r, color.g, color.b
+			end
+		end
+	end
+
 	return F.GetNpcReactionColor(unit)
+end
+
+-- Offline players: party frames use PartyMemberFrameMixin:UpdateOnlineStatus
+-- (desaturated portrait + Disconnect-Icon overlay + grey full health bar).
+-- Target/focus HUD frames ship without that overlay, so we mirror the party look
+-- when Class Colours is enabled. Health tint is handled above; this covers portrait.
+local function GetHudPortrait(frame)
+	if not frame then
+		return nil, nil
+	end
+	local container = frame.TargetFrameContainer
+	if container and container.Portrait then
+		return container.Portrait, container
+	end
+	if frame.Portrait then
+		return frame.Portrait, frame
+	end
+	return nil, nil
+end
+
+local function EnsureDisconnectIcon(anchorFrame, portrait)
+	if not anchorFrame.nexDisconnectIcon then
+		local icon = anchorFrame:CreateTexture(nil, "OVERLAY", nil, 7)
+		icon:SetTexture(DISCONNECT_ICON)
+		icon:SetSize(64, 64)
+		icon:SetPoint("CENTER", portrait, "CENTER", 0, 0)
+		icon:Hide()
+		anchorFrame.nexDisconnectIcon = icon
+	end
+	return anchorFrame.nexDisconnectIcon
+end
+
+local function ShouldShowDisconnect(unit)
+	if not unit or not UnitExists(unit) then
+		return false
+	end
+	local isPlayer = F.BooleanIsTrue(UnitIsPlayer(unit))
+	if isPlayer ~= true then
+		return false
+	end
+	local connected = F.BooleanIsTrue(UnitIsConnected(unit))
+	if connected == nil then
+		return false
+	end
+	return not connected
+end
+
+local function IsPartyHudMemberFrame(frame)
+	return frame and frame.PartyMemberOverlay ~= nil
+end
+
+local function UpdateDisconnectVisuals(frame)
+	if not frame or IsPartyHudMemberFrame(frame) then
+		return
+	end
+	local portrait, anchor = GetHudPortrait(frame)
+	if not portrait or not anchor then
+		return
+	end
+	local icon = EnsureDisconnectIcon(anchor, portrait)
+	local show = ns.db.classColors.enable and ShouldShowDisconnect(frame.unit)
+	if show then
+		if SetDesaturation then
+			SetDesaturation(portrait, true)
+		end
+		icon:Show()
+	else
+		if SetDesaturation then
+			SetDesaturation(portrait, false)
+		end
+		icon:Hide()
+	end
+end
+
+local function UpdateDisconnectFromHealthBar(statusbar)
+	local frame = statusbar and statusbar.unitFrame
+	if frame and not IsPartyHudMemberFrame(frame) and GetHudPortrait(frame) then
+		UpdateDisconnectVisuals(frame)
+	end
 end
 
 -- Atlas HUD bars use lockColor so Blizzard skips SetStatusBarColor in
@@ -174,54 +293,15 @@ local function ColorStandardHealth(statusbar, unit)
 	else
 		-- Identity-restricted / secret / undecidable: restore the saturated
 		-- atlas so Blizzard's default green stands instead of a wrong guess.
+		-- (Disconnected units always resolve to grey above via GetUnitHealthColor.)
 		ApplyHudHealthColor(statusbar, HUD_DEFAULT_COLOR.r, HUD_DEFAULT_COLOR.g, HUD_DEFAULT_COLOR.b, false)
 	end
-end
-
--- ---------------------------------------------------------------------------
--- Compact frames (plain texture -> straight colour, no desaturation)
--- ---------------------------------------------------------------------------
-local function ColorCompactHealth(frame)
-	if not frame or not ns.db.classColors.enable then
-		return
-	end
-
-	-- Nameplates also route through CompactUnitFrame_UpdateHealthColor. Their
-	-- frames can be forbidden and, on 12.0, their healthBar is handed back as a
-	-- secret value, so calling SetStatusBarColor on it throws "bad self". We
-	-- only colour the party/raid compact frames, never nameplates.
-	if frame.IsForbidden and frame:IsForbidden() then
-		return
-	end
-
-	local healthBar = frame.healthBar
-	if not healthBar or IsSecret(healthBar) then
-		return
-	end
-
-	local unit = frame.displayedUnit or frame.unit
-	if not unit or IsSecret(unit) or strfind(unit, "nameplate") then
-		return
-	end
-
-	-- Leave Blizzard's aggro/threat tint when the frame has that option enabled
-	-- (Edit Mode raid/party frames). Matches CompactUnitFrame_UpdateHealthColor.
-	if frame.displayThreatHealthBarColor then
-		local threat = UnitThreatSituation(unit)
-		if not IsSecret(threat) and threat and threat > 0 then
-			return
-		end
-	end
-
-	local color = GetPlayerClassColor(unit)
-	if color then
-		healthBar:SetStatusBarColor(color.r, color.g, color.b)
-	end
+	UpdateDisconnectFromHealthBar(statusbar)
 end
 
 -- ---------------------------------------------------------------------------
 -- Immediate refresh for the standard frames that exist at login (compact
--- frames refresh themselves continuously, so they need no manual pass).
+-- raid/party frames refresh via Blizzard's own profile options).
 -- ---------------------------------------------------------------------------
 local standardFrames = {
 	"PlayerFrame",
@@ -269,9 +349,11 @@ function ClassColors:RefreshStandard()
 		local frame = _G[standardFrames[i]]
 		if frame then
 			RefreshBar(frame.healthbar)
+			UpdateDisconnectVisuals(frame)
 			-- Target/Focus carry a target-of-target subframe.
 			if frame.totFrame then
 				RefreshBar(frame.totFrame.healthbar)
+				UpdateDisconnectVisuals(frame.totFrame)
 			end
 		end
 	end
@@ -288,6 +370,7 @@ function ClassColors:RefreshStandard()
 	-- Raid boss frames.
 	ForEachBossFrame(function(frame)
 		RefreshBar(frame.healthbar)
+		UpdateDisconnectVisuals(frame)
 	end)
 end
 
@@ -310,6 +393,20 @@ local function HookClassification(frame)
 	frame.nexClassColorHooked = true
 	hooksecurefunc(frame, "CheckClassification", function(f)
 		ColorStandardHealth(f.healthbar, f.unit)
+	end)
+end
+
+-- CheckFaction resets portrait vertex colour; re-apply offline desaturation + icon.
+local function HookCheckFaction(frame)
+	if not frame or frame.nexDisconnectHooked then
+		return
+	end
+	if type(frame.CheckFaction) ~= "function" then
+		return
+	end
+	frame.nexDisconnectHooked = true
+	hooksecurefunc(frame, "CheckFaction", function(f)
+		UpdateDisconnectVisuals(f)
 	end)
 end
 
@@ -343,16 +440,14 @@ function ClassColors:InstallHooks()
 	-- Re-tint after the atlas re-skin on the frames that do it.
 	HookClassification(_G["TargetFrame"])
 	HookClassification(_G["FocusFrame"])
+	HookCheckFaction(_G["TargetFrame"])
+	HookCheckFaction(_G["FocusFrame"])
 
 	-- Boss frames share the TargetFrame atlas + CheckClassification re-skin.
 	ForEachBossFrame(function(frame)
 		HookClassification(frame)
+		HookCheckFaction(frame)
 	end)
-
-	-- Compact (raid-style) frames.
-	if _G["CompactUnitFrame_UpdateHealthColor"] then
-		hooksecurefunc("CompactUnitFrame_UpdateHealthColor", ColorCompactHealth)
-	end
 
 	HookPartyUpdateArt()
 end
@@ -365,40 +460,60 @@ function ClassColors:RefreshEvent()
 	self:RefreshStandard()
 end
 
+function ClassColors:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshEvent")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "RefreshEvent")
+	self:TrackEvent(eventHandles, "PLAYER_FOCUS_CHANGED", "RefreshEvent")
+	self:TrackEvent(eventHandles, "UNIT_CLASSIFICATION_CHANGED", "RefreshEvent")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED", "RefreshEvent")
+	self:TrackEvent(eventHandles, "GROUP_ROSTER_UPDATE", "RefreshEvent")
+	self:TrackEvent(eventHandles, "UNIT_FACTION", "RefreshEvent")
+	self:TrackEvent(eventHandles, "UNIT_THREAT_LIST_UPDATE", "RefreshEvent")
+	self:TrackEvent(eventHandles, "UNIT_THREAT_SITUATION_UPDATE", "RefreshEvent")
+	self:TrackEvent(eventHandles, "UNIT_CONNECTION", "RefreshEvent")
+	self:TrackUnitEvent(eventHandles, "UNIT_PET", "RefreshEvent", "player")
+	self:TrackEvent(eventHandles, "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
+end
+
+function ClassColors:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
 function ClassColors:OnEnable()
 	self:InstallHooks()
-
-	self:RegisterEvent("PLAYER_ENTERING_WORLD", "RefreshEvent")
-	self:RegisterEvent("PLAYER_TARGET_CHANGED", "RefreshEvent")
-	self:RegisterEvent("PLAYER_FOCUS_CHANGED", "RefreshEvent")
-	self:RegisterEvent("UNIT_CLASSIFICATION_CHANGED", "RefreshEvent")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED", "RefreshEvent")
-	self:RegisterEvent("GROUP_ROSTER_UPDATE", "RefreshEvent")
-	-- Reaction tint can change without a retarget (mind control, faction flip).
-	self:RegisterEvent("UNIT_FACTION", "RefreshEvent")
-	-- Neutral → combat-hostile (pulled yellow mob) updates threat before health ticks.
-	self:RegisterEvent("UNIT_THREAT_LIST_UPDATE", "RefreshEvent")
-	-- Same pull/aggro path Blizzard uses on compact frames (UpdateHealthColor).
-	self:RegisterEvent("UNIT_THREAT_SITUATION_UPDATE", "RefreshEvent")
-	-- Party disconnect/reconnect toggles desaturation alongside health updates.
-	self:RegisterEvent("UNIT_CONNECTION", "RefreshEvent")
-	-- Boss frames appear mid-fight; refresh when an encounter engages units.
-	self:RegisterEvent("INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
-
+	self:RegisterModuleEvents()
 	self:RefreshStandard()
 end
 
-function ClassColors:OnSettingChanged(_, value)
+function ClassColors:OnDisable()
+	self:UnregisterModuleEvents()
+	self:RefreshStandard()
+end
+
+function ClassColors:OnSettingChanged(key, value)
+	if key ~= "enable" then
+		return
+	end
 	if value then
 		self:InstallHooks()
+		self:RegisterModuleEvents()
+		self:RefreshStandard()
+	else
+		self:OnDisable()
 	end
-	-- Re-run the standard pass: enabling applies colours now; disabling
-	-- re-saturates the bars (Blizzard restores its own colour on the next tick).
-	self:RefreshStandard()
 end
 
 function ClassColors:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Class-Coloured Health"], L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."])
+	builder:Checkbox(category, self, "enable", L["Enable Class-Coloured Health"], L["Colour HUD unit-frame health bars by class for players and by reaction for NPCs (player, pet, target, focus, boss, party portraits). Offline players use a grey desaturated health bar, desaturated portrait, and disconnect icon on target/focus (matching party frames). Compact raid/party frames use Blizzard's own Class Colors option."])
 end
 
 -- ---------------------------------------------------------------------------
@@ -426,10 +541,10 @@ local function DumpFrame(label, frame)
 
 	local unit = bar.unit or frame.unit
 	local r, g, b = bar:GetStatusBarColor()
-	local color = GetPlayerClassColor(unit)
+	local hr, hg, hb = GetUnitHealthColor(unit)
 	local isPlayer = unit and UnitIsPlayer(unit)
 	local desat = bar.IsStatusBarDesaturated and bar:IsStatusBarDesaturated() or nil
-	ns.F.Print(string.format("%s unit=%s lockColor=%s isPlayer=%s secret=%s computed=[%s] barColor=[%s] desat=%s", label, tostring(unit), tostring(bar.lockColor), tostring(IsSecret(isPlayer) and "SECRET" or isPlayer), tostring(IsSecret(isPlayer)), color and fmt(color.r, color.g, color.b) or "nil", fmt(r, g, b), tostring(desat)))
+	ns.F.Print(string.format("%s unit=%s lockColor=%s isPlayer=%s secret=%s computed=[%s] barColor=[%s] desat=%s", label, tostring(unit), tostring(bar.lockColor), tostring(IsSecret(isPlayer) and "SECRET" or isPlayer), tostring(IsSecret(isPlayer)), hr and fmt(hr, hg, hb) or "nil", fmt(r, g, b), tostring(desat)))
 end
 
 function ClassColors:Debug()
@@ -438,6 +553,7 @@ function ClassColors:Debug()
 	ns.F.Print("hooksInstalled =", tostring(self.hooksInstalled))
 	ns.F.Print("CLASS_COLORS source =", _G["CUSTOM_CLASS_COLORS"] and "CUSTOM" or "RAID")
 	DumpFrame("PlayerFrame", _G["PlayerFrame"])
+	DumpFrame("PetFrame", _G["PetFrame"])
 	DumpFrame("TargetFrame", _G["TargetFrame"])
 	DumpFrame("FocusFrame", _G["FocusFrame"])
 	ns.F.Print("Forcing a refresh now...")

@@ -56,7 +56,8 @@ local GuildText = ns:NewModule("GuildText", "guildText", { group = "datatext", t
 local cfg
 local text
 local hooksInstalled
-local eventsRegistered
+local eventHandles = {}
+local eventsRegistered = false
 local resendRequest
 
 local guildTable, clubTable = {}, {}
@@ -455,21 +456,41 @@ function GuildText:Create()
 
 	self:InstallHooks()
 
-	if not eventsRegistered then
-		self:RegisterEvent("PLAYER_ENTERING_WORLD")
-		self:RegisterEvent("PLAYER_GUILD_UPDATE")
-		self:RegisterEvent("GUILD_ROSTER_UPDATE")
-		self:RegisterEvent("GUILD_MOTD")
-		self:RegisterEvent("CHAT_MSG_SYSTEM")
-		self:RegisterEvent("MODIFIER_STATE_CHANGED")
-		eventsRegistered = true
-	end
+	self:RegisterModuleEvents()
 
 	if IsInGuild() and GuildRoster then
 		GuildRoster()
 	end
 
 	self:UpdateDisplay()
+end
+
+function GuildText:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "PLAYER_ENTERING_WORLD")
+	self:TrackEvent(eventHandles, "PLAYER_GUILD_UPDATE", "PLAYER_GUILD_UPDATE")
+	self:TrackEvent(eventHandles, "GUILD_ROSTER_UPDATE", "GUILD_ROSTER_UPDATE")
+	self:TrackEvent(eventHandles, "GUILD_MOTD", "GUILD_MOTD")
+	self:TrackEvent(eventHandles, "CHAT_MSG_SYSTEM", "CHAT_MSG_SYSTEM")
+	self:TrackEvent(eventHandles, "MODIFIER_STATE_CHANGED", "MODIFIER_STATE_CHANGED")
+end
+
+function GuildText:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function GuildText:Stop()
+	self:UnregisterModuleEvents()
+	if text then
+		text:Hide()
+	end
 end
 
 function GuildText:OnEnable()
@@ -480,13 +501,17 @@ function GuildText:OnEnable()
 	self:Create()
 end
 
+function GuildText:OnDisable()
+	self:Stop()
+end
+
 function GuildText:OnSettingChanged(key, value)
 	cfg = ns.db.guildText
 	if key == "enable" then
 		if value then
 			self:Create()
-		elseif text then
-			text:Hide()
+		else
+			self:Stop()
 		end
 	elseif key == "maxMembers" or key == "showMOTD" then
 		local button = _G.GuildMicroButton

@@ -27,6 +27,28 @@ local C_UnitAuras_GetAuraDataByAuraInstanceID = C_UnitAuras.GetAuraDataByAuraIns
 local C_MountJournal_GetMountFromSpell = C_MountJournal and C_MountJournal.GetMountFromSpell
 local BAGSLOT, BANK, UNKNOWN = BAGSLOT, BANK, UNKNOWN
 local LEARNT_STRING = "|cffff0000" .. ALREADY_LEARNED .. "|r"
+local stackCache = {}
+
+local function GetItemStackCount(itemID)
+	local cached = stackCache[itemID]
+	if cached then
+		return cached
+	end
+	local stack = select(8, C_Item_GetItemInfo(itemID))
+	if stack then
+		stackCache[itemID] = stack
+		return stack
+	end
+	if ns.RequestItemData then
+		ns:RequestItemData(itemID, function()
+			local loaded = select(8, C_Item_GetItemInfo(itemID))
+			if loaded then
+				stackCache[itemID] = loaded
+			end
+		end)
+	end
+	return stack
+end
 
 local types = {
 	spell = SPELLS .. "ID:",
@@ -63,7 +85,7 @@ function Tooltip:AddLineForID(id, linkType, noadd)
 		local bagCount = C_Item_GetItemCount(id)
 		local totalCount = C_Item_GetItemCount(id, true, nil, true, true)
 		local bankCount = (F.NotSecret(bagCount) and F.NotSecret(totalCount)) and (totalCount - bagCount) or 0
-		local itemStackCount = select(8, C_Item_GetItemInfo(id))
+		local itemStackCount = GetItemStackCount(id)
 		if F.NotSecret(bankCount) and bankCount > 0 then
 			self:AddDoubleLine(BAGSLOT .. "/" .. BANK .. ":", C.InfoColor .. bagCount .. "/" .. bankCount)
 		elseif F.NotSecret(bagCount) and bagCount > 0 then

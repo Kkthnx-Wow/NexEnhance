@@ -28,6 +28,8 @@ ns:RegisterDefaults({
 
 local AutoSummon = ns:NewModule("AutoSummon", "autoSummon", { group = "automation", title = L["Auto Summon"], order = 100 })
 
+local eventHandles = {}
+
 function AutoSummon:CONFIRM_SUMMON()
 	if not ns.db.autoSummon.enable then
 		return
@@ -77,7 +79,7 @@ function AutoSummon:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("CONFIRM_SUMMON")
+	self:TrackEvent(eventHandles, "CONFIRM_SUMMON")
 end
 
 function AutoSummon:UnregisterModuleEvents()
@@ -85,8 +87,11 @@ function AutoSummon:UnregisterModuleEvents()
 		return
 	end
 	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
 
-	ns:UnregisterEvent("CONFIRM_SUMMON", self.CONFIRM_SUMMON)
+function AutoSummon:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoSummon:OnSettingChanged(key, value)
@@ -96,7 +101,7 @@ function AutoSummon:OnSettingChanged(key, value)
 	if value then
 		self:RegisterModuleEvents()
 	else
-		self:UnregisterModuleEvents()
+		self:OnDisable()
 	end
 end
 

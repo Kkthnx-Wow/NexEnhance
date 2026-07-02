@@ -35,6 +35,7 @@ local ConfirmLootRoll = ConfirmLootRoll
 local StaticPopup_Hide = StaticPopup_Hide
 local UnitLevel = UnitLevel
 local GetMaxLevelForPlayerExpansion = GetMaxLevelForPlayerExpansion
+local wipe = wipe
 
 local LOOT_ROLL_TYPE_GREED = _G.LOOT_ROLL_TYPE_GREED -- 2
 local LOOT_ROLL_TYPE_DISENCHANT = _G.LOOT_ROLL_TYPE_DISENCHANT -- 3
@@ -54,6 +55,8 @@ ns:RegisterDefaults({
 })
 
 local AutoGreed = ns:NewModule("AutoGreed", "autoGreed", { group = "automation", title = L["Auto Greed"], order = 15 })
+
+local eventHandles = {}
 
 -- Roll IDs we initiated, so we only auto-confirm our own BoP/soulbound prompts
 -- and never silently confirm a roll the player started by hand.
@@ -149,10 +152,23 @@ function AutoGreed:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("START_LOOT_ROLL")
-	self:RegisterEvent("CONFIRM_LOOT_ROLL")
-	self:RegisterEvent("CONFIRM_DISENCHANT_ROLL")
-	self:RegisterEvent("CANCEL_LOOT_ROLL")
+	self:TrackEvent(eventHandles, "START_LOOT_ROLL")
+	self:TrackEvent(eventHandles, "CONFIRM_LOOT_ROLL")
+	self:TrackEvent(eventHandles, "CONFIRM_DISENCHANT_ROLL")
+	self:TrackEvent(eventHandles, "CANCEL_LOOT_ROLL")
+end
+
+function AutoGreed:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	wipe(ourRolls)
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function AutoGreed:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoGreed:OnEnable()
@@ -160,8 +176,12 @@ function AutoGreed:OnEnable()
 end
 
 function AutoGreed:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:RegisterModuleEvents()
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+		else
+			self:OnDisable()
+		end
 	end
 end
 

@@ -46,6 +46,8 @@ ns:RegisterDefaults({
 
 local AutoPvPRelease = ns:NewModule("AutoPvPRelease", "autoPvPRelease", { group = "automation", title = L["Auto PvP Release"], order = 110 })
 
+local eventHandles = {}
+
 local function HasSelfResurrect()
 	local deathInfo = C_DeathInfo
 	local options = deathInfo and deathInfo.GetSelfResurrectOptions and deathInfo.GetSelfResurrectOptions()
@@ -122,7 +124,7 @@ function AutoPvPRelease:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("PLAYER_DEAD")
+	self:TrackEvent(eventHandles, "PLAYER_DEAD")
 end
 
 function AutoPvPRelease:UnregisterModuleEvents()
@@ -130,8 +132,11 @@ function AutoPvPRelease:UnregisterModuleEvents()
 		return
 	end
 	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
 
-	ns:UnregisterEvent("PLAYER_DEAD", self.PLAYER_DEAD)
+function AutoPvPRelease:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoPvPRelease:OnSettingChanged(key, value)
@@ -141,7 +146,7 @@ function AutoPvPRelease:OnSettingChanged(key, value)
 	if value then
 		self:RegisterModuleEvents()
 	else
-		self:UnregisterModuleEvents()
+		self:OnDisable()
 	end
 end
 

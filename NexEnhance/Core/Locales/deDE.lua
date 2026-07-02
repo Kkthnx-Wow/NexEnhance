@@ -466,7 +466,7 @@ L["Add R/G/B input boxes and class-color swatches to Blizzard's color picker (re
 
 -- ClassColors
 L["Enable Class-Coloured Health"] = "Klassenfarbige Lebenspunkte aktivieren"
-L["Colour unit-frame health bars by class for players and by reaction for NPCs (player, target, focus, boss, party and more)."] = "Lebensbalken in Einheitenfenstern nach Klasse für Spieler und nach Reaktion für NPCs einfärben (Spieler, Ziel, Fokus, Boss, Gruppe und mehr)."
+L["Colour HUD unit-frame health bars by class for players and by reaction for NPCs (player, pet, target, focus, boss, party portraits). Offline players use a grey desaturated health bar, desaturated portrait, and disconnect icon on target/focus (matching party frames). Compact raid/party frames use Blizzard's own Class Colors option."] = "HUD-Einheitenfenster nach Klasse (Spieler) bzw. Reaktion (NPCs) einfärben (Spieler, Begleiter, Ziel, Fokus, Boss, Gruppenporträts). Offline-Spieler: grauer, entsättigter Gesundheitsbalken, entsättigtes Porträt und Disconnect-Symbol am Ziel/Fokus (wie Gruppenporträts). Kompakte Raid-/Gruppenrahmen nutzen Blizzards eigene Klassenfarben-Option."
 L["Neutral Target Strip"] = "Neutraler Zielstreifen"
 L["Target Frame Layout"] = "Zielfenster-Layout"
 L["Player-Style Target Frame"] = "Spieler-Stil-Zielfenster"
@@ -522,7 +522,7 @@ L["CONTROL"] = "Strg"
 L["Block in Raids & Instances"] = "In Raids & Instanzen blockieren"
 L["Skip single-option gossip auto-selection while in raids and certain instances."] = "Einzelauswahl-Gossip-Automatik in Raids und bestimmten Instanzen überspringen."
 L["Auto-Skip Story Gossip"] = "Story-Gossip automatisch überspringen"
-L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'] = 'Rote "<Überspringen ...>"-Gossip-Optionen automatisch anklicken (in einer Kampagne vorspringen, Gespräch überspringen), wenn genau eine angeboten wird. Praktisch auf Twinks; standardmäßig aus, damit du keinen Dialog verpasst, den du lesen willst.'
+L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read. "<Skip Mini Game>" gossip is always auto-selected while Quick Quest is enabled.'] = 'Rote "<Überspringen ...>"-Gossip-Optionen automatisch anklicken (in einer Kampagne vorspringen, Gespräch überspringen), wenn genau eine angeboten wird. Praktisch auf Twinks; standardmäßig aus, damit du keinen Dialog verpasst, den du lesen willst. "<Skip Mini Game>"-Gossip wird bei aktiviertem Schnell-Quest immer automatisch gewählt.'
 L["Alt-click to toggle Quick Quest for this NPC."] = "Alt-Klick zum Umschalten von Schnell-Quest für diesen NPC."
 L["Quick Quest debug ON - talk to an NPC to trace gossip/accept flow."] = "Schnell-Quest-Debug AN – mit NPC sprechen, um Gossip/Annahme-Ablauf zu verfolgen."
 L["Quick Quest debug OFF."] = "Schnell-Quest-Debug AUS."
@@ -533,9 +533,9 @@ L["Skipped story dialogue."] = "Story-Dialog übersprungen."
 -- UIScale
 L["UI Scale"] = "UI-Skalierung"
 L["Enable UI Scale"] = "UI-Skalierung aktivieren"
-L["Let NexEnhance set the UIParent scale (reload-safe; ignores changes made in combat)."] = "NexEnhance die UIParent-Skalierung setzen lassen (reload-sicher; ignoriert Änderungen im Kampf)."
+L["Let NexEnhance set the UIParent scale (reload-safe; ignores changes made in combat). Uses the uiScale CVar up to 1200p height, then UIParent:SetScale for 1440p and above."] = "NexEnhance die UIParent-Skalierung setzen lassen (reload-sicher; ignoriert Änderungen im Kampf). Nutzt die uiScale-CVar bis 1200p Höhe, danach UIParent:SetScale ab 1440p."
 L["Auto (Pixel-Perfect)"] = "Auto (Pixel-perfekt)"
-L["Automatically pick the scale that maps 1 UI pixel to 1 screen pixel for your resolution."] = "Automatisch die Skalierung wählen, die 1 UI-Pixel auf 1 Bildschirmpixel für deine Auflösung abbildet."
+L["Automatically pick 768 / screen height so 1 UI unit maps to 1 physical pixel."] = "Automatisch 768 / Bildschirmhöhe wählen, damit 1 UI-Einheit 1 physischem Pixel entspricht."
 L["Manual Scale"] = "Manuelle Skalierung"
 L["Scale used when Auto is disabled."] = "Skalierung, wenn Auto deaktiviert ist."
 
@@ -564,6 +564,10 @@ L["Action buttons fire when a key is pressed instead of when it is released."] =
 L["Hide Help Tips"] = "Hilfetipps ausblenden"
 L["Suppress Blizzard's tutorial and help-tip pop-ups (micro-button alerts, new-player pointers, panel hints). NexEnhance's own tips are kept."] = "Blizzards Tutorial- und Hilfetipp-Popups unterdrücken (Mikro-Schaltflächen-Hinweise, Neuling-Zeiger, Panel-Tipps). NexEnhance-eigene Tipps bleiben erhalten."
 
+-- Hide Combat Errors
+L["Hide Combat Errors"] = "Kampffehler ausblenden"
+L["Hide red error messages while in combat (Not enough mana, Ability not ready, etc.). Yellow info messages still show."] = "Rote Fehlermeldungen im Kampf ausblenden (Nicht genug Mana, Fähigkeit noch nicht bereit usw.). Gelbe Infomeldungen bleiben sichtbar."
+
 -- Hide UI Elements
 L["Hide UI Elements"] = "UI-Elemente ausblenden"
 L["Hide Aura Collapse Arrow"] = "Aura-Einklapp-Pfeil ausblenden"
@@ -574,6 +578,12 @@ L["Hide Portrait Damage Text"] = "Porträt-Schadenstext ausblenden"
 L["Hide the incoming damage numbers that flash over your player portrait."] = "Eingehende Schadenszahlen ausblenden, die über deinem Spielerporträt aufblitzen."
 L["Hide Portrait Healing Text"] = "Porträt-Heilungstext ausblenden"
 L["Hide the incoming healing numbers that flash over your player portrait."] = "Eingehende Heilungszahlen ausblenden, die über deinem Spielerporträt aufblitzen."
+L["Hide PvP Badge"] = "PvP-Abzeichen ausblenden"
+L["Hide PvP status icons, timers, and prestige badges on the Player, Target, and Focus frames."] = "PvP-Statussymbole, Timer und Prestige-Abzeichen auf Spieler-, Ziel- und Fokus-Rahmen ausblenden."
+L["Hide Boss Banner"] = "Boss-Banner ausblenden"
+L["Suppress the boss defeat banner that shows the kill and personal loot."] = "Das Boss-Besiegt-Banner mit Kill und persönlicher Beute unterdrücken."
+L["Hide Event Toasts"] = "Ereignis-Toasts ausblenden"
+L["Suppress automatic event toasts such as level-ups, encounter objectives, and weekly-reward pop-ups. Scoreboards with a close button are kept."] = "Automatische Ereignis-Toasts wie Level-ups, Begegnungsziele und wöchentliche Belohnungen unterdrücken. Ergebnistafeln mit Schließen-Schaltfläche bleiben sichtbar."
 
 -- Widget Movers
 L["Widget Movers"] = "Widget-Verschieber"
@@ -615,6 +625,62 @@ L["Press Space, Enter or Escape to instantly confirm the movie/cinematic skip di
 L["Faster Loot"] = "Schnelleres Plündern"
 L["Enable Faster Loot"] = "Schnelleres Plündern aktivieren"
 L["Instantly clear loot when auto-loot is active."] = "Beute sofort leeren, wenn Auto-Plündern aktiv ist."
+
+-- Smart Fishing
+L["Smart Fishing"] = "Intelligentes Angeln"
+L["Enable Smart Fishing"] = "Intelligentes Angeln aktivieren"
+L["While fishing: widen soft-target interact, mute ambience, and rebind your fishing button key to interact with the bobber. Hold Shift when casting to skip."] = "Beim Angeln: Soft-Target-Interaktion erweitern, Umgebungsgeräusche stummschalten und Angel-Tastenbelegung auf Schwimmer-Interaktion umlegen. Umschalt beim Wirken halten zum Überspringen."
+
+-- Auction Search Fallback
+L["Auction Search Fallback"] = "Auktionssuche-Fallback"
+L["Enable Auction Search Fallback"] = "Auktionssuche-Fallback aktivieren"
+L["When a browse search returns no results with Current Expansion Only enabled, automatically widen the search and retry once."] = "Wenn eine Durchsuche mit „Nur aktuelle Erweiterung“ keine Treffer liefert, Suche automatisch erweitern und einmal erneut versuchen."
+
+-- Auction Search History
+L["Auction Search History"] = "Auktionssuche-Verlauf"
+L["Enable Auction Search History"] = "Auktionssuche-Verlauf aktivieren"
+L["Show recent Auction House browse searches when you focus the search box."] = "Zeigt letzte AH-Stöbern-Suchen beim Fokussieren des Suchfelds."
+L["Recent Search Count"] = "Anzahl letzter Suchen"
+L["How many previous browse searches to remember (account-wide)."] = "Wie viele frühere Stöbern-Suchen gespeichert werden (accountweit)."
+
+-- Smart Minimap Tracking
+L["Smart Minimap Tracking"] = "Intelligente Minimap-Verfolgung"
+L["Enable Smart Minimap Tracking"] = "Intelligente Minimap-Verfolgung aktivieren"
+L["Auto-enable repair-vendor tracking when gear is damaged, and mailbox tracking when you have pending mail."] = "Reparatur-Händler-Verfolgung bei beschädigter Ausrüstung und Briefkasten-Verfolgung bei ausstehender Post automatisch aktivieren."
+
+-- Hero Talent Swap
+L["Hero Talent Swap"] = "Helden-Talent-Wechsel"
+L["Enable Hero Talent Swap"] = "Helden-Talent-Wechsel aktivieren"
+L["Right-click the hero talent button on the Talents pane to swap to your inactive hero spec."] = "Rechtsklick auf die Helden-Talent-Schaltfläche im Talente-Fenster, um zum inaktiven Helden-Spezialisierung zu wechseln."
+L["Hero Talent Swap Hint"] = "Wechseln zu %s %s"
+
+-- Popup QoL
+L["Popup QoL"] = "Popup-Komfort"
+L["Enable Popup QoL"] = "Popup-Komfort aktivieren"
+L["Reduce popup friction for loot, tradeables, purchases, and event toasts. Sub-options below are off by default except click-through toasts."] = "Popup-Reibung bei Beute, handelbaren Gegenständen, Käufen und Ereignis-Toasts reduzieren. Unteroptionen unten standardmäßig aus, außer durchklickbare Toasts."
+L["Auto-Confirm BoP Loot"] = "BoP-Beute automatisch bestätigen"
+L["Automatically confirm loot that binds on pickup."] = "Beute, die beim Aufheben gebunden wird, automatisch bestätigen."
+L["Auto-Confirm Tradeable Equip"] = "Handelbare Ausrüstung automatisch anlegen"
+L["Automatically equip BoE items still within the trade window."] = "BoE-Gegenstände, die noch im Handelsfenster handelbar sind, automatisch anlegen."
+L["Auto-Confirm Tradeable Sell"] = "Handelbaren Verkauf automatisch bestätigen"
+L["Automatically sell BoE items still within the trade window at vendors."] = "BoE-Gegenstände, die noch im Handelsfenster handelbar sind, beim Händler automatisch verkaufen."
+L["Click-Through Event Toasts"] = "Durchklickbare Ereignis-Toasts"
+L["Let the mouse pass through event toasts so they do not block clicks."] = "Maus durch Ereignis-Toasts hindurchlassen, damit sie Klicks nicht blockieren."
+L["Enter Accepts Purchases"] = "Enter bestätigt Käufe"
+L["Press Enter to accept non-refundable purchase confirmations."] = "Enter drücken, um nicht erstattungsfähige Kauf-Bestätigungen anzunehmen."
+L["Alt+Right-Click Stack Buy"] = "Alt+Rechtsklick Stapelfkauf"
+L["Hold Alt and right-click a merchant item to buy a full stack. Asks once per item until you reload."] = "Alt gedrückt halten und Händlergegenstand rechtsklicken, um einen vollen Stapel zu kaufen. Fragt einmal pro Gegenstand bis zum /reload."
+L["Stack Buying Check"] = "Maximalen Stapel dieses Gegenstands kaufen?"
+
+-- System Chat Filter
+L["System Chat Filter"] = "System-Chat-Filter"
+L["Enable System Chat Filter"] = "System-Chat-Filter aktivieren"
+L["Hide learn and unlearn spell system messages when changing talents."] = "Zauber-lernen/-vergessen-Systemmeldungen beim Talentwechsel ausblenden."
+
+-- Tooltip spawn age
+L["Show NPC Spawn Age"] = "NPC-Spawn-Alter anzeigen"
+L["While holding Shift on NPC tooltips, show how long ago the unit spawned."] = "Bei gedrückter Umschalttaste auf NPC-Tooltips anzeigen, wie lange die Einheit her existiert."
+L["Spawn Age"] = "Spawn-Alter"
 
 -- LootFrame
 L["Loot Frame"] = "Beutefenster"
@@ -670,7 +736,7 @@ L["How transparent the map becomes while moving."] = "Wie transparent die Karte 
 L["Wowhead Links"] = "Wowhead-Links"
 L["Enable Wowhead Links"] = "Wowhead-Links aktivieren"
 L["Add a copyable Wowhead link to the world map (tracked quest) and the achievement frame."] = "Kopierbaren Wowhead-Link zur Weltkarte (verfolgte Quest) und zum Erfolgsfenster hinzufügen."
-L["Press To Copy"] = "Zum Kopieren drücken"
+L["Press Ctrl-C to copy"] = "Strg+C zum Kopieren"
 
 -- Map Reveal
 L["Map Reveal"] = "Kartenenthüllung"
@@ -726,6 +792,8 @@ L["Test mode on - drag the anchor in Edit Mode."] = "Testmodus AN – Anker im E
 L["Test mode off."] = "Testmodus AUS."
 L["Icon Size"] = "Symbolgröße"
 L["Size of the buff reminder icons. Preview with /nex reminder."] = "Größe der Buff-Erinnerungs-Symbole. Vorschau mit /nex reminder."
+L["Reminder Glow"] = "Erinnerungs-Leuchten"
+L["Draw a soft red halo around missing-buff icons (retail tutorial glow). Preview with /nex reminder."] = "Weiches rotes Leuchten um Fehlend-Symbole pulsieren lassen. Vorschau mit /nex reminder."
 
 -- Animation
 L["Animation"] = "Animation"
@@ -813,7 +881,7 @@ L['Perform a random taunt emote at your victim (or /hug without "Make Love, Not 
 
 -- HideDpsRole
 L["Hide DPS Role Icon"] = "DPS-Rollensymbol ausblenden"
-L["Hide the DPS (sword) role icon from party and raid frames. Tank and healer icons remain visible."] = "DPS-Rollensymbol (Schwert) in Gruppen- und Raid-Fenstern ausblenden. Tank- und Heiler-Symbole bleiben sichtbar."
+L["Hide the DPS (sword) role icon from standard party portraits and compact party/raid frames. Tank and healer icons remain visible."] = "DPS-Rollensymbol (Schwert) in Standard-Gruppenporträts und kompakten Gruppen-/Raid-Fenstern ausblenden. Tank- und Heiler-Symbole bleiben sichtbar."
 
 -- LevelAnnouncer
 L["Level Announcer"] = "Stufen-Ankündigung"

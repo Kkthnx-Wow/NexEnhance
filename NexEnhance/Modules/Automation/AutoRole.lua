@@ -202,23 +202,19 @@ function AutoRole:ApplyRolePollSuppression()
 	SetRolePollSuppressed(IsConfigured() and ns.db.autoRole.answerRolePoll)
 end
 
-local function TrackEvent(event, callback)
-	eventHandles[#eventHandles + 1] = { event = event, cb = callback }
-end
-
 function AutoRole:RegisterModuleEvents()
 	if eventsRegistered then
 		return
 	end
 	eventsRegistered = true
 
-	TrackEvent("PLAYER_SPECIALIZATION_CHANGED", self:RegisterUnitEvent("PLAYER_SPECIALIZATION_CHANGED", "OnRoleDriverEvent", "player"))
-	TrackEvent("ACTIVE_TALENT_GROUP_CHANGED", self:RegisterEvent("ACTIVE_TALENT_GROUP_CHANGED", "OnRoleDriverEvent"))
-	TrackEvent("GROUP_ROSTER_UPDATE", self:RegisterEvent("GROUP_ROSTER_UPDATE", "OnRoleDriverEvent"))
-	TrackEvent("PLAYER_LEVEL_CHANGED", self:RegisterEvent("PLAYER_LEVEL_CHANGED", "OnRoleDriverEvent"))
-	TrackEvent("PLAYER_ENTERING_WORLD", self:RegisterEvent("PLAYER_ENTERING_WORLD", "OnRoleDriverEvent"))
-	TrackEvent("PLAYER_REGEN_ENABLED", self:RegisterEvent("PLAYER_REGEN_ENABLED", "PLAYER_REGEN_ENABLED"))
-	TrackEvent("ROLE_POLL_BEGIN", self:RegisterEvent("ROLE_POLL_BEGIN", "ROLE_POLL_BEGIN"))
+	self:TrackUnitEvent(eventHandles, "PLAYER_SPECIALIZATION_CHANGED", "OnRoleDriverEvent", "player")
+	self:TrackEvent(eventHandles, "ACTIVE_TALENT_GROUP_CHANGED", "OnRoleDriverEvent")
+	self:TrackEvent(eventHandles, "GROUP_ROSTER_UPDATE", "OnRoleDriverEvent")
+	self:TrackEvent(eventHandles, "PLAYER_LEVEL_CHANGED", "OnRoleDriverEvent")
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "OnRoleDriverEvent")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_ENABLED")
+	self:TrackEvent(eventHandles, "ROLE_POLL_BEGIN", "ROLE_POLL_BEGIN")
 
 	self:ApplyRolePollSuppression()
 	self:ScheduleSync(false)
@@ -231,15 +227,17 @@ function AutoRole:UnregisterModuleEvents()
 	eventsRegistered = false
 	syncPending = false
 
-	for i = 1, #eventHandles do
-		local handle = eventHandles[i]
-		if handle.event and handle.cb then
-			ns:UnregisterEvent(handle.event, handle.cb)
-		end
-	end
-	wipe(eventHandles)
+	ns:UnregisterModuleEventHandles(eventHandles)
 
 	self:ApplyRolePollSuppression()
+end
+
+function AutoRole:OnEnable()
+	self:RegisterModuleEvents()
+end
+
+function AutoRole:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoRole:OnSettingChanged(key, value)
@@ -248,15 +246,11 @@ function AutoRole:OnSettingChanged(key, value)
 			self:RegisterModuleEvents()
 			self:ScheduleSync(false)
 		else
-			self:UnregisterModuleEvents()
+			self:OnDisable()
 		end
 	elseif key == "answerRolePoll" then
 		self:ApplyRolePollSuppression()
 	end
-end
-
-function AutoRole:OnEnable()
-	self:RegisterModuleEvents()
 end
 
 function AutoRole:RegisterOptions(category, builder)

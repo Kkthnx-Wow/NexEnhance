@@ -68,6 +68,7 @@ local Module = ns:NewModule("TargetArrows", "targetArrows", {
 })
 
 local running = false
+local eventHandles = {}
 local previousUnitFrame
 local savedCVars = {}
 local pendingCVars = false
@@ -287,8 +288,7 @@ function Module:NAME_PLATE_UNIT_ADDED(unit)
 	if not running or not ns.db.targetArrows.showArrows then
 		return
 	end
-	local isTarget = UnitIsUnit(unit, "target")
-	if CanAccess(isTarget) and isTarget then
+	if F.SafeUnitIsUnit(unit, "target") then
 		self:UpdateTarget()
 	end
 end
@@ -308,10 +308,25 @@ function Module:EnsureEvents()
 		return
 	end
 	self.eventsRegistered = true
-	self:RegisterEvent("PLAYER_TARGET_CHANGED")
-	self:RegisterEvent("NAME_PLATE_UNIT_ADDED")
-	self:RegisterEvent("PLAYER_ENTERING_WORLD")
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED")
+	self:TrackEvent(eventHandles, "NAME_PLATE_UNIT_ADDED")
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED")
+end
+
+function Module:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function Module:OnDisable()
+	running = false
+	self:ClearArrows()
+	ApplyFriendlyCVars()
+	self:UnregisterModuleEvents()
 end
 
 -- ---------------------------------------------------------------------------
@@ -340,9 +355,7 @@ function Module:OnSettingChanged(key, value)
 			self:EnsureEvents()
 			self:Apply()
 		else
-			running = false
-			self:ClearArrows()
-			ApplyFriendlyCVars()
+			self:OnDisable()
 		end
 		return
 	end

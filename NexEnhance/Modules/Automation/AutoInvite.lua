@@ -36,6 +36,8 @@ ns:RegisterDefaults({
 
 local AutoInvite = ns:NewModule("AutoInvite", "autoInvite", { group = "automation", title = L["Auto Accept Invites"], order = 60 })
 
+local eventHandles = {}
+
 -- Remember the last inviter so a duplicate PARTY_INVITE_REQUEST (Blizzard fires
 -- it more than once) doesn't double-accept.
 local previousInviterGUID
@@ -98,13 +100,30 @@ function AutoInvite:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("PARTY_INVITE_REQUEST")
-	self:RegisterEvent("GROUP_ROSTER_UPDATE")
+	self:TrackEvent(eventHandles, "PARTY_INVITE_REQUEST")
+	self:TrackEvent(eventHandles, "GROUP_ROSTER_UPDATE")
+end
+
+function AutoInvite:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+	previousInviterGUID = nil
+end
+
+function AutoInvite:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoInvite:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:RegisterModuleEvents()
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+		else
+			self:OnDisable()
+		end
 	end
 end
 

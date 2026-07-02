@@ -117,6 +117,16 @@ function FasterLoot:OnEnable()
 	self:Update()
 end
 
+function FasterLoot:OnDisable()
+	if self.registered then
+		ns:UnregisterEvent("LOOT_READY", DoFasterLoot)
+		ns:UnregisterEvent("LOOT_OPENED", DoFasterLoot)
+		ns:UnregisterEvent("LOOT_CLOSED", OnLootClosed)
+		self.registered = nil
+	end
+	OnLootClosed()
+end
+
 function FasterLoot:OnSettingChanged()
 	self:Update()
 end

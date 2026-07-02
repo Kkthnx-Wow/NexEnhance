@@ -20,7 +20,10 @@ _G.NexEnhance = ns
 -- Cache hot globals as locals (cheaper than repeated hash lookups).
 local CreateFrame = CreateFrame
 local IsLoggedIn = IsLoggedIn
+local InCombatLockdown = InCombatLockdown
+local C_Timer = C_Timer
 local tinsert = table.insert
+local wipe = wipe
 local C_AddOns = C_AddOns
 
 -- ---------------------------------------------------------------------------
@@ -62,6 +65,8 @@ function moduleMeta:RegisterEvent(event, handler)
 	assert(type(handler) == "function", ("NexEnhance: no handler for event '%s' on module '%s'"):format(event, self.name))
 
 	-- Bind `self` once at registration time so the dispatch path stays cheap.
+	-- Module handlers receive (self, ...payload) only — NOT the event name.
+	-- See .cursor/rules/nexenhance-conventions.mdc § "Module RegisterEvent".
 	-- Return the wrapper so callers can store it and pass it to ns:UnregisterEvent.
 	local wrapper = function(_, ...)
 		handler(self, ...)
@@ -81,6 +86,16 @@ function moduleMeta:RegisterUnitEvent(event, handler, ...)
 	return ns:RegisterUnitEvent(event, function(_, ...)
 		handler(self, ...)
 	end, ...)
+end
+
+--- Register `event` and append `{ event, wrapper }` to `handles` for teardown.
+function moduleMeta:TrackEvent(handles, event, handler)
+	handles[#handles + 1] = { event, self:RegisterEvent(event, handler) }
+end
+
+--- Register a unit event and append its handle to `handles`.
+function moduleMeta:TrackUnitEvent(handles, event, handler, ...)
+	handles[#handles + 1] = { event, self:RegisterUnitEvent(event, handler, ...) }
 end
 
 --- Returns whether this module is enabled in the active profile. Modules that
@@ -243,6 +258,262 @@ function ns:UnregisterEvent(event, callback)
 	end
 end
 
+--- Unregister every `{ event, wrapper }` entry stored in `handles`, then wipe it.
+function ns:UnregisterModuleEventHandles(handles)
+	if not handles then
+		return
+	end
+	for i = 1, #handles do
+		local h = handles[i]
+		if h then
+			ns:UnregisterEvent(h[1], h[2])
+		end
+	end
+	wipe(handles)
+end
+
+-- ---------------------------------------------------------------------------
+-- Deferred work (combat, addon load, loading screen)
+-- ---------------------------------------------------------------------------
+local combatDeferred = {}
+local combatDeferredN = 0
+local combatEnterListeners = {}
+local combatEnterN = 0
+local combatLeaveListeners = {}
+local combatLeaveN = 0
+local combatBusHooked = false
+
+local function FlushCombatDeferred()
+	local n = combatDeferredN
+	if n == 0 then
+		return
+	end
+	combatDeferredN = 0
+	for i = 1, n do
+		local fn = combatDeferred[i]
+		combatDeferred[i] = nil
+		if fn then
+			fn()
+		end
+	end
+end
+
+local function EnsureCombatDeferHook()
+	EnsureCombatBus()
+end
+
+local function OnPlayerRegenDisabled()
+	for i = 1, combatEnterN do
+		local fn = combatEnterListeners[i]
+		if fn then
+			fn()
+		end
+	end
+end
+
+local function FinishRegenLeave()
+	FlushCombatDeferred()
+	for i = 1, combatLeaveN do
+		local fn = combatLeaveListeners[i]
+		if fn then
+			fn()
+		end
+	end
+end
+
+local regenRetryPending = false
+
+local function OnPlayerRegenEnabled()
+	-- Blizzard sometimes fires regen before lockdown fully lifts. One immediate
+	-- attempt, then a next-frame (and one delayed) retry — otherwise
+	-- AfterCombatCallback queues can stall until the next fight ends.
+	local function attempt()
+		if InCombatLockdown() then
+			return false
+		end
+		FinishRegenLeave()
+		return true
+	end
+
+	if attempt() then
+		return
+	end
+
+	if regenRetryPending then
+		return
+	end
+	regenRetryPending = true
+
+	C_Timer.After(0, function()
+		if attempt() then
+			regenRetryPending = false
+			return
+		end
+		C_Timer.After(0.1, function()
+			regenRetryPending = false
+			attempt()
+		end)
+	end)
+end
+
+local function EnsureCombatBus()
+	if combatBusHooked then
+		return
+	end
+	combatBusHooked = true
+	ns:RegisterEvent("PLAYER_REGEN_DISABLED", OnPlayerRegenDisabled)
+	ns:RegisterEvent("PLAYER_REGEN_ENABLED", OnPlayerRegenEnabled)
+end
+
+--- Subscribe to combat start (`PLAYER_REGEN_DISABLED`). Returns an id for optional removal.
+function ns:RegisterCombatEnterCallback(fn)
+	if type(fn) ~= "function" then
+		return
+	end
+	EnsureCombatBus()
+	combatEnterN = combatEnterN + 1
+	combatEnterListeners[combatEnterN] = fn
+	return combatEnterN
+end
+
+--- Subscribe to combat end (`PLAYER_REGEN_ENABLED`, after lockdown lifts). Returns an id.
+function ns:RegisterCombatLeaveCallback(fn)
+	if type(fn) ~= "function" then
+		return
+	end
+	EnsureCombatBus()
+	combatLeaveN = combatLeaveN + 1
+	combatLeaveListeners[combatLeaveN] = fn
+	return combatLeaveN
+end
+
+--- Remove a combat-enter subscription returned by `RegisterCombatEnterCallback`.
+function ns:UnregisterCombatEnterCallback(id)
+	if id and combatEnterListeners[id] then
+		combatEnterListeners[id] = nil
+	end
+end
+
+--- Remove a combat-leave subscription returned by `RegisterCombatLeaveCallback`.
+function ns:UnregisterCombatLeaveCallback(id)
+	if id and combatLeaveListeners[id] then
+		combatLeaveListeners[id] = nil
+	end
+end
+
+--- Wrap a hook callback so it no-ops when `module` is disabled (hooksecurefunc
+--- cannot be removed; gate live toggles instead of requiring /reload).
+--- Skin modules usually inline `module:IsEnabled()` at the hook top; this helper
+--- is optional sugar for the same pattern.
+function ns:GuardModuleHook(module, fn)
+	return function(...)
+		if module and module.IsEnabled and not module:IsEnabled() then
+			return
+		end
+		return fn(...)
+	end
+end
+
+--- Run `fn` now when out of combat, otherwise after `PLAYER_REGEN_ENABLED`.
+function ns:AfterCombatCallback(fn)
+	if type(fn) ~= "function" then
+		return
+	end
+	if not InCombatLockdown() then
+		fn()
+		return
+	end
+	combatDeferredN = combatDeferredN + 1
+	combatDeferred[combatDeferredN] = fn
+	EnsureCombatDeferHook()
+end
+
+local addonLoadedCallbacks = {}
+local addonLoadedDispatcher = false
+
+local function DispatchAddonLoaded(loadedAddon)
+	local list = addonLoadedCallbacks[loadedAddon]
+	if not list then
+		return
+	end
+	for i = 1, #list do
+		local fn = list[i]
+		if fn then
+			fn(loadedAddon)
+		end
+	end
+end
+
+local function EnsureAddonLoadedDispatcher()
+	if addonLoadedDispatcher then
+		return
+	end
+	addonLoadedDispatcher = true
+	ns:RegisterEvent("ADDON_LOADED", function(_, loadedAddon)
+		DispatchAddonLoaded(loadedAddon)
+	end)
+end
+
+--- Run `callback` when `addonName` loads (or immediately if already loaded).
+function ns:RegisterAddOnLoadedCallback(addonName, callback)
+	if not (addonName and callback) then
+		return
+	end
+	EnsureAddonLoadedDispatcher()
+	local list = addonLoadedCallbacks[addonName]
+	if not list then
+		list = {}
+		addonLoadedCallbacks[addonName] = list
+	end
+	list[#list + 1] = callback
+	if C_AddOns.IsAddOnLoaded(addonName) then
+		callback(addonName)
+	end
+end
+
+local loadingCompleteCallbacks = {}
+local loadingCompleteFired = false
+local loadingCompleteScheduled = false
+
+local function FireLoadingComplete()
+	if loadingCompleteFired then
+		return
+	end
+	loadingCompleteFired = true
+	for i = 1, #loadingCompleteCallbacks do
+		local fn = loadingCompleteCallbacks[i]
+		if fn then
+			fn()
+		end
+	end
+end
+
+local function ScheduleLoadingComplete()
+	if loadingCompleteFired or loadingCompleteScheduled then
+		return
+	end
+	loadingCompleteScheduled = true
+	C_Timer.After(0, function()
+		loadingCompleteScheduled = false
+		FireLoadingComplete()
+	end)
+end
+
+--- Run `callback` once after the loading screen finishes (and on /reload via
+--- PLAYER_LOGIN fallback). Safe to call after completion — runs immediately.
+function ns:RegisterLoadingCompleteCallback(callback)
+	if type(callback) ~= "function" then
+		return
+	end
+	if loadingCompleteFired then
+		callback()
+		return
+	end
+	loadingCompleteCallbacks[#loadingCompleteCallbacks + 1] = callback
+end
+
+ns:RegisterEvent("LOADING_SCREEN_DISABLED", ScheduleLoadingComplete)
+
 -- ---------------------------------------------------------------------------
 -- Internal signal bus (pub/sub)
 --   The dispatcher above is for *WoW game events*. This bus is for *internal*
@@ -360,6 +631,8 @@ local function Enable()
 	if ns.OnCoreEnabled then
 		ns:OnCoreEnabled()
 	end
+
+	ScheduleLoadingComplete()
 end
 
 local function Initialize()
@@ -399,3 +672,8 @@ end
 
 ns:RegisterEvent("ADDON_LOADED", onAddonLoaded)
 ns:RegisterEvent("PLAYER_LOGIN", Enable)
+ns:RegisterEvent("PLAYER_LOGOUT", function()
+	if ns.CompactActiveProfile then
+		ns:CompactActiveProfile()
+	end
+end)

@@ -43,19 +43,199 @@ local BACKDROP = C.Backdrops.window
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.5.5",
+		date = "2026-06-27",
+		intro = "Reference-library architecture — zero-duration cooldown masks, central cooldown bus, frame runner, hook guards.",
+		sections = {
+			{ "Core", {
+				"Debug.lua: scoped logging, Expect checks, dumps, /nex debug export.",
+				"Debug: TOC load order — Debug.lua after Database.lua (ns.Debug was nil on login).",
+				"Debug export: sorted scopes, dump capture, pass/fail summary; expectations on 5 modules.",
+				"Combat defer retries when regen fires under lockdown.",
+				"Async loaders invoke callbacks with success=false on failed loads.",
+				"F.MaskCooldownSwipeFromDurationObject hides permanent-aura swipes (SetAlphaFromBoolean + dur:IsZero).",
+				"CooldownDispatch.lua: shared SPELL_UPDATE_COOLDOWN / BAG_UPDATE_COOLDOWN bus.",
+				"Runner.lua: ns:CreateRunner spreads batch work across frames.",
+				"ns:GuardModuleHook no-ops hook callbacks when a skin module is disabled.",
+			} },
+			{ "Action Bars", {
+				"GCD Bar and Extra Quest Button use CooldownDispatch; item cooldown swipes masked.",
+				"Cooldown Text masks zero-duration DurationObject swipes globally.",
+				"Extra Quest Button: debug scope (/nex debug dump extraquestbutton).",
+				"GCD Bar: hide when GCD ends — ACTIONBAR_UPDATE_COOLDOWN + poll fallback (stuck empty bar fix).",
+			} },
+			{ "Auras", {
+				"Buff Reminder: zero-duration mask on depend/item cooldown swipes.",
+			} },
+			{ "Nameplates", {
+				"Quest Icons: large refreshes use the frame runner.",
+			} },
+			{ "Skins", {
+				"Quest Navigation and Objective Tracker gate hook work on IsEnabled when toggled off.",
+				"Quest Navigation: ETA timer copies DistanceText shadow (not CreatePlainFS) on world-anchored arrow.",
+			} },
+			{ "DataText", {
+				"Location: TrackEvent teardown; zone events stop when toggled off.",
+				"Location: debug scope (/nex debug dump location).",
+				"Guild, Friends, CharacterInfo, Currency & Gold: TrackEvent teardown on live disable.",
+				"Clock: Stop() clears OnUpdate/MODIFIER; re-enable re-arms ticker.",
+			} },
+			{ "Automation", {
+				"Auction Search History: recent browse text searches in a focus dropdown (account-wide, default 5).",
+				"Quick Join, Guild Invite Filter, Auto Resurrect: TrackEvent teardown on live disable.",
+			} },
+			{ "Inventory", {
+				"Already Known: fix nil RefreshVisibleItems on async item-data callback.",
+				"Durability: module events unregister on live disable (not just the tab button).",
+				"Loot Frame: TrackEvent teardown; panelMaxHeight restores on disable.",
+				"Item Level: IsActive gates hooks; module events unregister on disable.",
+			} },
+			{ "Unit Frames", {
+				"Level Colours: live disable restores Blizzard CheckLevel; events use TrackEvent teardown.",
+				"Target Frame Layout: refresh events unregister when disabled.",
+				"Level Colours: debug scope (/nex debug dump levelColors).",
+				"Player Cast Bar: unit events unregister on disable.",
+			} },
+			{ "Maps", {
+				"Minimap: debug scope (/nex debug dump minimap).",
+			} },
+			{ "Chat", {
+				"Debug scope + dock edit-box expectation; Combat Log tab overlap documented with UIScale incident.",
+				"BN keyword auto-invite: GetAccountInfoByID(bnSenderID, guid) + CanGroupWithAccount fix.",
+				"Scroll-Down Interval defaults to 0 (off); was 15s auto return-to-bottom after scrolling up.",
+			} },
+			{ "General", {
+				"Hide Combat Errors: PLAYER_REGEN handlers fixed (shared event arg was always nil).",
+				"UI Scale: UIScaleApplied signal refreshes chat edit-box anchors on scale change.",
+				"Widget Movers: SetPoint hook fix — no C stack overflow on layout/scale.",
+				"Install: one-click setup — Install applies all recommended settings and reloads.",
+				"Install: your character with wave and dance emotes.",
+				"UI Scale: reverted to UIParent:SetScale only — CVar + deferred apply broke chat dock tabs on reload.",
+				"Cast On Key Down: TrackEvent teardown + restore saved ActionButtonUseKeyDown on disable.",
+				"Animation: combat/login events teardown; combat banner live-disable.",
+				"Achievement Screenshot, Social Colours, Drag Frames, Alert Frames: event teardown on disable.",
+			} },
+		},
+	},
+	{
+		version = "1.5.4",
+		date = "2026-06-27",
+		intro = "Lifecycle sweep — symmetric teardown for remaining event-driven modules and core helpers.",
+		sections = {
+			{ "Core", {
+				"F.InheritExistingValues copies prior sibling keys for schema upgrades.",
+				"TransitionAPI.lua stub for patch-day Blizzard API shims.",
+				"UnregisterCombatEnterCallback / UnregisterCombatLeaveCallback on the combat bus.",
+			} },
+			{ "Action Bars", {
+				"Range Colors: tracked UNIT_POWER_UPDATE and PLAYER_ENTERING_WORLD unregister on deactivate/disable.",
+			} },
+			{ "Announcements", {
+				"Rare Alert, Quest Notification, Level Announcer: OnDisable unregisters events; Level Announcer enable toggle uses TrackEvent.",
+			} },
+			{ "Automation", {
+				"Faster Loot: OnDisable unregisters loot events.",
+			} },
+			{ "DataText", {
+				"Stats: Destroy() tears down readout, position listener, and OnUpdate on disable.",
+			} },
+			{ "Tooltip", {
+				"Modifier, addon-load, and item-level events use TrackEvent and unregister on disable.",
+			} },
+			{ "Miscellaneous", {
+				"Experience Bar: fade-on-combat uses the shared combat visibility bus.",
+			} },
+		},
+	},
+	{
+		version = "1.5.3",
+		date = "2026-06-27",
+		intro = "Combat bus, lifecycle teardown, and Quick Quest data-path polish.",
+		sections = {
+			{ "Core", {
+				"Combat visibility bus: ns:RegisterCombatEnterCallback and ns:RegisterCombatLeaveCallback share one PLAYER_REGEN_* dispatcher (also drives AfterCombatCallback flush).",
+			} },
+			{ "Automation", {
+				"Quick Quest: reward picker uses RequestItemData for cold choice items; crafting-reagent guard warms item data; combat popup retry uses AfterCombatCallback; OnDisable clears gated events.",
+				"Holiday Dungeon: RegisterAddOnLoadedCallback for Group Finder; tracked events unregister on disable.",
+				"Auto Keystone: tracked ADDON_LOADED teardown on disable.",
+			} },
+			{ "Inventory", {
+				"Unusable Items: OnDisable unregisters PLAYER_LEVEL_UP.",
+			} },
+			{ "Miscellaneous", {
+				"Experience Bar: bar update events and fade combat/target listeners unregister when disabled.",
+			} },
+		},
+	},
+	{
+		version = "1.5.2",
+		date = "2026-06-27",
+		intro = "Midnight data paths, sparse profiles, and action-bar DurationObject polish.",
+		sections = {
+			{ "Core", {
+				"Sparse SavedVariables: F.CompactDefaults strips keys equal to defaults; ns:CompactActiveProfile runs on PLAYER_LOGOUT (Hydra-style sparse persistence).",
+			} },
+			{ "Tooltip", {
+				"Item Level: cold inspect slots use ns:RequestItemData before re-scanning equipped gear.",
+			} },
+			{ "Inventory", {
+				"Already Known: ns:RequestItemData when GetItemInfo is cold; events unregister on disable.",
+				"Delete Cheapest: RequestItemData warms sell price / class data; BAG_UPDATE_DELAYED unregisters on disable.",
+			} },
+			{ "Action Bars", {
+				"GCD Bar: C_Spell.GetSpellCooldownDuration + StatusBar:SetTimerDuration (no OnUpdate arithmetic); OnDisable teardown.",
+				"Extra Quest Button: item cooldown uses DurationObject + SetCooldownFromDurationObject.",
+			} },
+		},
+	},
+	{
+		version = "1.5.1",
+		date = "2026-06-27",
+		intro = "Lifecycle and Midnight polish — symmetric module teardown, live-disable fixes, and helper additions from the reference-library backlog.",
+		sections = {
+			{ "Fixed", {
+				"Smart Minimap Tracking: OnDisable now unregisters events (previously kept firing after toggle-off).",
+				"Loot Roll: disabling restores Blizzard START_LOOT_ROLL / CANCEL_LOOT_ROLL on UIParent, clears active bars, and unregisters module events — no /reload required.",
+				"Clock: OnDisable unregisters PLAYER_ENTERING_WORLD and hides the frame when toggled off.",
+				"Hide DPS Role Icon: roster/zone events unregister on disable; compact and party frames refresh so DPS icons return immediately.",
+				"Auto Role: migrated to TrackEvent / TrackUnitEvent handles (symmetric teardown with other automation modules).",
+				"Popup QoL: MERCHANT_SHOW uses tracked handles for clean disable.",
+			} },
+			{ "Changed", {
+				"Class Colours: F.BooleanIsTrue for connection/player checks; OnSettingChanged gates on the enable key.",
+				"Core — F.RegisterFrameForEvents: bulk Frame:RegisterEvent helper for modules that own a private event frame.",
+			} },
+		},
+	},
+	{
 		version = "1.5.0",
 		date = "2026-06-27",
 		intro = "Midnight maintenance pass — nameplate tools, tooltip and automation improvements, settings reorg, chat quality-of-life, Character and Inspect frame reskin sync, and assorted 12.0.7 API polish.",
 		sections = {
+			{ "Core", {
+				"Lifecycle helpers: ns:AfterCombatCallback (defer until PLAYER_REGEN_ENABLED), ns:RegisterAddOnLoadedCallback (run when a Blizzard addon loads), ns:RegisterLoadingCompleteCallback (post loading-screen), and ns:RequestQuestData (coalesced QUEST_DATA_LOAD_RESULT batching in Core/DataLoad.lua).",
+				"F.SafeUnitIsUnit: compares unit tokens via C_Secrets.CanCompareUnitTokens when available; returns false when blocked or secret — used by tooltips, nameplates, menu buttons, and F.IsFriendlyControlledUnit.",
+				"LOD modules (Wowhead Links, Auction Search Fallback, Hero Talent Swap, Quest Navigation) now use RegisterAddOnLoadedCallback instead of manual ADDON_LOADED one-shots.",
+				"RequestItemData / RequestSpellData: coalesced ITEM_DATA_LOAD_RESULT and SPELL_DATA_LOAD_RESULT batching in Core/DataLoad.lua.",
+				"CreateZoneTrigger: map-gated onEnter/onLeave helper in Core/ZoneTrigger.lua (Plumber-style zone modules).",
+				"CreateStateTrigger: predicate-gated onEnter/onLeave with optional debounce (Delves Automation).",
+				"F.BooleanIsTrue / F.EvaluateColorFromBoolean / F.SetShownFromBoolean: Midnight-safe boolean visuals in Core/Functions.lua.",
+				"TrackEvent / UnregisterModuleEventHandles: module event teardown helpers on Engine (TrackUnitEvent for UNIT_* filters).",
+			} },
 			{ "Tooltip", {
 				"Crafting Reagents: on usable craftable items, shows required reagents with bag/bank counts and a batch-craft hint (Plumber-inspired). Secret-safe counts.",
 				"New options: Hide Unit Tooltips in Combat, Hide Guild Rank, Show Crafting Reagents.",
+				"NPC Spawn Age: while holding Shift on NPC tooltips, shows how long ago the unit spawned (GUID spawn UID decode).",
 				"Pawn integration: Show Icons suppresses Pawn corner icons; Quality-Coloured Border suppresses Pawn green upgrade borders (scores/upgrade text unchanged). Settings note when Pawn is installed.",
 			} },
 			{ "Nameplates", {
 				"Nameplate Quest Icons: shows a quest icon on the nameplate of any NPC tied to one of your active quests, with optional objective progress (always on your target, on mouseover, or while holding a chosen modifier key). A party member's quest greys the icon; inside instances it falls back to the cheap relation check. Secret-value safe. Options for icon size, progress text size, side, X/Y offset, party quests, progress mode/format and the modifier key.",
 				"Target Arrows: arrow indicators on your current target's nameplate (attackable units only). Horizontal side arrows or a single Azerite arrow above the plate; customizable arrow color (defaults to NexEnhance blue). Optional friendly-player nameplate preset enables name-only class-colored friendly player plates via the same Blizzard CVars (restored when turned off).",
 				"Reaction Colors: tints NPC and mob nameplate health bars with the same darker reaction palette as the target frame. Player nameplates are not changed; forbidden, tap-denied, dead, and combat threat-hostile plates are skipped.",
+			} },
+			{ "Unit Frames", {
+				"Class Colours: events unregister on disable so UNIT_THREAT_* / UNIT_FACTION refreshes stop while the module is off.",
 			} },
 			{ "Chat", {
 				"ElvUI-style chat quality-of-life: scroll-down interval (auto return to bottom after scrolling up), flash taskbar icon on whisper, /tt and /gr edit-box shortcuts, and combat repeat-character block.",
@@ -64,8 +244,22 @@ local CHANGELOG = {
 				"Hide Channel Tags: strip channel brackets entirely instead of abbreviating them.",
 			} },
 			{ "Automation", {
+				"Smart Fishing: while channeling fishing, widens soft-target interact, mutes ambience, and override-binds your fishing action-bar key to INTERACTTARGET (Hold Shift when casting to skip).",
+				"Auction Search Fallback: when Current Expansion Only returns zero browse results, widens the filter once and retries.",
+				"Smart Minimap Tracking: auto-enables repair-vendor tracking when gear is damaged and mailbox tracking when mail is pending.",
+				"Quick Quest: utility gossip auto-select for Nerub speed skip, D.R.I.V.E, Vaskarn vendor skip, and hunter stable UI (Inomena IDs).",
 				"Auto Role: sets your party role from your active spec (GetSpecializationRoleEnum / UnitSetRoleEnum). Skips LFG groups, scenarios, and combat. Optional instant role-poll answer suppresses Blizzard's popup.",
 				"Holiday Dungeon: when you open the Dungeon Finder for the first time each login, points out the active holiday or Timewalking queue in the Type menu if it is not already selected (including Turbulent Timeways weeks where the API omits the Timewalking flag).",
+			} },
+			{ "Skins", {
+				"Hero Talent Swap: right-click the hero talent button on the Talents pane to swap to your inactive hero tree (Inomena-inspired).",
+				"Quest Navigation: ETA text uses CreatePlainFS (12.0.7 Slug shadow workaround); loads via RegisterAddOnLoadedCallback.",
+			} },
+			{ "Filters", {
+				"System Chat Filter: hides learn and unlearn spell system messages when changing talents.",
+			} },
+			{ "Miscellaneous", {
+				"Popup QoL: optional auto-confirm for BoP loot and tradeable equip/sell, click-through event toasts, Enter-to-accept purchases, and Alt+right-click merchant stack buy.",
 			} },
 			{ "Settings", {
 				"Options reorganised: new Nameplates, Camera, Alerts and Movers categories so the Miscellaneous page is no longer a catch-all.",
@@ -73,12 +267,44 @@ local CHANGELOG = {
 				"Game Menu: NexEnhance button on the escape menu (after Options/Shop) opens the addon settings panel.",
 				"Localization: initial German (deDE) locale — machine-translated for native review; English remains the fallback.",
 			} },
-			{
+			{ "General", {
+				"Hide UI Elements: optional Hide Boss Banner and Hide Event Toasts (off by default). Scoreboards with a close button are kept.",
+			} },
+			{ "Auras", {
+				"Buff Reminder: optional Reminder Glow (on by default) — soft red halo via retail tutorial-frame glow art, not Classic flipbook ants. Preview with /nex reminder.",
+				"Buff Reminder: expanded alternate raid buff spell IDs (MOTW, Arcane Intellect, full Blessing of the Bronze variants), Shaman weapon depends use cast spell IDs, rogue poisons accept any known poison in the slot, GetPlayerAuraBySpellID fast path, and a pre-combat aura snapshot for secret-safe combat display.",
+				"Buff Reminder: item and depend-spell cooldown swipes use DurationObject APIs (SetCooldownFromDurationObject / GetSpellCooldownDuration); item cooldown checks are secret-guarded. Lack label uses CreatePlainFS.",
+			} },
+				{
 				"Fixed",
 				{
+					"Nameplates - Reaction Colors: plates no longer flash default Blizzard selection tints after combat; threat health-bar skip is combat-only, with UNIT_THREAT_*, UNIT_FACTION, and deferred regen refreshes (same event set as Class Colors). Out-of-combat plates tint immediately via bar-RGB fallback when nameplate tokens hide reaction APIs, plus deferred NAME_PLATE_UNIT_ADDED refresh.",
+					"Maps - Wowhead Links: world-map quest link is a copyable edit box again (hover + Ctrl-C); stacks above title bar; fixed Setup() nil wmf.",
 					"Settings: sidebar New markers and section badges now match the landing-page new-module list; canvas pages dismiss the callout; New This Update scrolls when long; Plugin Manager sits under Plugins.",
 					"Profiles: per-character profile label + hint; dropdown rows no longer overlap.",
+					"Profiles: create/copy name prompt uses GetEditBox/GetButton1 on 12.0.7 StaticPopup (fixes nil editBox/button1 errors).",
 					"Unit Frames / Tooltips: UnitSelectionType category + FACTION_BAR tints; unfriendly orange boosted so it reads clearly vs red.",
+					"Class Colours: player pets and friendly player-controlled units no longer get hostile NPC reaction red on pet/target frames.",
+					"Class Colours: compact raid/party frames no longer forced — use Blizzard Edit Mode Class Colors instead.",
+					"Class Colours: F.IsFriendlyControlledUnit guards UnitIsUnit — secret boolean on targettarget no longer errors when tab-targeting in combat.",
+					"Class Colours: offline players on target/focus/toT/boss HUD frames get disconnect icon + desaturated portrait (party portraits still use Blizzard UpdateOnlineStatus); health already grey.",
+					"Quick Quest: auto-selects <Skip Mini Game> gossip while enabled (Rommath-style ward skips); story-skip detection now requires <Skip, not any bracketed lead-in.",
+					"Quick Quest: rogues and druids auto-select [Requires a Stealth Class.] gossip (invisibility quest skip) when exactly one is offered.",
+					"Nameplates (Quest Icons, Target Arrows, Reaction Colors): events unregister on disable; toggling off no longer leaves NAME_PLATE_* / threat listeners active.",
+					"General — Hide Combat Errors: PLAYER_REGEN_* listeners unregister when the option is off.",
+					"Automation — Auto Role / Auto Hide Tracker: OnDisable symmetry for event teardown.",
+					"Automation — Auto Invite, Auto Goodbye, Decline Duel, Cancel Bad Buffs, Auto Greed, Auto Vendor, Auto Warband Gold, Auto Summon, Auto PvP Release: events unregister on disable; fixed Auto Warband Gold / Auto Summon / Auto PvP Release unregistering method refs instead of dispatcher wrappers.",
+					"DataText — Clock: uncached item links in tooltips use ns:RequestItemData when GetItemInfo is not ready.",
+					"Guild Invite Filter: events unregister on disable (OnDisable + toggle off) so GUILD_INVITE_REQUEST no longer fires while the module is off.",
+					"Auto Resurrect: OnDisable unregisters RESURRECT_REQUEST when the module is disabled.",
+					"Queue Timer / Audio Sync / Hide UI Elements: OnDisable + TrackEvent teardown when toggled off.",
+					"Action Bars / Extra Quest Button: events unregister on disable; Extra Quest Button hides when turned off.",
+					"Class Colours + nameplates: TrackEvent + UnregisterModuleEventHandles instead of hand-rolled unregister loops.",
+					"Loot Roll / Tooltip IDs / Unusable Items: ns:RequestItemData for cold GetItemInfo (item level, stack cap, required level).",
+					"Buff Reminder: F.BooleanIsTrue for weapon enchants; TrackEvent + OnDisable teardown.",
+					"Nameplate Reaction Colors: secret-safe skip (readable player/dead only); secret threat leaves Blizzard tint; RGB fallback when reaction APIs are secret.",
+					"Delves Automation: PLAYER_CHOICE_UPDATE gated via CreateStateTrigger.",
+					"Hide DPS Role Icon: also hides the DPS sword on standard party portrait frames; per-frame hooks on pooled PartyMemberFrame instances (mixin-only hook did not apply to live frames).",
 					"Auto Hide Tracker: no longer hides the objective tracker when a friendly escort NPC occupies a boss frame (e.g. MoP Shado-Pan assault dailies); requires a hostile boss unit, not merely boss1..5 existing.",
 					"Minimap: fixed cluster jump-then-snap when mail/crafting orders trigger Blizzard layout — footprint correction defers until after ResizeLayoutFrame.",
 					"Tooltip — Mount Source: uses the aura unit (party/raid mouseover), not target.",
@@ -99,6 +325,8 @@ local CHANGELOG = {
 					"Quick Quest: gossip/greeting handlers select one quest per interaction and chain the next after each accept or turn-in. Gossip offers use C_GossipInfo quest data instead of quest-log difficulty (was 0 before accept). Warband/account-completed quests on an explicit NPC list are accepted even when account-completed tracking is hidden on the minimap. /nex quickquest toggles debug logging.",
 					"Queue Timer: listens for LFG_PROPOSAL_UPDATE, refreshes after LFGDungeonReadyPopup_Update, bootstraps an active pop after /reload, clears PvP confirm state correctly, and stops the OnUpdate ticker when the queue ends (12.0.7 has no default LFG countdown bar).",
 					"Player Cast Bar: backs off while Blizzard's OverlayPlayerCastingBarFrame replaces the player bar (talent/spec commits, crafting, etc.) so our read-only mirror does not fight SetAndUpdateShowCastbar(false) on the Edit Mode frame.",
+					"12.0.7 Slug text shadows (UI pass): minimap zone text, Ctrl+wheel volume readout, and LFG queue timer use F.CreatePlainFS like Stats/Clock. AFK Camera overlay strings migrated the same way; logout countdown no longer shows a leading minus and starts when AFK begins. Inspect average item level uses PlainFS; character-sheet ilvl no longer forces SetShadowOffset. Quest Navigation ETA copies Blizzard DistanceText shadow on BACKGROUND layer to avoid ghosting on world-anchored 3D text. Buff Reminder glow tracks the red border ring, not the icon.",
+					"Inomena-inspired QoL: Smart Fishing (soft-target interact rebind while channeling), Auction House current-expansion search fallback, smart repair/mailbox minimap tracking, hero talent right-click swap, Popup QoL sub-toggles, system chat talent-learn filter, NPC spawn age on Shift tooltips, utility gossip auto-select in Quick Quest.",
 				},
 			},
 		},

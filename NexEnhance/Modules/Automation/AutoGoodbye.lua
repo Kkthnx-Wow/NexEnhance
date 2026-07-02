@@ -35,6 +35,8 @@ ns:RegisterDefaults({
 
 local AutoGoodbye = ns:NewModule("AutoGoodbye", "autoGoodbye", { group = "automation", title = L["Auto Goodbye"], order = 70 })
 
+local eventHandles = {}
+
 -- Throttle/dedupe: both completion events can fire close together, so we queue
 -- a single delayed send and rate-limit how often a message can actually go out.
 local lastGoodbyeAt = 0
@@ -114,13 +116,30 @@ function AutoGoodbye:RegisterModuleEvents()
 	end
 	self.eventsRegistered = true
 
-	self:RegisterEvent("LFG_COMPLETION_REWARD")
-	self:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+	self:TrackEvent(eventHandles, "LFG_COMPLETION_REWARD")
+	self:TrackEvent(eventHandles, "CHALLENGE_MODE_COMPLETED")
+end
+
+function AutoGoodbye:UnregisterModuleEvents()
+	if not self.eventsRegistered then
+		return
+	end
+	self.eventsRegistered = false
+	pendingGoodbye = false
+	ns:UnregisterModuleEventHandles(eventHandles)
+end
+
+function AutoGoodbye:OnDisable()
+	self:UnregisterModuleEvents()
 end
 
 function AutoGoodbye:OnSettingChanged(key, value)
-	if key == "enable" and value then
-		self:RegisterModuleEvents()
+	if key == "enable" then
+		if value then
+			self:RegisterModuleEvents()
+		else
+			self:OnDisable()
+		end
 	end
 end
 

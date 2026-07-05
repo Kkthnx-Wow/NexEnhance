@@ -9,7 +9,7 @@
 [![CurseForge](https://img.shields.io/badge/CurseForge-Download-orange)](https://www.curseforge.com/wow/addons/nexenhance)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/Kkthnx-Wow/NexEnhance/blob/main/LICENSE)
 
-![NexEnhance Logo](https://github.com/Kkthnx-Wow/NexEnhance/assets/40672673/f335ef6a-c4da-4ede-a850-dd6400c0a6da)
+<img width="256" height="256" alt="Logo256_Final" src="https://github.com/user-attachments/assets/e1e1cba0-44e8-4e0e-a2e9-5fb9b42de59c" />
 
 </div>
 

@@ -7,9 +7,6 @@
 	  * /who results window.
 	  * Guild roster (only if the legacy Blizzard_GuildUI is present).
 
-	Adapted to the NexEnhance architecture from NDui's yClassColors (by yleaf):
-	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Plugins/yClassColors.lua
-
 	Every hook target is guarded for existence so the module degrades quietly
 	on UI layouts where a given frame/API is missing (e.g. the modern
 	Communities-based guild UI), rather than erroring on login.
@@ -136,8 +133,7 @@ local repColor = { 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1 }
 -- ---------------------------------------------------------------------------
 -- Friends list (WoW + Battle.net)
 -- ---------------------------------------------------------------------------
--- The level template uses %d which we can't feed a coloured string, so swap
--- the integer specifiers for string ones (matching NDui's approach).
+-- Level template uses %d — swap to %s so we can inject a coloured level string.
 local levelTemplate
 local function GetLevelTemplate()
 	if not levelTemplate then

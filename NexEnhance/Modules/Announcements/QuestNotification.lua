@@ -5,17 +5,11 @@
 	progress, and completions (with a completion sound). Useful so the party
 	knows when everyone is ready to turn in.
 
-	Ported from NDui's Modules/Misc/QuestNotification.lua (by siweia), adapted
-	to the NexEnhance framework. Subscriptions toggle live (no reload).
-
-	Progress detection diverges from the NDui port on purpose: instead of building
-	locale regexes from ERR_QUEST_ADD_* and pattern-matching the UI_INFO_MESSAGE
-	text (brittle, locale-fragile, and a possibly-secret string in Midnight), we
-	diff structured objective counts from C_QuestLog.GetQuestObjectives off the
-	debounced QUEST_LOG_UPDATE scan. That event is the only one that fires for
-	every quest-log change regardless of tracking state -- QUEST_WATCH_UPDATE and
-	QUEST_LOG_CRITERIA_UPDATE both quietly skip untracked/non-criteria objectives.
-	Locale-independent, no string parsing, and it actually fires. You're welcome.
+	Progress detection: we diff structured objective counts from
+	C_QuestLog.GetQuestObjectives off a debounced QUEST_LOG_UPDATE scan instead
+	of pattern-matching localized UI_INFO_MESSAGE text. Locale-independent, no
+	string parsing, fires for every quest regardless of tracking — and the text
+	can be a Secret value in instances anyway.
 --]]
 
 -- The Lua Language Server types quest IDs as optional; silence those false positives.

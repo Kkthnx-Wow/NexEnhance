@@ -6,19 +6,9 @@
 	while you are out of combat, so a random world transform never sticks to
 	your character.
 
-	Reworked from ShestakUI by Wetxius / Shestak (original "by Unknown"):
-	  https://github.com/Wetxius/ShestakUI/blob/main/ShestakUI/Modules/Automation/CancelBadBuffs.lua
-	  https://github.com/Wetxius/ShestakUI/blob/main/ShestakUI/Config/Filters/BadBuffs.lua
-
-	Differences from the original:
-	  - Matches by spellID (locale-independent) instead of localized spell name,
-	    so it never has to call GetSpellInfo or risk a stale-name lookup.
-	  - Registers UNIT_AURA filtered to the player only (RegisterUnitEvent), plus
-	    a single post-combat sweep, instead of a broad UNIT_AURA listener.
-	  - Cancels via CancelUnitBuff by index (high -> low) using reused scratch
-	    tables, so a sweep allocates nothing.
-	  - Guards spellID/name reads with F.NotSecret for 12.0 secret values, and
-	    only ever cancels out of combat (cancelling auras is blocked in combat).
+	Matches by spellID (locale-independent). UNIT_AURA on player only, plus one
+	post-combat sweep. Cancels via CancelUnitBuff high-to-low with reused scratch
+	tables. F.NotSecret on aura reads; never cancels in combat.
 --]]
 
 ---@diagnostic disable: undefined-field

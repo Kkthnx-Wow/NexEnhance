@@ -8,6 +8,7 @@
 
 local _, ns = ...
 local L = ns.L
+local F = ns.F
 local Tooltip = ns:GetModule("Tooltip")
 if not Tooltip then
 	return
@@ -121,8 +122,9 @@ function Tooltip:RefreshPawnIntegration()
 	elseif _G.PawnToggleTooltipIcons then
 		PawnToggleTooltipIcons()
 	end
-	if GameTooltip and GameTooltip:IsShown() and GameTooltip.RefreshData then
-		GameTooltip:RefreshData()
+	if GameTooltip and GameTooltip:IsShown() then
+		-- Item tooltips only — unit rebuild taints GameTooltip_UnitColor (12.0 secret).
+		F.SafeRefreshTooltipData(GameTooltip, { itemOnly = true })
 	end
 end
 

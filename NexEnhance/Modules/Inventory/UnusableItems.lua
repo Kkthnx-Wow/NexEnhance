@@ -5,11 +5,9 @@
 	weapon/armor type or off-hand dual-wield restriction) or you're below the
 	required level - the same cue Blizzard uses on unusable equipment.
 
-	The class-restriction data is reproduced from LibUnfit-1.0 (by João Cardoso,
-	GPL3) as embedded in KkthnxUI, but reworked to fit NexEnhance: no LibStub
-	wrapper, the table is resolved to the player's class once at login, and a
-	per-itemID cache keeps repeat lookups cheap. Class/level item data is not a
-	Secret value, so there is no 12.0 secret concern here.
+	Class-restriction data from LibUnfit-1.0, embedded inline (no LibStub).
+	Resolved to the player's class once at login; per-itemID cache for repeats.
+	Class/level item data is never secret on 12.0.
 
 	Coverage follows our ItemLevel module: discover item buttons when Blizzard
 	rebuilds the pools...

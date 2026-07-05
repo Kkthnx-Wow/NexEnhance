@@ -15,6 +15,7 @@ local pairs, ipairs = pairs, ipairs
 local floor = math.floor
 local format = string.format
 local gsub = string.gsub
+local strfind = string.find
 local tconcat = table.concat
 local tremove = table.remove
 local wipe = wipe
@@ -145,6 +146,16 @@ function F.SidebarIconMarkup(iconPath, size)
 	)
 end
 
+--- Compact |T| tag for inline chat icons (emoji, badges). Width and height default to 16.
+function F.ChatTexture(path, width, height)
+	if not path then
+		return ""
+	end
+	width = width or 16
+	height = height or 16
+	return format("|T%s:%d:%d|t", path, width, height)
+end
+
 -- ---------------------------------------------------------------------------
 -- Numbers / formatting
 -- ---------------------------------------------------------------------------
@@ -189,9 +200,9 @@ end
 --- Type-repair: a key whose saved value no longer matches the default's *type*
 --- is reset to the default. This heals schema drift - e.g. a setting that used
 --- to be a number and is now a table - so stale, wrong-typed saved data can't
---- persist and blow up later. (All three Peterodox addons do exactly this on
---- load.) Keys absent from `defaults` are never iterated, so genuinely dynamic
---- saved data - movers, profiles, account caches - is always preserved.
+--- persist and blow up later. Wrong-typed saved keys get reset to the default
+--- so a number that became a table can't linger and crash on load. Keys absent
+--- from `defaults` are never iterated, so genuinely dynamic saved data - movers, profiles, account caches - is always preserved.
 function F.CopyDefaults(defaults, target)
 	if type(target) ~= "table" then
 		target = {}
@@ -208,7 +219,7 @@ function F.CopyDefaults(defaults, target)
 	return target
 end
 
---- Drop saved keys that match defaults so SavedVariables stay sparse (Hydra-style).
+--- Drop saved keys that match defaults so SavedVariables stay sparse.
 --- Only walks keys present in `defaults`; extra profile keys (movers, etc.) are kept.
 function F.CompactDefaults(defaults, target)
 	if type(defaults) ~= "table" or type(target) ~= "table" then
@@ -231,8 +242,8 @@ function F.CompactDefaults(defaults, target)
 	end
 end
 
---- Copy values from prior sibling keys when a new setting is absent (DialogueUI-style
---- schema upgrades). `inheritMap` is `{ newKey = "oldKey" }`; only runs when
+--- Copy values from prior sibling keys when a new setting is absent (schema
+--- upgrades). `inheritMap` is `{ newKey = "oldKey" }`; only runs when
 --- `target[newKey]` is nil and the old key still holds a value.
 function F.InheritExistingValues(target, inheritMap)
 	if type(target) ~= "table" or type(inheritMap) ~= "table" then
@@ -281,10 +292,8 @@ end
 --- `func` once after `delay` seconds of quiet. Ideal for event storms such as
 --- BAG_UPDATE where many events fire in quick succession.
 ---
---- Implementation note: we capture up to 4 positional args in fixed upvalue
---- slots instead of creating a `{ ... }` table on every call. This avoids a
---- GC allocation on each of the (usually many) suppressed invocations, since
---- only the *first* call per debounce window needs to store args at all.
+--- We capture up to 4 positional args in fixed upvalue slots instead of building
+--- a `{ ... }` table on every call — avoids GC on suppressed invocations.
 --- 4 slots covers virtually every WoW event payload (most have 0-2 args);
 --- callers that truly need 5+ args should use a different approach.
 function F.Debounce(delay, func)
@@ -308,9 +317,6 @@ end
 --   freed objects (frames, textures, data rows). Unlike a plain free-list it
 --   also tracks the *active* set, so the whole batch can be reclaimed in one
 --   call - the usual pattern for "rebuild this list from scratch on refresh".
---
---   Adapted from Plumber's API.CreateObjectPool (Peterodox), trimmed to what
---   NexEnhance needs and guarded so it works for non-frame objects too.
 --
 --     local pool = F.CreatePool(
 --         function() return CreateFrame("Frame", nil, parent) end, -- creator
@@ -450,9 +456,8 @@ end
 --   Identity/health APIs can return "secret" values that tainted code may not
 --   boolean-test or compare. Gate any such read with these helpers first.
 -- ---------------------------------------------------------------------------
--- Secret API modelled on oUF's (by Simpy): a small, complete set of guards so
--- callers never boolean-test / compare / index a secret directly. Every helper
--- is safe to call even on clients where the underlying primitive is absent.
+-- Shared secret guards — callers never boolean-test / compare / index a secret
+-- directly. Safe even when the underlying primitive is absent on older clients.
 do
 	local issecretvalue = _G["issecretvalue"]
 	local issecrettable = _G["issecrettable"]
@@ -872,8 +877,7 @@ do
 end
 
 -- Number abbreviation built on the 12.0 AbbreviateNumbers API. Two presets,
--- selectable via General > Number Format (stored in ns.db.numberFormat.style),
--- mirroring NDui's CreateAbbreviateConfig setup:
+-- selectable via General > Number Format (stored in ns.db.numberFormat.style):
 --   1 = Western:          1.2k / 3.4m / 5.6b / 7.8t
 --   2 = East Asian myriad: 1.2w (万) / 3.4y (亿) / 5.6z (兆)
 -- The configs are built lazily/cached on first use so we don't pay for them at
@@ -952,14 +956,18 @@ function F.CreatePlainFS(parent, size, text, layer)
 	local sz = size or 12
 	local font = C.Media.Fonts.normal
 
-	-- Shadow first so it draws beneath the main string on the same layer.
+	-- Shadow beneath main string — explicit sublevels; sibling order alone is not
+	-- reliable on StatusBar and other layered parents (e.g. cast bar latency text).
 	local shadow = parent:CreateFontString(nil, lyr)
+	shadow:SetDrawLayer(lyr, -1)
 	shadow:SetFont(font, sz, "")
 	shadow:SetTextColor(0, 0, 0, 0.85)
 
 	local fs = parent:CreateFontString(nil, lyr)
+	fs:SetDrawLayer(lyr, 1)
 	fs:SetFont(font, sz, "")
 	fs.nexShadow = shadow
+	fs.nexPlainLayer = lyr
 	shadow:SetPoint("CENTER", fs, "CENTER", 1, -1)
 
 	if text then
@@ -979,6 +987,47 @@ end
 
 function F.SetPlainFormattedText(fs, fmt, ...)
 	F.SetPlainText(fs, format(fmt, ...))
+end
+
+--- Hide a CreatePlainFS string and its manual shadow duplicate.
+function F.HidePlainFS(fs)
+	if not fs then
+		return
+	end
+	fs:Hide()
+	local shadow = fs.nexShadow
+	if shadow then
+		shadow:Hide()
+	end
+end
+
+--- Show a CreatePlainFS string and its manual shadow duplicate.
+function F.ShowPlainFS(fs)
+	if not fs then
+		return
+	end
+	local shadow = fs.nexShadow
+	local lyr = fs.nexPlainLayer or "OVERLAY"
+	if shadow then
+		shadow:SetDrawLayer(lyr, -1)
+		shadow:Show()
+	end
+	fs:SetDrawLayer(lyr, 1)
+	fs:Show()
+end
+
+--- Tear down a CreatePlainFS string (main + shadow).
+function F.ReleasePlainFS(fs)
+	if not fs then
+		return
+	end
+	F.HidePlainFS(fs)
+	local shadow = fs.nexShadow
+	if shadow then
+		shadow:SetParent(nil)
+		fs.nexShadow = nil
+	end
+	fs:SetParent(nil)
 end
 
 --- Resize a font string while preserving its font file and flags.
@@ -1073,12 +1122,47 @@ function F.TooltipHasLine(tip, matchText)
 	return false
 end
 
+--- Addon-initiated `RefreshData` rebuilds the tooltip in tainted execution.
+--- Unit lines run `GameTooltip_UnitColor` -> `UnitPlayerControlled(unit)`, which
+--- rejects secret unit tokens unless the call stack is untainted (Midnight 12.0+).
+--- @param tooltip GameTooltip|table
+--- @param opts? table itemOnly: when true, skip unit tooltips entirely (Pawn/item paths).
+--- @return boolean refreshed
+function F.SafeRefreshTooltipData(tooltip, opts)
+	if not tooltip or tooltip:IsForbidden() or not tooltip:IsShown() then
+		return false
+	end
+	if not tooltip.RefreshData then
+		return false
+	end
+
+	opts = opts or {}
+	local unitType = Enum and Enum.TooltipDataType and Enum.TooltipDataType.Unit
+	if tooltip.IsTooltipType and unitType and tooltip:IsTooltipType(unitType) then
+		if opts.itemOnly then
+			return false
+		end
+		local unit = tooltip.GetUnit and tooltip:GetUnit()
+		if unit and F.IsSecret(unit) then
+			return false
+		end
+	end
+
+	local ok, err = pcall(tooltip.RefreshData, tooltip)
+	if not ok then
+		if type(err) == "string" and (strfind(err, "secret", 1, true) or strfind(err, "UnitPlayerControlled", 1, true)) then
+			return false
+		end
+		error(err, 2)
+	end
+	return true
+end
+
 -- ---------------------------------------------------------------------------
 -- Item level scanning
 --   Reads effective item level (and, on a full scan, gems/sockets/enchant
 --   text) from the modern structured tooltip API. The line args are already
 --   surfaced by C_TooltipInfo, so fields like .gemIcon/.enchantID are direct.
---   Ported from NDui's B.GetItemLevel (by yleaf).
 -- ---------------------------------------------------------------------------
 do
 	local strfind, strmatch, gsub = string.find, string.match, string.gsub
@@ -1197,8 +1281,6 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Item bind label (BoE / BoA / WuE)
---   Idea borrowed from Lars Norberg's BlizzardBags_BoE (GoldpawsStuff):
---     https://github.com/GoldpawsStuff/BlizzardBags_BoE
 --   Prefers the structured bag-tooltip binding line; falls back to the static
 --   bindType from C_Item.GetItemInfo. Returns nil when bound or not applicable.
 -- ---------------------------------------------------------------------------

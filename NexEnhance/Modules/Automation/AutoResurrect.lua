@@ -4,18 +4,12 @@
 	Automatically accepts resurrection requests while you are out of combat,
 	and (optionally) emotes a /thank to whoever brought you back.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/Resurrect.lua
+	Item-cast resurrects (encounter "Failure Detection Pylon", "Brazier of
+	Awakening") are ignored so you can still make the strategic call on those.
+	We also skip accepting while you're in combat — bad time for a battle-rez.
 
-	Item-cast resurrects (the encounter "Failure Detection Pylon" and the
-	"Brazier of Awakening") are deliberately ignored so you can still make the
-	strategic call on those. The combat check avoids accepting a battle-rez at
-	a bad moment.
-
-	The event is registered symmetrically: registered on enable, unregistered
-	on disable (via OnSettingChanged). This keeps event dispatch overhead near
-	zero while the module is off. (Verified: RESURRECT_REQUEST is valid in
-	Blizzard Resources 12.0.7/Events.lua line 617.)
+	The event registers on enable and unregisters on disable so dispatch stays
+	cheap while the module is off.
 --]]
 
 ---@diagnostic disable: undefined-field

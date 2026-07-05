@@ -5,11 +5,8 @@
 	`:StripTextures()` methods to every widget so skinning modules can clean up
 	Blizzard frames with a single call.
 
-	Adapted from CharInspectPlus / KkthnxUI (the standard ElvUI-style pattern):
-	  https://github.com/Kkthnx-Wow/CharInspectPlus
-
-	The functions are also exposed on `ns.F` (F.Kill / F.StripTextures) for
-	callers that prefer a plain function over a method.
+	Also exposed on `ns.F` (F.Kill / F.StripTextures) for callers that prefer a
+	plain function over a method.
 --]]
 
 local _, ns = ...
@@ -171,7 +168,7 @@ F.StripTextures = stripTextures
 
 -- ---------------------------------------------------------------------------
 -- Backdrop / border skin system
---   A lightweight, ElvUI/NDui-style backdrop: a child frame one level below
+--   Child frame one level below parent; tooltip border + optional dark fill.
 --   its parent with a flat fill and a 1px border. `:SetInside()` pins it to the
 --   parent's edges. Used by the tooltip and other skin modules.
 -- ---------------------------------------------------------------------------
@@ -292,7 +289,7 @@ end
 --   modern Texture:SetGradient(orientation, minColour, maxColour) API (the old
 --   SetGradientAlpha was removed in 9.0). Optional width/height size the texture;
 --   otherwise anchor the returned texture yourself. Reusable gradient art helper
---   (chat backgrounds, info bars, divider lines), modelled on NDui's B.SetGradient.
+--   (chat backgrounds, info bars, divider lines).
 -- ---------------------------------------------------------------------------
 local GRADIENT_ORIENTATION = { H = "HORIZONTAL", V = "VERTICAL" }
 

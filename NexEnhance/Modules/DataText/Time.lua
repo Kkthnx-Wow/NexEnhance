@@ -5,9 +5,6 @@
 	CVars. Hovering it opens a tooltip with the full date, local & realm time,
 	resets, saved raid / dungeon / world-boss lockouts, weekly quest checks,
 	Delves, the weekly "Choose Your Path" meta, and Shift-held world-event details.
-
-	Adapted from KkthnxUI's Time DataText by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/DataText/Elements/Time.lua
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
@@ -36,6 +33,7 @@ local GetNumSavedInstances = GetNumSavedInstances
 local GetNumSavedWorldBosses = GetNumSavedWorldBosses
 local GetSavedInstanceInfo = GetSavedInstanceInfo
 local GetSavedWorldBossInfo = GetSavedWorldBossInfo
+local EJ_GetInstanceInfo = EJ_GetInstanceInfo
 local GameTime_GetGameTime = GameTime_GetGameTime
 local GameTime_GetLocalTime = GameTime_GetLocalTime
 local InCombatLockdown = InCombatLockdown
@@ -50,6 +48,7 @@ local C_AddOns = C_AddOns
 local C_AreaPoiInfo = C_AreaPoiInfo
 local C_Calendar = C_Calendar
 local C_DateAndTime = C_DateAndTime
+local C_EncounterJournal = C_EncounterJournal
 local C_Item = C_Item
 local C_Map = C_Map
 local C_QuestLog = C_QuestLog
@@ -80,6 +79,8 @@ local entered
 local isTimeWalker
 local walkerTexture
 local tooltipElapsed = 0
+local raidLockoutScratch = {}
+local dungeonLockoutScratch = {}
 
 local region = GetCVar and GetCVar("portal") or "US"
 
@@ -571,30 +572,109 @@ local function ProgressString(progress, total)
 	return str
 end
 
+-- GetSavedInstanceInfo: since 10.0.5 return #2 is lockoutId; map InstanceID is #14.
+-- Classify with EJ when api isRaid lies; render raids and dungeons in two passes
+-- because API index order is not grouped by instance type.
+local function ReadSavedInstance(index)
+	local name, _, reset, diff, locked, extended, _, isRaid, maxPlayers, diffName, numEncounters, progress, _, gameInstanceID =
+		GetSavedInstanceInfo(index)
+	return {
+		name = name,
+		reset = reset,
+		diff = diff,
+		locked = locked,
+		extended = extended,
+		isRaid = isRaid,
+		maxPlayers = maxPlayers,
+		diffName = diffName,
+		numEncounters = numEncounters,
+		progress = progress,
+		gameInstanceID = gameInstanceID,
+	}
+end
+
+local function LookupJournalRaid(gameInstanceID)
+	if not (gameInstanceID and gameInstanceID > 0 and C_EncounterJournal and C_EncounterJournal.GetInstanceForGameMap and EJ_GetInstanceInfo) then
+		return nil
+	end
+	local journalID = C_EncounterJournal.GetInstanceForGameMap(gameInstanceID)
+	if not journalID then
+		return nil
+	end
+	local ejName, _, _, _, _, _, _, _, _, _, _, ejIsRaid = EJ_GetInstanceInfo(journalID)
+	if not ejName then
+		return nil
+	end
+	return ejIsRaid
+end
+
+local function IsSavedInstanceRaid(info)
+	if info.isRaid then
+		return true
+	end
+
+	local ejIsRaid = LookupJournalRaid(info.gameInstanceID)
+	if ejIsRaid == true then
+		return true
+	end
+	if ejIsRaid == false then
+		if info.maxPlayers and info.maxPlayers > 5 then
+			return true
+		end
+		if info.numEncounters and info.numEncounters > 8 then
+			return true
+		end
+		return false
+	end
+
+	if info.maxPlayers and info.maxPlayers > 5 then
+		return true
+	end
+	if info.numEncounters and info.numEncounters > 8 then
+		return true
+	end
+	return false
+end
+
+local function AddLockoutTooltipLine(info)
+	local r, g, b = info.extended and 0.3 or 0.75, info.extended and 1 or 0.75, info.extended and 0.3 or 0.75
+	GameTooltip:AddDoubleLine(
+		format("%s - %s %s", info.name, AbbrDiff(info.diff, info.diffName), ProgressString(info.progress, info.numEncounters)),
+		FormatTimer(info.reset),
+		1, 1, 1, r, g, b
+	)
+end
+
 local function AddLockouts()
 	local count = GetNumSavedInstances and GetNumSavedInstances() or 0
 	if count == 0 then
 		return
 	end
 
-	local dungeonHeader, raidHeader
+	wipe(raidLockoutScratch)
+	wipe(dungeonLockoutScratch)
+
 	for i = 1, count do
-		local name, _, reset, diff, locked, extended, _, isRaid, _, diffName, numEncounters, progress = GetSavedInstanceInfo(i)
-		if (locked or extended) and name then
-			local r, g, b = extended and 0.3 or 0.75, extended and 1 or 0.75, extended and 0.3 or 0.75
-			if not isRaid and (diff == 2 or diff == 23) then
-				if not dungeonHeader then
-					AddTooltipTitle(L["Saved Dungeon(s)"])
-					dungeonHeader = true
-				end
-				GameTooltip:AddDoubleLine(format("%s - %s %s", name, AbbrDiff(diff, diffName), ProgressString(progress, numEncounters)), FormatTimer(reset), 1, 1, 1, r, g, b)
-			elseif isRaid then
-				if not raidHeader then
-					AddTooltipTitle(L["Saved Raid(s)"])
-					raidHeader = true
-				end
-				GameTooltip:AddDoubleLine(format("%s - %s %s", name, AbbrDiff(diff, diffName), ProgressString(progress, numEncounters)), FormatTimer(reset), 1, 1, 1, r, g, b)
+		local info = ReadSavedInstance(i)
+		if (info.locked or info.extended) and info.name then
+			if IsSavedInstanceRaid(info) then
+				raidLockoutScratch[#raidLockoutScratch + 1] = info
+			elseif info.diff == 2 or info.diff == 23 then
+				dungeonLockoutScratch[#dungeonLockoutScratch + 1] = info
 			end
+		end
+	end
+
+	if #raidLockoutScratch > 0 then
+		AddTooltipTitle(L["Saved Raid(s)"])
+		for j = 1, #raidLockoutScratch do
+			AddLockoutTooltipLine(raidLockoutScratch[j])
+		end
+	end
+	if #dungeonLockoutScratch > 0 then
+		AddTooltipTitle(L["Saved Dungeon(s)"])
+		for j = 1, #dungeonLockoutScratch do
+			AddLockoutTooltipLine(dungeonLockoutScratch[j])
 		end
 	end
 end
@@ -685,7 +765,7 @@ end
 
 -- A bountiful delve is the special weekly delve flagged with a "bountiful" atlas
 -- (e.g. "delves-bountiful"). Plain delve entrances are everywhere and would
--- flood the tooltip, so we list only bountiful ones (matches NDui/KkthnxUI).
+-- flood the tooltip, so we list only bountiful ones.
 local function IsBountifulDelve(info)
 	return info and info.atlasName and find(info.atlasName, "[Bb]ountiful") and true or false
 end
@@ -1259,12 +1339,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Tooltip
 -- ---------------------------------------------------------------------------
-local function OnEnter(self)
-	entered = true
-	tooltipElapsed = 0
-	self:RegisterEvent("MODIFIER_STATE_CHANGED")
-	RequestRaidInfo()
-
+local function ShowClockTooltip(self)
 	GameTooltip:SetOwner(self, "ANCHOR_NONE")
 	GameTooltip:SetPoint("TOPRIGHT", self, "BOTTOMRIGHT", 0, -6)
 	GameTooltip:ClearLines()
@@ -1308,10 +1383,20 @@ local function OnEnter(self)
 	GameTooltip:Show()
 end
 
+local function OnEnter(self)
+	entered = true
+	tooltipElapsed = 0
+	self:RegisterEvent("MODIFIER_STATE_CHANGED")
+	self:RegisterEvent("UPDATE_INSTANCE_INFO")
+	RequestRaidInfo()
+	ShowClockTooltip(self)
+end
+
 local function OnLeave()
 	entered = false
 	if clock then
 		clock:UnregisterEvent("MODIFIER_STATE_CHANGED")
+		clock:UnregisterEvent("UPDATE_INSTANCE_INFO")
 	end
 	GameTooltip:Hide()
 end
@@ -1389,8 +1474,11 @@ function Clock:Create()
 	clock:SetScript("OnLeave", OnLeave)
 	clock:SetScript("OnMouseUp", OnMouseUp)
 	clock:SetScript("OnEvent", function(self, event)
-		if event == "MODIFIER_STATE_CHANGED" and entered then
-			OnEnter(self)
+		if not entered then
+			return
+		end
+		if event == "MODIFIER_STATE_CHANGED" or event == "UPDATE_INSTANCE_INFO" then
+			ShowClockTooltip(self)
 		end
 	end)
 
@@ -1420,9 +1508,56 @@ function Clock:Stop()
 	entered = false
 	if clock then
 		clock:UnregisterEvent("MODIFIER_STATE_CHANGED")
+		clock:UnregisterEvent("UPDATE_INSTANCE_INFO")
 		clock:SetScript("OnUpdate", nil)
 		clock:Hide()
 	end
+end
+
+function Clock:OnInitialize()
+	ns.Debug.BindModule(self, "clock", {
+		title = L["Clock"],
+		expectations = {
+			{
+				name = "clock frame matches enable toggle",
+				test = function()
+					if not cfg or not cfg.enable then
+						return not eventsRegistered
+					end
+					return clock ~= nil and eventsRegistered
+				end,
+				detail = function()
+					return format("enable=%s eventsRegistered=%s clock=%s", tostring(cfg and cfg.enable), tostring(eventsRegistered), clock and "yes" or "no")
+				end,
+			},
+		},
+		dump = function()
+			F.Print(format("  enable=%s showLegacy=%s entered=%s", tostring(cfg and cfg.enable), tostring(cfg and cfg.showLegacy), tostring(entered)))
+			if RequestRaidInfo then
+				RequestRaidInfo()
+			end
+			local count = GetNumSavedInstances and GetNumSavedInstances() or 0
+			F.Print(format("  savedInstanceCount=%d", count))
+			for i = 1, count do
+				local info = ReadSavedInstance(i)
+				if info.name then
+					local isRaid = IsSavedInstanceRaid(info)
+					local bucket = isRaid and "raid" or ((info.diff == 2 or info.diff == 23) and "dungeon" or "hidden")
+					F.Print(format(
+						"  [%d] %q shown=%s bucket=%s apiIsRaid=%s mapId=%s maxP=%s diff=%s",
+						i,
+						info.name,
+						tostring(info.locked or info.extended),
+						bucket,
+						tostring(info.isRaid),
+						tostring(info.gameInstanceID),
+						tostring(info.maxPlayers),
+						tostring(info.diff)
+					))
+				end
+			end
+		end,
+	})
 end
 
 function Clock:OnEnable()

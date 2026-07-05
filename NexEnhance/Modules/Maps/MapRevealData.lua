@@ -4,7 +4,7 @@
 	Overlay data for the Map Reveal feature (Modules/Maps/MapReveal.lua),
 	keyed by map art ID (C_Map.GetMapArtID).
 
-	Format (matches KkthnxUI's WorldMapPlus data):
+	Format:
 
 		C.WorldMapPlusData[mapArtID] = {
 			-- key:   "W<width>H<height>X<offsetX>Y<offsetY>"  (tile descriptor)

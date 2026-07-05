@@ -3,7 +3,7 @@
 	-------------------------------------------------------------------------
 	On the Auction House browse tab: prefer Current Expansion Only, but when a
 	search returns zero results with that filter on, widen once and retry. Re-
-	enables the filter when still empty (Inomena-inspired).
+	enables the filter when still empty.
 
 	Blizzard refs (Resources 12.0.7): Enum.AuctionHouseFilter.CurrentExpansionOnly,
 	AuctionHouseFilterButtonMixin, AUCTION_HOUSE_BROWSE_RESULTS_UPDATED.

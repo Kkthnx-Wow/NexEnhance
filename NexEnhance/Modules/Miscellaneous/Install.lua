@@ -4,8 +4,6 @@
 	One-click welcome screen: applies recommended Blizzard CVars, raid frames,
 	and the default chat layout, then reloads. Auto-opens once (ns.global.installed);
 	reopen anytime with /nex install.
-
-	Recommended settings adapted from NDui's tutorial (siweia).
 --]]
 
 -- luacheck: globals ScrollUtil FCF_DockUpdate
@@ -37,6 +35,7 @@ local ChatFrame_RemoveAllMessageGroups = ChatFrame_RemoveAllMessageGroups
 local ChatFrame_RemoveChannel = ChatFrame_RemoveChannel
 local ChatFrame_AddMessageGroup = ChatFrame_AddMessageGroup
 local ChatFrame_AddChannel = ChatFrame_AddChannel
+local ChangeChatColor = ChangeChatColor
 
 local BACKDROP = C.Backdrops.window
 local FRAME_W, FRAME_H = 640, 460
@@ -171,6 +170,23 @@ local LOOT_MESSAGE_GROUPS = {
 	"SKILL",
 }
 
+-- Default channel tints for General, Trade, and Local Defense.
+local CHAT_CHANNEL_COLORS = {
+	{ "CHANNEL1", 0.76, 0.90, 0.91 },
+	{ "CHANNEL2", 0.91, 0.62, 0.47 },
+	{ "CHANNEL3", 0.91, 0.89, 0.47 },
+}
+
+local function ApplyChatColors()
+	if not ChangeChatColor then
+		return
+	end
+	for i = 1, #CHAT_CHANNEL_COLORS do
+		local entry = CHAT_CHANNEL_COLORS[i]
+		pcall(ChangeChatColor, entry[1], entry[2], entry[3], entry[4])
+	end
+end
+
 local function AddMessageGroups(frame, groups)
 	for i = 1, #groups do
 		ChatFrame_AddMessageGroup(frame, groups[i])
@@ -233,6 +249,8 @@ local function ApplyChatLayout()
 	SetCVarSafe("colorChatNamesByClass", 0)
 	SetCVarSafe("chatClassColorOverride", 0)
 	SetCVarSafe("speechToText", 0)
+
+	ApplyChatColors()
 
 	local dock = _G.GENERAL_CHAT_DOCK
 	if dock and FCFDock_GetSelectedWindow and FCFDock_GetSelectedWindow(dock) ~= ChatFrame1 then

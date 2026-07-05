@@ -6,8 +6,7 @@
 	matching pixel multiplier (C.Mult) that the backdrop/border system uses
 	to draw crisp 1px borders at any resolution.
 
-	Ported from NDui's SetupUIScale logic (Init.lua, by siweia), adapted to the
-	NexEnhance framework. Computed in OnInitialize so C.Mult is correct before
+	Computed in OnInitialize so C.Mult is correct before
 	any module builds a backdrop, and re-applied on UI_SCALE_CHANGED.
 
 	Important: apply only via UIParent:SetScale during ADDON_LOADED / out of combat.

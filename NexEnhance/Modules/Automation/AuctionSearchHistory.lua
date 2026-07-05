@@ -110,12 +110,18 @@ local function EnsureDropdown()
 		return dropdown
 	end
 
-	local frame = CreateFrame("Frame", "NexEnhanceAHSearchHistory", UIParent, "BackdropTemplate")
+	local frame = CreateFrame("Frame", "NexEnhanceAHSearchHistory", UIParent)
 	frame:SetFrameStrata("TOOLTIP")
 	frame:SetClampedToScreen(true)
 	frame:Hide()
 	frame:EnableMouse(true)
-	F.CreateTooltipBackdrop(frame, { edgeSize = 10 })
+	-- F.CreateTooltipBackdrop(frame, { edgeSize = 10 })
+
+	local background = frame:CreateTexture(nil, "BACKGROUND")
+	background:SetAtlas("common-dropdown-bg")
+	background:SetAlpha(0.9)
+	background:SetPoint("TOPLEFT", -10, 6)
+	background:SetPoint("BOTTOMRIGHT", 2, -12)
 
 	frame:SetScript("OnHide", function()
 		if rowPool then

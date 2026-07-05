@@ -7,11 +7,8 @@
 	click "Release Spirit" is just wasting precious seconds you could spend
 	actually fighting (or getting farmed again).
 
-	We check for self-resurrection (Soulstones, Reincarnate, etc.) to ensure
-	we don't rob you of a strategic self-rez. And we only do it in PvP zones
-	so you don't release in the middle of a raid boss fight and walk back.
-
-	Inspired by the auto-release logic in EnhanceQoL.
+	We check for self-resurrection (Soulstones, Reincarnate, etc.) so we don't
+	steal a strategic self-rez. PvP zones only — no accidental release mid-raid.
 --]]
 
 ---@diagnostic disable: undefined-field

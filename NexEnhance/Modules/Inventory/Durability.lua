@@ -5,16 +5,6 @@
 	showing the lowest equipped-item durability. Hovering it lists the
 	durability of every damaged slot plus the total repair cost, and a HelpTip
 	nudges you when any piece drops below 25%.
-
-	Adapted to the NexEnhance architecture from KkthnxUI's DataText/Durability
-	(by Josh "Kkthnx" Russell):
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/master/KkthnxUI/Modules/DataText/Elements/Durability.lua
-
-	K.* helpers are replaced with our framework equivalents:
-	  * K.RGBToHex          -> F.ColorStr
-	  * K.RGBColorGradient  -> local DurabilityColor (red -> yellow -> green)
-	  * K.FormatMoney       -> F.FormatMoney
-	  * K.MyClassColor      -> F.ColorStr(F.UnitColor("player"))
 --]]
 
 ---@diagnostic disable: undefined-field

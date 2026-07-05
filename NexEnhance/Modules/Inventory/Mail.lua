@@ -7,10 +7,6 @@
 	  * a small delete button on each inbox row
 	  * an attachment list in the inbox row tooltip when a mail holds several
 	    items
-
-	Adapted (functional parts only) from NDui's Modules/Misc/Mail.lua by
-	siweia:
-	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Modules/Misc/Mail.lua
 --]]
 
 -- luacheck: globals OpenAllMail InboxFrame ATTACHMENTS_MAX_RECEIVE INBOXITEMS_TO_DISPLAY

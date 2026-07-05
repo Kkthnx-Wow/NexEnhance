@@ -1,8 +1,7 @@
 --[[
 	NexEnhance - Database
 	-------------------------------------------------------------------------
-	Lightweight saved-variable manager with profile support, modelled on the
-	AceDB layout but with no external dependency.
+	Lightweight saved-variable manager with profile support — no external DB library.
 
 	Layout of the `NexEnhanceDB` saved variable:
 	    {
@@ -42,13 +41,13 @@ end
 --   is renamed/moved/restructured), and add a numbered step to `migrations`.
 --   `migrations[v]` upgrades data from version (v-1) to v and runs once, in
 --   order, only when older data is loaded. Unstamped data is treated as v1
---   (the baseline before versioning existed), matching the AceDB convention.
+--   (the baseline before versioning existed).
 --
 --   For simple per-module key renames inside a profile table, prefer
 --   `F.InheritExistingValues(profile.moduleKey, { newKey = "oldKey" })` before
---   deleting the old key (DialogueUI-style; see Core/Functions.lua).
+--   deleting the old key (see F.InheritExistingValues in Core/Functions.lua).
 -- ---------------------------------------------------------------------------
-local DB_SCHEMA_VERSION = 3
+local DB_SCHEMA_VERSION = 4
 
 local migrations = {
 	-- The Battle.net toast and Quick Join button movers were re-defaulted to
@@ -70,6 +69,23 @@ local migrations = {
 			if type(profile.lootRoll) == "table" then
 				profile.lootRoll.width = nil
 				profile.lootRoll.height = nil
+			end
+		end
+	end,
+	-- Quest Navigation skin merged into Map Pin Navigation (UMPD-style).
+	[4] = function(root)
+		for _, profile in pairs(root.profiles) do
+			local old = profile.questNavigation
+			if type(old) == "table" then
+				profile.mapPinNavigation = profile.mapPinNavigation or {}
+				local new = profile.mapPinNavigation
+				if old.enable ~= nil and new.enable == nil then
+					new.enable = old.enable
+				end
+				if new.showEta == nil then
+					new.showEta = old.enable ~= false
+				end
+				profile.questNavigation = nil
 			end
 		end
 	end,
@@ -146,8 +162,7 @@ function ns:CopyProfileInto(newName)
 end
 
 --- Overwrite the active profile with a deep copy of another existing profile.
---- Mirrors AceDB's CopyProfile behavior: source stays untouched, destination is
---- the profile this character is currently using.
+--- Source stays untouched; destination is the profile this character is using.
 function ns:CopyProfileFrom(sourceName)
 	local root = _G.NexEnhanceDB
 	if sourceName == ns.profileName or type(root.profiles[sourceName]) ~= "table" then

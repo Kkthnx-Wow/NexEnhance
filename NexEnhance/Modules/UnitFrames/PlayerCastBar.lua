@@ -1,52 +1,50 @@
 --[[
 	NexEnhance - Player Cast Bar
 	-------------------------------------------------------------------------
-	Re-lays-out Blizzard's player cast bar (PlayerCastingBarFrame) so the spell
-	icon sits on TOP of the bar and the cast time text sits BENEATH it - a
-	cleaner, more readable arrangement than the default side-by-side layout.
+	Cosmetic overlay on Blizzard's player cast bar: icon above the bar, cast
+	time below. We never touch cast state — only mirror Icon texture and
+	CastTimeText into our own frame anchored to the bar.
 
-	Design (researched from BlizzardInterfaceCode,
-	Blizzard_UIPanels_Game/Mainline/CastingBarFrame.lua - CastingBarMixin):
-	  * PURELY COSMETIC. We never touch cast state, timing, spell data,
-	    UnitCastingInfo/UnitChannelInfo, or compute anything from cast data -
-	    Blizzard keeps full ownership of all of that.
-	  * PlayerCastingBarFrame is an Edit Mode-managed frame. Touching it (moving
-	    its regions, writing fields onto it, or hooking its methods) taints
-	    Blizzard's protected Edit Mode refresh path. So we treat it as READ-ONLY:
-	    we only read `Icon:GetTexture()` and `CastTimeText:GetText()` and mirror
-	    them into our own overlay anchored to the bar. We never write to it.
-	  * Talent/spec commits, crafting, and other UI hijack the player bar via
-	    OverlayPlayerCastingBarFrame:StartReplacingPlayerBarAt(), which calls
-	    PlayerCastingBarFrame:SetAndUpdateShowCastbar(false). We must back off
-	    entirely while that replacement is active or the native bar is suppressed.
-	  * Secret-safe: the icon texture / time string can be Secret values inside
-	    instances. We never compare or inspect them - issecretvalue() (always
-	    safe) decides presence, then the raw value is passed straight into
-	    SetTexture/SetText (both accept Secrets). No arithmetic, no comparison.
-	  * Event-driven: an invisible driver frame hosts the OnUpdate (OnUpdate does
-	    not fire on hidden frames, and our visual overlay hides when idle). The
-	    driver is woken by UNIT_SPELLCAST_*_START (player/vehicle) and puts
-	    itself back to sleep once the native bar has finished hiding - so there
-	    is zero per-frame cost between casts.
+	PlayerCastingBarFrame is Edit Mode managed; we treat it read-only and back
+	off while OverlayPlayerCastingBarFrame replaces it (talents, crafting, etc.).
 
-	Default OFF. Lives under Unit Frames.
+	Secret-safe: pass icon/time straight to SetTexture/SetText after issecretvalue.
+	Event-driven driver frame; zero cost between casts. Optional latency SafeZone
+	(red fill = lag / cast duration).
+
+	Default OFF. Unit Frames group.
 --]]
 
+-- luacheck: globals UnitCastingInfo UnitChannelInfo GetNetStats
 local _, ns = ...
 local F, L = ns.F, ns.L
 
 local _G = _G
+local format = string.format
+local max = math.max
+local min = math.min
 local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
+local UnitCastingInfo = UnitCastingInfo
+local UnitChannelInfo = UnitChannelInfo
+local GetNetStats = GetNetStats
 
 local ICON_GAP = 6 -- space between the icon and the top of the bar
 local TIME_GAP = 20 -- space between the bar and the cast time text
+local LATENCY_TEXT_GAP = 2 -- ms readout sits just above the bar's top-right corner
 local UPDATE_INTERVAL = 0.05 -- mirror refresh cadence (only while casting)
+local MIN_SAFEZONE_WIDTH = 8 -- floor so low-latency casts stay visible on ~208px bars
+-- Inset matches ui-castingbar-background inner fill (CastingBarFrame.xml).
+local SAFEZONE_INSET_X = 2
+local SAFEZONE_INSET_Y = 1
+local SAFEZONE_ALPHA = 0.45
 
 ns:RegisterDefaults({
 	playerCastBar = {
 		enable = false,
 		showIcon = true,
+		showLatency = true,
+		showLatencyText = true,
 		castTimeBelow = true,
 		iconSize = 26,
 	},
@@ -62,13 +60,59 @@ local eventsRegistered = false
 local suppressionHooked = false
 local overlayReplacing = false
 local elapsed = 0
+-- Weak keys: one latency holder per cast bar (Player + Overlay); child frame only.
+local safeZoneByBar = setmetatable({}, { __mode = "k" })
 
 local function GetBar()
 	return _G["PlayerCastingBarFrame"]
 end
 
+local function GetOverlayBar()
+	return _G["OverlayPlayerCastingBarFrame"]
+end
+
+local function IsCastActive(bar)
+	if not bar then
+		return false
+	end
+	-- casting/channeling can be Secret in combat; truthiness tests would error.
+	if F.IsSecret(bar.casting) or F.IsSecret(bar.channeling) or F.IsSecret(bar.reverseChanneling) then
+		return bar:IsShown()
+	end
+	return bar.casting or bar.channeling or bar.reverseChanneling
+end
+
+-- nil when channel direction is unreadable (Secret flags).
+local function IsChannelCast(bar)
+	if F.IsSecret(bar.channeling) or F.IsSecret(bar.reverseChanneling) then
+		return nil
+	end
+	return bar.channeling and not bar.reverseChanneling
+end
+
 local function IsEditModeActive(bar)
 	return bar and bar.isInEditMode
+end
+
+-- Whichever Blizzard player cast bar is currently showing a cast (Edit Mode excluded).
+local function GetActiveCastBar()
+	local overlayBar = GetOverlayBar()
+	if overlayBar and overlayBar:IsShown() and IsCastActive(overlayBar) then
+		if overlayBar.ShouldShowCastBar and not overlayBar:ShouldShowCastBar() then
+			return nil
+		end
+		return overlayBar
+	end
+
+	local bar = GetBar()
+	if bar and bar:IsShown() and IsCastActive(bar) and not IsEditModeActive(bar) then
+		if bar.ShouldShowCastBar and not bar:ShouldShowCastBar() then
+			return nil
+		end
+		return bar
+	end
+
+	return nil
 end
 
 -- True when a (possibly Secret) value is present, WITHOUT inspecting it.
@@ -100,13 +144,103 @@ local function EnsureOverlay()
 	return overlay
 end
 
-local function HideOverlay()
+-- Clip region inside the cast bar border (Background atlas inset).
+local function LayoutSafeZoneHolder(holder, bar)
+	holder:ClearAllPoints()
+	holder:SetPoint("TOPLEFT", bar, "TOPLEFT", SAFEZONE_INSET_X, -SAFEZONE_INSET_Y)
+	holder:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -SAFEZONE_INSET_X, SAFEZONE_INSET_Y)
+end
+
+-- Child frame on the cast bar for latency (SafeZone) — display only, no cast state.
+local function EnsureSafeZoneHolder(bar)
+	local holder = safeZoneByBar[bar]
+	if holder then
+		return holder
+	end
+
+	holder = CreateFrame("Frame", nil, bar)
+	holder:EnableMouse(false)
+	holder:SetClipsChildren(true)
+	holder:SetFrameLevel(bar:GetFrameLevel() + 12)
+	LayoutSafeZoneHolder(holder, bar)
+
+	local tex = holder:CreateTexture(nil, "ARTWORK", nil, 3)
+	tex:SetAtlas("UI-Frame-Bar-Fill-Red")
+	tex:SetHorizTile(true)
+	tex:SetBlendMode("BLEND")
+	tex:SetVertexColor(1, 1, 1, SAFEZONE_ALPHA)
+	holder.texture = tex
+
+	-- Wrapper keeps label draw order off the StatusBar's own font regions.
+	local labelAnchor = CreateFrame("Frame", nil, bar)
+	labelAnchor:EnableMouse(false)
+	labelAnchor:SetSize(1, 1)
+	labelAnchor:SetFrameLevel(bar:GetFrameLevel() + 14)
+	holder.labelAnchor = labelAnchor
+
+	local label = F.CreatePlainFS(labelAnchor, 10)
+	label:SetJustifyH("RIGHT")
+	label:SetTextColor(1, 1, 1)
+	F.HidePlainFS(label)
+	holder.label = label
+
+	safeZoneByBar[bar] = holder
+	return holder
+end
+
+local function ReleaseSafeZoneHolders()
+	for trackedBar, holder in pairs(safeZoneByBar) do
+		if holder then
+			if holder.label then
+				F.ReleasePlainFS(holder.label)
+			end
+			if holder.labelAnchor then
+				holder.labelAnchor:Hide()
+				holder.labelAnchor:SetParent(nil)
+				holder.labelAnchor = nil
+			end
+			holder:Hide()
+			holder:SetParent(nil)
+		end
+		safeZoneByBar[trackedBar] = nil
+	end
+end
+
+local function HideMirrorDecor()
 	if not overlay then
 		return
 	end
 	overlay.icon:Hide()
 	overlay.time:Hide()
-	overlay:Hide()
+end
+
+local function HideSafeZone(bar)
+	if bar then
+		local holder = safeZoneByBar[bar]
+		if holder then
+			if holder.label then
+				F.HidePlainFS(holder.label)
+			end
+			holder:Hide()
+		end
+		return
+	end
+	for trackedBar, holder in pairs(safeZoneByBar) do
+		if holder then
+			if holder.label then
+				F.HidePlainFS(holder.label)
+			end
+			holder:Hide()
+		end
+	end
+end
+
+local function HideOverlay()
+	HideMirrorDecor()
+	HideSafeZone()
+	if overlay then
+		overlay:Hide()
+	end
 end
 
 local function SleepDriver()
@@ -151,7 +285,7 @@ local function HookCastBarSuppression()
 	if overlayBar and overlayBar.StartReplacingPlayerBarAt then
 		hooksecurefunc(overlayBar, "StartReplacingPlayerBarAt", function()
 			overlayReplacing = true
-			SleepDriver()
+			HideMirrorDecor()
 		end)
 		hooksecurefunc(overlayBar, "EndReplacingPlayerBar", function()
 			overlayReplacing = false
@@ -167,6 +301,116 @@ local function HookCastBarSuppression()
 	end
 end
 
+-- Cast duration in ms for latency ratio. Prefer Blizzard's cached maxValue
+-- (written in secure OnEvent); fall back to UnitCastingInfo when readable.
+local function GetCastDurationMs(bar)
+	local maxValue = bar.maxValue
+	if F.NotSecret(maxValue) and maxValue and maxValue > 0 then
+		return maxValue * 1000
+	end
+
+	if bar.GetMinMaxValues then
+		local _, maxVal = bar:GetMinMaxValues()
+		if F.NotSecret(maxVal) and maxVal and maxVal > 0 then
+			return maxVal * 1000
+		end
+	end
+
+	local unit = bar.unit or "player"
+	local name, _, _, startTime, endTime = UnitCastingInfo(unit)
+	if not name then
+		name, _, _, startTime, endTime = UnitChannelInfo(unit)
+	end
+	if not name or not startTime or not endTime then
+		return nil
+	end
+	if F.IsSecret(startTime) or F.IsSecret(endTime) then
+		return nil
+	end
+	return endTime - startTime
+end
+
+-- Latency band: red fill at the trailing edge (cast/empower) or leading edge
+-- (channel). Texture lives on a child frame of the cast bar for draw order.
+local function UpdateSafeZone(bar)
+	if not ns.db.playerCastBar.showLatency or not bar then
+		HideSafeZone(bar)
+		return
+	end
+
+	local durationMs = GetCastDurationMs(bar)
+	if not durationMs or durationMs <= 0 then
+		HideSafeZone(bar)
+		return
+	end
+
+	local _, _, homeMs, worldMs = GetNetStats()
+	local lagMs = max(homeMs or 0, worldMs or 0)
+	if lagMs <= 0 then
+		HideSafeZone(bar)
+		return
+	end
+
+	local ratio = min(lagMs / durationMs, 1)
+	if ratio <= 0 then
+		HideSafeZone(bar)
+		return
+	end
+
+	local holder = EnsureSafeZoneHolder(bar)
+	LayoutSafeZoneHolder(holder, bar)
+
+	local fillWidth = holder:GetWidth()
+	if fillWidth <= 0 then
+		HideSafeZone(bar)
+		return
+	end
+
+	local zoneWidth = min(fillWidth, max(MIN_SAFEZONE_WIDTH, fillWidth * ratio))
+	local isChannel = IsChannelCast(bar)
+	if isChannel == nil then
+		isChannel = false
+	end
+
+	local tex = holder.texture
+
+	tex:SetBlendMode("BLEND")
+	tex:SetVertexColor(1, 1, 1, SAFEZONE_ALPHA)
+	tex:ClearAllPoints()
+	tex:SetHeight(holder:GetHeight())
+	tex:SetWidth(zoneWidth)
+
+	if isChannel then
+		tex:SetPoint("TOPLEFT", holder, "TOPLEFT", 0, 0)
+		tex:SetPoint("BOTTOMLEFT", holder, "BOTTOMLEFT", 0, 0)
+	else
+		tex:SetPoint("TOPRIGHT", holder, "TOPRIGHT", 0, 0)
+		tex:SetPoint("BOTTOMRIGHT", holder, "BOTTOMRIGHT", 0, 0)
+	end
+
+	holder:SetFrameLevel(bar:GetFrameLevel() + 12)
+	holder:Show()
+	tex:Show()
+
+	local label = holder.label
+	local labelAnchor = holder.labelAnchor
+	if ns.db.playerCastBar.showLatencyText and label and labelAnchor then
+		F.SetPlainText(label, format("%d ms", lagMs))
+		labelAnchor:ClearAllPoints()
+		labelAnchor:SetPoint("TOPRIGHT", bar, "TOPRIGHT", 0, 0)
+		labelAnchor:SetFrameLevel(bar:GetFrameLevel() + 14)
+		label:ClearAllPoints()
+		label:SetPoint("BOTTOMRIGHT", labelAnchor, "TOPRIGHT", -SAFEZONE_INSET_X, LATENCY_TEXT_GAP)
+		labelAnchor:Show()
+		F.ShowPlainFS(label)
+	elseif label then
+		F.HidePlainFS(label)
+		if labelAnchor then
+			labelAnchor:Hide()
+		end
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- Mirror Blizzard's icon/time into our overlay. READ-ONLY on the cast bar.
 -- Returns true while the bar is on screen (so the driver keeps polling), false
@@ -178,31 +422,51 @@ local function UpdateMirror()
 		return false
 	end
 
-	local bar = GetBar()
-	if not ShouldMirrorPlayerBar(bar) then
+	local castBar = GetActiveCastBar()
+	local mirrorBar = GetBar()
+	local mirroring = ShouldMirrorPlayerBar(mirrorBar)
+
+	if not castBar and not mirroring then
 		HideOverlay()
 		return false
 	end
 
 	local db = ns.db.playerCastBar
 	local frame = EnsureOverlay()
+
+	if castBar then
+		UpdateSafeZone(castBar)
+	else
+		HideSafeZone()
+	end
+
+	if not mirroring then
+		HideMirrorDecor()
+		if castBar then
+			frame:Show()
+			return true
+		end
+		HideOverlay()
+		return false
+	end
+
 	frame:ClearAllPoints()
-	frame:SetPoint("CENTER", bar, "CENTER", 0, 0)
-	frame:SetFrameStrata(bar:GetFrameStrata())
-	frame:SetFrameLevel(bar:GetFrameLevel() + 5)
+	frame:SetPoint("CENTER", mirrorBar, "CENTER", 0, 0)
+	frame:SetFrameStrata(mirrorBar:GetFrameStrata())
+	frame:SetFrameLevel(mirrorBar:GetFrameLevel() + 5)
 	frame:Show()
 
 	-- Icon. `texture` is false/nil when disabled or absent, a fileID/atlas when
 	-- present, or a Secret in instances. The `and` chain returns GetTexture()'s
 	-- result without testing its truthiness, so we never branch on a Secret here.
-	local nativeIcon = bar.Icon
+	local nativeIcon = mirrorBar.Icon
 	local texture = db.showIcon and nativeIcon and nativeIcon:GetTexture()
 	if IsPresent(texture) then
 		local size = db.iconSize or 26
 		frame.icon:SetTexture(texture)
 		frame.icon:SetSize(size, size)
 		frame.icon:ClearAllPoints()
-		frame.icon:SetPoint("BOTTOM", bar, "TOP", 0, ICON_GAP)
+		frame.icon:SetPoint("BOTTOM", mirrorBar, "TOP", 0, ICON_GAP)
 		frame.icon:Show()
 	else
 		frame.icon:Hide()
@@ -211,7 +475,7 @@ local function UpdateMirror()
 	-- Cast time. Mirror the native string verbatim (it may be Secret). Note: if
 	-- Blizzard's own "Show Cast Time" is off, the string is empty and nothing
 	-- shows - we can't force it on without writing to the managed frame.
-	local nativeTime = bar.CastTimeText
+	local nativeTime = mirrorBar.CastTimeText
 	local text = db.castTimeBelow and nativeTime and nativeTime:GetText()
 	if IsPresent(text) then
 		local fontObject = nativeTime:GetFontObject()
@@ -220,7 +484,7 @@ local function UpdateMirror()
 		end
 		frame.time:SetText(text)
 		frame.time:ClearAllPoints()
-		frame.time:SetPoint("TOP", bar, "BOTTOM", 0, -TIME_GAP)
+		frame.time:SetPoint("TOP", mirrorBar, "BOTTOM", 0, -TIME_GAP)
 		frame.time:Show()
 	else
 		frame.time:Hide()
@@ -248,11 +512,6 @@ end
 -- ---------------------------------------------------------------------------
 local function WakeDriver()
 	if not active then
-		return
-	end
-
-	local bar = GetBar()
-	if overlayReplacing or (bar and bar.ShouldShowCastBar and not bar:ShouldShowCastBar()) then
 		return
 	end
 
@@ -336,6 +595,7 @@ function PlayerCastBar:OnEnable()
 end
 
 function PlayerCastBar:OnDisable()
+	ReleaseSafeZoneHolders()
 	Deactivate()
 end
 
@@ -357,11 +617,15 @@ function PlayerCastBar:OnSettingChanged(key, value)
 end
 
 function PlayerCastBar:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Player Cast Bar"], L["Mirror the player cast bar icon and time above/below the bar. Cosmetic only - Blizzard keeps ownership of the cast bar itself."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Player Cast Bar"], L["Enhance Blizzard's player cast bar with optional icon/time layout and a latency indicator. Cosmetic only - Blizzard keeps ownership of cast state and timing."])
+	local _, latencyInit = builder:Checkbox(category, self, "showLatency", L["Show Cast Latency"], L["Red band on the cast bar showing your network latency relative to cast time (standard SafeZone indicator)."])
+	local _, latencyTextInit = builder:Checkbox(category, self, "showLatencyText", L["Show Latency Text"], L["Show home/world latency in ms beside the red SafeZone band."])
 	local _, iconInit = builder:Checkbox(category, self, "showIcon", L["Show Cast Icon"], L["Show the spell icon above the cast bar."])
 	local _, timeInit = builder:Checkbox(category, self, "castTimeBelow", L["Cast Time Below Bar"], L["Mirror the cast time text beneath the cast bar."])
 	local _, sizeInit = builder:Slider(category, self, "iconSize", L["Cast Icon Size"], L["Size of the spell icon shown above the cast bar."], 14, 48, 1)
 
+	builder:DependsOn(latencyInit, enableInit)
+	builder:DependsOn(latencyTextInit, latencyInit)
 	builder:DependsOn(iconInit, enableInit)
 	builder:DependsOn(timeInit, enableInit)
 	builder:DependsOn(sizeInit, enableInit)

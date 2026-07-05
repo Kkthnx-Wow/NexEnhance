@@ -4,13 +4,8 @@
 	When you hold Shift over another player's mount *buff* (an aura tooltip),
 	appends the mount's collection status and where it comes from.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI
-
-	A sibling of Tooltip.lua: it grabs the module with ns:GetModule("Tooltip")
-	and adds Tooltip:SetupMountSource(), wired up from Tooltip's OnEnable.
-	Hardened for Patch 12.0 Secret Values and guarded to skip the standalone
-	MountsSource addon.
+	Wired from Tooltip:OnEnable via Tooltip:SetupMountSource(). Skips when the
+	standalone MountsSource addon is loaded. Secret-guarded aura reads.
 --]]
 
 local _, ns = ...

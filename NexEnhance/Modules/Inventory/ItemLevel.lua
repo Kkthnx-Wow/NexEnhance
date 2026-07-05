@@ -12,13 +12,6 @@
 	  * Scrapping machine (load-on-demand).
 	  * Guild News links (load-on-demand).
 
-	Adapted to the NexEnhance architecture from NDui's Misc/ItemLevel (by yleaf):
-	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Modules/Misc/ItemLevel.lua
-
-	Bag bind-status labels (BoE / BoA / WuE) borrow the idea from Lars Norberg's
-	BlizzardBags_BoE (GoldpawsStuff) — thanks, friend:
-	  https://github.com/GoldpawsStuff/BlizzardBags_BoE
-
 	Item level / gem / enchant data comes from F.GetItemLevel (Core/Functions),
 	which uses the structured C_TooltipInfo API. Hooks are existence-guarded so
 	the module degrades quietly when a frame/addon is absent.
@@ -245,7 +238,7 @@ local function SetBindLabelColor(fs, label)
 end
 
 -- ---------------------------------------------------------------------------
--- Anchors for the per-slot enchant text (mirrors NDui's layout)
+-- Per-slot enchant text anchors
 -- ---------------------------------------------------------------------------
 local function GetSlotAnchor(index)
 	if not index then
@@ -606,7 +599,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Bags & bank
---   Bind overlay (nexBind) follows GoldpawsStuff's BlizzardBags_BoE approach;
+--   Bind overlay (nexBind) reads the structured bag-tooltip binding line.
 --   see the module header for credit and link.
 --
 --   We post-hook each item button's UpdateCooldown - the final call Blizzard

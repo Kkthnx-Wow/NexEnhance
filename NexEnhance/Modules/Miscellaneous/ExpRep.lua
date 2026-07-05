@@ -18,9 +18,6 @@
 	The tooltip still shows every applicable progress section, so levelling
 	characters can see watched reputation/honor/Azerite details while XP remains
 	the visible bar. Alt + Right-Click reports the visible bar to party chat.
-
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Miscellaneous/Elements/ExpRep.lua
 --]]
 
 ---@diagnostic disable: undefined-field

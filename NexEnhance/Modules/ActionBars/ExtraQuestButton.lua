@@ -2,10 +2,9 @@
 	NexEnhance - ExtraQuestButton
 	-------------------------------------------------------------------------
 	A keybindable button that surfaces the closest usable quest item from your
-	log (the one Blizzard would otherwise bury in the objective tracker), so a
-	single bind uses whatever the current objective needs. Ported from p3lim's
-	ExtraQuestButton (by way of NDui) and dressed in the same HUD action-bar art
-	the ActionBars module applies, so it matches the rest of the bars.
+	log (the one Blizzard would otherwise bury in the objective tracker), so one
+	bind uses whatever the current objective needs. Uses the same HUD action-bar
+	art as the ActionBars module.
 
 	Design notes:
 	  * The button is a SecureActionButtonTemplate driven by a state driver, so
@@ -64,7 +63,7 @@ local C_QuestLog_GetQuestIDForWorldQuestWatchIndex = C_QuestLog.GetQuestIDForWor
 
 local NotSecret = F.NotSecret
 
-local MAX_DISTANCE_YARDS = 1e3 -- p3lim's cap; quests farther than this are ignored
+local MAX_DISTANCE_YARDS = 1e3 -- ignore quest items farther than this
 
 -- ---------------------------------------------------------------------------
 -- Defaults & module
@@ -84,7 +83,7 @@ local eventHandles = {}
 local bagCooldownDispatchId
 
 -- ---------------------------------------------------------------------------
--- p3lim's data tables (questID/itemID keyed; comments are his)
+-- Quest/item priority tables (questID and itemID keyed)
 --   These tweak the auto-detection for quests the API reports inaccurately;
 --   they are pure data, built once at file scope.
 -- ---------------------------------------------------------------------------
@@ -304,7 +303,7 @@ local completeShownItems = {
 }
 
 -- Items that are shown after the quest is complete but should not be; a numeric
--- value means "use this replacement item instead" (official p3lim data).
+-- Non-zero value = use this replacement item instead of the quest item.
 local noCompleteItems = {
 	[23680] = 60273, -- Northern Stranglethorn Vale
 }
@@ -417,7 +416,7 @@ local function ResizeButtonArt(button)
 end
 
 -- ---------------------------------------------------------------------------
--- Closest-quest-item scanning (p3lim's algorithm, with Secret guards)
+-- Closest usable quest item in log (Secret-guarded distance/count reads)
 -- ---------------------------------------------------------------------------
 local function GetItemLinkFromID(itemID)
 	return format("|Hitem:%d|h", itemID)

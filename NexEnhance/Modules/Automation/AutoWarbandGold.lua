@@ -4,16 +4,9 @@
 	Automatically manages your gold by sync'ing it with your account-wide
 	Warband bank when you open the bank frame. 
 
-	Let's be honest: Warband banks are the best thing Blizzard has added in years,
-	but manually typing in deposit/withdraw amounts on every alt is a mind-numbing
-	chore. We automate this flow by enforcing a character gold threshold.
-
-	If you have more gold than your target, the surplus is deposited. If you're
-	running low, we automatically pull gold out of the Warband bank to top you off,
-	assuming you've checked the "Allow Withdraw" box (safety first, we don't want
-	an alt draining your shared savings by default!).
-
-	Adapted from the sync feature in EnhanceQoL.
+	When you open the bank, surplus gold above your target goes into the Warband
+	bank; if you're below target, we pull from Warband (only when "Allow Withdraw"
+	is checked — off by default so alts can't drain shared savings).
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -63,7 +56,11 @@ local function AutoSync()
 		targetGold = 0
 	end
 	local targetCopper = math.floor((targetGold * COPPER_PER_GOLD) + 0.5)
-	local playerMoney = GetMoney() or 0
+	local playerMoney = GetMoney()
+	if F.IsSecret(playerMoney) then
+		return
+	end
+	playerMoney = playerMoney or 0
 
 	if playerMoney > targetCopper then
 		-- We have more gold than our target threshold. Deposit the excess.
@@ -93,7 +90,13 @@ local function AutoSync()
 		return
 	end
 
-	local warbandMoney = C_Bank.FetchDepositedMoney and C_Bank.FetchDepositedMoney(bankType) or 0
+	local warbandMoney = 0
+	if C_Bank.FetchDepositedMoney then
+		local ok, money = pcall(C_Bank.FetchDepositedMoney, bankType)
+		if ok and F.NotSecret(money) then
+			warbandMoney = money or 0
+		end
+	end
 	local amountToWithdraw = math.min(targetCopper - playerMoney, warbandMoney)
 	if amountToWithdraw <= 0 then
 		return

@@ -90,6 +90,7 @@ L["Color Picker"] = "Color Picker"
 L["Tooltip"] = "Tooltip"
 L["Chat"] = "Chat"
 L["Chat Copy"] = "Chat Copy"
+L["Chat Emojis"] = "Chat Emojis"
 L["Chat Channels"] = "Chat Channels"
 
 -- Tooltip (shared data words)
@@ -159,6 +160,40 @@ L["Quest Navigation"] = "Quest Navigation"
 L["Enable Quest Navigation"] = "Enable Quest Navigation"
 L["Show an estimated arrival time under the waypoint arrow (reload to disable)."] = "Show an estimated arrival time under the waypoint arrow (reload to disable)."
 
+L["Set a user map waypoint (TomTom-style)"] = "Set a user map waypoint (TomTom-style)"
+
+-- Map Pin Navigation
+L["Map Pin Navigation"] = "Map Pin Navigation"
+L["Enable Map Pin Navigation"] = "Enable Map Pin Navigation"
+L["Unlimited super-track distance, custom distance text, ETA, and waypoint slash commands."] = "Unlimited super-track distance, custom distance text, ETA, and waypoint slash commands."
+L["Show Arrival ETA"] = "Show Arrival ETA"
+L["Estimated time to reach the tracked pin under the arrow."] = "Estimated time to reach the tracked pin under the arrow."
+L["Require In-Game Navigation"] = "Require In-Game Navigation"
+L["Only show the super-track arrow when Interface > Show In-Game Navigation is enabled."] = "Only show the super-track arrow when Interface > Show In-Game Navigation is enabled."
+L["Use Meters"] = "Use Meters"
+L["Show distance in meters instead of yards."] = "Show distance in meters instead of yards."
+L["Abbreviate Distance"] = "Abbreviate Distance"
+L["Show 1.2K-style distance above 1000."] = "Show 1.2K-style distance above 1000."
+L["Fade on Mouse Over"] = "Fade on Mouse Over"
+L["Fade the arrow while the cursor is over it."] = "Fade the arrow while the cursor is over it."
+L["Auto-Track New Waypoints"] = "Auto-Track New Waypoints"
+L["Super-track user waypoints when you place them."] = "Super-track user waypoints when you place them."
+L["Waypoint Slash Commands"] = "Waypoint Slash Commands"
+L["Register /way and /pin when TomTom is not loaded (/nexway always)."] = "Register /way and /pin when TomTom is not loaded (/nexway always)."
+L["Minimum Pin Distance"] = "Minimum Pin Distance"
+L["Hide the arrow when closer than this (yards)."] = "Hide the arrow when closer than this (yards)."
+L["Maximum Pin Distance"] = "Maximum Pin Distance"
+L["Hide beyond this distance; 0 = unlimited."] = "Hide beyond this distance; 0 = unlimited."
+L["Long-Range Fade Starts"] = "Long-Range Fade Starts"
+L["Beyond this distance the Long Range Alpha applies (yards)."] = "Beyond this distance the Long Range Alpha applies (yards)."
+L["Close Range Alpha"] = "Close Range Alpha"
+L["Arrow opacity within fade distance (%)."] = "Arrow opacity within fade distance (%)."
+L["Long Range Alpha"] = "Long Range Alpha"
+L["Arrow opacity beyond fade distance (%)."] = "Arrow opacity beyond fade distance (%)."
+L["Edge Arrow Alpha"] = "Edge Arrow Alpha"
+L["Opacity when the arrow is clamped to screen edge (%)."] = "Opacity when the arrow is clamped to screen edge (%)."
+L["Map Pin Navigation debug tip"] = "Tip: /nex debug on mapPinNavigation | dump: /nex debug dump mapPinNavigation | test: /nex way 50 50"
+
 -- ChatBubbles
 L["Enable Chat Bubble Border"] = "Enable Chat Bubble Border"
 L["Give chat bubbles a clean Blizzard-style border (reload to disable)."] = "Give chat bubbles a clean Blizzard-style border (reload to disable)."
@@ -177,6 +212,11 @@ L["Show this help"] = "Show this help"
 L["List modules and their state"] = "List modules and their state"
 L["Toggle a module: /nex toggle <module>"] = "Toggle a module: /nex toggle <module>"
 L["Open the options panel"] = "Open the options panel"
+L["Open Edit Mode (same as /editmode)"] = "Open Edit Mode (same as /editmode)"
+L["Open Key Bindings in Settings"] = "Open Key Bindings in Settings"
+L["Cannot enter Edit Mode right now."] = "Cannot enter Edit Mode right now."
+L["Edit Mode is not available right now."] = "Edit Mode is not available right now."
+L["Key Bindings settings are not available right now."] = "Key Bindings settings are not available right now."
 L["Toggle buff reminder test icons"] = "Toggle buff reminder test icons"
 L["Module unavailable."] = "Module unavailable."
 
@@ -315,7 +355,7 @@ L["Enable Holiday Dungeon"] = "Enable Holiday Dungeon"
 L["Holiday Dungeon setting tip"] = "When you open the Dungeon Finder for the first time each login, points out the active holiday or Timewalking queue in the Type menu if it is not already selected."
 L["HolidayDungeonHelpTip"] = "A holiday or Timewalking queue is active. Select %s from this menu — Blizzard must apply the choice to keep the queue secure."
 
--- Chat Channels (short tags, ElvUI-style)
+-- Chat Channels (short tags)
 L["ChatShortRW"] = "RW"
 L["ChatShortAFK"] = "AFK"
 L["ChatShortDND"] = "DND"
@@ -455,6 +495,7 @@ L["Hide the countdown text once its scale drops below this fraction of a normal 
 -- CharacterFrames
 L["Enable Character Frames"] = "Enable Character Frames"
 L["Restyle and resize the Character and Inspect frames (reload to disable)."] = "Restyle and resize the Character and Inspect frames (reload to disable)."
+L["Restyle and resize the Character and Inspect frames. Layout toggles live; stripped slot art needs /reload to fully undo."] = "Restyle and resize the Character and Inspect frames. Layout toggles live; stripped slot art needs /reload to fully undo."
 
 -- MissingStats
 L["Enable Missing Stats"] = "Enable Missing Stats"
@@ -483,7 +524,11 @@ L["Replace the skull shown on high-level targets with the actual level number (o
 
 -- Player Cast Bar
 L["Enable Player Cast Bar"] = "Enable Player Cast Bar"
-L["Mirror the player cast bar icon and time above/below the bar. Cosmetic only - Blizzard keeps ownership of the cast bar itself."] = "Mirror the player cast bar icon and time above/below the bar. Cosmetic only - Blizzard keeps ownership of the cast bar itself."
+L["Enhance Blizzard's player cast bar with optional icon/time layout and a latency indicator. Cosmetic only - Blizzard keeps ownership of cast state and timing."] = "Enhance Blizzard's player cast bar with optional icon/time layout and a latency indicator. Cosmetic only - Blizzard keeps ownership of cast state and timing."
+L["Show Cast Latency"] = "Show Cast Latency"
+L["Red band on the cast bar showing your network latency relative to cast time (standard SafeZone indicator)."] = "Red band on the cast bar showing your network latency relative to cast time (standard SafeZone indicator)."
+L["Show Latency Text"] = "Show Latency Text"
+L["Show home/world latency in ms beside the red SafeZone band."] = "Show home/world latency in ms above the top-right of the cast bar."
 L["Show Cast Icon"] = "Show Cast Icon"
 L["Show the spell icon above the cast bar."] = "Show the spell icon above the cast bar."
 L["Cast Time Below Bar"] = "Cast Time Below Bar"
@@ -599,6 +644,14 @@ L["Enable Alert Frames"] = "Enable Alert Frames"
 L["Move achievement/loot/reward alert popups to the top of the screen (reload to disable)."] = "Move achievement/loot/reward alert popups to the top of the screen (reload to disable)."
 L["Hide Talking Head"] = "Hide Talking Head"
 L["Suppress the Talking Head dialog frame (reload to re-enable it)."] = "Suppress the Talking Head dialog frame (reload to re-enable it)."
+L["Stack Spacing"] = "Stack Spacing"
+L["Gap between stacked alerts. 0 = tight; negative overlaps art padding. Old default was 10."] = "Gap between stacked alerts. 0 = tight; negative overlaps art padding. Old default was 10."
+L["Toggle alert frame test previews"] = "Toggle alert frame test previews"
+L["Test alerts shown - /nex alerttest to hide."] = "Test alerts shown (achievements, loot, money, Trading Post) - /nex alerttest to hide."
+L["Test alerts hidden."] = "Test alerts hidden."
+L["Test alerts unavailable - achievement UI not loaded."] = "Test alerts unavailable - achievement UI not loaded."
+L["Test alerts unavailable - alert UI not loaded."] = "Test alerts unavailable - alert UI not loaded."
+L["Alert test frame %d"] = "Alert test %d"
 
 -- LootRoll
 L["Loot Roll"] = "Loot Roll"
@@ -1052,6 +1105,13 @@ L["Clock"] = "Clock"
 L["Enable Clock"] = "Enable Clock"
 L["Dump area POIs on your current map (event setup)"] = "Dump area POIs on your current map (event setup)"
 L["Reset new-update badges for testing"] = "Reset new-update badges for testing"
+
+-- Per-option / per-section reset
+L["Reset to default"] = "Reset to default"
+L["Reset this option to its default value."] = "Reset this option to its default value."
+L["Reset Section"] = "Reset Section"
+L["Reset every option in this section to its default value."] = "Reset every option in this section to its default value."
+L["SECTION_RESET_CONFIRM"] = 'Reset all "%s" options to their defaults?'
 L["New update badges reset. Reload your UI, then open Settings."] = "New update badges reset. Reload your UI, then open Settings."
 L["POI scan unavailable on this client."] = "POI scan unavailable on this client."
 L["No map found. Try: /nex poiscan <mapID>"] = "No map found. Try: /nex poiscan <mapID>"
@@ -1191,7 +1251,7 @@ L["Install option combat text tip"] = "Cleaner scrolling damage and healing numb
 L["Install option raid frames"] = "Raid frames"
 L["Install option raid frames tip"] = "Class-coloured party/raid frames with power bars and no border clutter."
 L["Install option chat layout"] = "Chat layout"
-L["Install option chat layout tip"] = "Sorted tabs: General, Whispers, Trade, Loot, plus a locked Combat Log."
+L["Install option chat layout tip"] = "Sorted tabs: General, Whispers, Trade, Loot, plus a locked Combat Log. Sets General, Trade, and Local Defense channel colors."
 L["Loaded. Type /nex for options."] = "Loaded. Type /nex for options."
 L["Set up NexEnhance with a handful of recommended Blizzard settings:"] = "Set up NexEnhance with a handful of recommended Blizzard settings:"
 L["Auto-loot, compare items on hover and self-cast on right-click."] = "Auto-loot, compare items on hover and self-cast on right-click."
@@ -1336,6 +1396,12 @@ L["Invite keyword cleared."] = "Invite keyword cleared."
 L["Enable Chat Copy"] = "Enable Chat Copy"
 L["Add a button to copy the chat window's text (reload to disable)."] = "Add a button to copy the chat window's text (reload to disable)."
 L["ChatCopyHelpTip"] = "The faded button in the bottom-right corner of this chat window opens a copy box - click it to grab the chat text."
+
+-- Chat Emojis
+L["Enable Chat Emojis"] = "Enable Chat Emojis"
+L["Replace text emoticons like :D and :smile: with emoji textures in chat."] = "Replace text emoticons like :D and :smile: with emoji textures in chat."
+L["Show in Chat Bubbles"] = "Show in Chat Bubbles"
+L["Also replace emoticons in speech bubbles above characters (say, yell, party). Skipped when bubbles are forbidden or text is secret."] = "Also replace emoticons in speech bubbles above characters (say, yell, party). Skipped when bubbles are forbidden or text is secret."
 
 -- Chat Channels
 L["Enable Chat Channels"] = "Enable Chat Channels"

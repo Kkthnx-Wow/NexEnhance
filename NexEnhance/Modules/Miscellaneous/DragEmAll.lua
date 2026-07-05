@@ -3,11 +3,8 @@
 	-------------------------------------------------------------------------
 	Lets you click-and-drag most Blizzard windows (loot, merchant, mail,
 	character, professions, ...) to reposition them, instead of being locked
-	to their default spot.
-
-	Ported from NDui's Plugins/DragEmAll.lua (by emelio / NDui MOD, siweia),
-	adapted to the NexEnhance framework. Movement uses StartMoving on the
-	(non-combat) panel frames, so it is taint-safe.
+	to their default spot. Movement uses StartMoving on the panel frames (out
+	of combat), so it stays taint-safe.
 --]]
 
 local _, ns = ...

@@ -2,7 +2,7 @@
 ## Title: |cff5C8BCFNex|r|cffffd100Enhance|r
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
-## Version: 1.5.5
+## Version: 1.5.7
 ## SavedVariables: NexEnhanceDB
 ## SavedVariablesPerCharacter: NexEnhanceCharDB
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64
@@ -110,6 +110,7 @@ Modules\Inventory\LootFrame.lua
 # Chat
 Modules\Chat\Chat.lua
 Modules\Chat\ChatCopy.lua
+Modules\Chat\ChatEmojis.lua
 Modules\Chat\ChannelRename.lua
 
 # Filters
@@ -133,7 +134,6 @@ Modules\Skins\CharacterFrames.lua
 Modules\Skins\MissingStats.lua
 Modules\Skins\ChatBubbles.lua
 Modules\Skins\Details.lua
-Modules\Skins\QuestNavigation.lua
 Modules\Skins\HeroTalentSwap.lua
 Modules\Skins\ColorPicker.lua
 
@@ -151,6 +151,7 @@ Modules\Maps\WorldMap.lua
 Modules\Maps\MapRevealData.lua
 Modules\Maps\MapReveal.lua
 Modules\Maps\WowheadLink.lua
+Modules\Maps\MapPinNavigation.lua
 
 # Automation
 Modules\Automation\AutoVendor.lua

@@ -4,12 +4,8 @@
 	Automatically declines duel and pet-battle PvP duel requests, hiding the
 	Blizzard popup and printing who was declined.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/master/KkthnxUI/Modules/Automation/Elements/DeclineDuel.lua
-
-	Both event handlers are registered when the module first enables and are
-	gated at fire time by the master toggle and their own sub-option, so every
-	toggle applies live without a reload.
+	Both handlers register on first enable and gate at fire time by the toggles —
+	no reload needed to apply changes.
 --]]
 
 ---@diagnostic disable: undefined-field

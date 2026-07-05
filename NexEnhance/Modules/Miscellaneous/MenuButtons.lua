@@ -18,8 +18,7 @@
 	    name is resolved once (guarded) up front and the click handlers only ever
 	    see a plain string. If nothing is readable, our entries are simply omitted.
 
-	Action set per menu type follows KkthnxUI's curation (it only adds the useful
-	options Blizzard's menu for that type is missing).
+	Only adds options Blizzard's menu for that unit type is missing.
 --]]
 
 -- Menu is a valid Blizzard global missing from the generated luacheck std.
@@ -182,7 +181,7 @@ local function WhisperButton(root, name)
 	root:CreateButton(INFO .. WHISPER, OnWhisper, name)
 end
 
--- Menu tag -> ordered builders. Mirrors KkthnxUI's per-type action set.
+-- Menu tag -> ordered entry builders per unit menu type.
 -- No MENU_UNIT_SELF entry: there's nothing useful to do to your own frame, and
 -- the IsSelf() guard below suppresses the section if you target yourself anyway.
 local MENU_ACTIONS = {

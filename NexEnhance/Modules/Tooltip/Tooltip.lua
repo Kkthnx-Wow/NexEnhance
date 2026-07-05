@@ -7,19 +7,15 @@
 	fonts, and provides a registration table so per-addon tooltips get skinned
 	as they load.
 
-	Originally ported from NDui's Tooltip suite by siweia, then reworked against
-	ElvUI's Patch 12.0 Secret-Value model: secret-safety is concentrated in a
-	couple of tiny primitives (F.IsSecret / IsSecretUnit) plus targeted checks at
-	the read sites that actually need them - no global function wrappers, no
-	OnSizeChanged backdrop guards. Untainted Blizzard code is allowed to read
-	secrets, so we avoid tainting its layout path; status-bar chrome uses plain
-	textures instead of BackdropTemplate because Blizzard's backdrop mixin does
-	width / edgeSize in Lua. Midnight said "surprise, that's a secret now."
+	Secret values: F.IsSecret / IsSecretUnit at read sites that need them — no
+	global wrappers, no OnSizeChanged backdrop guards. Untainted Blizzard code
+	can still read secrets, so we avoid tainting its layout path; status-bar
+	chrome uses plain textures instead of BackdropTemplate because Blizzard's
+	backdrop mixin does width / edgeSize in Lua.
 
-	This file owns the module; the sibling files (TooltipID, TooltipIcons,
+	This file owns the module; sibling files (TooltipID, TooltipIcons,
 	TooltipItemLevel, TooltipHoverTips, TooltipMountSource, TooltipItemReagents,
-	TooltipPawn) fetch it with
-	ns:GetModule("Tooltip") and add their own methods, all wired from OnEnable.
+	TooltipPawn) fetch it with ns:GetModule("Tooltip") and wire from OnEnable.
 --]]
 
 local _, ns = ...
@@ -62,9 +58,7 @@ local GT = GameTooltip ---@type any
 local ICON_LIST = ICON_LIST
 local HIGHLIGHT_FONT_COLOR = HIGHLIGHT_FONT_COLOR
 
--- A unit is "secret" to us when the token itself is a secret value or when its
--- identity is currently hidden (instances / restricted). Both checks live in the
--- shared F secret API (modelled on oUF's, by Simpy).
+-- A unit is "secret" when the token itself is secret or identity is hidden.
 local function IsSecretUnit(unit)
 	return F.IsSecret(unit) or F.IsSecretUnit(unit)
 end
@@ -132,7 +126,7 @@ local FACTION_COLORS = {
 }
 
 -- ---------------------------------------------------------------------------
--- Unit resolution (secret-safe, ElvUI-style)
+-- Unit resolution (secret-safe)
 -- ---------------------------------------------------------------------------
 function Tooltip:GetDisplayedUnit(tt)
 	tt = tt or self
@@ -318,7 +312,7 @@ local function SetDefaultBorderColor(tip, r, g, b)
 	end
 end
 
--- Reset transient tooltip state here (ElvUI does the same on cleared, not hide).
+-- Clear transient tooltip state on cleared, not hide (icons/border linger otherwise).
 function Tooltip:OnTooltipCleared()
 	if self:IsForbidden() then
 		return
@@ -660,10 +654,9 @@ local function RepositionStatusBar()
 	bar:SetHeight((cfg and cfg.statusBarHeight) or 14)
 end
 
--- Health text on the status bar (modelled on ElvUI's UpdateUnitHealth). Shows
--- current / max via AbbreviateNumbers, which is whitelisted for secret values
--- and returns a secret string SetText accepts, so we never inspect the number.
--- Falls back to a normalised percent, and to DEAD for corpses.
+-- Health text on the status bar. AbbreviateNumbers is whitelisted for secret
+-- values and returns a secret string SetText accepts — we never inspect the
+-- number. Falls back to UnitHealthPercent, then DEAD for corpses.
 function UpdateHealthText(bar)
 	bar = bar or GameTooltipStatusBar
 	if not bar then
@@ -759,9 +752,7 @@ function Tooltip:ResetUnit(_, key)
 	if not Tooltip:UnitExists("mouseover") then
 		return
 	end
-	if GT.RefreshData then
-		GT:RefreshData()
-	end
+	F.SafeRefreshTooltipData(GT)
 end
 
 -- ---------------------------------------------------------------------------
@@ -801,8 +792,7 @@ function Tooltip:OnEnable()
 		StyleStatusBar(GT.StatusBar)
 	end
 
-	-- Drive the health text the same way ElvUI does on retail. HookBarHealth is
-	-- self-guarded, so passing the same bar twice is a no-op.
+	-- Prefer UpdateUnitHealth post-hook on retail; fall back to OnValueChanged.
 	HookBarHealth(GameTooltipStatusBar)
 	HookBarHealth(GT.StatusBar)
 

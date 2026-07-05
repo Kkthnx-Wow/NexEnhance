@@ -6,9 +6,6 @@
 	acts at max level, on Uncommon (green) Bind-on-Equip items, and prefers
 	Disenchant when you can.
 
-	Refactored and expanded from ShestakUI's AutoGreed (originally by Tekkub):
-	  https://github.com/Wetxius/ShestakUI/blob/main/ShestakUI/Modules/Loot/AutoGreed.lua
-
 	Notes on the modern API (verified against Blizzard source under Resources/):
 	  * START_LOOT_ROLL(rollID, rollTime, lootHandle)
 	  * GetLootRollItemInfo(rollID) ->

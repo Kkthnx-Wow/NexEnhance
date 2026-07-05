@@ -5,11 +5,6 @@
 	("60 fps / 45 ms"). Hovering it opens a tooltip with the latency detail at
 	the top (home/world latency, IP protocol, streaming bandwidth) followed by
 	a per-addon memory list. Left-click runs the garbage collector.
-
-	Combines the functional parts of NDui's Infobar Latency.lua and System.lua
-	(by siweia) into one element, adapted to the NexEnhance framework:
-	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Modules/Infobar/Latency.lua
-	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Modules/Infobar/System.lua
 --]]
 
 ---@diagnostic disable: undefined-field

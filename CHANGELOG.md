@@ -2,15 +2,87 @@
 
 ---
 
+## [1.5.7] — 2026-07-05
+
+ElvUI-style chat emoji textures.
+
+### Added
+
+- **Chat — Emojis:** new **Chat Emojis** module replaces text emoticons (`:D`, `:smile:`,
+  `<3`, `xD`, etc.) with 16×16 textures from `Media/Emojis` (ElvUI-compatible names).
+  Uses the 12.0 `ChatFrame_AddMessageEventFilter` path with Midnight secret guards.
+  Hidden `nexmoji:` hyperlinks preserve the original text for **Chat Copy**.
+  Optional **Show in Chat Bubbles** (default off) applies 12×12 textures to
+  say/yell/party speech bubbles via `C_ChatBubbles` polling.
+- **Install:** chat layout step sets ElvUI-style colors for General (`CHANNEL1`),
+  Trade (`CHANNEL2`), and Local Defense (`CHANNEL3`).
+- **Core — Media:** `C.Media.Emojis` table maps all shipped emoji texture paths.
+- **Core — `F.ChatTexture`:** shared inline |T| helper for chat icons and emojis.
+
+### Fixed
+
+- **Chat — Emojis:** gsub replacement no longer treats hex-encoded `nexmoji` keys
+  (e.g. `%3A%29` for `:)` ) as invalid capture indices.
+- **Chat — Emojis:** speech bubbles reflow width after emoji textures replace plain
+  text (no more oversized empty bubble padding).
+- **Chat — Emojis:** bubble emoji transform no longer skips on repeat messages;
+  recycled bubbles reset to plain text while the old source cache still matched.
+- **Skins — Chat Bubbles:** instance/raid/party bubble borders and text now use
+  the correct channel colour from `ChatTypeInfo` instead of stale recycled
+  `GetTextColor()` (e.g. party blue on instance chat).
+- **Chat — Channels:** fix channel abbreviation for leader tags (`[Party Leader]`
+  → `[PL]`, `[Instance Leader]` → `[IL]`, etc.); gsub callback had captures swapped.
+
+---
+
+## [1.5.6] — 2026-07-03
+
+Per-option and per-section reset controls in the Settings panel.
+
+### Added
+
+- **Core — Options reset:** hover any NexEnhance option whose value differs from
+  its default and a small revert icon (`transmog-icon-revert`) appears just left
+  of the label; click it to reset that single option to default. Options already
+  at their default show nothing, so the panel stays clean.
+- **Core — Section reset:** each module's section header shows a revert icon when
+  any of its options are non-default; clicking it (with a confirm popup) resets
+  every option in that section to default. Both paths live-apply through the same
+  `SetValueToDefault` → `OnSettingChanged` callback, so no `/reload` is needed.
+
+### Fixed
+
+- **Chat — Clickable URLs:** `https://…` links no longer get wrapped twice (the `www.`
+  pass was re-matching inside the link label, producing broken `|Hurl:` garbage in
+  whispers and chat).
+- **Automation — Auto Warband Gold:** skip sync when `GetMoney()` or warband bank
+  balance is a Midnight secret value (avoids combat/in-instance arithmetic errors).
+- **Skins — Objective Tracker:** deferred `ADDON_LOADED` listener unregisters on
+  disable; styling no longer runs when the module is off.
+- **Locales:** Character Frames, Clock, and Location option tips no longer show raw
+  English keys (enUS + deDE).
+
 ## [1.5.5] — 2026-06-27
 
 Reference-library architecture — zero-duration cooldown masks, central cooldown bus, frame runner, hook guards.
 
 ### Added
 
+- **Core — UI shortcuts:** `/nex editmode` / `/nex em` (mirrors Blizzard `/editmode`),
+  `/nex keybinds` / `/nex kb` (opens Settings → Key Bindings).
 - **Automation — Auction Search History:** recent AH browse text searches (account-
   wide, default 5) appear in a dropdown when you focus the search box; click to
   re-run. Text only — filters and level range are not stored.
+- **Unit Frames — Player Cast Bar:** optional **Show Cast Latency** SafeZone on
+  Blizzard's player cast bar (`UI-Frame-Bar-Fill-Red`); read-only overlay, oUF
+  ratio pattern; works on overlay replacement bar too.
+- **Alert Frames:** configurable **Stack Spacing** slider (default 2; was hard-coded
+  10); `/nex alerttest` previews achievements, loot, money, and Trading Post toasts;
+  stack spacing re-applies after anchor direction sync; default 0 with art trim (migrates saved 10).
+- **Maps — Map Pin Navigation:** NexEnhance rewrite of Unlimited Map Pin Distance
+  plus the former Quest Navigation ETA skin — unlimited super-track range,
+  distance/alpha controls, arrival ETA, `/way`/`/pin`/`/nexway`, and auto-track
+  for new user waypoints. Replaces the **Quest Navigation** skin module.
 - **Core — `Debug.lua`:** scoped logging, expectation checks (`Expect`), state dumps,
   ring-buffer log, and `/nex debug export` for copy-paste bug reports.
 - **Core — `F.MaskCooldownSwipeFromDurationObject`:** hides permanent-aura cooldown
@@ -36,15 +108,20 @@ Reference-library architecture — zero-duration cooldown masks, central cooldow
 - **Nameplate Quest Icons:** large quest-log refreshes use the frame runner.
 - **Quest Navigation / Objective Tracker skins:** `IsEnabled` gates hook work on
   live disable (visual revert still needs `/reload`).
+- **Quest Navigation** removed — use **Map Pin Navigation** under Maps (settings
+  migrate automatically).
 - **DataText — Guild / Friends / CharacterInfo / Currency & Gold:** module events
   use `TrackEvent` + `OnDisable` teardown (`MODIFIER_STATE_CHANGED` no longer
   fires when disabled; CharacterInfo token ticker cancels on `Stop`).
 - **DataText — Clock:** `Stop()` clears OnUpdate and hover `MODIFIER` listener;
-  ticker re-arms on re-enable.
+  ticker re-arms on re-enable; lockouts refresh on `UPDATE_INSTANCE_INFO` while hovered.
 - **Inventory — Loot Frame:** display/scale events unregister on disable;
   `panelMaxHeight` restores to Blizzard default.
 - **Unit Frames — Player Cast Bar:** unit cast events + `PLAYER_ENTERING_WORLD`
   unregister on disable.
+- **Unit Frames — Player Cast Bar:** latency SafeZone inset inside the bar fill,
+  semi-transparent BLEND overlay (no bleed past the border); ms readout above
+  the bar's top-right corner.
 - **Inventory — Item Level:** `IsActive()` gates permanent hooks; module events
   unregister on live disable.
 - **Miscellaneous — Animation / Achievement Screenshot / Social Colours / Drag
@@ -56,6 +133,15 @@ Reference-library architecture — zero-duration cooldown masks, central cooldow
 
 ### Fixed
 
+- **Tooltip — Pawn:** no longer calls `GameTooltip:RefreshData` on unit tooltips
+  (avoids `UnitPlayerControlled` secret-unit error when Pawn loads or icon/border
+  settings change).
+- **Unit Frames — Player Cast Bar:** latency ms text no longer leaves a ghost
+  shadow after the cast ends (`CreatePlainFS` shadow duplicate now hides with the
+  label); shadow draw layer fixed so black duplicate renders behind white text.
+- **DataText — Clock:** saved raids (e.g. Battle of Dazar'alor) no longer appear under
+  **Saved Dungeon(s)** — uses map InstanceID + EJ classification and renders raids
+  before dungeons regardless of API list order.
 - **Inventory — Already Known:** item-data async callback no longer errors on nil
   `RefreshVisibleItems` (forward declaration); skips refresh when load fails.
 - **Chat:** Scroll-Down Interval defaults to **0** (off); was 15s and pulled chat back to

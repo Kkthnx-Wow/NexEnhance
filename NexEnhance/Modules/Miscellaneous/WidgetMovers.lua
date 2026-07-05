@@ -19,9 +19,8 @@
 	to our anchor frame instead of arg2 (relativeTo). Infinite Glue loop → C stack
 	overflow when UI scale / layout ran. This is why we don't code at 3am.
 
-	Ported from NDui's UIWidgetFrameMover (by siweia); NDui's B.Mover anchors are
-	replaced with F.CreateMover so the positions live in our profile and drag like
-	any other NexEnhance element.
+	Anchor positions use F.CreateMover so they live in our profile like any other
+	NexEnhance element.
 
 	Important: UIWidgetPowerBarContainerFrame is intentionally NOT moved here.
 	Blizzard routes that widget through EncounterBar:Layout(), and EncounterBar is

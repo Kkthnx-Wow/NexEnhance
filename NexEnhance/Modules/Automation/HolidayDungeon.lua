@@ -6,10 +6,10 @@
 	selected. We never call LFDQueueFrame_SetType from addon code — that taints
 	LFG session globals and can block protected queue actions (AcceptProposal).
 
-	Adapted from p3lim's Inomena HolidayDungeon module.
+	LFDQueueFrame_SetType from addon code — that taints LFG session globals.
 
-	Blizzard_GroupFinder is load-on-demand; LFDParentFrame may not exist until
-	that addon loads. The hook is installed once and reads the live enable toggle.
+	Blizzard_GroupFinder is load-on-demand; hook installs once and reads the
+	live enable toggle.
 --]]
 
 ---@diagnostic disable: undefined-field

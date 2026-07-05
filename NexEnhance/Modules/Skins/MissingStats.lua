@@ -7,21 +7,14 @@
 	per-decimal rating percentages, equipped + overall item level, and a
 	cleaner stat font.
 
-	Reworked from NDui's Modules/Misc/MissingStats.lua (by siweia) against the
-	current retail PaperDollFrame (Blizzard_UIPanels_Game/Mainline):
+	Extra stat rows hook in after Blizzard's live update — we don't replace
+	PAPERDOLL_STATCATEGORIES (that taints UnitStat comparisons in combat).
+	Blizzard already renders off-hand attack speed and the item-level tooltip,
+	so we don't duplicate those. Secret-guarded: if a value is secret we leave
+	Blizzard's readout alone.
 
-	  * The extra stat rows are added after Blizzard's live update finishes,
-	    instead of replacing PAPERDOLL_STATCATEGORIES. Replacing that global
-	    taints Blizzard's own UnitStat comparisons in combat on Midnight.
-	  * Blizzard already renders off-hand attack speed and the item-level
-	    tooltip itself, so those NDui overrides are dropped.
-	  * Every value our hooks touch is gated behind a Secret-value check (12.0)
-	    before any arithmetic / formatting; if a value is ever Secret we leave
-	    Blizzard's own readout untouched rather than erroring.
-
-	The extra rows intentionally do not render while in combat. Some PaperDoll
-	stat APIs return Secret values in combat, and Blizzard's own setters compare
-	those values internally. Keeping the stock update loop clean avoids taint.
+	The extra rows skip combat entirely — some PaperDoll APIs return secrets there
+	and Blizzard's setters compare internally.
 --]]
 
 -- luacheck: globals PAPERDOLL_STATCATEGORIES PAPERDOLL_STATINFO CharacterStatsPane
@@ -64,7 +57,7 @@ local MissingStats = ns:NewModule("MissingStats", "missingStats", { group = "ski
 
 -- CharacterStatsPane is anchored to InsetRight in CharacterFrame.xml (12.0.7).
 -- Extra rows from AddMissingStatRows exceed that viewport; wrap the pane in a
--- ScrollFrame (KkthnxUI pattern) without changing Blizzard's stat categories.
+-- Extra stat rows live in the scroll child without touching Blizzard's categories.
 local scrollContainer
 local scrollFrame
 local scrollChild
@@ -203,7 +196,7 @@ local function InstallStatsScrollFrame()
 	scrollChild:SetSize(scrollContainer:GetWidth() or 200, 1)
 	scrollFrame:SetScrollChild(scrollChild)
 
-	-- Match KkthnxUI: pane fills the scroll child; child height is set after layout.
+	-- Pane fills the scroll child; child height is set after layout.
 	pane:ClearAllPoints()
 	pane:SetParent(scrollChild)
 	pane:SetAllPoints(scrollChild)

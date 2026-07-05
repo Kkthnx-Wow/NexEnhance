@@ -4,11 +4,7 @@
 	Adds copyable Wowhead-link edit boxes to the world map (tracked/opened quest)
 	and the achievement frame. Hover to highlight; Ctrl+C copies when focused.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Maps/Elements/WowHeadLink.lua
-
-	K.* helpers are replaced with framework equivalents. The Wowhead subdomain
-	follows the client locale. Defers to Leatrix_Maps if that addon is loaded.
+	Wowhead subdomain follows client locale. Skips if Leatrix_Maps is loaded.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global

@@ -1,38 +1,22 @@
 --[[
 	NexEnhance - Rare Alert
 	-------------------------------------------------------------------------
-	Announces nearby rares and world events the moment their vignette appears
-	on the minimap: a centre-screen banner, an optional alert sound, and an
-	optional clickable map link posted to chat.
+	Announces nearby rares and world events when their vignette hits the minimap:
+	centre-screen banner, optional sound, optional map link in chat.
 
-	Reworked from NDui's Misc/Notifications.lua RareAlert (by siweia) to fit the
-	NexEnhance engine and the project optimisation guide:
-	  * Event-driven and gated - we only listen for VIGNETTE_MINIMAP_UPDATED
-	    while it is useful (skipped in warfront/scenario zones), and the whole
-	    feature toggles live without a reload.
-	  * The handler runs cheapest-filter-first and localises every API.
-	  * The de-dupe set is bounded via F.CacheSet (NDui's `#cache > 666` guard
-	    never triggered: the cache is string-keyed, so `#` was always 0).
-	  * Each vignette GUID is processed once, so ordinary (non-rare) vignettes
-	    don't re-query GetVignetteInfo on every minimap tick.
-	  * Builds a correct, clickable worldmap hyperlink via string.format.
+	Event-driven — VIGNETTE_MINIMAP_UPDATED only when useful (skipped in
+	warfront/scenario zones). Toggles live without reload. Handler is
+	cheapest-filter-first; de-dupe is bounded via F.CacheSet. Each vignette
+	GUID is processed once so ordinary vignettes don't re-query every tick.
 
-	Cherry-picked from RareScanner (by NIzReZ) to harden detection:
-	  * Atlas bucketing - loot/lore container vignettes (VignetteLoot*,
-	    loreobject) are excluded so a treasure chest isn't announced as a rare.
-	  * Ignore by NPC ID - the entity ID is parsed from the vignette objectGUID
-	    so the ignore list accepts the IDs Wowhead shows, not just vignetteIDs.
-	  * Secret-value guards - vignette name and position can be secret inside
-	    instances on 12.0; every read is gated with F.NotSecret before any
-	    string/arith op, mirroring RareScanner's issecretvalue checks.
+	Detection filters:
+	  * Skip loot/lore container atlases (treasure chests aren't rares)
+	  * Ignore list accepts NPC IDs parsed from objectGUID, not just vignetteIDs
+	  * F.NotSecret on name/position before any string or arithmetic
 
-	Cherry-picked from Plumber's RareAnnouncement (by Peterodox):
-	  * Right-clicking the popup shares the rare + a clickable map-pin link in
-	    chat, the way Plumber's "horn" button broadcasts rare locations. We send
-	    to your group when grouped (instance/raid/party) and General chat when
-	    solo, with a short cooldown so a flurry of clicks can't flood the channel.
-	  * The shared message carries a DEFAULT-named map-pin worldmap link, because
-	    the server drops worldmap links whose pin text was customised.
+	Right-click shares the rare plus a map-pin link. Custom pin text gets dropped
+	by the server, so the broadcast uses the default map-pin hyperlink. Group
+	when grouped, General when solo; short cooldown on repeat shares.
 --]]
 
 local _, ns = ...
@@ -65,12 +49,10 @@ local IsInGroup, IsInRaid = IsInGroup, IsInRaid
 local C_ChatInfo = C_ChatInfo
 local LE_PARTY_CATEGORY_INSTANCE = _G["LE_PARTY_CATEGORY_INSTANCE"] or 2
 
--- Right-click "share to chat" message piece. The server silently drops a
--- worldmap hyperlink whose pin text was customised, so an announced message has
--- to use the default map-pin link (NOT our own "[name (x,y)]" label, which is
--- fine only for printing to your own chat). Cherry-picked from Plumber.
+-- Right-click share: server drops worldmap links when pin text was customised.
+-- Broadcast uses the default map-pin hyperlink, not our own "[name (x,y)]" label.
 local MAP_PIN_HYPERLINK = _G["MAP_PIN_HYPERLINK"] or "|A:Waypoint-MapPin-ChatIcon:13:13:0:0|a Map Pin Location"
-local ANNOUNCE_COOLDOWN = 20 -- be a good channel citizen (Plumber uses 20s)
+local ANNOUNCE_COOLDOWN = 20 -- don't flood chat on repeat right-clicks
 
 -- The same classic Blizzard tooltip-style gold edge we frame the minimap with,
 -- so the popup reads as part of the same UI (see Modules/Maps/Minimap.lua).
@@ -88,11 +70,10 @@ local PORTRAIT_FRAME = 56
 -- How long the click-to-track popup lingers before fading itself out.
 local POPUP_DURATION = 12
 
--- Iconic NDui rare-spawn cue (UI_WorldQuest sting); played on the Master bus so
--- it is audible even with sound effects lowered.
+-- World-quest alert sting on the Master bus so it stays audible when SFX is low.
 local RARE_SOUND = 23404
 
--- Anti-spam tuning (idea cherry-picked from Plumber's RareAnnouncement cooldown):
+-- Anti-spam: per-rare cooldown so repeat clicks don't flood chat.
 --   SOUND_THROTTLE     - minimum gap between alert sounds, so a cluster of rares
 --                        resolving on one minimap tick can't machine-gun the cue.
 --   REANNOUNCE_COOLDOWN - per-vignetteID quiet window, so the same rare type can't
@@ -287,8 +268,7 @@ local function SetTrackedWaypoint(mapID, x, y, name)
 end
 
 -- Pick the chat channel to broadcast to. Group members benefit most, so prefer
--- the active group channel; fall back to General chat when solo (Plumber's
--- behaviour). Returns chatType plus an optional target (the channel id).
+-- the active group channel; fall back to General chat when solo.
 local function GetAnnounceChannel()
 	if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
 		return "INSTANCE_CHAT"
@@ -304,10 +284,8 @@ local function GetAnnounceChannel()
 	end
 end
 
--- Right-click the popup to share the rare + its waypoint in chat, the way
--- Plumber's "horn" button broadcasts locations. The message uses the default
--- map-pin link so the server won't drop it, and a short cooldown keeps repeated
--- clicks from flooding the channel.
+-- Right-click share: rare name + default map-pin link (custom text gets dropped).
+-- Short cooldown on repeat shares.
 local function AnnounceRare(f)
 	if not db().announce then
 		return
@@ -394,8 +372,7 @@ end
 
 -- Insecure post-hook for the secure overlay's click: the protected /targetexact
 -- macro (if any) has already run; here we just drop the waypoint and dismiss.
--- PostClick is safe on a secure button (unlike SetScript("OnClick"), which would
--- taint the secure path - see the optimisation guide, Section 9).
+-- PostClick is safe on a secure button (unlike SetScript("OnClick"), which taints it).
 local function Popup_PostClick(self, button)
 	-- Restore the user's key-down casting preference flipped in Popup_PreClick.
 	-- prevUseKeyDown is only set when we actually flipped (out of combat), so a
@@ -411,8 +388,7 @@ local function Popup_PostClick(self, button)
 			F.Print(format(L["Tracking %s."], F.Colorize(f.rareName or UNKNOWN, "green")))
 		end
 	elseif button == "RightButton" then
-		-- Right-click shares the rare in chat (Plumber-style); the popup stays
-		-- up so you can also left-click to track or share again after cooldown.
+		-- Right-click shares in chat; popup stays up so you can track or share again after cooldown.
 		-- Never broadcast a preview/Edit Mode sample.
 		if not (f.testing or f.shownForEdit) then
 			AnnounceRare(f)

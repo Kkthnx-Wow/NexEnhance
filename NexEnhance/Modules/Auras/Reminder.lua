@@ -5,9 +5,8 @@
 	missing (e.g. your own raid buff), so you never zone in unbuffed. The
 	anchor is a real Edit Mode frame (via LibEditMode) - drag it in Edit Mode.
 
-	Ported from NDui's Modules/Auras/Reminder.lua (by siweia), adapted to the
-	NexEnhance framework. The per-class buff list below is intentionally small
-	and stable (core raid buffs); extend `ReminderBuffs` to taste. Each entry:
+	The per-class buff list below is intentionally small and stable (core raid
+	buffs); extend `ReminderBuffs` to taste. Each entry:
 	  spells      = { [spellID] = true, ... }  -- any of these present == OK
 	  texture     = optional icon override
 	  depend      = spellID that must be known
@@ -54,7 +53,7 @@ ns:RegisterDefaults({
 local Reminder = ns:NewModule("Reminder", "reminder", { group = "auras", title = L["Buff Reminder"], order = 10 })
 local eventHandles = {}
 
--- Reminder buffs checklist (ported from NDui's DB.ReminderBuffs).
+-- Core raid buff checklist (extend ReminderBuffs to add more).
 local ReminderBuffs = {
 	ITEMS = {
 		{
@@ -182,7 +181,7 @@ local MyClass = select(2, UnitClass("player"))
 local groups = ReminderBuffs[MyClass]
 
 -- Pull any usable consumables (runes, trinkets) from the ITEMS list into the
--- active group, the same way NDui does. Runs once, after bags are available.
+-- active buff group once bags are available.
 local function AddItemGroup()
 	for _, value in pairs(ReminderBuffs.ITEMS) do
 		if not value.disable and C_Item_GetItemCount(value.itemID) > 0 then
@@ -301,7 +300,7 @@ local function Reminder_ApplyFrameArt(frame, size)
 end
 
 -- ---------------------------------------------------------------------------
--- Per-buff state evaluation (1:1 with NDui, guarded for secret aura values)
+-- Per-buff state evaluation (secret-guarded aura reads)
 -- ---------------------------------------------------------------------------
 local function Reminder_PlayerEligible(cfg)
 	if cfg.depends then

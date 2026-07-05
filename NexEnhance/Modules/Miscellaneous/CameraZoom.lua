@@ -4,9 +4,6 @@
 	Raises the camera's maximum zoom-out distance via the
 	"cameraDistanceMaxZoomFactor" CVar. Blizzard clamps this between 1.0 and
 	2.6, so the value is bounded to that range before it is applied.
-
-	Adapted from KkthnxUI's UpdateMaxCameraZoom (by Josh "Kkthnx" Russell):
-	  https://github.com/Kkthnx-Wow/KkthnxUI
 --]]
 
 local _, ns = ...

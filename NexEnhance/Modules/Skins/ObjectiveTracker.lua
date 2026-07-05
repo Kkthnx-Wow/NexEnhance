@@ -6,15 +6,9 @@
 	button, and recolours quest progress and timer bars to a single calm
 	colour (class colour by default, brand colour otherwise).
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI
-
-	Integration notes:
-	  * The tracker lives in the Blizzard_ObjectiveTracker addon. We style it
-	    immediately if it is already loaded, otherwise we wait for its
-	    ADDON_LOADED through the central dispatcher.
-	  * All work is purely cosmetic and goes through hooksecurefunc, so it is
-	    taint-safe around the secure tracker frames.
+	Lives in Blizzard_ObjectiveTracker — style on load or wait for
+	ADDON_LOADED via the central dispatcher. Cosmetic hooksecurefunc only;
+	no taint on the secure tracker frames.
 --]]
 
 local _, ns = ...
@@ -33,6 +27,8 @@ ns:RegisterDefaults({
 })
 
 local ObjectiveTracker = ns:NewModule("ObjectiveTracker", "objectiveTracker", { group = "skins", title = L["Objective Tracker"], order = 10 })
+
+local eventHandles = {}
 
 -- ---------------------------------------------------------------------------
 -- Colour helpers
@@ -113,7 +109,7 @@ end
 -- Styling
 -- ---------------------------------------------------------------------------
 function ObjectiveTracker:Style()
-	if self.styled then
+	if not self:IsEnabled() or self.styled then
 		return
 	end
 
@@ -171,7 +167,7 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function ObjectiveTracker:ADDON_LOADED(addon)
-	if addon == "Blizzard_ObjectiveTracker" then
+	if addon == "Blizzard_ObjectiveTracker" and self:IsEnabled() then
 		self:Style()
 	end
 end
@@ -179,19 +175,24 @@ end
 function ObjectiveTracker:OnEnable()
 	if C_AddOns.IsAddOnLoaded("Blizzard_ObjectiveTracker") then
 		self:Style()
-	else
-		self:RegisterEvent("ADDON_LOADED")
+	elseif not eventHandles[1] then
+		self:TrackEvent(eventHandles, "ADDON_LOADED")
 	end
 end
 
 function ObjectiveTracker:OnDisable()
+	ns:UnregisterModuleEventHandles(eventHandles)
 	-- hooksecurefunc cannot be removed; ReskinBar gates on IsEnabled().
 end
 
 -- Live re-tint when the class-colour toggle flips.
 function ObjectiveTracker:OnSettingChanged(key, value)
-	if key == "enable" and not value then
-		self:OnDisable()
+	if key == "enable" then
+		if value then
+			self:OnEnable()
+		else
+			self:OnDisable()
+		end
 		return
 	end
 	if key == "classColor" and self.trackers then

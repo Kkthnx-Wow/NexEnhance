@@ -2,10 +2,8 @@
 	NexEnhance - Tooltip Item Level
 	-------------------------------------------------------------------------
 	Shows the average item level of an inspected player on their unit tooltip,
-	using a throttled inspect + cache so it never spams the server.
-
-	Ported from NDui's Tooltip/ItemLevel.lua by siweia (credit: Cloudy Unit Info
-	by Cloudyfa). Hardened for Patch 12.0 Secret Values.
+	using a throttled inspect + cache so it never spams the server. Secret-safe
+	on 12.0 (guarded GUID/inspect reads).
 --]]
 
 local _, ns = ...

@@ -521,9 +521,8 @@ ns:RegisterEvent("LOADING_SCREEN_DISABLED", ScheduleLoadingComplete)
 --   references - e.g. the options panel broadcasts "SettingChanged.tooltip.enable"
 --   and any number of unrelated modules subscribe to it.
 --
---   Adapted from Plumber's CallbackRegistry (Peterodox). A subscriber is either
---   a plain function or the *name* of a method resolved on `owner` when the
---   signal fires; binding `owner` up front avoids a per-subscription closure.
+--   A subscriber is either a plain function or the *name* of a method on
+--   `owner`. Binding `owner` up front avoids a per-subscription closure.
 --
 --     ns:RegisterCallback("SettingChanged.tooltip.enable", "RefreshAnchors", self)
 --     ns:RegisterCallback("SettingChanged.tooltip.enable", function(value) ... end)

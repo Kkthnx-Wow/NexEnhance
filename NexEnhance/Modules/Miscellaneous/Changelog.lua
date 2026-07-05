@@ -43,11 +43,59 @@ local BACKDROP = C.Backdrops.window
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.5.7",
+		date = "2026-07-05",
+		intro = "ElvUI-style chat emoji textures.",
+		sections = {
+			{ "Chat", {
+				"Chat Emojis: replace :D, :smile:, <3, xD, and the full ElvUI emoticon set with Media/Emojis textures.",
+				"Midnight-safe message filter; nexmoji hyperlinks preserve plain text for Chat Copy.",
+				"Show in Chat Bubbles (optional): 12px textures on say/yell/party bubbles; skips forbidden/secret text.",
+				"Fix gsub invalid capture index when encoded keys contain % (e.g. :)).",
+				"Fix bubble width: reflow String after emoji textures so the bubble shrinks to fit icons.",
+				"Fix bubble emojis on repeat /say: skip when display already transformed, not when plain text matches cached source.",
+				"Chat Channels: fix leader tag abbreviation ([Party Leader] to [PL]); gsub captures were swapped.",
+			} },
+			{ "Skins", {
+				"Chat Bubbles: resolve channel colour from recent chat events + ChatTypeInfo so recycled bubbles no longer show party blue on instance chat.",
+			} },
+			{ "Miscellaneous", {
+				"Install: chat layout sets General, Trade, and Local Defense channel colors (CHANNEL1–3).",
+			} },
+		},
+	},
+	{
+		version = "1.5.6",
+		date = "2026-07-03",
+		intro = "Per-option and per-section reset controls in the Settings panel.",
+		sections = {
+			{ "Core", {
+				"Options reset: hover a non-default option to reveal a revert icon (left of the label) that resets just that option.",
+				"Section reset: each module header shows a revert icon (with confirm) that resets every option in that section.",
+				"Edit-box options and plugin enable toggles participate in reset; multiline keyword lists keep their own restore button.",
+				"Both live-apply via SetValueToDefault -> OnSettingChanged; no /reload needed.",
+			} },
+			{ "Chat", {
+				"Chat Channels: fix URL highlighting double-wrapping https:// links (www. pass no longer re-matches inside link display text).",
+			} },
+			{ "Automation", {
+				"Auto Warband Gold: skip sync when GetMoney() or warband balance is secret (Midnight-safe).",
+			} },
+			{ "Skins", {
+				"Objective Tracker: ADDON_LOADED listener tears down on disable; Style() gated on IsEnabled.",
+			} },
+			{ "Locales", {
+				"Character Frames, Clock, and Location option tips synced in enUS and deDE.",
+			} },
+		},
+	},
+	{
 		version = "1.5.5",
 		date = "2026-06-27",
 		intro = "Reference-library architecture — zero-duration cooldown masks, central cooldown bus, frame runner, hook guards.",
 		sections = {
 			{ "Core", {
+				"/nex editmode (em), /nex keybinds (kb) — Edit Mode and Key Bindings shortcuts.",
 				"Debug.lua: scoped logging, Expect checks, dumps, /nex debug export.",
 				"Debug: TOC load order — Debug.lua after Database.lua (ns.Debug was nil on login).",
 				"Debug export: sorted scopes, dump capture, pass/fail summary; expectations on 5 modules.",
@@ -71,14 +119,15 @@ local CHANGELOG = {
 				"Quest Icons: large refreshes use the frame runner.",
 			} },
 			{ "Skins", {
-				"Quest Navigation and Objective Tracker gate hook work on IsEnabled when toggled off.",
-				"Quest Navigation: ETA timer copies DistanceText shadow (not CreatePlainFS) on world-anchored arrow.",
+				"Objective Tracker gate hook work on IsEnabled when toggled off.",
 			} },
 			{ "DataText", {
 				"Location: TrackEvent teardown; zone events stop when toggled off.",
 				"Location: debug scope (/nex debug dump location).",
 				"Guild, Friends, CharacterInfo, Currency & Gold: TrackEvent teardown on live disable.",
 				"Clock: Stop() clears OnUpdate/MODIFIER; re-enable re-arms ticker.",
+				"Clock: raid/dungeon lockouts — map InstanceID + EJ lookup; two-pass tooltip render.",
+				"Clock: tooltip refreshes on UPDATE_INSTANCE_INFO while hovered.",
 			} },
 			{ "Automation", {
 				"Auction Search History: recent browse text searches in a focus dropdown (account-wide, default 5).",
@@ -91,13 +140,22 @@ local CHANGELOG = {
 				"Item Level: IsActive gates hooks; module events unregister on disable.",
 			} },
 			{ "Unit Frames", {
+				"Player Cast Bar: cast latency SafeZone on Blizzard's bar (UI-Frame-Bar-Fill-Red); read-only overlay.",
+				"Player Cast Bar: latency band inset + semi-transparent blend (no border bleed); ms text above top-right.",
+				"Player Cast Bar: latency ms shadow no longer ghosts after cast ends (HidePlainFS); shadow draws beneath text.",
 				"Level Colours: live disable restores Blizzard CheckLevel; events use TrackEvent teardown.",
 				"Target Frame Layout: refresh events unregister when disabled.",
 				"Level Colours: debug scope (/nex debug dump levelColors).",
 				"Player Cast Bar: unit events unregister on disable.",
 			} },
 			{ "Maps", {
+				"Map Pin Navigation: UMPD-style unlimited super-track, distance text, ETA, /way slash commands; replaces Quest Navigation skin.",
 				"Minimap: debug scope (/nex debug dump minimap).",
+			} },
+			{ "Alerts", {
+				"Alert Frames: configurable stack spacing (default 2; was hard-coded 10).",
+				"Alert Frames: /nex alerttest — achievement, loot, money, Trading Post previews.",
+				"Alert Frames: stack spacing default 0 + art trim; migrates old value 10.",
 			} },
 			{ "Chat", {
 				"Debug scope + dock edit-box expectation; Combat Log tab overlap documented with UIScale incident.",
@@ -106,6 +164,7 @@ local CHANGELOG = {
 			} },
 			{ "General", {
 				"Hide Combat Errors: PLAYER_REGEN handlers fixed (shared event arg was always nil).",
+				"Tooltip Pawn: no RefreshData on unit tooltips (UnitPlayerControlled secret-unit error).",
 				"UI Scale: UIScaleApplied signal refreshes chat edit-box anchors on scale change.",
 				"Widget Movers: SetPoint hook fix — no C stack overflow on layout/scale.",
 				"Install: one-click setup — Install applies all recommended settings and reloads.",

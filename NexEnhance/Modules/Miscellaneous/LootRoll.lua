@@ -6,21 +6,13 @@
 	coloured timer bar, and Need / Greed / Disenchant / Transmog / Pass buttons.
 	Bars stack from a draggable Edit Mode anchor and recycle through a pool.
 
-	Re-implemented from ElvUI's Misc/LootRoll.lua (tukui-org), adapted to the
-	NexEnhance framework:
-	  https://github.com/tukui-org/ElvUI/blob/main/ElvUI/Game/Shared/Modules/Misc/LootRoll.lua
+	Blizzard drives group loot from UIParent's START_LOOT_ROLL handler
+	(Resources/Blizzard_UIParent/Mainline/UIParent.lua -> GroupLootContainer_AddRoll).
+	Unregistering that event on UIParent stops the default bars; we handle display.
+	AlertFrames only repositions the empty GroupLootContainer — no fight.
 
-	Suppression mirrors ElvUI: Blizzard drives group loot from UIParent's
-	START_LOOT_ROLL handler (see Resources/Blizzard_UIParent/Mainline/UIParent.lua
-	-> GroupLootContainer_AddRoll). Unregistering that event on UIParent stops the
-	default bars from ever showing, and our module handles display instead. The
-	existing AlertFrames module only repositions the now-empty GroupLootContainer,
-	so the two do not fight.
-
-	Midnight: GetLootRollItemInfo's quality can be a secret value inside
-	instances, so all colouring/ilvl text is taken behind F.NotSecret - if we
-	cannot read it we fall back to plain white rather than doing arithmetic on a
-	secret. The roll buttons and timer never inspect secret data.
+	GetLootRollItemInfo quality can be secret in instances — colour/ilvl behind
+	F.NotSecret; roll buttons and timer never inspect secret data.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
@@ -112,7 +104,7 @@ local testBars = {}
 local barPool
 local anchor
 
--- Per-rolltype icon tex-coords lifted from ElvUI so the stock group-loot art
+-- Per-rolltype icon texcoords for stock group-loot art (Need/Greed/DE/etc.).
 -- crops the same way it does there.
 local iconCoords = {
 	[TYPE_PASS] = { 1.05, -0.1, 1.05, -0.1 },
@@ -266,10 +258,8 @@ end
 local BORDER_INSET = 4
 local BACKGROUND_INSET = 2
 
--- Tooltip-art border drawn ON TOP of a frame's content (modelled on the
--- Minimap module): a dedicated child frame at a high frame level with no
--- background, so the border line is never hidden behind a status-bar fill,
--- icon, or overlay the way a backdrop sitting behind the frame would be.
+-- Tooltip-art border ON TOP of frame content (same trick as Minimap): child
+-- frame at high level, border only — never hidden behind status-bar fill or icons.
 local function AddTopBorder(frame)
 	local border = CreateFrame("Frame", nil, frame)
 	border:SetAllPoints()

@@ -3,9 +3,6 @@
 	-------------------------------------------------------------------------
 	Adds short slash commands for reloading the interface: /rl, /reloadui, //
 	and /. (the native /reload is left untouched).
-
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/master/KkthnxUI/Developer/Elements/ReloadUI.lua
 --]]
 
 ---@diagnostic disable: inject-field

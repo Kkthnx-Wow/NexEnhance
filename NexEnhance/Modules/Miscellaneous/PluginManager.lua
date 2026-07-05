@@ -36,7 +36,7 @@ function Mod:RegisterOptions(category, builder)
 		local plugin = list[i]
 		if not plugin.RegisterOptions then
 			if layout and ns.AddSectionHeader then
-				ns.AddSectionHeader(layout, plugin.title or plugin.name, false)
+				ns.AddSectionHeader(layout, plugin.title or plugin.name, false, plugin.dbKey)
 			end
 
 			builder:Checkbox(category, plugin, "enable", L["Enable"], plugin.notes ~= "" and plugin.notes or nil)

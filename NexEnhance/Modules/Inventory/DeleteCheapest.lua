@@ -14,13 +14,9 @@
 	skipped outright, and optional per-item-class filters let you protect whole
 	categories (quest items are protected by default).
 
-	The concept is borrowed from Hydra's "DeleteCheapest" snippet, rebuilt from
-	scratch for the NexEnhance module/options architecture.
-
-	Midnight note: vendor sell price comes from C_Item.GetItemInfo (static item
-	data, never Secret), but a bag slot's stack count can be Secret in combat,
-	so we gate that read with F.IsSecret and fall back to treating it as a
-	single item rather than performing arithmetic on a Secret.
+	Vendor sell price comes from C_Item.GetItemInfo (static, never secret). Stack
+	count in a bag slot can be secret in combat — we gate with F.IsSecret and
+	treat it as a single item rather than doing arithmetic on it.
 --]]
 
 -- luacheck: read_globals C_Container C_Item Enum NUM_BAG_SLOTS BACKPACK_CONTAINER BagItemAutoSortButton DeleteCursorItem

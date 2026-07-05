@@ -5,11 +5,8 @@
 	friends, character friends and guild members), and tidies up the invite
 	popups once the roster updates.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/Invite.lua
-
-	Both events stay registered while the module is on; the trusted-source
-	sub-options are read live so the toggles apply without a reload.
+	Both events stay registered while the module is on; trusted-source toggles
+	read live — no reload needed.
 --]]
 
 ---@diagnostic disable: undefined-field

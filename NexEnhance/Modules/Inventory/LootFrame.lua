@@ -5,10 +5,7 @@
 	page instead of being capped and forced to scroll (handy when you loot a
 	big pile of mobs manually). Raises LootFrame.panelMaxHeight to a share of
 	the screen height and keeps it in sync when the display size changes.
-
-	Inspired by Cybeloras' Improved Loot Frame; rewritten for NexEnhance and
-	the modern (scrollbox) loot frame, with a configurable height and a live
-	toggle.
+	Configurable height percentage with a live toggle (no reload to flip off).
 --]]
 
 -- luacheck: globals LootFrame

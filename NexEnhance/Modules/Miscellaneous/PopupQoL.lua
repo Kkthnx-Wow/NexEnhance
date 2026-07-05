@@ -1,8 +1,8 @@
 --[[
 	NexEnhance - Popup QoL
 	-------------------------------------------------------------------------
-	Removes common popup friction (Inomena-inspired, aligned with Blizzard
-	UIParent.lua / StaticPopupDefs in Resources 12.0.7):
+	Removes common popup friction (aligned with Blizzard UIParent.lua /
+	StaticPopupDefs in Resources 12.0.7):
 	  * Auto-confirm BoP loot and tradeable equip/sell prompts
 	  * Enter accepts non-refundable purchases
 	  * Alt+right-click buys a full merchant stack (once-per-item confirm)

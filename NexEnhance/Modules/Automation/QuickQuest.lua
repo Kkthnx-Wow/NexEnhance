@@ -9,9 +9,7 @@
 	Alt-click an NPC's name (quest or gossip) to toggle a per-character ignore
 	for that NPC, so chatty/utility NPCs are left alone.
 
-	Ported from NDui's Plugins/QuickQuest.lua (QuickQuest by p3lim, NDui MOD by
-	siweia), adapted to the NexEnhance framework. All actions mirror what a
-	player click would do, so this stays taint-safe.
+	All actions mirror what a player click would do — taint-safe.
 --]]
 
 -- luacheck: globals QuestInfoRewardsFrame QuestInfoItem_OnClick QuestFrame QuestNpcNameFrame GossipFrame GossipFrameCloseButton InteractiveWormholes
@@ -150,10 +148,8 @@ local choiceQueue
 -- GOSSIP_CONFIRM popup it can raise gets auto-accepted (free skips only - see below).
 local pendingSkipConfirm
 
--- Events are collected here at load but only registered in the shared dispatcher
--- while the module is enabled (see SetEventsActive). Quick Quest defaults to OFF, so
--- without this gate it would keep waking on QUEST_LOG_UPDATE etc. for users who
--- never turn it on. (Plumber idiom: feature-scoped event registration.)
+-- Events are collected at load but only registered while the module is enabled
+-- (see SetEventsActive). Quick Quest defaults off — no point waking on quest events otherwise.
 local registeredEvents = {}
 
 local function Register(event, func)
@@ -319,7 +315,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Costly turn-in protection: never auto-complete a quest that consumes gold,
--- currency, crafting reagents, or account-bound items (Leatrix Plus parity).
+-- currency, crafting reagents, or account-bound items.
 -- ---------------------------------------------------------------------------
 local accountBoundLines = {}
 do
@@ -413,7 +409,7 @@ local function AvailableAcceptAllowed(npcID, questID, frequency, isTrivial, isGo
 		return false, "blocklist"
 	end
 	-- Do not gate explicit NPC offers on the minimap "account completed" tracker.
-	-- That filter is for map pins / popups (p3lim accept mode 2); if the server
+	-- Map-pin accept filter — server may reject other accept modes.
 	-- lists a quest on GOSSIP_SHOW or QUEST_GREETING, accept it when other rules pass.
 	if not FrequencyAllowed(frequency) then
 		return false, "frequency-filter"
@@ -452,7 +448,7 @@ local function ProcessGreetingQuests()
 			local isTrivial, frequency, _, _, questID = GetAvailableQuestInfo(index)
 			local questLevel = GetAvailableLevel and GetAvailableLevel(index)
 			if questID and (not questLevel or questLevel == 0) then
-				-- p3lim QuickQuest: legacy greeting list — wait until level/trivial flags cache.
+				-- Legacy greeting list — wait until level/trivial flags are cached.
 				if WaitForQuestData(questID, ProcessGreetingQuests) then
 					Dbg("greeting: waiting for quest data %s", tostring(questID))
 					return true
@@ -502,7 +498,7 @@ local function ProcessGossipQuests()
 			local questID = questInfo.questID
 			local isWorldQuest = questID and C_QuestLog_IsWorldQuest(questID)
 			if not questInfo.questLevel or questInfo.questLevel == 0 then
-				-- p3lim QuickQuest gossip.lua: use GossipQuestUIInfo.questLevel, not quest-log difficulty.
+				-- Use GossipQuestUIInfo.questLevel, not quest-log difficulty.
 				if questID and WaitForQuestData(questID, ProcessGossipQuests) then
 					Dbg("gossip: waiting for quest data %s (%s)", tostring(questID), questInfo.title or "?")
 					return true
@@ -625,7 +621,7 @@ local autoSelectFirstOptionList = {
 }
 
 -- Utility gossip options (non-quest): auto-select by gossipOptionID when present.
--- Sourced from p3lim/Inomena; override key bypasses via Automating().
+-- Costly turn-in quest IDs; override key bypasses via Automating().
 local utilityGossipOptions = {
 	[123878] = true, -- Nerub-ar Palace speed
 	[122627] = true, -- Vaskarn skip to vendor
@@ -643,9 +639,7 @@ local function IsUtilityGossipOption(optionID)
 	end
 end
 
--- Newer retail quest/task gossip options that are not always flagged like normal
--- quests. Sourced from p3lim's QuickQuest data and kept option-ID based so we
--- don't accidentally match unrelated NPC text.
+-- Newer retail quest/task gossip options (option-ID based, locale-independent).
 local questGossipOptions = {
 	[109275] = true, -- Soridormi - begin time rift
 	[120619] = true, -- Big Dig task
@@ -973,7 +967,7 @@ local function TryAcceptQuestDetail()
 		return
 	end
 
-	-- p3lim QuickQuest quests.lua: wait for quest-log cache before trivial/repeatable checks.
+	-- Wait for quest-log cache before trivial/repeatable checks.
 	local questLevel = C_QuestLog_GetQuestDifficultyLevel and C_QuestLog_GetQuestDifficultyLevel(questID)
 	if not questLevel or questLevel == 0 then
 		Dbg("QUEST_DETAIL: waiting for quest data %d", questID)
@@ -1204,8 +1198,8 @@ local function AttemptAutoComplete()
 		return
 	end
 
-	-- Avoid stomping the map/quest UI while the player is already interacting
-	-- with it (p3lim/QuickQuest#45).
+	-- Don't stomp map/quest UI while the player is already in those frames.
+	-- GOSSIP_CLOSED sometimes fires before GOSSIP_SHOW — debounce handles that.
 	local WorldMapFrame = _G["WorldMapFrame"]
 	if (WorldMapFrame and WorldMapFrame:IsShown()) or (QuestFrame and QuestFrame:IsShown()) then
 		return

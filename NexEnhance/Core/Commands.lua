@@ -101,6 +101,49 @@ local function Brand(text)
 	return "|c" .. C.BrandHex .. text .. "|r"
 end
 
+local ShowUIPanel = ShowUIPanel
+local LoadAddOn = LoadAddOn
+
+-- Mirror Blizzard_ChatFrameBase/Mainline/SlashCommandsOverrides.lua (EDITMODE).
+local function OpenEditMode()
+	local frame = _G.EditModeManagerFrame
+	if not frame and LoadAddOn then
+		pcall(LoadAddOn, "Blizzard_EditMode")
+		frame = _G.EditModeManagerFrame
+	end
+	if not frame then
+		F.Print(L["Edit Mode is not available right now."])
+		return
+	end
+	if frame.CanEnterEditMode and not frame:CanEnterEditMode() then
+		local msg = _G.ERROR_SLASH_EDITMODE_CANNOT_ENTER
+		if msg and _G.ChatFrameUtil and ChatFrameUtil.DisplaySystemMessageInPrimary then
+			ChatFrameUtil.DisplaySystemMessageInPrimary(msg)
+		else
+			F.Print(L["Cannot enter Edit Mode right now."])
+		end
+		return
+	end
+	ShowUIPanel(frame)
+end
+
+-- Key bindings live in Settings (Settings.KEYBINDINGS_CATEGORY_ID from
+-- Blizzard_SettingsDefinitions_Frame/Keybindings.lua); no global /keybinds slash.
+local function OpenKeyBindings()
+	local catID = Settings and Settings.KEYBINDINGS_CATEGORY_ID
+	if not catID then
+		F.Print(L["Key Bindings settings are not available right now."])
+		return
+	end
+	if Settings.OpenToCategory then
+		Settings.OpenToCategory(catID)
+	elseif _G.C_SettingsUtil and C_SettingsUtil.OpenSettingsPanel then
+		C_SettingsUtil.OpenSettingsPanel(catID)
+	else
+		F.Print(L["Key Bindings settings are not available right now."])
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- Slash command handlers
 -- ---------------------------------------------------------------------------
@@ -113,12 +156,16 @@ handlers.help = function(_)
 	F.Print("  /nex plugins       -", L["List installed NexEnhance plugins"])
 	F.Print("  /nex toggle <name> -", L["Toggle a module: /nex toggle <module>"])
 	F.Print("  /nex config        -", L["Open the options panel"])
+	F.Print("  /nex editmode, em  -", L["Open Edit Mode (same as /editmode)"])
+	F.Print("  /nex keybinds, kb  -", L["Open Key Bindings in Settings"])
 	F.Print("  /nex reminder      -", L["Toggle buff reminder test icons"])
 	F.Print("  /nex rare          -", L["Toggle rare alert popup preview"])
 	F.Print("  /nex afk           -", L["Toggle AFK camera preview"])
 	F.Print("  /nex lootroll      -", L["Toggle loot roll test bars"])
+	F.Print("  /nex alerttest     -", L["Toggle alert frame test previews"])
 	F.Print("  /nex questnotify   -", L["Toggle quest notification self-test"])
 	F.Print("  /nex quickquest    -", L["Toggle Quick Quest debug logging"])
+	F.Print("  /nex way <coords>  -", L["Set a user map waypoint (TomTom-style)"])
 	F.Print("  /nex abandonquests -", L["Abandon every quest in your log"])
 	F.Print("  /nex bordertest    -", L["Preview the tooltip border"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
@@ -270,6 +317,15 @@ handlers.lootroll = function(_)
 	end
 end
 
+handlers.alerttest = function(_)
+	local module = ns:GetModule("AlertFrames")
+	if module and module.ToggleTest then
+		module:ToggleTest()
+	else
+		F.Print(F.Colorize(L["Alert Frames"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
 handlers.questnotify = function(_)
 	local module = ns:GetModule("QuestNotification")
 	if module and module.ToggleDebug then
@@ -285,6 +341,15 @@ handlers.quickquest = function(_)
 		module:ToggleDebug()
 	else
 		F.Print(F.Colorize(L["Quick Quest"] .. ": ", "brand") .. L["Module unavailable."])
+	end
+end
+
+handlers.way = function(rest)
+	local module = ns:GetModule("MapPinNavigation")
+	if module and module.HandleWaypointSlash then
+		module:HandleWaypointSlash(rest)
+	else
+		F.Print(F.Colorize(L["Map Pin Navigation"] .. ": ", "brand") .. L["Module unavailable."])
 	end
 end
 
@@ -510,6 +575,19 @@ handlers.config = function(_)
 	end
 end
 
+handlers.editmode = function(_)
+	OpenEditMode()
+end
+
+handlers.em = handlers.editmode
+
+handlers.keybinds = function(_)
+	OpenKeyBindings()
+end
+
+handlers.kb = handlers.keybinds
+handlers.binds = handlers.keybinds
+
 local function HandleSlash(input)
 	input = (input or ""):match("^%s*(.-)%s*$") or ""
 	local command, rest = input:match("^(%S*)%s*(.-)$")
@@ -561,14 +639,37 @@ local function RegisterSetting(category, module, key, name)
 	local setting = Settings.RegisterAddOnSetting(category, variable, key, variableTbl, type(defaultValue), name, defaultValue)
 	setting:SetValueChangedCallback(function(_, value)
 		ApplyModuleSetting(module, key, value)
+		if onSettingVisualRefresh then
+			onSettingVisualRefresh(module.dbKey, setting)
+		end
 	end)
+
+	-- Keep every registered setting keyed by module so the per-option and
+	-- per-section revert controls can call setting:SetValueToDefault() later.
+	ns.nexSettings = ns.nexSettings or {}
+	local bucket = ns.nexSettings[module.dbKey]
+	if not bucket then
+		bucket = {}
+		ns.nexSettings[module.dbKey] = bucket
+	end
+	bucket[key] = setting
+
 	return setting
+end
+
+-- Tag a control initializer so the shared SettingsListElementMixin hook knows it
+-- owns a NexEnhance setting and can attach the hover-revert icon (see below).
+local function MarkResettable(initializer)
+	if initializer then
+		initializer.nexRevert = true
+	end
+	return initializer
 end
 
 function OptionBuilder:Checkbox(category, module, key, name, tooltip)
 	local setting = RegisterSetting(category, module, key, name)
 	local initializer = Settings.CreateCheckbox(category, setting, tooltip)
-	return setting, initializer
+	return setting, MarkResettable(initializer)
 end
 
 function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, maxValue, step, formatValue)
@@ -583,7 +684,7 @@ function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, ma
 		end
 	end
 	local initializer = Settings.CreateSlider(category, setting, options, tooltip)
-	return setting, initializer
+	return setting, MarkResettable(initializer)
 end
 
 -- `choices` is an array of { value = number, label = string, tooltip = string }.
@@ -604,7 +705,7 @@ function OptionBuilder:Dropdown(category, module, key, name, tooltip, choices)
 	end
 
 	local initializer = Settings.CreateDropdown(category, setting, GetOptions, tooltip)
-	return setting, initializer
+	return setting, MarkResettable(initializer)
 end
 
 -- Colour swatch. The stored value is an "AARRGGBB" hex string (Blizzard reads
@@ -618,7 +719,7 @@ function OptionBuilder:Color(category, module, key, name, tooltip)
 
 	local setting = RegisterSetting(category, module, key, name)
 	local initializer = Settings.CreateColorSwatch(category, setting, tooltip)
-	return setting, initializer
+	return setting, MarkResettable(initializer)
 end
 
 function OptionBuilder:EditBox(category, module, key, name, tooltip, width, onCommit)
@@ -637,7 +738,10 @@ function OptionBuilder:EditBox(category, module, key, name, tooltip, width, onCo
 		setting:SetValue(text)
 	end, width)
 	if initializer then
-		layout:AddInitializer(initializer)
+		initializer.GetSetting = function()
+			return setting
+		end
+		layout:AddInitializer(MarkResettable(initializer))
 	end
 	return setting, initializer
 end
@@ -708,15 +812,208 @@ local function GetChildFont()
 	return childFont
 end
 
-local elementMixin = _G["SettingsListElementMixin"]
-if elementMixin and not ns.__settingsChildFontHooked then
-	ns.__settingsChildFontHooked = true
-	hooksecurefunc(elementMixin, "Init", function(self, initializer)
-		if initializer and initializer.nexBumpFont and self.Text then
-			self.Text:SetFontObject(GetChildFont())
+-- ---------------------------------------------------------------------------
+-- Per-option revert
+--   Every NexEnhance setting registers with a default value (RegisterSetting),
+--   so any control row can be reset in place via setting:SetValueToDefault(),
+--   which fires the same value-changed callback as a normal edit (live-apply,
+--   OnSettingChanged and the callback bus all run — no /reload).
+--
+--   We tag our control initializers (nexRevert) in the builder, then a single
+--   hook on the shared SettingsListElementMixin:Init attaches a small
+--   `transmog-icon-revert` button just left of the row label. It only appears
+--   while the row's label (its Tooltip hover region) is hovered AND the current
+--   value differs from default, so default rows stay clean and un-cluttered.
+-- ---------------------------------------------------------------------------
+local REVERT_ATLAS = "transmog-icon-revert"
+local REVERT_SIZE = 15
+
+-- Pooled settings rows are recycled; track live rows weakly so section reset can
+-- hide per-option revert icons without waiting for a fresh hover.
+local revertRows = setmetatable({}, { __mode = "k" })
+
+local function TrackRevertRow(row)
+	if row then
+		revertRows[row] = true
+	end
+end
+
+local function UntrackRevertRow(row)
+	if row then
+		revertRows[row] = nil
+	end
+end
+
+local function RowIsDirty(row)
+	local setting = row.nexRevertSetting
+	if not setting then
+		return false
+	end
+	-- Colour swatches store hex strings; equality still holds for a plain compare.
+	return setting:GetValue() ~= setting:GetDefaultValue()
+end
+
+local function RefreshRevertButton(row)
+	local btn = row.nexRevertButton
+	if not btn then
+		return
+	end
+	btn:SetShown((row.nexHoverRow or row.nexHoverBtn) and RowIsDirty(row))
+end
+
+local function RefreshAllRevertRows()
+	for row in pairs(revertRows) do
+		RefreshRevertButton(row)
+	end
+end
+
+local function RefreshRevertRowsForSetting(setting)
+	if not setting then
+		return
+	end
+	for row in pairs(revertRows) do
+		if row.nexRevertSetting == setting then
+			RefreshRevertButton(row)
+		end
+	end
+end
+
+-- Fired after every live setting change so revert icons + section headers stay in sync.
+local onSettingVisualRefresh
+
+local function EnsureRevertButton(row)
+	local btn = row.nexRevertButton
+	if btn then
+		return btn
+	end
+
+	local region = row.Tooltip or row
+	btn = CreateFrame("Button", nil, region)
+	btn:SetSize(REVERT_SIZE, REVERT_SIZE)
+	btn:SetFrameLevel(region:GetFrameLevel() + 5)
+	-- Sit just left of the label text (Blizzard anchors labels at indent + 37).
+	if row.Text then
+		btn:SetPoint("RIGHT", row.Text, "LEFT", -4, 0)
+	end
+	btn:Hide()
+
+	local icon = btn:CreateTexture(nil, "ARTWORK")
+	icon:SetAllPoints()
+	icon:SetAtlas(REVERT_ATLAS)
+
+	btn:SetScript("OnEnter", function(self)
+		row.nexHoverBtn = true
+		RefreshRevertButton(row)
+		GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+		GameTooltip:AddLine(L["Reset to default"])
+		GameTooltip:AddLine(L["Reset this option to its default value."], 0.8, 0.8, 0.8, true)
+		GameTooltip:Show()
+	end)
+	btn:SetScript("OnLeave", function()
+		row.nexHoverBtn = false
+		GameTooltip:Hide()
+		-- Defer: leaving the icon back onto the row shouldn't hide-then-flicker.
+		if C_Timer and C_Timer.After then
+			C_Timer.After(0, function()
+				RefreshRevertButton(row)
+			end)
+		else
+			RefreshRevertButton(row)
+		end
+	end)
+	btn:SetScript("OnClick", function()
+		if row.nexRevertSetting then
+			row.nexRevertSetting:SetValueToDefault()
+			RefreshRevertButton(row)
+		end
+	end)
+
+	row.nexRevertButton = btn
+	return btn
+end
+
+-- Reveal/hide the icon as the label's hover region (the Tooltip child that also
+-- drives Blizzard's own row hover/tooltip) is entered and left. Deferring the
+-- leave lets the button's own OnEnter win when the pointer moves onto the icon.
+local function HookRowHover(row)
+	local region = row.Tooltip or row
+	if row.nexRevertHoverHooked then
+		return
+	end
+	row.nexRevertHoverHooked = true
+	region:HookScript("OnEnter", function()
+		row.nexHoverRow = true
+		RefreshRevertButton(row)
+	end)
+	region:HookScript("OnLeave", function()
+		row.nexHoverRow = false
+		if C_Timer and C_Timer.After then
+			C_Timer.After(0, function()
+				RefreshRevertButton(row)
+			end)
+		else
+			RefreshRevertButton(row)
 		end
 	end)
 end
+
+-- Rows are pooled and recycled across every Settings page (ours and Blizzard's),
+-- so we re-evaluate on each Init: only our tagged initializers get a live button.
+local function UpdateRowRevert(row, initializer)
+	row.nexRevertSetting = nil
+	local resettable = initializer and initializer.nexRevert and initializer.GetSetting
+	local setting = resettable and initializer:GetSetting()
+	if not setting then
+		UntrackRevertRow(row)
+		if row.nexRevertButton then
+			row.nexRevertButton:Hide()
+		end
+		return
+	end
+	row.nexRevertSetting = setting
+	TrackRevertRow(row)
+	EnsureRevertButton(row)
+	HookRowHover(row)
+	RefreshRevertButton(row)
+end
+
+local function InstallRowRevertHooks()
+	if ns.__settingsRowRevertHooked then
+		return
+	end
+	ns.__settingsRowRevertHooked = true
+
+	local elementMixin = _G["SettingsListElementMixin"]
+	if elementMixin then
+		hooksecurefunc(elementMixin, "Init", function(self, initializer)
+			if initializer and initializer.nexBumpFont and self.Text then
+				self.Text:SetFontObject(GetChildFont())
+			end
+			UpdateRowRevert(self, initializer)
+		end)
+		hooksecurefunc(elementMixin, "Release", function(self)
+			UntrackRevertRow(self)
+			self.nexRevertSetting = nil
+			self.nexHoverRow = nil
+			self.nexHoverBtn = nil
+		end)
+	end
+
+	local editMixin = _G["NexEnhanceSettingsEditBoxMixin"]
+	if editMixin then
+		hooksecurefunc(editMixin, "Init", function(self, initializer)
+			UpdateRowRevert(self, initializer)
+		end)
+		hooksecurefunc(editMixin, "Release", function(self)
+			UntrackRevertRow(self)
+			self.nexRevertSetting = nil
+			self.nexHoverRow = nil
+			self.nexHoverBtn = nil
+		end)
+	end
+end
+
+InstallRowRevertHooks()
 
 function OptionBuilder:DependsOn(child, parent)
 	if not (child and parent and child.SetParentInitializer) then
@@ -1031,6 +1328,172 @@ local CreateSettingsListSectionHeaderInitializer = _G["CreateSettingsListSection
 local SettingsListSectionHeaderMixin = _G["SettingsListSectionHeaderMixin"]
 local sectionBadgeHooked = false
 
+-- Section reset: revert every registered setting under a module's dbKey to its
+-- default. Because SetValueToDefault fires each setting's value-changed callback,
+-- modules live-apply exactly as they would for individual edits.
+local function SectionHasDirty(dbKey)
+	local bucket = ns.nexSettings and ns.nexSettings[dbKey]
+	if not bucket then
+		return false
+	end
+	for _, setting in pairs(bucket) do
+		if setting:GetValue() ~= setting:GetDefaultValue() then
+			return true
+		end
+	end
+	return false
+end
+
+local function ResetSection(dbKey)
+	local bucket = ns.nexSettings and ns.nexSettings[dbKey]
+	if not bucket then
+		return
+	end
+	for _, setting in pairs(bucket) do
+		if setting:GetValue() ~= setting:GetDefaultValue() then
+			setting:SetValueToDefault()
+		end
+	end
+end
+
+_G.StaticPopupDialogs["NEXENHANCE_RESET_SECTION"] = {
+	text = "%s",
+	button1 = _G.YES,
+	button2 = _G.NO,
+	OnAccept = function(_, data)
+		if data and data.dbKey then
+			ResetSection(data.dbKey)
+			if data.onDone then
+				data.onDone()
+			end
+		end
+	end,
+	timeout = 0,
+	whileDead = true,
+	hideOnEscape = true,
+	preferredIndex = 3,
+}
+
+local SECTION_REVERT_ATLAS = "transmog-icon-revert-small"
+
+-- Section-header title anchor from the template (TOPLEFT x=7 y=-16). We shift the
+-- title right by ICON_SLOT while a reset icon is showing so the icon sits in the
+-- gap to the *left* of the name, then restore it for pristine/other headers.
+local SECTION_TITLE_X = 7
+local SECTION_TITLE_Y = -16
+local SECTION_ICON_SLOT = 22
+
+-- Forward declaration: the button scripts below reference UpdateSectionReset,
+-- which is defined further down (keeps the local out of the global namespace).
+local UpdateSectionReset
+
+-- Pooled section headers keyed by module dbKey (weak keys — frames are recycled).
+local sectionHeadersByKey = {}
+
+local function UntrackSectionHeader(headerFrame)
+	local oldKey = headerFrame.nexTrackedResetKey
+	if oldKey and sectionHeadersByKey[oldKey] then
+		sectionHeadersByKey[oldKey][headerFrame] = nil
+	end
+	headerFrame.nexTrackedResetKey = nil
+end
+
+local function TrackSectionHeader(headerFrame, dbKey, title)
+	UntrackSectionHeader(headerFrame)
+	if not dbKey then
+		return
+	end
+	headerFrame.nexTrackedResetKey = dbKey
+	headerFrame.nexResetTitle = title
+	local bucket = sectionHeadersByKey[dbKey]
+	if not bucket then
+		bucket = setmetatable({}, { __mode = "k" })
+		sectionHeadersByKey[dbKey] = bucket
+	end
+	bucket[headerFrame] = true
+end
+
+local function RefreshSectionHeaders(dbKey)
+	local bucket = dbKey and sectionHeadersByKey[dbKey]
+	if not bucket then
+		return
+	end
+	for headerFrame in pairs(bucket) do
+		UpdateSectionReset(headerFrame, dbKey, headerFrame.nexResetTitle)
+	end
+end
+
+-- Scripts are bound once (below) and read the live dbKey/title from button fields,
+-- so re-initialising a pooled header row costs no closure allocation.
+local function SectionResetButton_OnEnter(self)
+	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+	GameTooltip:AddLine(L["Reset Section"])
+	GameTooltip:AddLine(L["Reset every option in this section to its default value."], 0.8, 0.8, 0.8, true)
+	GameTooltip:Show()
+end
+
+local function SectionResetButton_OnClick(self)
+	local dbKey = self.nexDbKey
+	if not dbKey then
+		return
+	end
+	local header = self:GetParent()
+	_G.StaticPopup_Show("NEXENHANCE_RESET_SECTION", format(L["SECTION_RESET_CONFIRM"], self.nexTitle or ""), nil, {
+		dbKey = dbKey,
+		onDone = function()
+			UpdateSectionReset(header, dbKey, self.nexTitle)
+			RefreshAllRevertRows()
+		end,
+	})
+end
+
+-- Attach (once, then reuse) a revert icon to the LEFT of a section header title.
+-- Shown only for headers tagged with a module dbKey that currently has at least
+-- one non-default value, so pristine sections carry no button.
+function UpdateSectionReset(headerFrame, dbKey, title)
+	TrackSectionHeader(headerFrame, dbKey, title)
+
+	local btn = headerFrame.nexResetButton
+	local titleFS = headerFrame.Title
+
+	if not (dbKey and SectionHasDirty(dbKey)) then
+		if btn then
+			btn:Hide()
+		end
+		-- Restore the default title position (frames are pooled across sections).
+		if titleFS then
+			titleFS:ClearAllPoints()
+			titleFS:SetPoint("TOPLEFT", SECTION_TITLE_X, SECTION_TITLE_Y)
+		end
+		return
+	end
+
+	if not btn then
+		btn = CreateFrame("Button", nil, headerFrame)
+		btn:SetSize(18, 17)
+		local icon = btn:CreateTexture(nil, "ARTWORK")
+		icon:SetAllPoints()
+		icon:SetAtlas(SECTION_REVERT_ATLAS)
+		btn:SetScript("OnEnter", SectionResetButton_OnEnter)
+		btn:SetScript("OnLeave", GameTooltip_Hide)
+		btn:SetScript("OnClick", SectionResetButton_OnClick)
+		headerFrame.nexResetButton = btn
+	end
+
+	btn.nexDbKey, btn.nexTitle = dbKey, title
+
+	-- Make room to the left of the name, then drop the icon into that gap,
+	-- vertically centred on the title text (small nudge down to align optically).
+	if titleFS then
+		titleFS:ClearAllPoints()
+		titleFS:SetPoint("TOPLEFT", SECTION_TITLE_X + SECTION_ICON_SLOT, SECTION_TITLE_Y)
+		btn:ClearAllPoints()
+		btn:SetPoint("RIGHT", titleFS, "LEFT", -4, -1)
+	end
+
+	btn:Show()
+end
+
 local function InstallSectionHeaderBadges()
 	if sectionBadgeHooked or not SettingsListSectionHeaderMixin then
 		return
@@ -1053,18 +1516,34 @@ local function InstallSectionHeaderBadges()
 		elseif badge then
 			badge:Hide()
 		end
+
+		UpdateSectionReset(headerFrame, data and data.nexResetKey, data and data.name)
 	end)
+	-- Section headers have no Release mixin; TrackSectionHeader untracks the
+	-- previous dbKey every time Init runs on a recycled frame.
 end
 
-local function AddSectionHeader(layout, text, isNew)
+onSettingVisualRefresh = function(dbKey, setting)
+	RefreshRevertRowsForSetting(setting)
+	RefreshSectionHeaders(dbKey)
+end
+
+-- `resetKey` (optional) is a module dbKey: when set, the header gets a revert
+-- icon that resets every registered option under that dbKey. Intra-module
+-- sub-headers (ns.AddSectionHeader) omit it, so only the top module header for a
+-- section carries the reset control.
+local function AddSectionHeader(layout, text, isNew, resetKey)
 	if not (layout and CreateSettingsListSectionHeaderInitializer) then
 		return
 	end
 	local init = CreateSettingsListSectionHeaderInitializer(text)
-	if isNew and init and init.GetData then
+	if init and init.GetData then
 		local data = init:GetData()
 		if data then
-			data.nexNew = true
+			if isNew then
+				data.nexNew = true
+			end
+			data.nexResetKey = resetKey
 		end
 	end
 	layout:AddInitializer(init)
@@ -1325,7 +1804,6 @@ end
 --   For richer custom panels (lists, custom widgets, etc.) that the vertical
 --   layout can't express. Replicates the native SettingsList header so the page
 --   visually matches Blizzard's, including an optional "Defaults" button.
---   Adapted from p3lim's Dashi (public domain).
 -- ---------------------------------------------------------------------------
 local canvasMixin = {}
 function canvasMixin:SetDefaultsHandler(callback)
@@ -1563,7 +2041,7 @@ local function BuildOptions()
 		if module.RegisterOptions then
 			local key = groupCategory[module.group] and module.group or "misc"
 			local moduleCategory = groupCategory[key] or category
-			AddSectionHeader(groupLayout[key], module.title or module.name, newModuleLookup[module.name] == true)
+			AddSectionHeader(groupLayout[key], module.title or module.name, newModuleLookup[module.name] == true, module.dbKey)
 			OptionBuilder.layout = groupLayout[key]
 			module:RegisterOptions(moduleCategory, OptionBuilder)
 			OptionBuilder.layout = nil

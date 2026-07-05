@@ -4,22 +4,26 @@
 	Replaces the default chat-bubble art with the game's tooltip border and
 	dark fill, matching the chat edit box, tinted per channel.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI
+	Bubbles are created on demand and recycled — we poll C_ChatBubbles on a
+	throttled OnUpdate (chat events arm the worker) and skin anything new.
+	Purely cosmetic; no taint.
 
-	Integration notes:
-	  * Chat bubbles are created on demand and recycled, so we poll the active
-	    set on a throttled OnUpdate (driven by chat events) and style any we
-	    have not seen yet. Purely cosmetic, so it is taint-safe.
+	Recycled bubbles often keep the previous channel's FontString colour
+	(party blue on instance chat is the classic). We record recent messages
+	from chat events and match ChatTypeInfo instead of trusting GetTextColor().
 --]]
 
 local _, ns = ...
 local F, L = ns.F, ns.L
 
-local ipairs, pairs = ipairs, pairs
+local ipairs, pairs, tinsert, tremove = ipairs, pairs, table.insert, table.remove
+local gsub = string.gsub
 local CreateFrame = CreateFrame
 local GetCVarBool = GetCVarBool
-local C_ChatBubbles_GetAllChatBubbles = C_ChatBubbles.GetAllChatBubbles
+local GetTime = GetTime
+local ChatTypeInfo = ChatTypeInfo
+local ChatTypeGroupInverted = ChatTypeGroupInverted
+local C_ChatBubbles_GetAllChatBubbles = C_ChatBubbles and C_ChatBubbles.GetAllChatBubbles
 
 ns:RegisterDefaults({
 	chatBubbles = {
@@ -29,45 +33,158 @@ ns:RegisterDefaults({
 
 local ChatBubbles = ns:NewModule("ChatBubbles", "chatBubbles", { group = "skins", title = L["Chat Bubbles"], order = 30 })
 
--- Only chat (not nameplate) bubbles should be reskinned; these CVars say which
--- chat-bubble types the user has enabled, and gate the polling worker.
-local bubbleCVars = {
+-- Blizzard CVars that gate which bubble types appear; used to start the poll worker.
+local BUBBLE_EVENT_CVARS = {
 	CHAT_MSG_SAY = "chatBubbles",
 	CHAT_MSG_YELL = "chatBubbles",
 	CHAT_MSG_MONSTER_SAY = "chatBubbles",
 	CHAT_MSG_MONSTER_YELL = "chatBubbles",
+	CHAT_MSG_EMOTE = "chatBubbles",
+	CHAT_MSG_TEXT_EMOTE = "chatBubbles",
 	CHAT_MSG_PARTY = "chatBubblesParty",
 	CHAT_MSG_PARTY_LEADER = "chatBubblesParty",
 	CHAT_MSG_MONSTER_PARTY = "chatBubblesParty",
+	CHAT_MSG_INSTANCE_CHAT = "chatBubblesParty",
+	CHAT_MSG_INSTANCE_CHAT_LEADER = "chatBubblesParty",
+	CHAT_MSG_RAID = "chatBubblesRaid",
+	CHAT_MSG_RAID_LEADER = "chatBubblesRaid",
+	CHAT_MSG_RAID_WARNING = "chatBubblesRaid",
 }
 
--- Tint the border to the message's text colour, which mirrors the chat
--- channel (white say, red yell, blue party, ...). Falls back to white.
-local function UpdateBubbleBorder(chatBubble, frame)
-	local bg = chatBubble.__nexBG
-	if not bg then
+local PENDING_MAX = 10
+local PENDING_TTL = 6
+local pendingMessages = {}
+
+local function ShouldPollForEvent(event)
+	local cvar = BUBBLE_EVENT_CVARS[event]
+	if not cvar then
+		return false
+	end
+	if GetCVarBool(cvar) then
+		return true
+	end
+	-- Instance chat bubbles follow the party toggle on most clients; also honour raid.
+	if cvar == "chatBubblesParty" and event:find("INSTANCE", 1, true) then
+		return GetCVarBool("chatBubblesRaid")
+	end
+	return false
+end
+
+local function StripInlineTextures(text)
+	return gsub(text, "|T.-|t", "")
+end
+
+local function NormalizeBubbleText(text)
+	if not text or text == "" then
+		return ""
+	end
+	text = F.StripColorCodes(text)
+	text = StripInlineTextures(text)
+	return text
+end
+
+local function GetChatTypeColor(chatType)
+	if not chatType then
+		return
+	end
+	local info = ChatTypeInfo and ChatTypeInfo[chatType]
+	if info and info.r then
+		return info.r, info.g, info.b
+	end
+end
+
+local function RecordBubbleMessage(event, message)
+	if not message or message == "" or F.IsSecret(message) then
+		return
+	end
+	if not ChatTypeGroupInverted then
 		return
 	end
 
-	local r, g, b = 1, 1, 1
-	local str = frame.String
-	if str and str.GetTextColor then
-		local tr, tg, tb = str:GetTextColor()
-		r, g, b = tr or 1, tg or 1, tb or 1
+	local chatType = ChatTypeGroupInverted[event]
+	if not chatType then
+		return
 	end
 
-	bg:SetBackdropBorderColor(r, g, b)
+	tinsert(pendingMessages, 1, {
+		chatType = chatType,
+		text = NormalizeBubbleText(message),
+		time = GetTime(),
+	})
+	while #pendingMessages > PENDING_MAX do
+		tremove(pendingMessages)
+	end
+end
+
+local function MatchPendingMessage(chatBubble, displayKey, emojiSrcKey)
+	local now = GetTime()
+	for i = 1, #pendingMessages do
+		local entry = pendingMessages[i]
+		if now - entry.time > PENDING_TTL then
+			break
+		end
+		if entry.text == displayKey or (emojiSrcKey and entry.text == emojiSrcKey) then
+			tremove(pendingMessages, i)
+			return entry.chatType
+		end
+	end
+end
+
+local function ResolveBubbleChatType(chatBubble, displayText)
+	if not displayText or displayText == "" or F.IsSecret(displayText) then
+		chatBubble.__nexBubbleKey = nil
+		chatBubble.__nexChatType = nil
+		return nil
+	end
+
+	local displayKey = NormalizeBubbleText(displayText)
+	local emojiSrcKey = chatBubble.__nexEmojiSrc and NormalizeBubbleText(chatBubble.__nexEmojiSrc)
+	if displayKey == "" and emojiSrcKey and emojiSrcKey ~= "" then
+		displayKey = emojiSrcKey
+	end
+
+	if chatBubble.__nexBubbleKey == displayKey and chatBubble.__nexChatType then
+		return chatBubble.__nexChatType
+	end
+
+	local chatType = MatchPendingMessage(chatBubble, displayKey, emojiSrcKey)
+	chatBubble.__nexBubbleKey = displayKey
+	chatBubble.__nexChatType = chatType
+	return chatType
+end
+
+local function UpdateBubbleColors(chatBubble, frame, chatType)
+	local str = frame.String
+	local r, g, b = GetChatTypeColor(chatType)
+
+	if not r and str and str.GetTextColor then
+		local tr, tg, tb = str:GetTextColor()
+		r, g, b = tr, tg, tb
+	end
+
+	r, g, b = r or 1, g or 1, b or 1
+
+	if str and str.SetTextColor then
+		str:SetTextColor(r, g, b)
+	end
+
+	local bg = chatBubble.__nexBG
+	if bg then
+		bg:SetBackdropBorderColor(r, g, b)
+	end
 end
 
 local function ReskinBubble(chatBubble)
-	local frame = chatBubble:GetChildren()
+	if not chatBubble or chatBubble:IsForbidden() then
+		return
+	end
+
+	local frame = chatBubble.GetChildren and chatBubble:GetChildren()
 	if not frame or frame:IsForbidden() then
 		return
 	end
 
 	if not chatBubble.__nexStyled then
-		-- Drop Blizzard's nine-slice border/fill and the speech tail, then sit our
-		-- own backdrop just behind the text so the message stays readable.
 		frame:DisableDrawLayer("BORDER")
 		frame:DisableDrawLayer("BACKGROUND")
 		if frame.Tail then
@@ -79,19 +196,24 @@ local function ReskinBubble(chatBubble)
 		bg:SetFrameLevel(level > 0 and level - 1 or 0)
 		bg:SetPoint("TOPLEFT", frame, "TOPLEFT", 4, -4)
 		bg:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -4, 4)
-		-- Tooltip border + dark fill; tinted to the channel colour below.
 		F.CreateTooltipBackdrop(bg, { edgeSize = 8 })
 
 		chatBubble.__nexBG = bg.nexBackdrop
 		chatBubble.__nexStyled = true
 	end
 
-	-- Re-applied on every poll so recycled bubbles pick up their new channel colour.
-	UpdateBubbleBorder(chatBubble, frame)
+	local str = frame.String
+	local text = str and str.GetText and str:GetText()
+	local chatType = ResolveBubbleChatType(chatBubble, text)
+	UpdateBubbleColors(chatBubble, frame, chatType)
 end
 
 local worker
 local function CreateWorker()
+	if worker or not C_ChatBubbles_GetAllChatBubbles then
+		return
+	end
+
 	worker = CreateFrame("Frame")
 	worker:Hide()
 
@@ -105,27 +227,27 @@ local function CreateWorker()
 
 		local bubbles = C_ChatBubbles_GetAllChatBubbles()
 		if bubbles then
-			for _, chatBubble in ipairs(bubbles) do
-				ReskinBubble(chatBubble)
+			for i = 1, #bubbles do
+				ReskinBubble(bubbles[i])
 			end
 		end
 		self:Hide()
 	end)
 
-	worker:SetScript("OnEvent", function(self, event)
-		if GetCVarBool(bubbleCVars[event]) then
-			elapsed = 0
-			self:Show()
+	worker:SetScript("OnEvent", function(self, event, message)
+		if not ShouldPollForEvent(event) then
+			return
 		end
+		RecordBubbleMessage(event, message)
+		elapsed = 0
+		self:Show()
 	end)
 
-	for event in pairs(bubbleCVars) do
+	for event in pairs(BUBBLE_EVENT_CVARS) do
 		worker:RegisterEvent(event)
 	end
 end
 
--- Chat bubbles inherit the shared ChatBubbleFont object, so shrinking it once
--- downsizes every (recycled) bubble's text without per-bubble bookkeeping.
 local FONT_REDUCTION = 4
 local function ShrinkBubbleFont()
 	local font = _G.ChatBubbleFont
@@ -135,7 +257,6 @@ local function ShrinkBubbleFont()
 
 	local fontFile, fontSize, fontFlags = font:GetFont()
 	if fontFile and fontSize then
-		-- Never shrink below a legible floor (and never grow it).
 		font:SetFont(fontFile, math.max(fontSize - FONT_REDUCTION, 8), fontFlags)
 		ChatBubbles.fontResized = true
 	end
@@ -145,9 +266,7 @@ function ChatBubbles:OnEnable()
 	if not ns.db.chatBubbles.enable then
 		return
 	end
-	if not worker then
-		CreateWorker()
-	end
+	CreateWorker()
 	ShrinkBubbleFont()
 end
 

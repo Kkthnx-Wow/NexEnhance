@@ -5,9 +5,6 @@
 	(skipped for achievements already completed on the account, so account-wide
 	unlocks on alts don't spam screenshots).
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI
-
 	The 1s delay lets the achievement toast finish animating in so it shows up
 	in the shot. The capture frame is a self-stopping countdown (no polling
 	when idle).

@@ -3,8 +3,6 @@
 	-------------------------------------------------------------------------
 	Shows a tooltip when the mouse hovers a hyperlink in a chat frame (items,
 	spells, quests, achievements, battle pets, dungeon-journal links, ...).
-
-	Ported from NDui's HoverTips.lua by siweia.
 --]]
 
 local _, ns = ...

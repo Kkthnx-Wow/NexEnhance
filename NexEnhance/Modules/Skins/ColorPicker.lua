@@ -14,21 +14,9 @@
 	    4th row of the column (R / G / B / #); Blizzard already keeps its text
 	    synced with the wheel, so we only restyle and reposition it.
 
-	Reworked from NDui's Modules/Skins/ColorPicker.lua (by siweia) against the
-	current retail ColorPickerFrame (the 10.2.5 rebuild, layout unchanged through
-	12.0). Differences from the original:
-	  * No custom "movable by header" code - the modern frame already ships a
-	    DragBar over its Header and is movable, so we don't duplicate it.
-	  * Built on the NexEnhance widget helpers (F.CreateEditBox / F.CreateFS /
-	    F.CreateBackdrop) so the additions match the rest of the UI, with focus
-	    highlighting and a 1px border on every swatch.
-	  * Defensive structure checks (Content / ColorPicker / swatch must exist)
-	    and load-on-demand handling, so a future Blizzard layout change degrades
-	    to "no enhancement" instead of a Lua error.
-	  * Stable class ordering and per-swatch tooltips.
-
-	No Secret-value concerns here: ColorPickerFrame is a pure UI dialog and none
-	of these reads touch combat data.
+	The modern frame already has a DragBar — we don't add our own movable header.
+	Built with F.CreateEditBox / F.CreateFS / F.CreateBackdrop. Defensive checks
+	on Content / ColorPicker / swatch so a future layout change degrades quietly.
 --]]
 
 local _, ns = ...

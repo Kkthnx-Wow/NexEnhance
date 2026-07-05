@@ -2,10 +2,8 @@
 	NexEnhance - Tooltip Item Reagents
 	-------------------------------------------------------------------------
 	For craftable items (usable to learn/open a recipe), appends required
-	reagents with your bag/bank counts. Cherry-picked from Plumber's
-	GameTooltip_ItemReagents (Peterodox).
-
-	Wired from Tooltip:OnEnable via Tooltip:SetupItemReagents().
+	reagents with your bag/bank counts. Wired from Tooltip:OnEnable via
+	Tooltip:SetupItemReagents().
 --]]
 
 local _, ns = ...
@@ -37,7 +35,7 @@ local IGNORED_ITEMS = {
 	[254267] = true, -- Fragmented Memento of Epoch Challenges
 }
 
--- Recipe-specific quantity overrides (Plumber data).
+-- Recipe-specific quantity overrides (curated table).
 local QUANTITY_OVERRIDE = {
 	[404592] = { [204340] = 30 },
 	[428667] = { [211297] = 2 },
@@ -187,11 +185,9 @@ local function AppendReagents(tip, itemID)
 		tip:AddLine(format(L["Can Create Multiple Item Format"], maxOutput), 1, 0.82, 0, true)
 	end
 
-	if needsRefresh and tip.RefreshData then
+	if needsRefresh then
 		C_Timer.After(0, function()
-			if tip:IsShown() and not tip:IsForbidden() then
-				tip:RefreshData()
-			end
+			F.SafeRefreshTooltipData(tip, { itemOnly = true })
 		end)
 	end
 

@@ -2,7 +2,7 @@
 	NexEnhance - Hero Talent Swap
 	-------------------------------------------------------------------------
 	Right-click the hero talent button on the Talents pane to swap to your
-	inactive hero tree (Inomena-inspired). Left-click passes through normally.
+	inactive hero tree. Left-click passes through normally.
 
 	Blizzard refs: Blizzard_PlayerSpells HeroTalentsContainer.HeroSpecButton,
 	C_Traits.SetSelection, C_ClassTalents APIs.

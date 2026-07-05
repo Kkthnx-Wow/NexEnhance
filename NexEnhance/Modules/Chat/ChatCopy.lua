@@ -3,9 +3,6 @@
 	-------------------------------------------------------------------------
 	Adds a small button by the chat window that opens a copy frame containing
 	the current chat window's text, ready to select and copy.
-
-	Ported from NDui's Modules/Chat/Chatcopy.lua by siweia, adapted to the
-	NexEnhance framework.
 --]]
 
 -- luacheck: globals ChatFontNormal ScrollUtil
@@ -42,6 +39,10 @@ local function isMessageProtected(msg)
 end
 
 local function replaceMessage(msg, r, g, b)
+	local emojiMod = ns:GetModule("ChatEmojis")
+	if emojiMod and emojiMod:IsEnabled() and emojiMod.RestorePlainText then
+		msg = emojiMod:RestorePlainText(msg)
+	end
 	local hexRGB = "|c" .. F.RGBToHex(r, g, b)
 	msg = gsub(msg, "|T(.-):.-|t", "")
 	msg = gsub(msg, "|A(.-):.-|a", "")

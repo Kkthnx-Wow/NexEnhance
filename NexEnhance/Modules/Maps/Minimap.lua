@@ -1,10 +1,7 @@
 --[[
 	NexEnhance - Minimap
 	-------------------------------------------------------------------------
-	A fuller minimap pass adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Maps/Minimap.lua
-
-	What we do (all gated behind the module toggle):
+	Minimap cleanup behind the module toggle:
 	  - Square the minimap and frame it with the game's tooltip border.
 	  - Kill the cluster chrome outright (ring, zoom buttons, compass, clock,
 	    zone-text bar) since we replace it; the tracking button stays alive but
@@ -16,8 +13,7 @@
 	    calendar invites.
 	  - Easy Volume (Ctrl + wheel) and a middle-click shortcut menu (unchanged).
 
-	We do NOT add our own mover: Blizzard's Edit Mode already moves the minimap
-	cluster, so we leave positioning to it and never detach the minimap.
+	No custom mover — Blizzard Edit Mode already moves the minimap cluster.
 
 	Retail only.
 --]]
@@ -347,8 +343,8 @@ end
 -- Helpers
 -- ---------------------------------------------------------------------------
 -- Fully remove a Blizzard element: F.Kill unregisters its events and reparents
--- it to NexEnhance's permanent hider frame, so it can never come back (this is
--- KkthnxUI's HideInterfaceOption pattern). Guarded so a missing frame is a no-op.
+-- it to NexEnhance's permanent hider frame, so it can never come back. Guarded
+-- so a missing frame is a no-op.
 local function Kill(frame)
 	if frame then
 		F.Kill(frame)
@@ -526,8 +522,8 @@ local function Declutter()
 		end
 	end
 
-	-- Midnight housing overlay: the static overlay is built for the round mask,
-	-- so pin it inside the square map and crop the texcoords to match (NDui).
+	-- Housing overlay is built for the round mask — pin inside the square map
+	-- and crop texcoords to match.
 	local overlay = _G.MinimapBackdrop and _G.MinimapBackdrop.StaticOverlayTexture
 	if overlay then
 		overlay:ClearAllPoints()
@@ -785,8 +781,8 @@ local function RefreshIndicatorPosition()
 end
 
 local function ReskinRegions()
-	-- Expansion / garrison landing-page button -> bottom-left. Mirror KkthnxUI:
-	-- leave it under Blizzard's parent and only reposition + skin it; Blizzard
+	-- Expansion / garrison landing-page button -> bottom-left. Leave it under
+	-- Blizzard's parent and only reposition + skin it; Blizzard
 	-- still controls when it is shown (via UpdateIcon).
 	local garrMinimapButton = _G.ExpansionLandingPageMinimapButton
 	if garrMinimapButton then
@@ -1008,11 +1004,10 @@ local function ReskinQueueStatus()
 end
 
 -- ---------------------------------------------------------------------------
--- Collect Buttons - sweep stray addon minimap buttons into a pop-out tray
---   Adapted from KkthnxUI's CollectButtons.lua (by Kkthnx). We scan the
---   minimap's children a handful of times after login, square + border the
---   addon buttons we find, and park them in a fade-in tray behind a small
---   corner toggle. Blizzard frames and our own widgets are never touched.
+-- Collect Buttons - sweep stray addon minimap buttons into a pop-out tray.
+-- Scan minimap children a handful of times after login, square + border addon
+-- buttons we find, and park them in a fade-in tray behind a corner toggle.
+-- Blizzard frames and our own widgets are never touched.
 -- ---------------------------------------------------------------------------
 local strfind, strmatch, strupper = string.find, string.match, string.upper
 local wipe, ceil, select, type, unpack = wipe, math.ceil, select, type, unpack
@@ -1497,8 +1492,8 @@ function Module:OnEnable()
 		BuildMenuList()
 	end
 
-	-- Mouse input lives on a dedicated overlay rather than scripted straight onto
-	-- the minimap (NDui-style): left-click passes through to Blizzard so the
+	-- Mouse input on a dedicated overlay, not scripted onto the minimap:
+	-- left-click passes through to Blizzard so the
 	-- default ping still fires, mouse motion propagates so minimap mouseover /
 	-- tooltips keep working, and we own the wheel (zoom/volume) plus the
 	-- middle-click micro menu and right-click tracking menu.

@@ -7,13 +7,10 @@
 	achievement, and both scroll positions all restored.
 
 	Retail only. The windowed achievement frame expands to the stored category
-	for us (AchievementFrame_UpdateAndSelectCategory), so unlike the original
-	Classic-era addon we don't have to snapshot category collapse state.
+	for us (AchievementFrame_UpdateAndSelectCategory), so we don't snapshot category
+	collapse state.
 
-	Adapted from LudiusMaximus' "Achievements Back Button" (MIT), reworked onto
-	the NexEnhance framework: load-on-demand handling via the module event API,
-	pure hooksecurefunc/HookScript so nothing taints, and no stray globals.
-	  https://www.curseforge.com/wow/addons/achievements-back-button
+	Load-on-demand via the module event API; hooksecurefunc/HookScript only.
 --]]
 
 ---@diagnostic disable: undefined-field

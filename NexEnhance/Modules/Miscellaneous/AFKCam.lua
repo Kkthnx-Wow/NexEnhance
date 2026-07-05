@@ -5,12 +5,9 @@
 	30-minute logout countdown, rotating account statistics and a whisper chat
 	log. Exits on combat, LFG/battlefield popups, or any key press.
 
-	Originally from ElvUI by the Tukui team:
-	  https://github.com/tukui-org/ElvUI/blob/main/ElvUI/Game/Shared/Modules/Misc/AFK.lua
-	Model animation cycle adapted from GW2 UI by Mortalknight:
-	  https://github.com/Mortalknight/GW2_UI/blob/main/Games/Shared/Misc/afk.lua
-	Layout reworked as a resolution-independent cinematic letterbox (gradient
-	fades, edge-anchored elements, fixed model holders).
+	Wave/dance/sleep animation cycle with per-animation model holder offsets.
+	Layout is a resolution-independent cinematic letterbox (gradient fades,
+	edge-anchored elements, fixed model holders).
 --]]
 
 -- luacheck: globals CloseAllWindows MoveViewLeftStart MoveViewLeftStop RemoveExtraSpaces
@@ -111,7 +108,7 @@ local PET_FALLBACK = {
 }
 local C_PetJournal = C_PetJournal
 
--- Class artifact background runes (mirrors the faction crest on the right).
+-- Class artifact background runes (pairs with the faction crest on the right).
 local CLASS_RUNE = {
 	DEMONHUNTER = "Artifacts-DemonHunter-BG-Rune",
 	DEATHKNIGHT = "Artifacts-DeathKnightFrost-BG-Rune",
@@ -677,7 +674,7 @@ end
 
 -- Patch 12.0 moved several chat helpers into the ChatFrameUtil namespace (the
 -- old globals are now nil on Midnight, which is what crashed OnChatEvent). Mirror
--- ElvUI's AFK module: resolve each from ChatFrameUtil first, then fall back to the
+-- Resolve chat category helpers from ChatFrameUtil first, then fall back to the
 -- pre-12.0 global, and guard usage so a missing helper degrades quietly.
 local ChatFrameUtil = _G.ChatFrameUtil
 local GetColoredName = (ChatFrameUtil and ChatFrameUtil.GetColoredName) or _G.GetColoredName
@@ -748,7 +745,7 @@ local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7
 		chatTarget = tostring(arg8)
 	elseif chatGroup == "WHISPER" or chatGroup == "BN_WHISPER" then
 		-- arg2 (sender) can be a Secret string in instances; only upper-case it
-		-- when it is safe to inspect (mirrors ElvUI's NotSecretValue guard).
+		-- when it is safe to inspect (F.NotSecret guard).
 		if F.NotSecret(arg2) and sub(arg2, 1, 2) ~= "|K" then
 			chatTarget = arg2:upper()
 		else
@@ -878,7 +875,7 @@ local function BuildFrame()
 	frame.faction:SetPoint("LEFT", nameCard, "LEFT", 0, 0)
 	frame.faction:SetTexture("Interface/Timer/" .. GetFactionCrestKey(C.Player.faction) .. "-Logo")
 
-	-- Class artifact rune: mirrors the faction crest on the opposite (right) edge.
+	-- Class artifact rune on the opposite (right) edge from the faction crest.
 	local runeAtlas = CLASS_RUNE[C.Player.class]
 	if runeAtlas then
 		frame.classRune = frame:CreateTexture(nil, "ARTWORK")

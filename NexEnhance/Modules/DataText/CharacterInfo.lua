@@ -6,11 +6,8 @@
 	totals, Warband bank gold, and backpack-tracked currencies. The button keeps
 	its native click (opens the character pane); we only add the hover tooltip.
 
-	Gold/currency reads are Midnight secret-aware: GetMoney() and currency
-	quantities can be secret in combat/instances, so every read is gated with
-	F.NotSecret before any arithmetic, comparison, or storage.
-
-	Behaviour is adapted from ElvUI's Gold + Currencies datatexts.
+	GetMoney() and currency quantities can go secret in combat/instances —
+	gate every read with F.NotSecret before arithmetic, comparison, or storage.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global

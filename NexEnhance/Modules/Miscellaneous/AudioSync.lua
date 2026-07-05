@@ -4,16 +4,9 @@
 	Monitors voice chat and audio output device updates and automatically
 	resets the game's sound driver.
 
-	Let's be completely real: World of Warcraft has a legendary, decades-old bug
-	where unplugging your headphones or changing your audio output device in
-	Windows instantly kills all in-game sound, forcing you to go into system settings
-	and fiddle with CVars or reload the entire game like it's 2004.
-
-	We fix this annoyance by listening to the client's output device update event
-	and forcing a swift restart of the sound subsystem. We block this restart
-	during movies/cinematics to avoid causing a weird audio stutter or hang.
-
-	Adapted from the sync system in EnhanceQoL.
+	WoW still kills all in-game sound when you unplug headphones or switch the
+	Windows output device. We listen for the client's device-update event and
+	restart the sound subsystem. Blocked during movies/cinematics to avoid stutter.
 --]]
 
 ---@diagnostic disable: undefined-field

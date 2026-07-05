@@ -4,8 +4,7 @@
 	While the fishing channel is active: widen soft-target interact CVars, mute
 	music/ambience, and override-bind the fishing action-bar key to INTERACTTARGET
 	for one-key bobber looting. Restores everything on channel stop, combat, or
-	logout. Hold Shift when casting to skip (Inomena-inspired; Blizzard fishing
-	spell IDs from FrameXML).
+	logout. Hold Shift when casting to skip. Blizzard fishing spell IDs from FrameXML.
 
 	Verified against Resources 12.0.7: UNIT_SPELLCAST_SENT, ActionButtonUtil,
 	SetOverrideBinding, SoftTarget* CVars.

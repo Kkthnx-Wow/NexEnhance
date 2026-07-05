@@ -10,11 +10,9 @@
 	StaticPopupSpecial_Show but does not render a countdown in FrameXML; PvP
 	expiration comes from GetBattlefieldPortExpiration. LFG still has no
 	expiration API — ~40s is measured client-side (same pattern as LFG
-	ProposalTime and other community addons).
+	expiration API — ~40s is measured client-side (same as LFG ProposalTime).
 
-	Ported from KkthnxUI's QueueTimer (by Josh "Kkthnx" Russell), adapted to
-   the NexEnhance framework:
-	  https://github.com/Kkthnx-Wow/KkthnxUI
+	Built on the NexEnhance module framework.
 --]]
 
 ---@diagnostic disable: undefined-field

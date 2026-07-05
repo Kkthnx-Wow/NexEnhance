@@ -6,11 +6,7 @@
 	populate yourself). Turned on/off entirely from the config, like every
 	other module - no on-map checkbox.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Maps/Elements/MapReveal.lua
-
-	K.* helpers are replaced with framework equivalents (ns.db.mapReveal for
-	options). Defers to Leatrix_Maps if that addon is loaded.
+	Skips if Leatrix_Maps is loaded.
 --]]
 
 -- luacheck: globals TexturePool_HideAndClearAnchors

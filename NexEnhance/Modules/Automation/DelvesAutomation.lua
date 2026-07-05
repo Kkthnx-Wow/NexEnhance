@@ -5,17 +5,10 @@
 	"borrowed power" popup (the curio/power offered during the run) so you
 	don't have to click through it, and optionally announces what was taken.
 
-	Concept ported from Plumber's DelvesAutomation module (Plumber by
-	Peterodox). This is an independent NexEnhance implementation - rewritten
-	against the project optimisation guide rather than copied:
-	  * Purely event-driven. PLAYER_CHOICE_UPDATE is registered only while we
-	    are actually inside a Delve (gated via ns:CreateStateTrigger), so
-	    player choices outside Delves are never touched.
-	  * No OnUpdate polling - delve state is recomputed from cheap events.
-	  * Every API used in the handler is localised; the handler runs
-	    cheapest-filter-first and bails on anything that isn't a lone,
-	    single-button, spell-backed option.
-	  * Toggles live without a reload.
+	Event-driven: PLAYER_CHOICE_UPDATE registers only while inside a Delve
+	(gated via ns:CreateStateTrigger). No OnUpdate polling. Handler is
+	cheapest-filter-first and only auto-confirms a lone spell-backed option.
+	Toggles live without reload.
 --]]
 
 ---@diagnostic disable: undefined-field

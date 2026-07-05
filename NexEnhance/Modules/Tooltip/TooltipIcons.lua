@@ -3,8 +3,6 @@
 	-------------------------------------------------------------------------
 	Adds an icon next to the tooltip title (and tidies inline/reward icons) for
 	items, toys, spells and mounts.
-
-	Ported from NDui's TooltipIcons.lua by siweia.
 --]]
 
 local _, ns = ...

@@ -8,9 +8,8 @@
 	  * Optional "Always Show Level": replaces Blizzard's skull (HighLevelTexture,
 	    shown when the level is "too high to tell") with the actual number, or a
 	    red "??" when the game genuinely hides it - so you always get info instead
-	    of a bare skull icon (the KkthnxUI fulllevel approach). Also appends
-	    classification markers - "Boss" for world bosses, "R+" rare-elite,
-	    "+" elite, "R" rare.
+	    of a bare skull icon. Also appends classification markers - "Boss" for
+	    world bosses, "R+" rare-elite, "+" elite, "R" rare.
 
 	Why: modern Blizzard colours the level via the *new* content-difficulty
 	system (C_PlayerInfo.GetContentDifficultyCreatureForPlayer + GetDifficultyColor)

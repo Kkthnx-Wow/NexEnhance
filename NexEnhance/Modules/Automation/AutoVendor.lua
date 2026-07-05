@@ -10,9 +10,6 @@
 	It also auto-selects the "repair" gossip option on repair NPCs (e.g. the
 	stable repair handlers) when your gear is actually damaged.
 
-	Selling/repair logic adapted from NDui by siweia:
-	  https://github.com/siweia/NDui
-
 	Hold Shift while opening a merchant to skip both selling and repairing.
 
 	Bagforge compatibility: Bagforge has its own Vendor module. If that addon is
@@ -56,7 +53,7 @@ local GUILD_NOT_ENOUGH = LE_GAME_ERR_GUILD_NOT_ENOUGH_MONEY
 local VENDOR_DOESNT_BUY = LE_GAME_ERR_VENDOR_DOESNT_BUY
 
 -- Grey-looking items that double as a currency or are otherwise worth keeping;
--- protected from the junk sweep when "keepPetTrash" is on (mirrors NDui).
+-- Pet-trash item IDs protected from the junk sweep when keepPetTrash is on.
 local petTrashCurrencies = {
 	[3300] = true,
 	[3670] = true,

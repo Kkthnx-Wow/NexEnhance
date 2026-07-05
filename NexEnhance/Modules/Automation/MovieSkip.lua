@@ -4,8 +4,7 @@
 	Lets you blow through movies and cinematics quickly: Space/Enter/Escape
 	instantly confirm the "skip?" dialog instead of needing a second click.
 
-	Ported from NDui's Misc FasterMovieSkip (by siweia), adapted to the
-	NexEnhance framework. Uses HookScript on the (non-secure) movie frames.
+	HookScript on the movie frames — non-secure, no taint.
 --]]
 
 -- luacheck: globals CinematicFrameCloseDialog CinematicFrameCloseDialogConfirmButton CinematicFrame MovieFrame

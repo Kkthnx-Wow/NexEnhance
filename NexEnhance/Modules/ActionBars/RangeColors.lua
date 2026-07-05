@@ -1,33 +1,17 @@
 --[[
 	NexEnhance - Action Bar Range Coloring
 	-------------------------------------------------------------------------
-	Tints action-button icons (and optionally their hotkey text) when an action
-	is out of range, out of power, or unusable - the classic tullaRange/RedRange
-	behaviour, recoded against the NexEnhance engine.
+	Tints action-button icons (and optionally hotkey text) when an action is out
+	of range, out of power, or unusable.
 
-	Ported from tullaRange (by Tuller, MIT) - specifically its modern, event
-	based updater (WoW 10.1.5+). The approach, faithfully kept here:
-	  * Each action button's UpdateUsable is post-hooked with a single shared
-	    handler (hooksecurefunc), so usability/power recolouring is event-driven
-	    and allocation-free - no per-button OnUpdate loop.
-	  * Range is driven by the engine's ACTION_RANGE_CHECK_UPDATE system: the
-	    global ActionButton_UpdateRangeIndicator is post-hooked, giving us an
-	    incremental "in/out of range" flip without polling.
-	  * Buttons are discovered through ActionBarButtonEventsFrame (and its
-	    RegisterFrame is hooked so bars created later are covered too).
+	Event-driven, no per-button OnUpdate:
+	  * Post-hook each button's UpdateUsable with one shared handler
+	  * Range flips via ACTION_RANGE_CHECK_UPDATE / ActionButton_UpdateRangeIndicator
+	  * Discover buttons through ActionBarButtonEventsFrame (+ hook RegisterFrame)
 
-	Midnight (12.0) hardening - the part tullaRange itself does NOT do, added
-	per the project's Secret Values guide:
-	  * IsUsableAction / IsActionInRange (and the pet equivalents) can return
-	    SECRET booleans in combat. Comparing or branching on a secret value
-	    throws ("attempt to compare a secret value"), so every read is gated with
-	    F.IsSecret first. When a value is secret we fall back to the neutral
-	    "normal" tint (no error, range simply isn't applied for that tick) - the
-	    same graceful-degradation pattern used elsewhere in the addon.
-
-	Because hooksecurefunc hooks can never be removed, the hooks are installed
-	once and lazily; an `active` flag gates every hook body so the feature can be
-	toggled live (disable repaints every button back to normal).
+	12.0: IsUsableAction / IsActionInRange can return secret booleans in combat.
+	We gate with F.IsSecret and fall back to the neutral tint instead of erroring.
+	Hooks install once; an `active` flag lets the feature toggle live.
 --]]
 
 local _, ns = ...
@@ -75,10 +59,8 @@ end
 -- ---------------------------------------------------------------------------
 -- Runtime state
 -- ---------------------------------------------------------------------------
--- Resolved colours per state. `normal` is always plain white / not desaturated;
--- the other three are rebuilt from the profile. `desaturate` mirrors tullaRange:
--- out-of-range and out-of-power grey the icon, unusable keeps Blizzard's own
--- desaturation (so it isn't double-applied).
+-- Resolved colours per state. `normal` is plain white; optional `desaturate`
+-- greys the icon when out of range. Unusable keeps Blizzard's own desaturation.
 local colors = {
 	normal = { 1, 1, 1, 1, desaturate = false },
 	oor = { 1, 0.30, 0.10, 1, desaturate = true },
@@ -106,13 +88,13 @@ local function RebuildColors()
 end
 
 -- ---------------------------------------------------------------------------
--- State resolution (ported from tullaRange/actionState.lua, secret-guarded)
+-- State resolution (secret-guarded usability / range reads)
 -- ---------------------------------------------------------------------------
 local function GetActionState(slot)
 	local isUsable, notEnoughMana
 
 	-- For macros whose name starts with '#', prefer the spell-cost usability
-	-- check so the out-of-power tint is accurate (a tullaRange refinement).
+	-- Also check power cost so out-of-power tint is accurate.
 	local actionType, id = GetActionInfo(slot)
 	if actionType == "macro" and GetMacroInfo and GetMacroSpell and C_Spell_IsSpellUsable then
 		local name = GetMacroInfo(id)

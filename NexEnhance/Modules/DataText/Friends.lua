@@ -1,14 +1,13 @@
 --[[
 	NexEnhance - DataText: Friends
 	-------------------------------------------------------------------------
-	An ElvUI-style friends roster tooltip on Blizzard's QuickJoinToastButton
-	(the social button by the chat frame). The button already shows the online
-	friend count, so we add no overlay text - only the hover tooltip. Native
-	click/queue-toast behaviour is left untouched.
+	Friends roster tooltip on Blizzard's QuickJoinToastButton (social button by
+	the chat frame). The button already shows the online count — we add no
+	overlay text, only the hover tooltip. Native click/queue-toast untouched.
 
-	Battle.net handling mirrors ElvUI's Friends datatext: grouped by client/game
-	with lazy per-game sub-headers, classic/anniversary realm split, app/mobile
-	de-duplication, and WoW project -> faction -> name sorting.
+	Battle.net entries group by client/game with lazy sub-headers, classic vs
+	anniversary realm split, app/mobile de-duplication, and WoW project ->
+	faction -> name sorting.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
@@ -74,7 +73,7 @@ local clientSorted = {} -- client tokens in display order
 local AFK_TAG = format(" |cffFFFFFF[|r|cffFF9900%s|r|cffFFFFFF]|r", _G.AFK or "AFK")
 local DND_TAG = format(" |cffFFFFFF[|r|cffFF3333%s|r|cffFFFFFF]|r", _G.DND or "DND")
 
--- Static client ordering / tags, mirroring ElvUI's clientList.
+-- Client display order and short tags for Battle.net friend grouping.
 local MOBILE = _G.BNET_FRIEND_TOOLTIP_MOBILE or "Mobile"
 local clientList = {
 	WoW = { index = 1, tag = "WoW" },
@@ -389,7 +388,7 @@ function FriendsText:BuildTooltip(button)
 	GameTooltip_SetTitle(GameTooltip, MicroButtonTooltipText(SOCIAL_BUTTON, "TOGGLESOCIAL"))
 	GameTooltip:AddDoubleLine(L["Friends List"], format("%s: %d/%d", FRIENDS_LIST_ONLINE or "Online", totalOnline, totalFriends), HDR.r, HDR.g, HDR.b, HDR.r, HDR.g, HDR.b)
 
-	-- Lazily emit a section header only when it changes (ElvUI TooltipAddXLine).
+	-- Lazily emit a section header only when the client group changes.
 	local function AddHeader(header)
 		if lastHeader ~= header then
 			GameTooltip:AddLine(" ")

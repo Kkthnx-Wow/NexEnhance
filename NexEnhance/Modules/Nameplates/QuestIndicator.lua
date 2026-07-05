@@ -2,8 +2,7 @@
 	NexEnhance - Nameplate Quest Indicator
 	-------------------------------------------------------------------------
 	Puts a quest icon on the nameplate of any NPC tied to one of your active
-	quests, with optional objective progress ("3/7" or remaining). A cleaner,
-	NexEnhance-native take on Plumber's NameplateQuestIndicator (Peterodox):
+	quests, with optional objective progress ("3/7" or remaining).
 
 	  * Outside instances we read the unit tooltip (C_TooltipInfo.GetUnit) and
 	    walk its quest lines to find an INCOMPLETE objective; the icon greys for
@@ -149,8 +148,7 @@ local function Widget_UpdateProgressShown(self)
 	self.ProgressText:SetShown(show and true or false)
 end
 
--- Read the unit's quest state and paint the widget. Faithful to Plumber's
--- tooltip walk, with every secret-prone field gated by CanAccess first.
+-- Walk the unit tooltip for quest lines; gate secret fields with CanAccess first.
 local function Widget_UpdateQuest(self)
 	local unit = self.unit
 	if not unit then

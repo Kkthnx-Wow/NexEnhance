@@ -6,19 +6,10 @@
 	toolbar, then frames the window with a Blizzard tooltip-style border and a
 	dark background.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI
-
-	Integration notes:
-	  * Details! is an optional third-party addon. We style it on enable if it is
-	    already loaded, otherwise we wait for its ADDON_LOADED.
-	  * New windows are caught through Details' own DETAILS_INSTANCE_OPEN event
-	    listener (no per-frame OnUpdate), so we skin exactly when a window
-	    appears. Purely cosmetic - no taint concerns around the meter.
-	  * KkthnxUI's SetBarSettings / SetBarTextSettings are intentionally skipped:
-	    Details' bar texture/font take SharedMedia *names*, and NexEnhance does
-	    not bundle a registered statusbar/font for it. Everything else from the
-	    upstream SetupInstance is mirrored here.
+	Details! is optional third-party. Style on enable if loaded, else wait for
+	ADDON_LOADED. New windows caught via DETAILS_INSTANCE_OPEN (no OnUpdate).
+	SetBarSettings / SetBarTextSettings skipped — Details bar texture/font want
+	SharedMedia *names* and we don't register a statusbar/font for it.
 --]]
 
 ---@diagnostic disable: undefined-field

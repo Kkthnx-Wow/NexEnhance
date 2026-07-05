@@ -5,10 +5,10 @@
 	mana", "Ability is not ready yet", etc.) by unregistering UI_ERROR_MESSAGE
 	on Blizzard's UIErrorsFrame for the duration of combat.
 
-	Matches the ElvUI /uierrorsoff approach (see Blizzard SlashCommands.lua).
-	Only UI_ERROR_MESSAGE is muted — yellow UI_INFO_MESSAGE and SYSMSG still
-	flow. AddMessage / AddExternalErrorMessage from addons are unaffected.
-	Restores the event on combat end and when the option is turned off.
+	Same trick as Blizzard's /uierrorsoff slash command. Only UI_ERROR_MESSAGE
+	is muted — yellow UI_INFO_MESSAGE and SYSMSG still flow. AddMessage /
+	AddExternalErrorMessage from addons are unaffected. Restores the event on
+	combat end and when the option is turned off.
 --]]
 
 local _, ns = ...

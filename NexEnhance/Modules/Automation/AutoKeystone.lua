@@ -4,13 +4,9 @@
 	Automatically slots your Mythic+ keystone when the Challenge Mode UI
 	(ChallengesKeystoneFrame) opens, so you don't have to drag it in by hand.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/AutoKeystone.lua
-
 	Blizzard_ChallengesUI is load-on-demand, so we hook the keystone frame's
-	OnShow the moment that addon loads (or immediately if it is already loaded).
-	We bow out entirely if AngryKeystones is present, since it does the same job.
-	The enable flag is read live, so toggling it applies without a reload.
+	OnShow when that addon loads (or immediately if already loaded). We bow out
+	if AngryKeystones is present. Enable toggle reads live — no reload needed.
 --]]
 
 ---@diagnostic disable: undefined-field

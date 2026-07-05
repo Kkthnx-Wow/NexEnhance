@@ -1,8 +1,8 @@
 --[[
 	NexEnhance - Zone-triggered registration
 	-------------------------------------------------------------------------
-	Plumber-style zone gating: register heavy map logic only while the player
-	is in one of the configured map IDs (C_Map.GetBestMapForUnit).
+	Register heavy map logic only while the player is in one of the configured
+	map IDs (C_Map.GetBestMapForUnit).
 --]]
 
 local _, ns = ...

@@ -13,15 +13,9 @@
 	  * Whitelists NexEnhance's own HelpTips (currently the low-durability
 	    nudge) by their text, so our intentional tips are left alone.
 
-	Defaulted OFF and lives under General. Because hooksecurefunc can't be
-	removed, the hook is gated by an `active` flag so the toggle works live; the
-	tutorial CVars are restored to Blizzard's defaults when disabled.
-
-	No Secret-value concerns: this is purely tutorial UI and touches no combat
-	data.
-
-	Inspired by NDui's M:HideBlizzHelpTip (by siweia), extended to cover the
-	wider help surface and to spare our own tips.
+	Defaulted OFF and lives under General. hooksecurefunc can't be removed, so
+	the hook gates on an `active` flag for live toggling; tutorial CVars restore
+	when disabled. Tutorial UI only — no combat data.
 --]]
 
 local _, ns = ...

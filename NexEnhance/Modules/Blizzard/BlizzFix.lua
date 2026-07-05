@@ -4,10 +4,8 @@
 	A grab-bag of small, always-on workarounds for default UI bugs. These have
 	no options - they just patch broken behaviour.
 
-	Ported from NDui's Modules/Misc/BlizzFix.lua (by siweia), minus the NDui
-	title/logo handling. The mover-dependent taint fixes (Collections /
-	Professions CreateMF) are intentionally omitted - NexEnhance uses its own
-	DragEmAll system instead of NDui's mover.
+	Mover-dependent taint fixes (Collections / Professions CreateMF) are omitted —
+	we use DragEmAll instead.
 --]]
 
 -- Legacy/secret-context globals the Lua Language Server doesn't model.
@@ -22,10 +20,8 @@ local BlizzFix = ns:NewModule("BlizzFix", "blizzFix")
 
 -- ---------------------------------------------------------------------------
 -- Fix: AddonList tooltip errors on header/blank rows (GetID() < 1).
--- Ported from NDui; the old approach wrapped the global AddonTooltip_Update,
--- but AddonListEntryMixin:OnEnter reads that global directly, so a tainted
--- wrapper spams "Execution tainted by NexEnhance while reading global
--- AddonTooltip_Update". Guard at the mixin OnEnter call site instead.
+-- Wrapping the global AddonTooltip_Update tainted the mixin OnEnter path;
+-- guard at the mixin call site instead.
 -- ---------------------------------------------------------------------------
 local function GuardAddonListTooltipMixin(mixin)
 	if not mixin or mixin.nexAddonTooltipGuard or type(mixin.OnEnter) ~= "function" then

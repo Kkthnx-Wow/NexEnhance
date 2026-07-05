@@ -6,18 +6,9 @@
 	the vendor's name + zone to the item tooltip and lets you Ctrl-Click the item
 	to drop a map waypoint on the vendor.
 
-	Concept and item->vendor data ported from Plumber's GameTooltip_VendorLocation
-	(data contributed by gifLeo; Plumber by Peterodox). This is an independent
-	NexEnhance implementation - rewritten against the project optimisation guide
-	rather than copied:
-	  * Display is a single TooltipDataProcessor Item post-call; the waypoint is a
-	    lone hooksecurefunc on HandleModifiedItemClick. No OnUpdate, no per-frame
-	    work - both handlers early-out on the cheapest filter first and only ever
-	    touch our small curated lookup table.
-	  * Every API used in the handlers is localised at file scope; zone/area names
-	    are resolved once and cached.
-	  * The toggle lives without a reload (the hooks install once and the handlers
-	    gate on the live setting).
+	Item->vendor lookup lives in our curated table. TooltipDataProcessor post-hook
+	for display; hooksecurefunc on HandleModifiedItemClick for Ctrl+Click waypoint.
+	Handlers early-out when disabled; zone names cached at file scope.
 --]]
 
 ---@diagnostic disable: undefined-field

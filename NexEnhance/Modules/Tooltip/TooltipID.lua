@@ -3,8 +3,6 @@
 	-------------------------------------------------------------------------
 	Appends spell / item / quest / talent / achievement / currency / trait IDs
 	(and item bag/bank counts and stack caps) to tooltips.
-
-	Ported from NDui's TooltipID.lua by siweia.
 --]]
 
 local _, ns = ...

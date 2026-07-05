@@ -2,7 +2,7 @@
 	NexEnhance - Smart Minimap Tracking
 	-------------------------------------------------------------------------
 	Auto-enables repair-vendor minimap tracking when gear is damaged, and mailbox
-	tracking when mail is pending (Inomena-inspired).
+	tracking when mail is pending.
 
 	Blizzard refs: C_Minimap.GetTrackingInfo / SetTracking, UPDATE_INVENTORY_DURABILITY,
 	UPDATE_PENDING_MAIL, MINIMAP_TRACKING_REPAIR / MINIMAP_TRACKING_MAILBOX.

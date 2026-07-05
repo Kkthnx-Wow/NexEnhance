@@ -10,14 +10,9 @@
 	    crest, and trims the long "Zone:" activity prefix
 	  - a one-time HelpTip pointing out the double-click shortcut (F.ShowHelpTip)
 
-	Adapted from NDui's Modules/Misc/QuickJoin.lua (by siweia):
-	  https://github.com/siweia/NDui
-
-	The Group Finder UI lives in Blizzard_GroupFinder, which is load-on-demand -
-	so unlike NDui we don't touch LFGListFrame at file scope. We wait for the
-	addon to load, then install our hooks once. Every hook re-checks the live
-	toggles, because hooksecurefunc is a one-way street: you can hook it, but you
-	can never un-hook it, so disabling the module just makes the hooks nap.
+	Blizzard_GroupFinder is load-on-demand — we don't touch LFGListFrame at file
+	scope. Hooks install once the addon loads, and each hook re-checks the live
+	toggles (hooksecurefunc can't be removed, so disabling just makes them no-op).
 --]]
 
 ---@diagnostic disable: undefined-field

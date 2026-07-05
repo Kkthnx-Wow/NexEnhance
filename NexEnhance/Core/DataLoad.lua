@@ -1,8 +1,8 @@
 --[[
 	NexEnhance - Async data loaders
 	-------------------------------------------------------------------------
-	Coalesced QUEST/ITEM/SPELL_DATA_LOAD_RESULT handling (Plumber / DialogueUI).
-	One shared listener per event; multiple waiters per ID share one request.
+	Coalesced QUEST/ITEM/SPELL_DATA_LOAD_RESULT handling — one shared listener
+	per event; multiple waiters per ID share one request.
 
 	Callbacks receive one boolean: `true` when Blizzard reports success, `false`
 	when the load failed. Legacy handlers that ignore the arg still work on

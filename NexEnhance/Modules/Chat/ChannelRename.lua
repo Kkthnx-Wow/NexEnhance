@@ -1,15 +1,12 @@
 --[[
 	NexEnhance - Chat Channels
 	-------------------------------------------------------------------------
-	Tidies chat output: abbreviates channel brackets ([1. General] -> [1],
-	[Party] -> [P], [Guild] -> [G]), makes URLs clickable/copyable, and can
-	prepend a timestamp.
+	Shortens channel tags ([Party] -> [P], [Party Leader] -> [PL]), optional
+	timestamps, clickable URLs. Abbrev/timestamp hook AddMessage; URLs use the
+	12.0 message filter so we don't fight the secure chat path.
 
-	Inspired by NDui's Modules/Chat/ChannelRename.lua by siweia. ElvUI-style
-	full-line abbreviation/timestamps run through a LibChatAnims-safe AddMessage
-	wrapper; URLs use ChatFrame_AddMessageEventFilter (12.0 secure filter path).
-
-	Requires LibChatAnims (embedded) when using filters and/or AddMessage edits.
+	LibChatAnims is required when we touch AddMessage — without it, talent
+	changes can hard-block.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -24,7 +21,6 @@ local type, date = type, date
 local hooksecurefunc = hooksecurefunc
 local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
 
--- LibChatAnims prevents talent-change blocks when we hook AddMessage + filters.
 LibStub("LibChatAnims")
 
 ns:RegisterDefaults({
@@ -41,7 +37,7 @@ local ChatChannels = ns:NewModule("ChatChannels", "chatChannels", { group = "cha
 
 local cfg
 
--- Combat log + voice chat frames: no timestamp/abbrev hooks (ElvUI parity).
+-- ChatFrame2/3 are combat log and voice — leave those alone.
 local IGNORE_CHAT_IDS = {
 	[2] = true,
 	[3] = true,
@@ -75,7 +71,7 @@ local MESSAGE_EVENTS = {
 }
 
 -- ---------------------------------------------------------------------------
--- Channel abbreviation (ElvUI HandleShortChannels, adapted)
+-- Channel abbreviation
 -- ---------------------------------------------------------------------------
 local groupAbbr = {
 	PARTY = "P",
@@ -92,19 +88,67 @@ local groupAbbr = {
 	MONSTER_PARTY = "P",
 }
 
-local function ShortChannelTag(_, channelArg)
-	local abbr = groupAbbr[strupper(channelArg)]
+-- Blizzard puts PARTY in the |Hchannel:| link even for [Party Leader] — map bracket
+-- text from CHAT_*_GET so PL/IL/RL survive localization.
+local FORMAT_ABBR = {
+	{ "PARTY", "CHAT_PARTY_GET", "P" },
+	{ "PARTY", "CHAT_PARTY_LEADER_GET", "PL" },
+	{ "PARTY", "CHAT_PARTY_GUIDE_GET", "PG" },
+	{ "PARTY", "CHAT_MONSTER_PARTY_GET", "P" },
+	{ "RAID", "CHAT_RAID_GET", "R" },
+	{ "RAID", "CHAT_RAID_LEADER_GET", "RL" },
+	{ "INSTANCE_CHAT", "CHAT_INSTANCE_CHAT_GET", "I" },
+	{ "INSTANCE_CHAT", "CHAT_INSTANCE_CHAT_LEADER_GET", "IL" },
+	{ "GUILD", "CHAT_GUILD_GET", "G" },
+	{ "OFFICER", "CHAT_OFFICER_GET", "O" },
+}
+
+local displayAbbr = {}
+local displayAbbrReady = false
+
+local function BuildDisplayAbbreviations()
+	if displayAbbrReady then
+		return
+	end
+	displayAbbrReady = true
+
+	for i = 1, #FORMAT_ABBR do
+		local channelKey, getKey, abbr = FORMAT_ABBR[i][1], FORMAT_ABBR[i][2], FORMAT_ABBR[i][3]
+		local fmt = _G[getKey]
+		if fmt then
+			local tag = strmatch(fmt, "|Hchannel:.-|h%[(.-)%]|h")
+			if tag then
+				local bucket = displayAbbr[channelKey]
+				if not bucket then
+					bucket = {}
+					displayAbbr[channelKey] = bucket
+				end
+				bucket[tag] = abbr
+			end
+		end
+	end
+end
+
+local function ShortChannelTag(channelKey, displayName)
+	BuildDisplayAbbreviations()
+
+	local bucket = displayAbbr[channelKey]
+	if bucket and displayName and bucket[displayName] then
+		return format("|Hchannel:%s|h[%s]|h", channelKey, bucket[displayName])
+	end
+
+	local abbr = groupAbbr[strupper(channelKey or "")]
 	if abbr then
-		return format("|Hchannel:%s|h[%s]|h", channelArg, abbr)
+		return format("|Hchannel:%s|h[%s]|h", channelKey, abbr)
 	end
 
-	local id = strmatch(channelArg, "channel:(%d+)")
+	local id = strmatch(channelKey or "", "channel:(%d+)")
 	if id then
-		return format("|Hchannel:%s|h[%s]|h", channelArg, id)
+		return format("|Hchannel:%s|h[%s]|h", channelKey, id)
 	end
 
-	id = strmatch(channelArg, "^(%d+)%.")
-	return format("|Hchannel:%s|h[%s]|h", channelArg, id or gsub(channelArg, "channel:", ""))
+	id = strmatch(displayName or "", "^(%d+)%.")
+	return format("|Hchannel:%s|h[%s]|h", channelKey, id or gsub(channelKey or "", "channel:", ""))
 end
 
 local function HandleShortChannels(msg, hide)
@@ -141,32 +185,54 @@ local function ConvertLink(text, value)
 	return "|Hurl:" .. tostring(value) .. "|h" .. C.InfoColor .. text .. "|r|h"
 end
 
-local function HighlightURL(prefix, url, suffix)
-	return prefix .. ConvertLink("[" .. url .. "]", url) .. suffix
+local function HighlightURL(prefix, url, suffix, href)
+	return prefix .. ConvertLink("[" .. url .. "]", href or url) .. suffix
+end
+
+local urlShield = {}
+
+local function ShieldHyperlinks(text)
+	return (gsub(text, "|H.-|h.-|h", function(block)
+		urlShield[#urlShield + 1] = block
+		return "\003" .. #urlShield .. "\003"
+	end))
+end
+
+local function UnshieldHyperlinks(text)
+	return (gsub(text, "\003(%d+)\003", function(i)
+		return urlShield[tonumber(i)] or ""
+	end))
 end
 
 local function ApplyURLs(text)
+	wipe(urlShield)
+	text = ShieldHyperlinks(text)
+
 	if strfind(text, "://", 1, true) then
 		text = gsub(text, "(%s?)(%a+://[%w_/%.%?%%=~&%-'%-]+)(%s?)", HighlightURL)
+		text = ShieldHyperlinks(text)
 	end
 	if strfind(text, "www.", 1, true) then
-		text = gsub(text, "(%s?)(www%.[%w_/%.%?%%=~&%-'%-]+)(%s?)", HighlightURL)
+		text = gsub(text, "(%s?)(www%.[%w_/%.%?%%=~&%-'%-]+)(%s?)", function(prefix, url, suffix)
+			return HighlightURL(prefix, url, suffix, "https://" .. url)
+		end)
+		text = ShieldHyperlinks(text)
 	end
 	if strfind(text, "@", 1, true) then
 		text = gsub(text, "(%s?)([_%w%-%.~]+@[_%w%-]+%.[_%w%-%.]+)(%s?)", HighlightURL)
 	end
-	return text
+
+	return UnshieldHyperlinks(text)
 end
 
 -- ---------------------------------------------------------------------------
--- Timestamp + AddMessage wrapper (full formatted line, ElvUI order)
+-- Timestamp + AddMessage wrapper
 -- ---------------------------------------------------------------------------
 local function GetTimestamp()
 	return format("|cff909090[%s]|r ", date("%H:%M"))
 end
 
 local function TransformDisplayLine(msg)
-	-- Secret chat text can still type as "string"; never compare or parse before this guard.
 	if F.IsSecret(msg) then
 		return msg
 	end
@@ -322,6 +388,7 @@ end
 -- ---------------------------------------------------------------------------
 function ChatChannels:OnEnable()
 	cfg = ns.db.chatChannels
+	BuildDisplayAbbreviations()
 	InstallMessageFilters()
 	SetupURLCopy()
 	SyncAll()

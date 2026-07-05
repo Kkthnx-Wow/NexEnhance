@@ -15,8 +15,7 @@
 	  * flatten the chat tab textures
 	  * a clean edit box border, docked to the top, tinted by active channel
 
-	Ported (functional parts only) from NDui's Chat module by siweia. Chat
-	frames are not protected, so this is taint-safe.
+	Chat frames are not protected — taint-safe.
 --]]
 
 -- luacheck: globals ChatTypeInfo Menu CURRENT_CHAT_FRAME_ID
@@ -141,7 +140,6 @@ end
 -- and inset correctly via FloatingChatFrame_UpdateBackgroundAnchors, so we ride
 -- along with it instead of doing any size maths. While a custom look is active we
 -- hide Blizzard's faint default bg/border draw layers so they don't show through.
--- Modelled on NDui's chat background, using our shared backdrop/gradient helpers.
 -- ---------------------------------------------------------------------------
 local BG_NONE, BG_FULL, BG_GRADIENT = 1, 2, 3
 local chatFrames = {}
@@ -240,7 +238,7 @@ local function OnChatMouseWheel(frame, delta)
 		return
 	end
 
-	-- Optional ElvUI-style return-to-bottom after scrolling up (off when interval is 0).
+	-- Optional return-to-bottom after scrolling up (off when interval is 0).
 	if delta > 0 and not IsShiftKeyDown() and cfg.scrollDownInterval and cfg.scrollDownInterval > 0 then
 		ScheduleScrollToBottom(frame)
 	end
@@ -323,7 +321,7 @@ function Chat:SetupChat(frame)
 end
 
 -- ---------------------------------------------------------------------------
--- Edit-box shortcuts (/tt, /gr) and combat repeat-spam guard (ElvUI-style).
+-- Edit-box shortcuts (/tt, /gr) and combat repeat-spam guard.
 -- ---------------------------------------------------------------------------
 local function GetGroupChatPrefix()
 	local _, instanceType = IsInInstance()
@@ -418,7 +416,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Remaining-character counter. Hyperlinks (|cFFxxxxxx|H...|h[name]|h|r) cost
 -- far more bytes on the wire than they read as, so discount that escape-sequence
--- overhead to show a count closer to what actually fits. Mirrors KkthnxUI.
+-- overhead to show a count closer to what actually fits.
 -- ---------------------------------------------------------------------------
 local function UpdateEditBoxCharCount(editBox)
 	local counter = editBox.nexCharCount
@@ -478,9 +476,9 @@ function Chat:SetupEditBox(frame)
 	if cfg.editBoxBorder then
 		-- Strip the default border art (Left/Mid/Right + focus glow) and give
 		-- the box a proper Blizzard tooltip-style border instead. Pass 2 to keep
-		-- region index 2 -- the blinking text cursor is a texture region, and
+		-- region index 2 — the blinking text cursor is a texture region, and
 		-- clearing every region (the default) leaves the caret invisible while
-		-- typing. This mirrors NDui's StripTextures(editBox, 2).
+		-- typing. Pass 2 to StripTextures to keep it.
 		F.StripTextures(editBox, 2)
 
 		local bg = CreateFrame("Frame", nil, editBox)
@@ -536,13 +534,13 @@ function Chat:SetupEditBox(frame)
 		-- Blizzard refreshes the active channel through the edit box's own
 		-- UpdateHeader in most paths, so hooking it per-box is far more reliable
 		-- than the global ChatEdit_UpdateHeader wrapper (which many internal
-		-- paths skip). This is the approach ShestakUI uses.
+		-- paths skip).
 		hooksecurefunc(editBox, "UpdateHeader", ColorEditBox)
 		ColorEditBox(editBox)
 	end
 
 	-- Remaining-character counter, parked just past the right edge of the box so
-	-- it never overlaps what you're typing (matches KkthnxUI/ElvUI placement).
+	-- it never overlaps what you're typing.
 	local counter = F.CreateFS(editBox, 12, nil, "ARTWORK")
 	counter:ClearAllPoints()
 	counter:SetPoint("LEFT", editBox, "RIGHT", -24, 0)
@@ -690,7 +688,8 @@ end
 --   The social/quick-join notification button lives at the chat's corner by
 --   default. Give it its own Edit Mode mover so it can be dragged anywhere,
 --   keeping the same guarded-SetPoint trick as the BN toast since Blizzard
---   re-anchors it whenever the chat dock updates. Idea from NDui by siweia.
+--   re-anchors it whenever the chat dock updates. Guarded SetPoint hook keeps
+--   it on our mover.
 -- ---------------------------------------------------------------------------
 local function SetupQuickJoinToast()
 	local button = _G["QuickJoinToastButton"]

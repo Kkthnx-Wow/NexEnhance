@@ -7,8 +7,7 @@
 	    time you move after logging in (replayable with /nexlogo).
 	  * Combat Text - an animated "Entering/Leaving Combat" banner.
 
-	Ported from NDui's Modules/Misc/Animation.lua (by siweia), adapted to the
-	NexEnhance framework and branded with our own logo media.
+	Built on Blizzard's AnimationGroup API with our own logo media.
 --]]
 
 -- luacheck: globals SlashCmdList SLASH_NEXLOGO1

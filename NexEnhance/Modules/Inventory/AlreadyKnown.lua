@@ -7,9 +7,6 @@
 	  * the Auction House browse results
 	  * the Guild Bank
 	  * housing decor items
-
-	Adapted from NDui's Plugins/AlreadyKnown.lua by siweia:
-	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Plugins/AlreadyKnown.lua
 --]]
 
 -- luacheck: globals MerchantFrame MERCHANT_ITEMS_PER_PAGE BUYBACK_ITEMS_PER_PAGE AuctionHouseFrame GuildBankFrame MAX_GUILDBANK_SLOTS_PER_TAB NUM_SLOTS_PER_GUILDBANK_GROUP SetItemButtonTextureVertexColor COLLECTED ITEM_SPELL_KNOWN

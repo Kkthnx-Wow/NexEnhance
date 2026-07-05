@@ -8,8 +8,6 @@
 	Blizzard has this tendency to lazily prompt players with popups that block
 	half the screen. We automate this nuisance. We only do it out of combat
 	to avoid accidentally teleporting you into the abyss mid-boss pull.
-
-	Inspired by the summon auto-accepting in EnhanceQoL.
 --]]
 
 ---@diagnostic disable: undefined-field

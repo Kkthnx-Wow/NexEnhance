@@ -1,7 +1,7 @@
 --[[
 	NexEnhance - System Chat Filter
 	-------------------------------------------------------------------------
-	Filters learn/unlearn spell spam when changing talents (Inomena-inspired).
+	Filters learn/unlearn spell spam when changing talents.
 --]]
 
 ---@diagnostic disable: undefined-field

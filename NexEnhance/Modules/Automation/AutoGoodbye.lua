@@ -4,12 +4,8 @@
 	Sends a random, friendly farewell to the group when a dungeon or Mythic+
 	keystone finishes, after a short human-feeling delay.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/Goodbye.lua
-
-	Events stay registered while the module is on; the enable flag is read live
-	so the toggle applies without a reload. Opt-in by default since it speaks on
-	your behalf.
+	Events stay registered while the module is on; enable flag reads live.
+	Opt-in by default since it speaks on your behalf.
 --]]
 
 ---@diagnostic disable: undefined-field

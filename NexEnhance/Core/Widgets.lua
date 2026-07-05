@@ -2,9 +2,8 @@
 	NexEnhance - Widgets
 	-------------------------------------------------------------------------
 	Reusable, data-provider backed scroll widgets built on Blizzard's modern
-	ScrollBox/ScrollUtil system. Adapted from p3lim's Dashi (public domain) so
-	we get the convenient list/grid helpers without adopting its framework or
-	taking over our namespace.
+	ScrollBox/ScrollUtil system — list/grid helpers without pulling in another
+	framework or taking over our namespace.
 
 	Usage (configure first, add data last - data triggers initialisation):
 

@@ -3,12 +3,7 @@
 	-------------------------------------------------------------------------
 	Adds a small line to the Trade window telling you at a glance whether the
 	person you are trading with is a stranger, a friend or a guild member, and
-	class/reaction-colours their name.
-
-	Adapted from NDui by siweia:
-	  https://github.com/siweia/NDui
-
-	The GUID read is secret-value gated (Patch 12.0 safe).
+	class/reaction-colours their name. GUID reads are secret-guarded on 12.0.
 --]]
 
 ---@diagnostic disable: undefined-field

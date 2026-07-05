@@ -1,9 +1,9 @@
 --[[
 	NexEnhance - DataText: Guild
 	-------------------------------------------------------------------------
-	Online guild member count overlay on Blizzard's GuildMicroButton, with an
-	ElvUI-style roster tooltip on hover. Does not replace native click handlers,
-	layout, or notification behaviour on the micro button.
+	Online guild member count overlay on Blizzard's GuildMicroButton, with a
+	roster tooltip on hover. Does not replace native click handlers, layout,
+	or notification behaviour on the micro button.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global

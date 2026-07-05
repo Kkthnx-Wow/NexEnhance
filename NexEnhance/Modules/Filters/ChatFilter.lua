@@ -12,14 +12,8 @@
 	  * Chat item level - appends the item level (and gem sockets) to item links
 	    posted in chat.
 
-	Adapted to the NexEnhance framework from NDui's Modules/Chat/Filter.lua
-	(by siweia):
-	  https://github.com/siweia/NDui/blob/master/Interface/AddOns/NDui/Modules/Chat/Filter.lua
-
-	Differences: NDui's hardcoded locale-specific addon/club blocklists and the
-	dead BFA Azerite-island filter are dropped. Keyword/whitelist tables are
-	account-wide (ns.global) and editable in Filters settings or via /nexfilter.
-	Message reads are secret-gated.
+	Keyword/whitelist tables are account-wide (ns.global) and editable in Filters
+	settings or via /nexfilter. Message reads are secret-gated.
 --]]
 
 local _, ns = ...

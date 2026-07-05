@@ -5,9 +5,6 @@
 	zone's PvP status (sanctuary blue, friendly green, hostile/contested, ...).
 	Replaces the default zone-text button we strip from the minimap cluster.
 	Can be shown always or only on mouseover.
-
-	Adapted from KkthnxUI's Location DataText by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/DataText/Elements/Location.lua
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
@@ -39,7 +36,7 @@ local frame
 local eventHandles = {}
 local eventsRegistered = false
 
--- Per-PvP-status text colours, matching KkthnxUI's zone palette.
+-- Zone text colour by PvP status (sanctuary, friendly, hostile, contested).
 local PVP_COLORS = {
 	arena = { 0.84, 0.03, 0.03 },
 	combat = { 0.84, 0.03, 0.03 },

@@ -4,9 +4,6 @@
 	Hides the Objective Tracker during boss encounters and arena matches so it
 	stays out of the way when it matters, then restores it afterwards.
 
-	Adapted from KkthnxUI by Josh "Kkthnx" Russell:
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/main/KkthnxUI/Modules/Automation/Elements/AutoHideTracker.lua
-
 	How it works:
 	  * A SecureHandlerStateTemplate frame is driven by a [@boss#/@arena#,exists]
 	    state condition, so the *trigger* is fully secure and fires in combat.

@@ -8,14 +8,8 @@
 	  * Optional fade while the player is moving, so the map gets out of the
 	    way during travel.
 
-	Adapted to the NexEnhance framework from KkthnxUI's Modules/Maps/WorldMap.lua
-	(by Josh "Kkthnx" Russell):
-	  https://github.com/Kkthnx-Wow/KkthnxUI/blob/master/KkthnxUI/Modules/Maps/WorldMap.lua
-
-	K.* helpers are replaced with framework equivalents (F.ColorStr/F.UnitColor
-	for the class-coloured numbers, C.Media for the coord-bar texture/font).
-	All frame members are existence-guarded so a renamed Blizzard field degrades
-	quietly instead of erroring.
+	Coord bar uses F.ColorStr/F.UnitColor and C.Media textures. Frame members
+	are existence-guarded so a renamed Blizzard field degrades quietly.
 --]]
 
 -- luacheck: globals PlayerMovementFrameFader
@@ -92,7 +86,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Direct drag (no Edit Mode)
---   Grab the map's title strip to reposition it like NDui's movable frames.
+--   Grab the map title strip to reposition it (same drag pattern as DragEmAll).
 --   We move the invisible anchor (the map follows it), then persist the result
 --   to movers.worldMap so the position survives reloads.
 -- ---------------------------------------------------------------------------

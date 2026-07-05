@@ -17,9 +17,6 @@
 	    a setting. OnCooldownSet itself is a cheap no-op after init.
 	  * SetMinimumCountdownDuration suppresses text on GCDs and other
 	    sub-threshold cooldowns so we only show text that is actually useful.
-
-	Reference:
-	  NDui  - https://github.com/siweia/NDui (Modules/ActionBar/Cooldown.lua)
 --]]
 
 local _, ns = ...
@@ -242,7 +239,7 @@ end
 -- cooldown as the first argument (extra args like start/duration are secret
 -- values in Midnight — we intentionally ignore them here).
 --
--- `noCooldownCount` is the shared opt-out flag (OmniCC/tullaCTC convention):
+-- `noCooldownCount` is the shared opt-out flag other cooldown addons use too:
 -- frames marked with it - e.g. percentage-display swipes - are left alone.
 --
 -- IMPORTANT: after the first sighting (init block) this function becomes a

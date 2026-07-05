@@ -5,18 +5,10 @@
 	textures, standardises item-slot sizes, repositions the model and slots,
 	and swaps in a class dressing-room background when on the gear tab.
 
-	Adapted from CharInspectPlus by Kkthnx (v2.0.0 / 12.0.7):
-	  https://github.com/Kkthnx-Wow/CharInspectPlus
-
-	Integration notes:
-	  * Uses the framework's :StripTextures() widget API (Core/API.lua).
-	  * The Inspect frame lives in the load-on-demand Blizzard_InspectUI addon,
-	    so we style it immediately if it is already loaded, otherwise we wait
-	    for its ADDON_LOADED through the central dispatcher.
-	  * Layout hooks defer to Apply*Layout helpers that respect Blizzard panel
-	    constants (CharacterFrame.lua, SharedUIPanelTemplates.lua).
-	  * All resizing is guarded by InCombatLockdown() because these are secure
-	    frames.
+	Uses F.StripTextures from Core/API.lua. Inspect lives in load-on-demand
+	Blizzard_InspectUI — style on load or wait for ADDON_LOADED. Layout hooks
+	defer to Apply*Layout helpers that respect Blizzard panel constants.
+	Resizing guarded by InCombatLockdown() (secure frames).
 --]]
 
 ---@diagnostic disable: undefined-field

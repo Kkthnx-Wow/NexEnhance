@@ -84,13 +84,10 @@ function AchievementScreenshot:OnDisable()
 	self:UnregisterModuleEvents()
 end
 
-function AchievementScreenshot:OnSettingChanged(key, value)
+function AchievementScreenshot:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:RegisterModuleEvents()
-		else
-			self:UnregisterModuleEvents()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

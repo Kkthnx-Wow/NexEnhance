@@ -197,17 +197,13 @@ function Location:OnDisable()
 	self:Stop()
 end
 
-function Location:OnSettingChanged(key, value)
+function Location:OnSettingChanged(key)
 	cfg = ns.db.location
 	if key == "enable" then
-		if value then
-			self:Create()
-			self:RegisterModuleEvents()
-			self:Update()
-		else
-			self:Stop()
-		end
-	elseif key == "mouseover" and cfg.enable then
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
+	end
+	if key == "mouseover" and cfg.enable then
 		ApplyVisibility()
 	end
 end

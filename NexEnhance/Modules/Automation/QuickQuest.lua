@@ -1327,12 +1327,14 @@ function QuickQuest:OnEnable()
 end
 
 function QuickQuest:OnDisable()
-	SetEventsActive(false)
+	-- Keep events if /nex quickquest debug is on — AutomatingWhy still gates work.
+	SetEventsActive(EventsShouldRun())
 end
 
-function QuickQuest:OnSettingChanged(key, value)
+function QuickQuest:OnSettingChanged(key)
 	if key == "enable" then
-		SetEventsActive(EventsShouldRun())
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

@@ -2,7 +2,7 @@
 ## Title: |cff5C8BCFNex|r|cffffd100Enhance|r
 ## Notes: A lightweight, modular framework that enhances the default Blizzard UI. |n|n|cff5C8BCFDeveloper|cffffffff:|r |nJosh "|CFF7b8489Kkthnx|r" Russell|n|n|cff009cdePayPal|r|cffffffff:|r |n|cffffffffwww.paypal.me/KkthnxTV|r|n|n|cfff96854Patreon|r|cffffffff:|r |n|cffffffffwww.patreon.com/Kkthnx|r
 ## Author: Josh "|CFF7b8489Kkthnx|r" Russell
-## Version: 1.5.7
+## Version: 1.6.0
 ## SavedVariables: NexEnhanceDB
 ## SavedVariablesPerCharacter: NexEnhanceCharDB
 ## IconTexture: Interface\AddOns\NexEnhance\Media\Logos\Logo64
@@ -40,6 +40,8 @@ Core\Engine.lua
 Core\DataLoad.lua
 Core\ZoneTrigger.lua
 Core\Constants.lua
+Core\RealmCatalogData.lua
+Core\RealmCatalog.lua
 Core\Functions.lua
 Core\Runner.lua
 Core\CooldownDispatch.lua
@@ -79,6 +81,8 @@ Modules\Miscellaneous\HideUIElements.lua
 Modules\ActionBars\ActionBars.lua
 Modules\ActionBars\Cooldowns.lua
 Modules\ActionBars\GCDBar.lua
+Modules\ActionBars\CursorRing.lua
+Modules\ActionBars\CursorTrail.lua
 Modules\ActionBars\ExtraQuestButton.lua
 Modules\ActionBars\RangeColors.lua
 
@@ -86,12 +90,14 @@ Modules\ActionBars\RangeColors.lua
 Modules\UnitFrames\ClassColors.lua
 Modules\UnitFrames\TargetFrameLayout.lua
 Modules\UnitFrames\LevelColors.lua
+Modules\UnitFrames\UnitFrameText.lua
 Modules\UnitFrames\PlayerCastBar.lua
 Modules\UnitFrames\HideDpsRole.lua
 
 # Nameplates
 Modules\Nameplates\QuestIndicator.lua
 Modules\Nameplates\TargetArrows.lua
+Modules\Nameplates\TargetResource.lua
 Modules\Nameplates\ReactionColors.lua
 
 # Auras
@@ -157,6 +163,7 @@ Modules\Maps\MapPinNavigation.lua
 Modules\Automation\AutoVendor.lua
 Modules\Automation\AutoGreed.lua
 Modules\Automation\QuickQuest.lua
+Modules\Automation\BestQuestReward.lua
 Modules\Automation\FasterLoot.lua
 Modules\Automation\SmartFishing.lua
 Modules\Automation\AuctionSearch.lua
@@ -183,6 +190,7 @@ Modules\Automation\AutoWarbandGold.lua
 Modules\Announcements\QuestNotification.lua
 Modules\Announcements\RareAlert.lua
 Modules\Announcements\LevelAnnouncer.lua
+Modules\Announcements\PullCountdown.lua
 
 # Blizzard (always-on bug fixes)
 Modules\Blizzard\BlizzFix.lua

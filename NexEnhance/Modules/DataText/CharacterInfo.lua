@@ -400,12 +400,10 @@ end
 function CharacterInfo:OnSettingChanged(key)
 	cfg = ns.db.characterInfo
 	if key == "enable" then
-		if cfg.enable then
-			self:Create()
-		else
-			self:Stop()
-		end
-	elseif key == "maxCharacters" then
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
+	end
+	if key == "maxCharacters" then
 		self:RefreshIfHovering()
 	end
 end

@@ -129,13 +129,10 @@ function AutoGoodbye:OnDisable()
 	self:UnregisterModuleEvents()
 end
 
-function AutoGoodbye:OnSettingChanged(key, value)
+function AutoGoodbye:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:RegisterModuleEvents()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

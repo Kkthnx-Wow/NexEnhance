@@ -108,15 +108,23 @@ local function HyperLink_SetTypes(self, link)
 	GameTooltip:Show()
 end
 
+local function HoverTipsActive()
+	local db = ns.db and ns.db.tooltip
+	return Tooltip:IsEnabled() and db and db.hoverTips
+end
+
 local function HyperLink_OnEnter(self, link, ...)
-	local linkType = strmatch(link, "^([^:]+)")
-	if linkType then
-		if linkType == "battlepet" then
-			HyperLink_SetPet(self, link)
-		elseif linkType == "journal" then
-			HyperLink_SetJournal(self, link)
-		elseif linkTypes[linkType] then
-			HyperLink_SetTypes(self, link)
+	-- SetScript replaces Blizzard's handler permanently — gate live toggles here.
+	if HoverTipsActive() then
+		local linkType = strmatch(link, "^([^:]+)")
+		if linkType then
+			if linkType == "battlepet" then
+				HyperLink_SetPet(self, link)
+			elseif linkType == "journal" then
+				HyperLink_SetJournal(self, link)
+			elseif linkTypes[linkType] then
+				HyperLink_SetTypes(self, link)
+			end
 		end
 	end
 	if orig1[self] then
@@ -125,11 +133,13 @@ local function HyperLink_OnEnter(self, link, ...)
 end
 
 local function HyperLink_OnLeave(self, ...)
-	if BattlePetTooltip then
-		BattlePetTooltip:Hide()
+	if HoverTipsActive() then
+		if BattlePetTooltip then
+			BattlePetTooltip:Hide()
+		end
+		GameTooltip:Hide()
+		GameTooltip.__isHoverTip = nil
 	end
-	GameTooltip:Hide()
-	GameTooltip.__isHoverTip = nil
 	if orig2[self] then
 		return orig2[self](self, ...)
 	end

@@ -10,7 +10,7 @@
 	edge-anchored elements, fixed model holders).
 --]]
 
--- luacheck: globals CloseAllWindows MoveViewLeftStart MoveViewLeftStop RemoveExtraSpaces
+-- luacheck: globals CloseAllWindows MoveViewLeftStart MoveViewLeftStop RemoveExtraSpaces SetUIVisibility
 -- luacheck: globals ChatTypeInfo Chat_GetChatCategory ChatHistory_GetAccessID ChatFrame_GetMobileEmbeddedTexture
 -- luacheck: globals CALENDAR_WEEKDAY_NAMES CALENDAR_FULLDATE_MONTH_NAMES TIMEMANAGER_TICKER_12HOUR TIMEMANAGER_TICKER_24HOUR
 -- luacheck: globals PVEFrame PVEFrame_ToggleFrame KEY_PRINTSCREEN_MAC NONE
@@ -57,6 +57,7 @@ local C_Timer = C_Timer
 local C_Calendar = C_Calendar
 local C_DateAndTime = C_DateAndTime
 local C_PetBattles = C_PetBattles
+local SetUIVisibility = SetUIVisibility
 
 local FONT = C.Media.Fonts.normal
 local BLANK_TEX = C.Media.Textures.blank
@@ -500,6 +501,38 @@ end
 -- ---------------------------------------------------------------------------
 -- Mode toggle
 -- ---------------------------------------------------------------------------
+-- Use SetUIVisibility (same path as Alt+Z / TOGGLEUI) instead of UIParent:Hide().
+-- Hiding UIParent walks child frames and PlayerFrame health bars call
+-- UpdateTextStringWithValues, which compares secret combat values on Midnight.
+local function HideGameUIForAFK(frame)
+	CloseAllWindows()
+	if SetUIVisibility then
+		SetUIVisibility(false)
+		frame.afkUIHidden = true
+		return
+	end
+	local ok = pcall(function()
+		UIParent:Hide()
+	end)
+	if ok then
+		frame.afkUIHidden = true
+	end
+end
+
+local function RestoreGameUIAfterAFK(frame)
+	if not frame.afkUIHidden then
+		return
+	end
+	if SetUIVisibility then
+		SetUIVisibility(true)
+	else
+		pcall(function()
+			UIParent:Show()
+		end)
+	end
+	frame.afkUIHidden = nil
+end
+
 local function SetAFKMode(frame, enable)
 	if enable then
 		if frame.isAFK then
@@ -508,8 +541,7 @@ local function SetAFKMode(frame, enable)
 
 		MoveViewLeftStart(CAMERA_SPEED)
 		frame:Show()
-		CloseAllWindows()
-		UIParent:Hide()
+		HideGameUIForAFK(frame)
 
 		if IsInGuild() then
 			local guildName, guildRank = GetGuildInfo("player")
@@ -558,7 +590,7 @@ local function SetAFKMode(frame, enable)
 		return
 	end
 
-	UIParent:Show()
+	RestoreGameUIAfterAFK(frame)
 	frame:Hide()
 	MoveViewLeftStop()
 
@@ -592,6 +624,8 @@ end
 -- Events
 -- ---------------------------------------------------------------------------
 local function OnAFKEvent(frame, event, ...)
+	-- Always allow interrupt paths while a preview/AFK screen is up, even if
+	-- the module was just toggled off mid-AFK.
 	if IsEventInList(event, "PLAYER_REGEN_DISABLED", "LFG_PROPOSAL_SHOW", "UPDATE_BATTLEFIELD_STATUS") then
 		if event == "UPDATE_BATTLEFIELD_STATUS" then
 			if GetBattlefieldStatus(...) ~= "confirm" then
@@ -618,7 +652,7 @@ local function OnAFKEvent(frame, event, ...)
 		return
 	end
 
-	if not ns.db.afkCam.enable then
+	if not AFKCam:IsEnabled() or not ns.db.afkCam.enable then
 		return
 	end
 
@@ -1014,7 +1048,18 @@ function AFKCam:InstallHooks()
 		return
 	end
 	self.hooksInstalled = true
-	BuildFrame()
+	local frame = BuildFrame()
+	-- BuildFrame is one-shot; OnDisable tears events down — re-bind on re-enable.
+	if frame then
+		frame:RegisterEvent("PLAYER_FLAGS_CHANGED")
+		frame:RegisterEvent("PLAYER_REGEN_DISABLED")
+		frame:RegisterEvent("LFG_PROPOSAL_SHOW")
+		frame:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
+		frame:SetScript("OnEvent", OnAFKEvent)
+		if frame.model then
+			frame.model:SetScript("OnUpdate", Model_OnUpdate)
+		end
+	end
 	if originalAutoClearAFK == nil then
 		originalAutoClearAFK = GetCVar("autoClearAFK") or "1"
 	end
@@ -1028,21 +1073,31 @@ function AFKCam:OnEnable()
 	self:InstallHooks()
 end
 
-function AFKCam:OnSettingChanged(key, value)
-	if key == "enable" then
-		if value then
-			self:InstallHooks()
-		else
-			if afkFrame and afkFrame.isAFK then
-				if manualPreview then
-					manualPreview = false
-				end
-				SetAFKMode(afkFrame, false)
+function AFKCam:OnDisable()
+	if afkFrame then
+		if afkFrame.isAFK then
+			if manualPreview then
+				manualPreview = false
 			end
-			if originalAutoClearAFK ~= nil then
-				SetCVar("autoClearAFK", originalAutoClearAFK)
-			end
+			SetAFKMode(afkFrame, false)
 		end
+		afkFrame:UnregisterAllEvents()
+		afkFrame:SetScript("OnEvent", nil)
+		if afkFrame.model then
+			afkFrame.model:SetScript("OnUpdate", nil)
+		end
+	end
+	if originalAutoClearAFK ~= nil then
+		SetCVar("autoClearAFK", originalAutoClearAFK)
+	end
+	-- Allow InstallHooks to re-bind events if the module is toggled back on.
+	self.hooksInstalled = false
+end
+
+function AFKCam:OnSettingChanged(key)
+	-- ApplyModuleSetting owns enable lifecycle.
+	if key == "enable" then
+		return
 	end
 end
 

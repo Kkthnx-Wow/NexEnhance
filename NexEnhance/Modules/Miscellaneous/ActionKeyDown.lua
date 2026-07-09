@@ -97,14 +97,7 @@ end
 
 function ActionKeyDown:OnSettingChanged(key)
 	if key == "enable" then
-		if ns.db.actionKeyDown.enable then
-			self:RegisterModuleEvents()
-			Apply()
-		else
-			self:UnregisterModuleEvents()
-			self.pending = nil
-			RestoreKeyDown()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 	Apply()

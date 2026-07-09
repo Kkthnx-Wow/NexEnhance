@@ -28,6 +28,7 @@ local CreateFrame = CreateFrame
 local GetCVar = GetCVar
 local GetCVarBool = GetCVarBool
 local GetGameTime = GetGameTime
+local GetTime = GetTime
 local GetQuestResetTime = GetQuestResetTime
 local GetNumSavedInstances = GetNumSavedInstances
 local GetNumSavedWorldBosses = GetNumSavedWorldBosses
@@ -68,6 +69,13 @@ ns:RegisterDefaults({
 		showLegacy = false,
 	},
 })
+ns:RegisterDefaults({
+	invasionTimers = {
+		legionStart = 0,
+		bfaStart = 0,
+		bfaZone = 0,
+	},
+}, "global")
 
 local Clock = ns:NewModule("Clock", "timeText", { group = "datatext", title = L["Clock"], order = 30 })
 
@@ -79,8 +87,17 @@ local entered
 local isTimeWalker
 local walkerTexture
 local tooltipElapsed = 0
+local clockElapsed = 0
+local CLOCK_TICK = 5
+local TOOLTIP_REFRESH = 1
+local INVASION_SCAN_INTERVAL = 30
+local LOCKOUT_PREVIEW_MAX = 5
 local raidLockoutScratch = {}
 local dungeonLockoutScratch = {}
+
+-- Forward-declared; defined with legacy invasion timer helpers below.
+local ScanInvasionAnchors, GetInvasionTimers, CheckLegionInvasion, CheckBFAInvasion
+local invasionScanAt = 0
 
 local region = GetCVar and GetCVar("portal") or "US"
 
@@ -105,17 +122,26 @@ local invIndex = {
 	},
 }
 
-local mapAreaPoiIDs = {
-	[630] = 5175,
-	[641] = 5210,
-	[650] = 5177,
-	[634] = 5178,
-	[862] = 5973,
-	[863] = 5969,
-	[864] = 5970,
-	[896] = 5964,
-	[942] = 5966,
-	[895] = 5896,
+-- LegionInvasionTimer / BFAInvasionTimer POI order and durations.
+local LEGION_ACTIVE_DURATION = 21600 -- 6h assault
+local LEGION_CYCLE_DURATION = 52200 -- 14.5h cycle
+local BFA_ACTIVE_DURATION = 25200 -- 7h assault
+local BFA_CYCLE_DURATION = 68400 -- 19h cycle
+
+local LEGION_ZONES = {
+	{ mapID = 650, poiID = 5177 }, -- Highmountain
+	{ mapID = 634, poiID = 5178 }, -- Stormheim
+	{ mapID = 641, poiID = 5210 }, -- Val'sharah
+	{ mapID = 630, poiID = 5175 }, -- Azsuna
+}
+
+local BFA_ZONES = {
+	{ mapID = 864, poiID = 5970 }, -- Vol'dun
+	{ mapID = 896, poiID = 5964 }, -- Drustvar
+	{ mapID = 862, poiID = 5973 }, -- Zuldazar
+	{ mapID = 895, poiID = 5896 }, -- Tiragarde Sound
+	{ mapID = 863, poiID = 5969 }, -- Nazmir
+	{ mapID = 942, poiID = 5966 }, -- Stormsong Valley
 }
 
 local QUEST_LIST = {
@@ -334,6 +360,13 @@ end
 -- Calendar / quest data
 -- ---------------------------------------------------------------------------
 function Clock:CheckTimeWalker()
+	isTimeWalker = false
+	walkerTexture = nil
+
+	if cfg and cfg.showLegacy then
+		ScanInvasionAnchors(true)
+	end
+
 	if not C_Calendar or not C_DateAndTime or not find then
 		return
 	end
@@ -367,13 +400,13 @@ end
 
 local function AddResets()
 	GameTooltip:AddLine(" ")
-	local daily = GetQuestResetTime and GetQuestResetTime()
-	if daily and daily > 0 then
+	local daily = F.GetSecondsUntilDailyReset()
+	if daily then
 		GameTooltip:AddDoubleLine(L["Daily Reset"], FormatTimer(daily), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
-	local weekly = C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset and C_DateAndTime.GetSecondsUntilWeeklyReset()
-	if weekly and weekly > 0 then
+	local weekly = F.GetSecondsUntilWeeklyReset()
+	if weekly then
 		GameTooltip:AddDoubleLine(L["Weekly Reset"], FormatTimer(weekly), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 end
@@ -648,7 +681,7 @@ end
 local function AddLockouts()
 	local count = GetNumSavedInstances and GetNumSavedInstances() or 0
 	if count == 0 then
-		return
+		return false
 	end
 
 	wipe(raidLockoutScratch)
@@ -665,18 +698,33 @@ local function AddLockouts()
 		end
 	end
 
+	local showAll = IsShiftKeyDown()
+	local truncated = false
+
 	if #raidLockoutScratch > 0 then
 		AddTooltipTitle(L["Saved Raid(s)"])
-		for j = 1, #raidLockoutScratch do
+		local limit = showAll and #raidLockoutScratch or math.min(#raidLockoutScratch, LOCKOUT_PREVIEW_MAX)
+		for j = 1, limit do
 			AddLockoutTooltipLine(raidLockoutScratch[j])
+		end
+		if not showAll and #raidLockoutScratch > LOCKOUT_PREVIEW_MAX then
+			truncated = true
+			GameTooltip:AddLine(format(L["and %d more"], #raidLockoutScratch - LOCKOUT_PREVIEW_MAX), LBL[1], LBL[2], LBL[3])
 		end
 	end
 	if #dungeonLockoutScratch > 0 then
 		AddTooltipTitle(L["Saved Dungeon(s)"])
-		for j = 1, #dungeonLockoutScratch do
+		local limit = showAll and #dungeonLockoutScratch or math.min(#dungeonLockoutScratch, LOCKOUT_PREVIEW_MAX)
+		for j = 1, limit do
 			AddLockoutTooltipLine(dungeonLockoutScratch[j])
 		end
+		if not showAll and #dungeonLockoutScratch > LOCKOUT_PREVIEW_MAX then
+			truncated = true
+			GameTooltip:AddLine(format(L["and %d more"], #dungeonLockoutScratch - LOCKOUT_PREVIEW_MAX), LBL[1], LBL[2], LBL[3])
+		end
 	end
+
+	return truncated
 end
 
 -- Localized quest title (falls back to the raw quest API or nil). Returns nil for
@@ -789,7 +837,12 @@ local function AddDelveLine(uiMapID, info, header, seen)
 	end
 
 	local mapInfo = C_Map.GetMapInfo(uiMapID)
-	GameTooltip:AddDoubleLine(format("%s - %s", mapInfo and mapInfo.name or L["Unknown"], info.name or L["Unknown"]), FormatTimer(GetQuestResetTime()), 1, 1, 1, 1, 1, 1)
+	local dailyLeft = F.GetSecondsUntilDailyReset()
+	GameTooltip:AddDoubleLine(
+		format("%s - %s", mapInfo and mapInfo.name or L["Unknown"], info.name or L["Unknown"]),
+		dailyLeft and FormatTimer(dailyLeft) or "—",
+		1, 1, 1, 1, 1, 1
+	)
 	return header, true
 end
 
@@ -1224,39 +1277,159 @@ local function AddWorldEvents()
 end
 
 -- ---------------------------------------------------------------------------
--- Shift-held world-event helpers
+-- Shift-held world-event helpers (Legion / BfA invasion timers)
 -- ---------------------------------------------------------------------------
-local function GetInvasionInfo(mapID)
-	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft or not C_Map or not C_Map.GetMapInfo then
-		return nil, nil
-	end
-
-	local areaPoiID = mapAreaPoiIDs[mapID]
-	if not areaPoiID then
-		return nil, nil
-	end
-
-	local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(areaPoiID)
-	local mapData = C_Map.GetMapInfo(mapID)
-	return secondsLeft, mapData and mapData.name
+local function ValidInvasionSeconds(secondsLeft, maxDuration)
+	return secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 60 and secondsLeft <= maxDuration + 1
 end
 
-local function CheckInvasion(index)
-	for _, mapID in ipairs(invIndex[index].maps) do
-		local secondsLeft, zoneName = GetInvasionInfo(mapID)
-		if secondsLeft and secondsLeft > 0 then
-			return secondsLeft, zoneName
+function GetInvasionTimers()
+	if not ns.global then
+		return nil
+	end
+	ns.global.invasionTimers = ns.global.invasionTimers or {}
+	return ns.global.invasionTimers
+end
+
+local function ImportLegacyInvasionAnchors()
+	local timers = GetInvasionTimers()
+	if not timers then
+		return
+	end
+	if (not timers.legionStart or timers.legionStart == 0) and type(LegionInvasionTime) == "number" and LegionInvasionTime > 0 then
+		timers.legionStart = LegionInvasionTime
+	end
+	if (not timers.bfaStart or timers.bfaStart == 0) and type(BFAInvasionData) == "table" and BFAInvasionData[1] and BFAInvasionData[1] > 0 then
+		timers.bfaStart = BFAInvasionData[1]
+		timers.bfaZone = BFAInvasionData[2] or 0
+	end
+end
+
+local function GetZoneName(mapID)
+	if not C_Map or not C_Map.GetMapInfo then
+		return nil
+	end
+	local info = C_Map.GetMapInfo(mapID)
+	return info and info.name
+end
+
+local function AdvanceBFAZone(zone)
+	zone = zone + 1
+	if zone > #BFA_ZONES then
+		zone = 1
+	end
+	return zone
+end
+
+function ScanInvasionAnchors(force)
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft then
+		return
+	end
+
+	local now = time()
+	if not force and now - invasionScanAt < INVASION_SCAN_INTERVAL then
+		return
+	end
+	invasionScanAt = now
+
+	ImportLegacyInvasionAnchors()
+	local timers = GetInvasionTimers()
+	if not timers then
+		return
+	end
+
+	for _, zone in ipairs(LEGION_ZONES) do
+		local left = C_AreaPoiInfo.GetAreaPOISecondsLeft(zone.poiID)
+		if ValidInvasionSeconds(left, LEGION_ACTIVE_DURATION) then
+			timers.legionStart = now - (LEGION_ACTIVE_DURATION - left)
+			break
+		end
+	end
+
+	for i, zone in ipairs(BFA_ZONES) do
+		local left = C_AreaPoiInfo.GetAreaPOISecondsLeft(zone.poiID)
+		if ValidInvasionSeconds(left, BFA_ACTIVE_DURATION) then
+			timers.bfaStart = now - (BFA_ACTIVE_DURATION - left)
+			timers.bfaZone = i
+			break
 		end
 	end
 end
 
-local function GetNextInvasionTime(baseTime, index)
-	local duration = invIndex[index].duration
+function CheckLegionInvasion()
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft then
+		return
+	end
+	for _, zone in ipairs(LEGION_ZONES) do
+		local left = C_AreaPoiInfo.GetAreaPOISecondsLeft(zone.poiID)
+		if ValidInvasionSeconds(left, LEGION_ACTIVE_DURATION) then
+			return left, GetZoneName(zone.mapID)
+		end
+	end
+end
+
+function CheckBFAInvasion()
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOISecondsLeft then
+		return
+	end
+	for _, zone in ipairs(BFA_ZONES) do
+		local left = C_AreaPoiInfo.GetAreaPOISecondsLeft(zone.poiID)
+		if ValidInvasionSeconds(left, BFA_ACTIVE_DURATION) then
+			return left, GetZoneName(zone.mapID)
+		end
+	end
+end
+
+local function CheckInvasion(index)
+	if index == 1 then
+		return CheckLegionInvasion()
+	end
+	if index == 2 then
+		return CheckBFAInvasion()
+	end
+end
+
+local function GetBFACycleElapsed()
+	local timers = GetInvasionTimers()
+	if not timers or not timers.bfaStart or timers.bfaStart == 0 then
+		return
+	end
+	local elapsed = time() - timers.bfaStart
+	while elapsed > BFA_CYCLE_DURATION do
+		elapsed = elapsed - BFA_CYCLE_DURATION
+	end
+	return elapsed, timers.bfaZone
+end
+
+-- When the POI API lags, infer an active assault from the saved anchor (BFAInvasionTimer pattern).
+local function GetLegionInferredActive()
+	local timers = GetInvasionTimers()
+	if not timers or not timers.legionStart or timers.legionStart == 0 then
+		return
+	end
+	local elapsed = fmod(time() - timers.legionStart, LEGION_CYCLE_DURATION)
+	if elapsed < LEGION_ACTIVE_DURATION then
+		return LEGION_ACTIVE_DURATION - elapsed
+	end
+end
+
+local function GetBFAInferredActive()
+	local elapsed, zoneIndex = GetBFACycleElapsed()
+	if not elapsed or not zoneIndex or zoneIndex == 0 then
+		return
+	end
+	if elapsed < BFA_ACTIVE_DURATION then
+		local zone = BFA_ZONES[zoneIndex]
+		return BFA_ACTIVE_DURATION - elapsed, zone and GetZoneName(zone.mapID)
+	end
+end
+
+local function GetNextInvasionEpochFromStatic(baseTime, duration)
 	local timeElapsed = fmod(time() - baseTime, duration)
 	return duration - timeElapsed + time()
 end
 
-local function GetNextInvasionLocation(nextTime, index)
+local function GetNextInvasionLocationLegacy(nextEpoch, index)
 	if not C_Map or not C_Map.GetMapInfo then
 		return _G.QUEUE_TIME_UNAVAILABLE
 	end
@@ -1266,7 +1439,7 @@ local function GetNextInvasionLocation(nextTime, index)
 		return _G.QUEUE_TIME_UNAVAILABLE
 	end
 
-	local timeElapsed = nextTime - inv.baseTime
+	local timeElapsed = nextEpoch - inv.baseTime
 	local roundCount = fmod(floor(timeElapsed / inv.duration) + 1, #inv.timeTable)
 	if roundCount == 0 then
 		roundCount = #inv.timeTable
@@ -1274,6 +1447,61 @@ local function GetNextInvasionLocation(nextTime, index)
 
 	local map = C_Map.GetMapInfo(inv.maps[inv.timeTable[roundCount]])
 	return map and map.name or _G.QUEUE_TIME_UNAVAILABLE
+end
+
+local function GetLegionNextEpoch()
+	local timers = GetInvasionTimers()
+	if timers and timers.legionStart and timers.legionStart > 0 then
+		local elapsed = fmod(time() - timers.legionStart, LEGION_CYCLE_DURATION)
+		return time() + (LEGION_CYCLE_DURATION - elapsed)
+	end
+	return GetNextInvasionEpochFromStatic(invIndex[1].baseTime, LEGION_CYCLE_DURATION)
+end
+
+local function GetBFANextInfo()
+	local timers = GetInvasionTimers()
+	if timers and timers.bfaStart and timers.bfaStart > 0 and timers.bfaZone and timers.bfaZone > 0 then
+		local elapsed = time() - timers.bfaStart
+		local zone = timers.bfaZone
+		while elapsed > BFA_CYCLE_DURATION do
+			elapsed = elapsed - BFA_CYCLE_DURATION
+			zone = AdvanceBFAZone(zone)
+		end
+		local nextEpoch = time() + (BFA_CYCLE_DURATION - elapsed)
+		local nextZone = AdvanceBFAZone(zone)
+		local zoneName = BFA_ZONES[nextZone] and GetZoneName(BFA_ZONES[nextZone].mapID)
+		return nextEpoch, zoneName
+	end
+
+	local nextEpoch = GetNextInvasionEpochFromStatic(invIndex[2].baseTime, BFA_CYCLE_DURATION)
+	return nextEpoch, GetNextInvasionLocationLegacy(nextEpoch, 2)
+end
+
+local function AddLegionUpcomingRows()
+	local timers = GetInvasionTimers()
+	if not timers or not timers.legionStart or timers.legionStart == 0 then
+		return
+	end
+
+	local elapsed = time() - timers.legionStart
+	while elapsed > LEGION_CYCLE_DURATION do
+		elapsed = elapsed - LEGION_CYCLE_DURATION
+	end
+	local t = LEGION_CYCLE_DURATION - elapsed + time()
+	local minute = date("%M", t)
+	if minute == "29" or minute == "59" then
+		t = t + 60
+	end
+
+	GameTooltip:AddLine(L["Upcoming Invasions"], LBL[1], LBL[2], LBL[3])
+	for _ = 1, 2 do
+		GameTooltip:AddDoubleLine(
+			date("%a %H:%M", t),
+			date("%a %H:%M", t + LEGION_CYCLE_DURATION),
+			1, 1, 1, 0.6, 0.6, 0.6
+		)
+		t = t + LEGION_CYCLE_DURATION + LEGION_CYCLE_DURATION
+	end
 end
 
 local function AddShiftWorldEvents()
@@ -1291,9 +1519,10 @@ local function AddShiftWorldEvents()
 				local eType = poi and poi.atlasName and match(poi.atlasName, "ElementalStorm%-Lesser%-(.+)")
 				if eType then
 					AddTooltipTitle(poi.name)
-					local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(poiID) or 0
+					local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(poiID)
 					local map = C_Map.GetMapInfo(mapID)
-					GameTooltip:AddDoubleLine((map and map.name or L["Unknown"]) .. GetElementalType(eType), FormatTimer(secondsLeft), 1, 1, 1, 1, 1, 1)
+					local timerText = (secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 0) and FormatTimer(secondsLeft) or L["Active"]
+					GameTooltip:AddDoubleLine((map and map.name or L["Unknown"]) .. GetElementalType(eType), timerText, 1, 1, 1, 1, 1, 1)
 					break
 				end
 			end
@@ -1304,9 +1533,10 @@ local function AddShiftWorldEvents()
 		local poi = C_AreaPoiInfo.GetAreaPOIInfo(1978, areaID)
 		if poi then
 			AddTooltipTitle(poi.name)
-			local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(areaID) or 0
+			local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(areaID)
 			local map = C_Map.GetMapInfo(mapID)
-			GameTooltip:AddDoubleLine(map and map.name or L["Unknown"], FormatTimer(secondsLeft), 1, 1, 1, 1, 1, 1)
+			local timerText = (secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 0) and FormatTimer(secondsLeft) or L["Active"]
+			GameTooltip:AddDoubleLine(map and map.name or L["Unknown"], timerText, 1, 1, 1, 1, 1, 1)
 			break
 		end
 	end
@@ -1325,14 +1555,32 @@ local function AddShiftWorldEvents()
 		end
 	end
 
+	ScanInvasionAnchors(true)
+
 	for index, inv in ipairs(invIndex) do
 		AddTooltipTitle(inv.title)
 		local secondsLeft, zoneName = CheckInvasion(index)
-		local nextTime = GetNextInvasionTime(inv.baseTime, index)
+		if not secondsLeft then
+			if index == 1 then
+				secondsLeft = GetLegionInferredActive()
+			else
+				secondsLeft, zoneName = GetBFAInferredActive()
+			end
+		end
+		local nextTime, nextZoneName
+		if index == 1 then
+			nextTime = GetLegionNextEpoch()
+		else
+			nextTime, nextZoneName = GetBFANextInfo()
+		end
 		if secondsLeft then
 			GameTooltip:AddDoubleLine(L["Current Invasion"] .. (zoneName or ""), FormatTimer(secondsLeft), 1, 1, 1, 1, 1, 1)
 		end
-		GameTooltip:AddDoubleLine(L["Next Invasion"] .. GetNextInvasionLocation(nextTime, index), date("%m/%d %H:%M", nextTime), 1, 1, 1, 0.75, 0.75, 0.75)
+		local location = (nextZoneName and nextZoneName ~= _G.QUEUE_TIME_UNAVAILABLE) and nextZoneName or ""
+		GameTooltip:AddDoubleLine(L["Next Invasion"] .. location, date("%m/%d %H:%M", nextTime), 1, 1, 1, 0.75, 0.75, 0.75)
+		if index == 1 then
+			AddLegionUpcomingRows()
+		end
 	end
 end
 
@@ -1357,16 +1605,20 @@ local function ShowClockTooltip(self)
 
 	AddResets()
 	AddWorldBosses()
-	AddLockouts()
+	local lockoutsTruncated = AddLockouts()
 	AddQuestCompletions()
 	AddWeeklyMeta()
 	AddDelves()
 	AddVoidAssaults()
 	AddWorldEvents()
 
-	-- Legacy world-event timers live behind the SHIFT modifier and the
-	-- showLegacy toggle. When legacy tracking is off the SHIFT hint is hidden so
-	-- the tooltip stays focused on current (Midnight) content.
+	-- Legacy world-event timers live behind SHIFT as well. When the lockout list
+	-- is capped, SHIFT also expands raids/dungeons to the full saved list.
+	if lockoutsTruncated and not IsShiftKeyDown() then
+		GameTooltip:AddLine(" ")
+		GameTooltip:AddLine(L["Hold SHIFT for all lockouts"], LBL[1], LBL[2], LBL[3])
+	end
+
 	if cfg and cfg.showLegacy then
 		if IsShiftKeyDown() then
 			AddShiftWorldEvents()
@@ -1426,21 +1678,75 @@ end
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
+local function DumpTimeDiagnostics()
+	F.Print(format("  time()=%s GetTime()=%s", time(), GetTime and GetTime() or "?"))
+	F.Print(format("  local=%s realm=%s", date("%H:%M:%S"), select(1, GetGameTime()) and format("%02d:%02d", GetGameTime()) or "?"))
+
+	local rawDaily = GetQuestResetTime and GetQuestResetTime()
+	if rawDaily then
+		F.Print(format("  GetQuestResetTime(raw)=%s", FormatTimer(rawDaily)))
+	end
+	local daily = F.GetSecondsUntilDailyReset()
+	local weekly = F.GetSecondsUntilWeeklyReset()
+	F.Print(format("  dailyReset=%s weeklyReset=%s", daily and FormatTimer(daily) or "n/a", weekly and FormatTimer(weekly) or "n/a"))
+
+	local offsetH = F.GetServerOffsetHours()
+	local offsetSec = offsetH * 3600
+	F.Print(format("  serverOffset=%sh", offsetH))
+
+	local nextDaily = F.GetNextDailyResetTime()
+	local nextWeekly = F.GetNextWeeklyResetTime()
+	if nextDaily then
+		F.Print(format("  nextDaily: local %s | realm %s", date("%Y-%m-%d %H:%M", nextDaily), date("%Y-%m-%d %H:%M", nextDaily + offsetSec)))
+	end
+	if nextWeekly then
+		F.Print(format("  nextWeekly: local %s | realm %s", date("%Y-%m-%d %H:%M", nextWeekly), date("%Y-%m-%d %H:%M", nextWeekly + offsetSec)))
+	end
+
+	if cfg and cfg.showLegacy then
+		ScanInvasionAnchors(true)
+		local timers = GetInvasionTimers()
+		if timers then
+			local legionStart = timers.legionStart or 0
+			local bfaStart = timers.bfaStart or 0
+			F.Print(format(
+				"  legionAnchor=%s bfaAnchor=%s bfaZone=%s",
+				legionStart > 0 and date("%Y-%m-%d %H:%M", legionStart) or "none",
+				bfaStart > 0 and date("%Y-%m-%d %H:%M", bfaStart) or "none",
+				tostring(timers.bfaZone or 0)
+			))
+			local legionLeft, legionZone = CheckLegionInvasion()
+			local bfaLeft, bfaZone = CheckBFAInvasion()
+			F.Print(format(
+				"  legionActive=%s bfaActive=%s",
+				legionLeft and format("%s (%s)", FormatTimer(legionLeft), legionZone or "?") or "no",
+				bfaLeft and format("%s (%s)", FormatTimer(bfaLeft), bfaZone or "?") or "no"
+			))
+		end
+	end
+end
+
 local function StartClockTicker(self)
-	local elapsed = 5
+	clockElapsed = 0
+	tooltipElapsed = 0
 	self:SetScript("OnUpdate", function(frame, e)
-		elapsed = elapsed + (e or 0)
-		if elapsed < 5 then
+		local dt = e or 0
+		if entered then
+			tooltipElapsed = tooltipElapsed + dt
+			if tooltipElapsed >= TOOLTIP_REFRESH then
+				tooltipElapsed = 0
+				ShowClockTooltip(frame)
+			end
+		else
+			tooltipElapsed = 0
+		end
+
+		clockElapsed = clockElapsed + dt
+		if clockElapsed < CLOCK_TICK then
 			return
 		end
-		elapsed = 0
+		clockElapsed = 0
 		UpdateClock(frame)
-		if entered then
-			tooltipElapsed = tooltipElapsed + 5
-			if tooltipElapsed >= 30 then
-				OnEnter(frame)
-			end
-		end
 	end)
 end
 
@@ -1533,6 +1839,7 @@ function Clock:OnInitialize()
 		},
 		dump = function()
 			F.Print(format("  enable=%s showLegacy=%s entered=%s", tostring(cfg and cfg.enable), tostring(cfg and cfg.showLegacy), tostring(entered)))
+			DumpTimeDiagnostics()
 			if RequestRaidInfo then
 				RequestRaidInfo()
 			end
@@ -1576,13 +1883,12 @@ end
 function Clock:OnSettingChanged(key, value)
 	cfg = ns.db.timeText
 	if key == "enable" then
-		if value then
-			self:Create()
-			self:RegisterModuleEvents()
-		else
-			self:Stop()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
+	end
+	if key == "showLegacy" and value then
+		invasionScanAt = 0
+		ScanInvasionAnchors(true)
 	end
 	if clock and cfg.enable then
 		UpdateClock(clock)

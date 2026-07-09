@@ -19,7 +19,6 @@ local sort = table.sort
 local collectgarbage = collectgarbage
 
 local CreateFrame = CreateFrame
-local GetTime = GetTime
 local GetFramerate = GetFramerate
 local GetNetStats = GetNetStats
 local GetNetIpTypes = GetNetIpTypes
@@ -57,8 +56,6 @@ local entered
 local tooltipElapsed = 0
 local infoTable = {}
 local ipTypes = { "IPv4", "IPv6" }
-local memoryTotal = 0
-local memoryUpdatedAt = 0
 local MEMORY_REFRESH_INTERVAL = 5
 
 -- ---------------------------------------------------------------------------
@@ -192,7 +189,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Tooltip: latency detail first, then per-addon memory
 -- ---------------------------------------------------------------------------
-local function OnEnter(self, forceMemory)
+local function OnEnter(self)
 	entered = true
 	tooltipElapsed = 0
 	self:RegisterEvent("MODIFIER_STATE_CHANGED")
@@ -201,7 +198,6 @@ local function OnEnter(self, forceMemory)
 	GameTooltip:SetPoint("TOPRIGHT", self, "BOTTOMRIGHT", 0, -6)
 	GameTooltip:ClearLines()
 
-	-- Latency
 	GameTooltip:AddLine(L["Latency"], HDR[1], HDR[2], HDR[3])
 	GameTooltip:AddLine(" ")
 
@@ -222,40 +218,36 @@ local function OnEnter(self, forceMemory)
 		GameTooltip:AddDoubleLine(L["Download"], format("%.2f%%", GetDownloadedPercentage() * 100), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
-	-- System / addon memory
 	if not next(infoTable) then
 		BuildAddonList()
 	end
-	local now = GetTime()
-	if forceMemory or memoryTotal == 0 or (now - memoryUpdatedAt) >= MEMORY_REFRESH_INTERVAL then
-		memoryTotal = UpdateMemory()
-		memoryUpdatedAt = now
-	end
-	local total = memoryTotal
+
+	local maxAddOns = ns.db.datatext.maxAddOns
+	local isShift = IsShiftKeyDown()
+	local total = UpdateMemory()
 
 	GameTooltip:AddLine(" ")
 	GameTooltip:AddDoubleLine(L["System"], FormatMemory(total), HDR[1], HDR[2], HDR[3], 1, 1, 1)
 	GameTooltip:AddLine(" ")
 
-	local maxAddOns = ns.db.datatext.maxAddOns
-	local isShift = IsShiftKeyDown()
+	local shown = 0
 	local numEnabled = 0
+	local hiddenMem = 0
 	for _, data in ipairs(infoTable) do
 		if C_AddOns.IsAddOnLoaded(data[1]) then
 			numEnabled = numEnabled + 1
-			if isShift or numEnabled <= maxAddOns then
+			shown = shown + 1
+			if isShift or shown <= maxAddOns then
 				local r, g, b = MemoryColor(data[3], total)
 				GameTooltip:AddDoubleLine(data[2], FormatMemory(data[3]), 1, 1, 1, r, g, b)
+			elseif not isShift then
+				hiddenMem = hiddenMem + (data[3] or 0)
 			end
 		end
 	end
 
 	if not isShift and numEnabled > maxAddOns then
-		local hidden = 0
-		for i = maxAddOns + 1, numEnabled do
-			hidden = hidden + (infoTable[i] and infoTable[i][3] or 0)
-		end
-		GameTooltip:AddDoubleLine(format("%d %s (%s)", numEnabled - maxAddOns, L["Hidden"], L["Hold Shift"]), FormatMemory(hidden), LBL[1], LBL[2], LBL[3], 1, 1, 1)
+		GameTooltip:AddDoubleLine(format("%d %s (%s)", numEnabled - maxAddOns, L["Hidden"], L["Hold Shift"]), FormatMemory(hiddenMem), LBL[1], LBL[2], LBL[3], 1, 1, 1)
 	end
 
 	GameTooltip:AddLine(" ")
@@ -279,7 +271,7 @@ local function OnMouseUp(self, button)
 	collectgarbage("collect")
 	F.Print(format("%s: %s", L["Collect Memory"], FormatMemory(before - collectgarbage("count"))))
 	if entered then
-		OnEnter(self, true)
+		OnEnter(self)
 	end
 end
 
@@ -478,7 +470,9 @@ function DataText:Create()
 
 	_G.C_Timer.After(0, SetupPosition)
 	if not positionHandle then
-		positionHandle = ns:RegisterEvent("PLAYER_ENTERING_WORLD", SetupPosition)
+		positionHandle = ns:RegisterEvent("PLAYER_ENTERING_WORLD", function()
+			SetupPosition()
+		end)
 	end
 end
 
@@ -510,15 +504,13 @@ function DataText:OnDisable()
 	self:Destroy()
 end
 
-function DataText:OnSettingChanged(key, value)
+function DataText:OnSettingChanged(key)
 	cfg = ns.db.datatext
 	if key == "enable" then
-		if value then
-			self:Create()
-		else
-			self:Destroy()
-		end
-	elseif stat then
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
+	end
+	if stat then
 		-- display / flip / class-colour changes apply live.
 		UpdateStat(stat)
 	end

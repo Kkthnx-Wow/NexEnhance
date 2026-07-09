@@ -23,7 +23,35 @@ local C_Timer = C_Timer
 local BreakUpLargeNumbers = BreakUpLargeNumbers
 local DEFAULT_CHAT_FRAME = DEFAULT_CHAT_FRAME
 
-local PREFIX = format("|c%s%s|r:", C.BrandHex, "NexEnhance")
+-- Match TOC / ns.title: blue Nex + gold Enhance (not a flat brand wash).
+local PREFIX = format("|c%sNex|r|c%sEnhance|r:", C.BrandHex, C.HeaderHex)
+
+local UnitName = UnitName
+local GetRealmName = GetRealmName
+local UnitLevel = UnitLevel
+
+-- ---------------------------------------------------------------------------
+-- Player context (name/realm may be nil at file-load time)
+-- ---------------------------------------------------------------------------
+
+--- Refresh session identity fields on `C.Player` once the character exists.
+function F.RefreshPlayerContext()
+	local name = UnitName("player")
+	local realm = GetRealmName()
+	if name and F.NotSecret(name) then
+		C.Player.name = name
+	end
+	if realm and F.NotSecret(realm) then
+		C.Player.realm = realm
+	end
+	if C.Player.name and C.Player.realm then
+		C.Player.key = C.Player.name .. " - " .. C.Player.realm
+	end
+	local level = UnitLevel("player")
+	if F.NotSecret(level) then
+		C.Player.level = level
+	end
+end
 
 -- ---------------------------------------------------------------------------
 -- Output
@@ -147,12 +175,16 @@ function F.SidebarIconMarkup(iconPath, size)
 end
 
 --- Compact |T| tag for inline chat icons (emoji, badges). Width and height default to 16.
-function F.ChatTexture(path, width, height)
+--- Optional xOffset/yOffset nudge the icon (autocomplete row alignment).
+function F.ChatTexture(path, width, height, xOffset, yOffset)
 	if not path then
 		return ""
 	end
 	width = width or 16
 	height = height or 16
+	if xOffset or yOffset then
+		return format("|T%s:%d:%d:%d:%d|t", path, width, height, xOffset or 0, yOffset or 0)
+	end
 	return format("|T%s:%d:%d|t", path, width, height)
 end
 
@@ -309,6 +341,85 @@ function F.Debounce(delay, func)
 			func(a1, a2, a3, a4)
 		end)
 	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Reset / clock helpers
+--   Defensive guards on GetQuestResetTime (SavedInstances-style): the API can
+--   return nil, negative values after DST, or nonsense >24h inside instances.
+-- ---------------------------------------------------------------------------
+
+local GetQuestResetTime = GetQuestResetTime
+local GetTime = GetTime
+local time = time
+local floor = math.floor
+local tonumber = tonumber
+local date = date
+local DAILY_RESET_MAX = 24 * 60 * 60 + 30
+
+--- Seconds until the next daily quest reset, or nil when the API is unreliable.
+function F.GetSecondsUntilDailyReset()
+	local resetTime = GetQuestResetTime and GetQuestResetTime()
+	if not resetTime or resetTime <= 0 or resetTime > DAILY_RESET_MAX then
+		return nil
+	end
+	return resetTime
+end
+
+--- Seconds until the next weekly reset, or nil when unavailable.
+function F.GetSecondsUntilWeeklyReset()
+	if not (C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset) then
+		return nil
+	end
+	local weekly = C_DateAndTime.GetSecondsUntilWeeklyReset()
+	if not weekly or weekly <= 0 then
+		return nil
+	end
+	return weekly
+end
+
+--- Absolute `time()` of the next daily reset, or nil.
+function F.GetNextDailyResetTime()
+	local seconds = F.GetSecondsUntilDailyReset()
+	return seconds and (time() + seconds) or nil
+end
+
+--- Absolute `time()` of the next weekly reset, or nil.
+function F.GetNextWeeklyResetTime()
+	local seconds = F.GetSecondsUntilWeeklyReset()
+	return seconds and (time() + seconds) or nil
+end
+
+--- Convert a `GetTime()`-relative value to absolute `time()`.
+do
+	local getTimeToTimeOffset = time() - GetTime()
+	function F.GetTimeToTime(val)
+		if not val then
+			return nil
+		end
+		return val + getTimeToTimeOffset
+	end
+end
+
+--- Hours the server calendar is ahead of the local machine (0.5h steps).
+function F.GetServerOffsetHours()
+	if not (C_DateAndTime and C_DateAndTime.GetCurrentCalendarTime) then
+		return 0
+	end
+	local serverDate = C_DateAndTime.GetCurrentCalendarTime()
+	if not serverDate then
+		return 0
+	end
+	local serverWeekday = serverDate.weekday - 1
+	local serverHour, serverMinute = serverDate.hour, serverDate.minute
+	local localWeekday = tonumber(date("%w"))
+	local localHour, localMinute = tonumber(date("%H")), tonumber(date("%M"))
+	if serverWeekday == (localWeekday + 1) % 7 then
+		serverHour = serverHour + 24
+	elseif localWeekday == (serverWeekday + 1) % 7 then
+		localHour = localHour + 24
+	end
+	return floor((serverHour + serverMinute / 60 - localHour - localMinute / 60) * 2 + 0.5) / 2
 end
 
 -- ---------------------------------------------------------------------------
@@ -1102,6 +1213,23 @@ end
 -- ---------------------------------------------------------------------------
 -- Tooltip helpers
 -- ---------------------------------------------------------------------------
+
+--- True when `tip` already shows a left-hand line whose text contains `label`
+--- (plain substring match). Used to avoid duplicate M+/target lines on refresh.
+function F.TooltipHasLineContaining(tip, label)
+	local name = tip and tip.GetName and tip:GetName()
+	if not name or not label then
+		return false
+	end
+	for i = 1, tip:NumLines() do
+		local line = _G[name .. "TextLeft" .. i]
+		local text = line and line:GetText()
+		if text and F.NotSecret(text) and text:find(label, 1, true) then
+			return true
+		end
+	end
+	return false
+end
 
 --- True when `tip` already shows a left-hand line whose text equals `matchText`.
 --- Used to avoid appending duplicate annotation lines (IDs, source lines) when a

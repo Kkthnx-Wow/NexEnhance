@@ -83,7 +83,7 @@ do
 end
 
 local function ClassColorRGB(class)
-	if not class then
+	if not class or F.IsSecret(class) then
 		return 1, 1, 1
 	end
 	local token = classToken[class] or class
@@ -505,15 +505,13 @@ function GuildText:OnDisable()
 	self:Stop()
 end
 
-function GuildText:OnSettingChanged(key, value)
+function GuildText:OnSettingChanged(key)
 	cfg = ns.db.guildText
 	if key == "enable" then
-		if value then
-			self:Create()
-		else
-			self:Stop()
-		end
-	elseif key == "maxMembers" or key == "showMOTD" then
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
+	end
+	if key == "maxMembers" or key == "showMOTD" then
 		local button = _G.GuildMicroButton
 		if button and MouseIsOver(button) then
 			self:ShowTooltip(true)

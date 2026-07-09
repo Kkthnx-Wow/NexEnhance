@@ -55,8 +55,13 @@ local Module = ns:NewModule("NameplateReactionColors", "nameplateReactionColors"
 
 local running = false
 local eventHandles = {}
-local regenRefreshPending = false
 local unitAddedRefreshPending = {}
+
+local scheduleRegenRefresh = F.Debounce(0.1, function()
+	if running and ns.db.nameplateReactionColors.enable then
+		Module:RefreshVisibleNameplates()
+	end
+end)
 
 local function IsNameplateUnit(unit)
 	return unit and not IsSecret(unit) and strfind(unit, "nameplate") ~= nil
@@ -191,12 +196,14 @@ local function RefreshNameplateForUnit(unit)
 	if not running or not ns.db.nameplateReactionColors.enable then
 		return
 	end
-	if unit and IsNameplateUnit(unit) and C_NamePlate and C_NamePlate.GetNamePlateForUnit then
-		local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
-		if nameplate and not IsFrameForbidden(nameplate) then
-			RefreshNameplateUnitFrame(nameplate.UnitFrame)
-			return
+	if unit then
+		if IsNameplateUnit(unit) and C_NamePlate and C_NamePlate.GetNamePlateForUnit then
+			local nameplate = C_NamePlate.GetNamePlateForUnit(unit)
+			if nameplate and not IsFrameForbidden(nameplate) then
+				RefreshNameplateUnitFrame(nameplate.UnitFrame)
+			end
 		end
+		return
 	end
 	Module:RefreshVisibleNameplates()
 end
@@ -220,20 +227,7 @@ function Module:RefreshVisibleNameplates()
 end
 
 local function ScheduleRegenRefresh()
-	if regenRefreshPending or not C_Timer or not C_Timer.After then
-		return
-	end
-	regenRefreshPending = true
-	-- Threat list can clear a tick after regen; batch again next frame + shortly after.
-	C_Timer.After(0, function()
-		regenRefreshPending = false
-		Module:RefreshVisibleNameplates()
-	end)
-	C_Timer.After(0.1, function()
-		if running and ns.db.nameplateReactionColors.enable then
-			Module:RefreshVisibleNameplates()
-		end
-	end)
+	scheduleRegenRefresh()
 end
 
 function Module:OnRegenEnabled()
@@ -324,16 +318,10 @@ function Module:OnEnable()
 	end
 end
 
-function Module:OnSettingChanged(key, value)
+function Module:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			running = true
-			self:InstallHook()
-			self:EnsureEvents()
-			self:RefreshVisibleNameplates()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

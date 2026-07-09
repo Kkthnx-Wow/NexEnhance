@@ -263,13 +263,9 @@ function HideDpsRole:OnDisable()
 	RefreshAllFrames()
 end
 
-function HideDpsRole:OnSettingChanged(key, value)
+function HideDpsRole:OnSettingChanged(key)
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
 		return
 	end
 end

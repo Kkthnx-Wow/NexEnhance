@@ -204,7 +204,7 @@ function Tooltip:SetupItemReagents()
 	Tooltip._reagentsSetup = true
 
 	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, function(tip, data)
-		if not ns.db.tooltip.itemReagents or tip:IsForbidden() then
+		if not Tooltip:IsEnabled() or not ns.db.tooltip.itemReagents or tip:IsForbidden() then
 			return
 		end
 		local id = data and data.id
@@ -215,7 +215,7 @@ function Tooltip:SetupItemReagents()
 
 	if GameTooltip.SetHyperlink then
 		hooksecurefunc(GameTooltip, "SetHyperlink", function(tip, link)
-			if not ns.db.tooltip.itemReagents or tip:IsForbidden() or not link or F.IsSecret(link) then
+			if not Tooltip:IsEnabled() or not ns.db.tooltip.itemReagents or tip:IsForbidden() or not link or F.IsSecret(link) then
 				return
 			end
 			local id = tonumber(link:match("item:(%d+)"))

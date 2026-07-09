@@ -211,6 +211,8 @@ end
 -- Setup (called by the engine on ADDON_LOADED, before module OnInitialize)
 -- ---------------------------------------------------------------------------
 function ns:SetupDatabase()
+	F.RefreshPlayerContext()
+
 	-- Saved variables are nil on a brand-new install; create the skeleton.
 	local root = _G.NexEnhanceDB or {}
 	_G.NexEnhanceDB = root

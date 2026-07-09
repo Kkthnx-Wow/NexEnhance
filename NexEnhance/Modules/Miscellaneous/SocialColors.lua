@@ -410,13 +410,10 @@ function SocialColors:OnDisable()
 	self:UnregisterModuleEvents()
 end
 
-function SocialColors:OnSettingChanged(key, value)
+function SocialColors:OnSettingChanged(key)
+	-- ApplyModuleSetting owns enable lifecycle; hooks already gate via IsActive().
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:UnregisterModuleEvents()
-		end
+		return
 	end
 end
 

@@ -240,15 +240,12 @@ function AutoRole:OnDisable()
 	self:UnregisterModuleEvents()
 end
 
-function AutoRole:OnSettingChanged(key, value)
+function AutoRole:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:RegisterModuleEvents()
-			self:ScheduleSync(false)
-		else
-			self:OnDisable()
-		end
-	elseif key == "answerRolePoll" then
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
+	end
+	if key == "answerRolePoll" then
 		self:ApplyRolePollSuppression()
 	end
 end

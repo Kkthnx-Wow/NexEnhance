@@ -243,14 +243,10 @@ function DragEmAll:OnDisable()
 	self:UnregisterModuleEvents()
 end
 
-function DragEmAll:OnSettingChanged(key, value)
+function DragEmAll:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			HookFrames(frames)
-			self:RegisterModuleEvents()
-		else
-			self:UnregisterModuleEvents()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

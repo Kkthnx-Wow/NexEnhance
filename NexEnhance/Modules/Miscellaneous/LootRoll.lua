@@ -44,6 +44,12 @@ local function ItemIDFromLink(link)
 	return link and tonumber(link:match("item:(%d+)"))
 end
 
+-- Declared before ApplyBarItemLevel (async callback references barByRollID).
+local activeBars = {}
+local barByRollID = {}
+local waitingRolls = {}
+local testBars = {}
+
 --- Item level on roll bars; requests async item data when GetItemInfo is cold.
 local function ApplyBarItemLevel(bar, link)
 	if not (bar and link) then
@@ -94,13 +100,7 @@ local LootRoll = ns:NewModule("LootRoll", "lootRoll", { group = "alerts", title 
 
 local eventHandles = {}
 
--- Bars currently showing a roll, in stack order; rollID -> bar lookup; and a
--- queue of rolls waiting for a free bar when we hit maxBars. `testBars` tracks
--- the fake bars spawned by /nex lootroll so we can clear just those.
-local activeBars = {}
-local barByRollID = {}
-local waitingRolls = {}
-local testBars = {}
+-- barByRollID etc. declared above ApplyBarItemLevel (async ilvl callback).
 local barPool
 local anchor
 
@@ -242,7 +242,13 @@ local function StatusBar_OnUpdate(status, elapsed)
 	end
 
 	local timeLeft = GetLootRollTimeLeft(bar.rollID)
-	if timeLeft <= 0 then
+	-- Incident (LootRoll, Jul 2026): timeLeft can be secret in instances —
+	-- never compare; route to SetValue and only clear on a plain expired value.
+	if F.IsSecret(timeLeft) then
+		status:SetValue(timeLeft)
+		return
+	end
+	if not timeLeft or timeLeft <= 0 then
 		LootRoll:ClearBar(bar)
 	else
 		status:SetValue(timeLeft)
@@ -732,13 +738,10 @@ function LootRoll:OnDisable()
 	self:UnregisterLootEvents()
 end
 
-function LootRoll:OnSettingChanged(key, value)
+function LootRoll:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:RegisterLootEvents()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

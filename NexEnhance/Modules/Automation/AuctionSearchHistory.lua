@@ -188,6 +188,7 @@ end
 function AuctionSearchHistory:HideDropdown()
 	hideScheduled = false
 	if dropdown then
+		dropdown.searchBox = nil
 		dropdown:Hide()
 	end
 end
@@ -316,6 +317,10 @@ local function HookSearchBar(searchBar)
 	searchBar:HookScript("OnShow", function(self)
 		HookSearchBox(self)
 	end)
+	-- Search bar can hide while AH stays open; drop our UIParent dropdown with it.
+	searchBar:HookScript("OnHide", function()
+		AuctionSearchHistory:HideDropdown()
+	end)
 end
 
 local function InstallApiHooks()
@@ -373,7 +378,11 @@ local function TryInstallFrameHooks()
 				end
 			end)
 		end)
-		AuctionSearchHistory:DebugLog("info", "AuctionHouseFrame OnShow hook installed")
+		-- Dropdown lives on UIParent, not the AH frame — must tear down when AH closes.
+		ah:HookScript("OnHide", function()
+			AuctionSearchHistory:HideDropdown()
+		end)
+		AuctionSearchHistory:DebugLog("info", "AuctionHouseFrame OnShow/OnHide hooks installed")
 	end
 
 	return true
@@ -431,12 +440,9 @@ function AuctionSearchHistory:OnDisable()
 end
 
 function AuctionSearchHistory:OnSettingChanged(key, value)
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
+		return
 	elseif key == "maxEntries" then
 		local recent = HistoryList()
 		local max = MaxEntries()

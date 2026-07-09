@@ -193,18 +193,30 @@ function MapReveal:Setup()
 end
 
 function MapReveal:OnEnable()
-	if ns.db.mapReveal.enable then
-		self:Setup()
+	if not ns.db.mapReveal.enable then
+		return
 	end
+	self:Setup()
+	-- Live toggle: show tiles already drawn for the open map without a redraw.
+	ApplyRevealState()
 end
 
-function MapReveal:OnSettingChanged(key, value)
+function MapReveal:OnDisable()
+	-- hooksecurefunc stays; hide revealed tiles so fog returns without /reload.
+	ApplyRevealState()
+end
+
+function MapReveal:OnSettingChanged(key)
+	-- ApplyModuleSetting owns enable lifecycle (OnEnable/OnDisable apply reveal).
 	if key == "enable" then
-		if value then
-			self:Setup()
+		return
+	end
+	if key == "glow" then
+		local glow = ns.db.mapReveal.glow
+		local shade = glow and 0.7 or 1
+		for i = 1, #shownMapCache do
+			shownMapCache[i]:SetVertexColor(shade, shade, shade)
 		end
-		-- Reveal/hide the tiles already drawn for the open map right away.
-		ApplyRevealState()
 	end
 end
 

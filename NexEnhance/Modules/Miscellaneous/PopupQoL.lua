@@ -93,7 +93,7 @@ local function GetMaxPurchasableStack(index)
 	end
 
 	local canAfford = maxStack
-	if info.price and info.price > 0 then
+	if info.price and F.NotSecret(info.price) and info.price > 0 then
 		local money = GetMoney()
 		if F.NotSecret(money) then
 			canAfford = floor(money / (info.price / info.stackCount))

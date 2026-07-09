@@ -280,7 +280,7 @@ function ItemLevel:CreateItemStrings(frame, strType)
 				slotFrame.iLvlText:SetPoint("BOTTOMLEFT", slotFrame, "BOTTOMLEFT", 1, 1)
 
 				local point, x, y = GetSlotAnchor(index)
-				slotFrame.enchantText = CreateFS(slotFrame, 13)
+				slotFrame.enchantText = CreateFS(slotFrame, 12)
 				slotFrame.enchantText:ClearAllPoints()
 				slotFrame.enchantText:SetPoint(point, slotFrame, point, x, y)
 				slotFrame.enchantText:SetTextColor(0, 1, 0)
@@ -960,14 +960,10 @@ function ItemLevel:OnDisable()
 	self:UnregisterModuleEvents()
 end
 
-function ItemLevel:OnSettingChanged(key, value)
+function ItemLevel:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:InstallHooks()
-			self:RegisterModuleEvents()
-		else
-			self:UnregisterModuleEvents()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 	if key == "fontSize" then
 		ApplyILvlFontSize()

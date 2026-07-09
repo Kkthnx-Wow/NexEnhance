@@ -47,6 +47,7 @@ local UIErrorsFrame = UIErrorsFrame
 local UNKNOWN = _G["UNKNOWN"] or "Unknown"
 local IsInGroup, IsInRaid = IsInGroup, IsInRaid
 local C_ChatInfo = C_ChatInfo
+local C_PetBattles = C_PetBattles
 local LE_PARTY_CATEGORY_INSTANCE = _G["LE_PARTY_CATEGORY_INSTANCE"] or 2
 
 -- Right-click share: server drops worldmap links when pin text was customised.
@@ -105,10 +106,19 @@ end
 -- ---------------------------------------------------------------------------
 -- Static filters
 -- ---------------------------------------------------------------------------
--- Event objects that fire constantly and aren't real rares.
+-- Event objects that fire constantly and aren't real rares (vignetteID).
 local defaultIgnored = {
 	[6149] = true, -- Onyxian Egg
 	[6699] = true, -- misplaced curio (Underrot)
+}
+
+-- NPC IDs that spam false alerts (RareScanner RSConstants.IGNORED_VIGNETTES_NPCS).
+local defaultIgnoredNpcs = {
+	156480, 155660, 163373, 182160, 182668, 182667, 185261, 200002, 190034, 191125,
+	210081, 210084, 210544, 210550, 226647, 226657, 226528, 221630, 206978, 206980,
+	206981, 209780, 209781, 127025, 136466, 136472, 136144, 136109, 128660, 128661,
+	128662, 128665, 98141, 92600, 227481, 147188, 171743, 219827, 90173, 92682, 92703,
+	247220, 256569, 155796, 157718, 193681, 9046, 158037, 265828,
 }
 
 -- Zones where rare/vignette spam is unwanted (warfronts & their scenarios).
@@ -146,6 +156,9 @@ local function RebuildIgnored()
 	wipe(ignoredIDs)
 	for id in pairs(defaultIgnored) do
 		ignoredIDs[id] = true
+	end
+	for i = 1, #defaultIgnoredNpcs do
+		ignoredIDs[defaultIgnoredNpcs[i]] = true
 	end
 	local text = db().ignoreList
 	if text and text ~= "" then
@@ -210,19 +223,38 @@ local function AtlasIcon(atlas)
 end
 
 -- Treasure/container and lore-object vignettes also carry "Vignette" in their
--- atlas (VignetteLoot, VignetteLootElite, loreobject-32x32, ...). RareScanner
--- buckets these separately from NPC rares; we exclude them so a treasure chest
--- isn't announced as "Rare Found". Atlas categories cherry-picked from
--- RareScanner's RSConstants (CONTAINER_*).
+-- atlas name. RareScanner buckets NPC/event atlases explicitly; we use the same
+-- allowlist plus a VignetteKill/VignetteEvent fallback for new patches.
+local RARE_NPC_ATLASES = {
+	VignetteKill = true,
+	VignetteKillElite = true,
+	DemonInvasion5 = true,
+	["nazjatar-nagaevent"] = true,
+	["Warfront-NeutralHero"] = true,
+	["Tormentors-Boss"] = true,
+	["WarlockPortal-Yellow-32x32"] = true,
+	vignettekillboss = true,
+	["BuildanAbomination-32x32"] = true,
+}
+local RARE_EVENT_ATLASES = {
+	VignetteEvent = true,
+	VignetteEventElite = true,
+	["Tormentors-Event"] = true,
+	["minimap-genericevent-hornicon-small"] = true,
+}
+
 local function IsRareVignette(atlas)
 	if not atlas then
 		return false
+	end
+	if RARE_NPC_ATLASES[atlas] or RARE_EVENT_ATLASES[atlas] then
+		return true
 	end
 	-- Loot containers / lore objects are not rares.
 	if strfind(atlas, "[Vv]ignette[Ll]oot") or strfind(atlas, "loreobject") then
 		return false
 	end
-	return strfind(atlas, "[Vv]ignette") ~= nil or atlas == "nazjatar-nagaevent"
+	return strfind(atlas, "[Vv]ignette[Kk]ill") ~= nil or strfind(atlas, "[Vv]ignette[Ee]vent") ~= nil
 end
 
 -- Pull the creature/entity ID out of a vignette's objectGUID so the ignore list
@@ -255,7 +287,11 @@ local function SetTrackedWaypoint(mapID, x, y, name)
 		return true
 	end
 
+	-- Blizzard pins refuse some maps (instances, etc.); skip instead of erroring.
 	if C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates then
+		if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then
+			return false
+		end
 		C_Map.ClearUserWaypoint()
 		C_Map.SetUserWaypoint(UiMapPoint.CreateFromCoordinates(mapID, x, y))
 		if C_SuperTrack and C_SuperTrack.SetSuperTrackedUserWaypoint then
@@ -284,6 +320,31 @@ local function GetAnnounceChannel()
 	end
 end
 
+-- Plumber-style: skip sharing if another player already posted this map pin.
+-- Must not match our own "Rare Alert To Chat" lines (NexEnhance: … [name (x, y)]).
+local function ChatAlreadyAnnouncedRare(mapID, x, y)
+	local pool = ChatFrame1 and ChatFrame1.fontStringPool
+	if not pool or not pool.EnumerateActive then
+		return false
+	end
+	local linkKey = (mapID and x and y) and format("worldmap:%d:%.0f:%.0f", mapID, x * 10000, y * 10000) or nil
+	if not linkKey then
+		return false
+	end
+	local addonPrefix = ns.name .. ":"
+	for fontString in pool:EnumerateActive() do
+		local text = fontString:GetText()
+		if text and F.NotSecret(text) and not strfind(text, addonPrefix, 1, true) then
+			-- Right-click / player share uses the default map-pin hyperlink label.
+			if strfind(text, linkKey, 1, true)
+				and (strfind(text, "Waypoint%-MapPin%-ChatIcon", 1, true) or strfind(text, "Map Pin Location", 1, true)) then
+				return true
+			end
+		end
+	end
+	return false
+end
+
 -- Right-click share: rare name + default map-pin link (custom text gets dropped).
 -- Short cooldown on repeat shares.
 local function AnnounceRare(f)
@@ -301,6 +362,11 @@ local function AnnounceRare(f)
 	local wait = ANNOUNCE_COOLDOWN - (now - lastAnnounceAt)
 	if wait > 0 then
 		F.Print(F.Colorize(L["Rare Alert"] .. ": ", "brand") .. format(L["Wait %d seconds before announcing again."], wait))
+		return
+	end
+
+	if ChatAlreadyAnnouncedRare(mapID, x, y) then
+		F.Print(F.Colorize(L["Rare Alert"] .. ": ", "brand") .. L["Someone already announced this rare in chat."])
 		return
 	end
 
@@ -351,36 +417,22 @@ local function Popup_FlushPending()
 	end
 end
 
--- Our secure overlay registers for "AnyUp" and runs a /targetexact macro, but if
--- the user has key-down action casting enabled (ActionButtonUseKeyDown = 1) the
--- protected macro can fire on the press instead of the release and silently miss
--- - the click-to-target would just not work for those users. Force key-up
--- handling for the duration of this one click and restore it in PostClick.
--- On Midnight (12.0) SetCVar from tainted code is blocked in combat, so only
--- flip out of combat and remember whether we did, to restore symmetrically.
-local function Popup_PreClick(self)
-	self.prevUseKeyDown = nil
-	if InCombatLockdown() then
-		return
-	end
-	local prev = GetCVar("ActionButtonUseKeyDown")
-	if prev ~= "0" then
-		self.prevUseKeyDown = prev
-		SetCVar("ActionButtonUseKeyDown", "0")
-	end
-end
-
 -- Insecure post-hook for the secure overlay's click: the protected /targetexact
 -- macro (if any) has already run; here we just drop the waypoint and dismiss.
 -- PostClick is safe on a secure button (unlike SetScript("OnClick"), which taints it).
-local function Popup_PostClick(self, button)
-	-- Restore the user's key-down casting preference flipped in Popup_PreClick.
-	-- prevUseKeyDown is only set when we actually flipped (out of combat), so a
-	-- combat-locked PostClick never reaches a blocked SetCVar here.
-	if self.prevUseKeyDown and self.prevUseKeyDown ~= "0" and not InCombatLockdown() then
-		SetCVar("ActionButtonUseKeyDown", self.prevUseKeyDown)
+--
+-- Incident (RareAlert, Jul 2026): Cast On Key Down leaves ActionButtonUseKeyDown=1.
+-- SecureActionButton_OnClick then only runs the macro on mouse-*down*, but we only
+-- registered AnyUp — so left-click did waypoint/dismiss while /targetexact never
+-- fired (and users saw "You can't do that right now."). RareScanner registers
+-- AnyUp+AnyDown; Plumber pins useOnKeyDown=false. We do both, and only handle
+-- PostClick on mouse-up so dual registration doesn't double-track / double-hide.
+-- Do NOT SetCVar in PreClick — fights ActionKeyDown and is blocked in combat.
+local function Popup_PostClick(self, button, down)
+	-- useOnKeyDown is forced false on the overlay; action + this hook belong on up.
+	if down then
+		return
 	end
-	self.prevUseKeyDown = nil
 
 	local f = self:GetParent()
 	if button == "LeftButton" then
@@ -552,12 +604,15 @@ local function BuildPopup()
 	-- the waypoint + dismiss happen in the safe PostClick post-hook. The button is
 	-- created once and never individually shown/hidden, so its visibility simply
 	-- follows the parent and we never touch a protected frame during combat.
+	--
+	-- useOnKeyDown=false + AnyUp/AnyDown: Cast On Key Down must not steal this
+	-- mouse click (see Popup_PostClick). Matches RareScanner / Plumber.
 	local secure = CreateFrame("Button", nil, f, "SecureActionButtonTemplate")
 	secure:SetAllPoints(f)
 	secure:SetFrameLevel(f:GetFrameLevel() + 1)
-	secure:RegisterForClicks("AnyUp")
+	secure:RegisterForClicks("AnyUp", "AnyDown")
 	secure:SetAttribute("type1", "macro")
-	secure:SetScript("PreClick", Popup_PreClick)
+	secure:SetAttribute("useOnKeyDown", false)
 	secure:SetScript("PostClick", Popup_PostClick)
 	secure:SetScript("OnEnter", function()
 		local b = C.Colors.brand
@@ -793,6 +848,10 @@ end
 -- Detection (VIGNETTE_MINIMAP_UPDATED handler)
 -- ---------------------------------------------------------------------------
 local function OnVignette(_, vignetteGUID)
+	if C_PetBattles and C_PetBattles.IsInBattle and C_PetBattles.IsInBattle() then
+		return
+	end
+
 	-- Cheapest possible filter first: we've already handled this GUID.
 	if not vignetteGUID or seen[vignetteGUID] then
 		return

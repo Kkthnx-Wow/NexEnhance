@@ -490,15 +490,12 @@ function AlertFrames:OnDisable()
 end
 
 function AlertFrames:OnSettingChanged(key, value)
-	NoTalkingHeads()
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			ClearTestFrames()
-			self:UnregisterModuleEvents()
-		end
-	elseif key == "stackSpacing" then
+		return
+	end
+	NoTalkingHeads()
+	if key == "stackSpacing" then
 		RefreshAlertLayout()
 	end
 end

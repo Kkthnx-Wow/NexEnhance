@@ -2,6 +2,155 @@
 
 ---
 
+## [1.6.0] — 2026-07-09
+
+### Added
+
+- **Settings — Cursor:** new sidebar group for mouse extras (Ring + Trail).
+- **Cursor — Cursor Ring:** optional class-coloured GCD (and cast) cooldown
+  ring under the cursor — Midnight-safe DurationObjects, off by default; custom
+  soft donut art (`Media/Cursor/CursorRing.tga`) for chrome + swipe.
+- **Cursor — Cursor Trail:** optional soft glow trail that follows the mouse —
+  pooled ADD-blend dots, sleeps when idle, hides on mouselook/cinematics; class /
+  custom / rainbow colour; off by default (`Media/Cursor/CursorTrailDot.tga`).
+- **Nameplates — Target Resource:** optional class resource (combo points, holy
+  power, runes, shards, …) under the current target's nameplate — reparents
+  Blizzard's mechanic bar (no custom UnitPower math); off by default.
+- **Automation — Best Quest Reward:** gold coin on the highest vendor-value reward
+  choice (visual only; Quick Quest still auto-picks when enabled).
+- **Announcements — Pull Countdown:** `/pc [seconds]` (alias `/jenkins`) posts a
+  group chat pull timer; second `/pc` aborts. Default 10s; requires group, out of combat.
+- **Chat — Emojis:** optional autocomplete when typing `:` in chat — pick NexEnhance
+  `:name:` emojis from Blizzard's native dropdown (Tab / Enter / click). Toggle under
+  Chat Emojis settings; uses the same texture set as inline chat emojis.
+- **Chat — Emojis:** class icon set (`:dk:`, `:dh:`, `:mage:`, …) for all 13 classes.
+- **Chat — Emojis:** revamp to Unicode-style `Media/Emojis` assets — Slack `:shortcode:`
+  names, classic ASCII emoticons (`:)`, `:-D`, `<3`, …), and class aliases aligned
+  with the new texture set.
+- **Unit Frames — Unit Frame Text:** optional **White Name and Level** for HUD
+  frames (player, target, focus, boss, pet, ToT, standard party portraits; compact
+  raid/party unchanged).
+
+### Fixed
+
+- **Cursor — Cursor Trail:** slow mouse moves now leave a trail — spacing accumulates
+  from the last emitted dot instead of resetting every frame.
+- **Cursor — Cursor Trail:** no streak across mouselook/combat-only gaps; paint loop
+  sleeps while suppressed; live Offset X/Y re-anchors without wiping the trail.
+- **Cursor — Cursor Ring:** secret-safe `IsZero` checks; refresh GCD/cast when enabled
+  mid-cooldown; enable lifecycle no longer double-fires OnEnable/OnDisable.
+- **Nameplates — Target Resource:** clearing target restores Blizzard's personal-plate
+  class bar (no longer orphaned on the previous nameplate).
+- **Miscellaneous — Exp / Rep Bar:** guard XP/honor/azerite arithmetic and tooltip
+  percent text when values are secret; StatusBar still receives raw values.
+- **Chat:** `OnDisable` tears down whisper sound/invite listeners and `UIScaleApplied`;
+  sticky whisper restored; secure hooks gated with `IsEnabled()`.
+- **Miscellaneous — Loot Roll:** do not compare secret `GetLootRollTimeLeft` values.
+- **Unit Frames — Player Cast Bar:** secret-safe `IsShown` / `ShouldShowCastBar` checks.
+- **Action Bars:** clear mouseover fade `OnUpdate` + `activeFades` on disable.
+- **Maps — Minimap:** `OnDisable` tears down pulse/clicker/bin events and SettingChanged
+  callbacks; cluster footprint hooks gate on `IsEnabled()`.
+- **Maps — World Map:** `OnDisable` stops coords/fade OnUpdate; Maximize/fade hooks gate
+  on module enable.
+- **Miscellaneous — AFK Camera:** `OnDisable` unregisters frame events and model OnUpdate;
+  re-enable rebinds cleanly.
+- **Tooltip:** core + ID/icons/mount/reagents/ilvl hooks gate on `Tooltip:IsEnabled()`.
+- **Skins — Missing Stats:** hook handlers + `PLAYER_REGEN_ENABLED` gate/teardown on disable.
+- **Core — Settings:** modules no longer double-call `OnEnable`/`OnDisable` from
+  `OnSettingChanged("enable")` (`ApplyModuleSetting` already owns lifecycle) —
+  automation, DataText, unit frames, nameplates, action bars, inventory, misc.
+- **Maps — Map Reveal / Wowhead Links:** `OnDisable` hides reveal tiles / link boxes
+  live; enable lifecycle no longer double-fires Setup.
+- **Automation — Auto Hide Tracker:** re-enable re-registers the secure state driver
+  (Setup is one-shot; UpdateDriver must run again after disable).
+- **Core — Commands:** `/nex toggle` uses `ApplyModuleSetting` (runs OnEnable/OnDisable).
+- **Core — Settings:** fractional sliders no longer show float noise (`0.45000001788139`
+  → `0.45`) — label formatter inferred from step size.
+- **Core — Settings:** `/nex config`, Escape-menu NexEnhance, and keybinds no longer
+  call `OpenSettingsPanel` in combat (`ADDON_ACTION_BLOCKED`) — opens after combat ends.
+- **Core — Commands:** `/nex version` (aliases `/nex ver`, `/nex build`) prints addon
+  version, TOC Interface, client patch, build, build date, tocversion, locale, project.
+- **Core — Chat prefix:** `F.Print` uses blue **Nex** + gold **Enhance** (matches TOC
+  title); login line is `Loaded.  /nex  v1.6.0` instead of a full brand-blue sentence.
+- **Minimap — Collect Buttons:** stop sweeping HandyNotes map pins into the tray
+  (Midnight uses `HandyNotes_MidnightPinNN`; the old pattern only matched dotted names).
+  Already-collected pins are released on the next scan; `/reload` restores any pin art
+  the tray already reskinned.
+- **Miscellaneous — AFK Camera:** use `SetUIVisibility` (Alt+Z path) instead of
+  `UIParent:Hide()` so PlayerFrame health text is not updated with secret values.
+- **Automation — Auction Search History:** close the recent-search dropdown when the
+  Auction House (or its search bar) hides — it was parented to `UIParent` and could
+  stay on screen after closing the AH.
+- **Action Bars — Equipped Item Border:** stop the green equipped glow sticking after
+  gear swaps — read Blizzard's border visibility from the secure `Update()` pass
+  instead of calling `IsEquippedAction` from tainted code (secret boolean), and
+  refresh on `PLAYER_EQUIPMENT_CHANGED`.
+- **Unit Frames — Unit Frame Text:** with **White Name and Level** on, **Level Colours**
+  now swaps the default yellow difficulty band to white instead of disabling tinting.
+- **Chat — Emojis:** nose emoticons (`:-)`, `:-D`, …) were never replaced — a bad
+  `:%` filter in `BuildReplacementList` skipped them; removed.
+- **Chat — Emojis:** fix severe chat lag — emoticon scan no longer runs on every
+  line with a colon (timestamps, `Player: message`); broken `:*` / `=*` patterns
+  caused catastrophic regex backtracking; literals are escaped at build time with
+  plain-text prechecks before `gsub`.
+- **Chat — Emojis:** autocomplete dropdown rows were 14px tall with 16px icons —
+  taller rows, smaller aligned icons, and lighter token text so suggestions are
+  readable instead of smooshed.
+- **Chat — Emojis:** autocomplete source now follows Blizzard's
+  `AutoComplete_Update(text, cursor)` contract (shortcode parsed from text before
+  cursor); respects `disallowAutoComplete` during backspace.
+- **Tooltip — Item Level:** clear inspect unit/GUID when the tooltip hides so
+  delayed `NotifyInspect` / `UNIT_INVENTORY_CHANGED` cannot keep polling after hover.
+- **Tooltip — Hover Tips:** gate chat hyperlink handlers on module enable +
+  `hoverTips` (SetScript cannot be uninstalled).
+- **Action Bars:** hotkey abbreviation hook gates on `IsEnabled()`.
+- **Chat — Emojis:** bubble worker only registers events while bubbles are on;
+  autocomplete layout hook skips when the module is off; cursor uses byte index
+  with `strsub` (no UTF-8/byte mix).
+- **Unit Frames — Player Cast Bar:** clear driver `OnUpdate` on deactivate;
+  reattach on wake.
+- **Announcements — Rare Alert:** left-click target failed when Cast On Key Down
+  was on — secure overlay only listened for mouse-up while the CVar requires
+  mouse-down. Now forces `useOnKeyDown=false` and registers AnyUp+AnyDown
+  (RareScanner / Plumber pattern); drop the PreClick CVar flip.
+
+---
+
+## [1.5.8] — 2026-07-07
+
+Performance and lifecycle fixes from the UI audit.
+
+### Fixed
+
+- **Unit Frames — Class Colours:** debounce refresh work and ignore `UNIT_FACTION` /
+  threat / connection events for units outside target, focus, pet, party, and boss
+  frames (stops raid-wide event storms from repainting the HUD every tick).
+- **Unit Frames — Target Frame Layout:** same unit filtering and debounced refresh for
+  `UNIT_FACTION`; re-install hooks when toggled on in settings without `/reload`.
+- **Nameplates — Reaction Colors:** stop falling back to a full visible-plate rescan
+  when a unit event targets a non-nameplate token; debounce post-combat refresh.
+- **Action Bars — Extra Quest Button:** clear `OnUpdate` when disabled; skip per-frame
+  work while hidden; restore the handler when re-enabled.
+- **Automation — Cancel Bad Buffs:** debounce `UNIT_AURA` sweeps (0.25s) so aura spam
+  does not run a full buff scan on every fire.
+- **Miscellaneous — Popup QoL:** guard merchant `info.price` with `F.NotSecret` before
+  affordability math (Midnight combat loot).
+- **Skins — Chat Bubbles:** `OnDisable` unregisters worker events and stops the poll
+  `OnUpdate` (no background work while disabled).
+- **Core — Settings:** toggling a module off in the options panel now calls `OnDisable`
+  (and `OnEnable` when turned back on) so teardown hooks run without `/reload`.
+- **Core — Player context:** refresh `C.Player.name` / realm / key at database init so
+  chat filter and quest indicator never compare against a nil load-time name.
+- **Filters — Chat Filter / Nameplates — Quest Indicator:** read the player name from
+  `C.Player` at use time instead of caching at file load.
+- **DataText — Stats:** fix hidden addon memory total when the memory tooltip caps rows
+  (sum loaded addons beyond the limit, not wrong `infoTable` indices).
+- **DataText — Friends:** show `+N online…` when the roster exceeds **Max Friends**;
+  invalidate cached roster on `CHAT_MSG_SYSTEM` friend online/offline (ElvUI pattern).
+- **DataText — Guild:** `F.IsSecret` guard on class name in tooltip colour helper.
+
+---
+
 ## [1.5.7] — 2026-07-05
 
 ElvUI-style chat emoji textures.
@@ -18,6 +167,29 @@ ElvUI-style chat emoji textures.
   Trade (`CHANNEL2`), and Local Defense (`CHANNEL3`).
 - **Core — Media:** `C.Media.Emojis` table maps all shipped emoji texture paths.
 - **Core — `F.ChatTexture`:** shared inline |T| helper for chat icons and emojis.
+- **Automation — Quick Join:** **Show Leader Region** (default on) — tags Group
+  Finder leaders whose realm locale differs from yours (`MX`, `OCE`, `DE`, etc.).
+- **Core — Reset helpers:** `F.GetSecondsUntilDailyReset/WeeklyReset`, server offset,
+  and `GetTimeToTime` (SavedInstances-style guards on unreliable `GetQuestResetTime`).
+- **DataText — Clock:** tooltip countdowns refresh every second while hovered; daily
+  reset omits bogus values in instances/DST; `/nex debug clock` prints reset diagnostics.
+- **DataText — Clock:** saved raid/dungeon lockouts capped at five per section; hold
+  **SHIFT** for the full list (live refresh while the key is held).
+- **DataText — Clock (legacy invasions):** Legion invasion and BfA faction assault
+  timers anchor from live area POIs (same validation as LegionInvasionTimer /
+  BFAInvasionTimer), persist across sessions, import those addons' SavedVariables
+  when present, and show upcoming Legion windows in the SHIFT tooltip.
+- **Inventory — Mail:** Collect Gold and Take All follow Blizzard Open-All rules —
+  skip GM/COD mail, wait on `C_Mail.IsCommandPending`, use `HasInboxItem`, stop when
+  bags are full, and recover when the inbox size changes mid-sweep.
+
+### Removed
+
+- **Action Bars — Fishing Button:** removed; Blizzard does not expose fishable-water or
+  facing checks to addons (only internal cast validation), so a reliable “show near water”
+  button is not possible without false positives/negatives.
+- **Unit Frames — Range Fade:** removed (unreliable with Blizzard party/target frame hooks and
+  Midnight secret range booleans).
 
 ### Fixed
 
@@ -32,6 +204,38 @@ ElvUI-style chat emoji textures.
   `GetTextColor()` (e.g. party blue on instance chat).
 - **Chat — Channels:** fix channel abbreviation for leader tags (`[Party Leader]`
   → `[PL]`, `[Instance Leader]` → `[IL]`, etc.); gsub callback had captures swapped.
+- **Skins — Chat Bubbles:** guard `CHAT_MSG_MONSTER_*` and other instance chat
+  payloads with `F.IsSecret` before comparing or normalizing message text.
+- **Miscellaneous — Loot Roll:** fix async item-level callback indexing nil global
+  `barByRollID` (local declared after `ApplyBarItemLevel`).
+- **Automation — Quick Join:** auto-accept applicants now clicks Blizzard's invite
+  button instead of calling protected `C_LFGList.InviteApplicant()` directly.
+- **Automation — Quick Join:** optional **Show Leader Region** — orange locale tag
+  (e.g. `MX`, `OCE`, `DE`) on Premade Group rows and tooltip when the leader's
+  realm locale differs from yours; uses Blizzard realm-list metadata plus
+  `GetCurrentRegionName()` / `GetRealmName()` for your context.
+- **Announcements — Rare Alert:** explicit NPC/event vignette atlases (Tormentors,
+  Demon Invasion, etc.), RareScanner false-positive NPC ignore list, skip duplicate
+  chat announces (Plumber-style), no alerts during pet battles.
+- **Announcements — Rare Alert:** duplicate-announce guard no longer blocks on the
+  addon's own auto chat link (`[name (coords)]`); only another player's map-pin share.
+- **Maps — Minimap:** button collector rescans when addons load or you change zones
+  (late LibDBIcon buttons no longer require `/reload`); tray toggle hides when empty;
+  minimap clicker no longer blocks the toggle; guard against double-skinning a button;
+  right-click no longer vanishes tray icons (addons often `:Hide()` ldb buttons on
+  right-click — tray re-shows them and only left-click closes the pop-out).
+- **Tooltip:** EllesmereUI-style unit identity (`data.guid` + clean raid/party tokens)
+  so M+/item level work on secure frame hovers; dedupe target/M+/NPC lines on refresh;
+  item-level inspect tracks the visible tooltip GUID and backs off during manual inspect.
+- **Announcements — Quest Notification:** batch multiple accepts (and completions from
+  the same log tick) into one raid/party line; dedupe duplicate `QUEST_ACCEPTED` within
+  10s; optional **Batch Announcements** toggle (default on); truncates with “and N more”
+  when chat length would overflow.
+- **Announcements — Quest Notification:** **Announce World Quests** toggle (default off);
+  profession crafting orders stay silent; WQ accepts tagged in chat when enabled.
+- **Announcements — Quest Notification:** world quests no longer slip through when the
+  toggle is off — `IsWorldQuest()` can lag on `QUEST_ACCEPTED`, so detection also uses
+  quest tag info and classification, with a one-tick defer before announcing accepts.
 
 ---
 
@@ -1777,6 +1981,7 @@ the default UI and gets out of your way.
 
 ---
 
+[1.6.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.6.0
 [1.5.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.5.0
 [1.4.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.4.0
 [1.3.0]: https://github.com/Kkthnx-Wow/NexEnhance/releases/tag/v1.3.0

@@ -207,7 +207,6 @@ local function RestoreDefaultKeywords()
 	ns.global.chatFilter.keywordVersion = DEFAULT_KEYWORD_VERSION
 end
 
-local MyName = C.Player.name
 
 -- ---------------------------------------------------------------------------
 -- Spam filtering
@@ -269,7 +268,7 @@ local function GetFilterResult(event, msg, name, flag, guid)
 	local cfg = ns.db.chatFilter
 
 	-- Never filter yourself, GMs or developers.
-	if name == MyName or (event == "CHAT_MSG_WHISPER" and flag == "GM") or flag == "DEV" then
+	if name == C.Player.name or (event == "CHAT_MSG_WHISPER" and flag == "GM") or flag == "DEV" then
 		return
 	end
 

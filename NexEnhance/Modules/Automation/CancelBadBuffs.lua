@@ -59,6 +59,10 @@ local eventHandles = {}
 -- Reused scratch tables so a sweep never allocates (guide: wipe/reuse, don't {}).
 local badIndices, badNames = {}, {}
 
+local scheduleSweep = F.Debounce(0.25, function()
+	CancelBadBuffs:Sweep()
+end)
+
 function CancelBadBuffs:Sweep()
 	if not ns.db.cancelBadBuffs.enable then
 		return
@@ -114,7 +118,7 @@ function CancelBadBuffs:Sweep()
 end
 
 function CancelBadBuffs:UNIT_AURA()
-	self:Sweep()
+	scheduleSweep()
 end
 
 function CancelBadBuffs:PLAYER_REGEN_ENABLED()
@@ -146,14 +150,10 @@ function CancelBadBuffs:OnDisable()
 	self:UnregisterModuleEvents()
 end
 
-function CancelBadBuffs:OnSettingChanged(key, value)
+function CancelBadBuffs:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:RegisterModuleEvents()
-			self:Sweep()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 
@@ -162,6 +162,7 @@ function CancelBadBuffs:OnEnable()
 		return
 	end
 	self:RegisterModuleEvents()
+	self:Sweep()
 end
 
 function CancelBadBuffs:RegisterOptions(category, builder)

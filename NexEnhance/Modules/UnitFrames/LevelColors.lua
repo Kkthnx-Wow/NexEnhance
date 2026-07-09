@@ -66,6 +66,10 @@ local UNKNOWN_COLOR = RED_FONT_COLOR or CreateColor(1, 0.1, 0.1)
 local GetCreatureDifficultyColor = GetCreatureDifficultyColor or GetQuestDifficultyColor
 local IsSecret = F.IsSecret
 
+-- White Name and Level: keep difficulty tints (red/orange/green/grey) but swap
+-- Blizzard's default yellow band (GetRelativeDifficultyColor "difficult") for white.
+local WHITE_NEUTRAL = CreateColor(1, 1, 1)
+
 ns:RegisterDefaults({
 	levelColors = {
 		enable = true,
@@ -77,6 +81,36 @@ local LevelColors = ns:NewModule("LevelColors", "levelColors", { group = "unitfr
 
 local eventHandles = {}
 local eventsRegistered = false
+
+local function WhiteNameLevelEnabled()
+	local uft = ns.db.unitFrameText
+	return uft and uft.enable and uft.whiteNameLevel
+end
+
+-- Mirrors GetRelativeDifficultyColor's yellow "difficult" bucket (level within ~4 below
+-- to ~2 above player). White mode replaces only that default — not red/orange/green/grey.
+local function IsDefaultYellowDifficultyBand(creatureLevel)
+	local playerLevel = UnitEffectiveLevel("player")
+	if IsSecret(playerLevel) or IsSecret(creatureLevel) or not playerLevel or not creatureLevel then
+		return false
+	end
+	local levelDiff = creatureLevel - playerLevel
+	return levelDiff >= -4 and levelDiff < 3
+end
+
+local function GetLevelDifficultyColor(creatureLevel)
+	if not GetCreatureDifficultyColor then
+		return nil
+	end
+	local color = GetCreatureDifficultyColor(creatureLevel)
+	if not color then
+		return color
+	end
+	if WhiteNameLevelEnabled() and IsDefaultYellowDifficultyBand(creatureLevel) then
+		return WHITE_NEUTRAL
+	end
+	return color
+end
 
 -- ---------------------------------------------------------------------------
 -- Region resolution
@@ -123,10 +157,7 @@ local function GetUnitLevel(unit)
 end
 
 local function ColorLevelText(levelText, level)
-	if not GetCreatureDifficultyColor then
-		return
-	end
-	local color = GetCreatureDifficultyColor(level)
+	local color = GetLevelDifficultyColor(level)
 	if color then
 		levelText:SetVertexColor(color.r, color.g, color.b)
 	end
@@ -136,7 +167,7 @@ end
 -- classification markers in a single SetText (white vertex colour underneath).
 -- Uses the shared F.RGBToHex helper rather than rebuilding the escape by hand.
 local function GetDifficultyHex(level)
-	local color = GetCreatureDifficultyColor and GetCreatureDifficultyColor(level)
+	local color = GetLevelDifficultyColor(level)
 	if color then
 		return "|c" .. F.RGBToHex(color.r, color.g, color.b)
 	end
@@ -362,16 +393,11 @@ function LevelColors:OnDisable()
 end
 
 function LevelColors:OnSettingChanged(key)
-	self:InstallHooks()
 	if key == "enable" then
-		if ns.db.levelColors.enable then
-			self:RegisterModuleEvents()
-			Refresh()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
+	self:InstallHooks()
 	if ns.db.levelColors.enable then
 		Refresh()
 	else

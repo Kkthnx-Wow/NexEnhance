@@ -59,6 +59,9 @@ local types = {
 }
 
 function Tooltip:AddLineForID(id, linkType, noadd)
+	if not Tooltip:IsEnabled() or not ns.db.tooltip.showIDs then
+		return
+	end
 	if self:IsForbidden() then
 		return
 	end

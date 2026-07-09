@@ -597,7 +597,14 @@ function ns:OpenInstall()
 end
 
 function Install:OnEnable()
-	F.Print(format("%s  |cff909090%s|r", F.Colorize(L["Loaded. Type /nex for options."], "brand"), ns.version))
+	-- Prefix is already Nex (brand) + Enhance (gold). Body stays white so the
+	-- name colours read; version is muted gold like TOC "Enhance".
+	F.Print(format(
+		"|cffffffff%s|r  |cffaaaaaa/nex|r  |c%sv%s|r",
+		L["Loaded."],
+		C.HeaderHex,
+		ns.version or "?"
+	))
 
 	if ns.global and not ns.global.installed then
 		C_Timer.After(1.5, function()

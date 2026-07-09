@@ -350,13 +350,7 @@ end
 
 function Module:OnSettingChanged(key, value)
 	if key == "enable" then
-		if value then
-			running = true
-			self:EnsureEvents()
-			self:Apply()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 	if key == "friendlyPlayerNameplates" then

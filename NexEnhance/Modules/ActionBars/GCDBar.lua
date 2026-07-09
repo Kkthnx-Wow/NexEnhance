@@ -77,18 +77,27 @@ local sparkTex
 -- ---------------------------------------------------------------------------
 -- Bar show / hide
 -- ---------------------------------------------------------------------------
+-- IsZero() can be Secret in combat — never branch on the raw return.
+-- nil (secret) → treat as non-zero so we don't wipe an active swipe mid-fight.
+local function DurationIsZero(durObj)
+	if not durObj then
+		return true
+	end
+	if not durObj.IsZero then
+		return false
+	end
+	local z = F.BooleanIsTrue(durObj:IsZero())
+	if z == nil then
+		return false
+	end
+	return z
+end
+
 local function IsGCDInactive()
 	if not C_Spell_GetSpellCooldownDuration then
 		return true
 	end
-	local durObj = C_Spell_GetSpellCooldownDuration(GCD_SPELL_ID)
-	if not durObj then
-		return true
-	end
-	if durObj.IsZero and durObj:IsZero() then
-		return true
-	end
-	return false
+	return DurationIsZero(C_Spell_GetSpellCooldownDuration(GCD_SPELL_ID))
 end
 
 local function StopPoll()
@@ -301,12 +310,8 @@ function GCDBar:OnDisable()
 end
 
 function GCDBar:OnSettingChanged(key, value)
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
 		return
 	end
 	GCDBar:ApplyLayout()

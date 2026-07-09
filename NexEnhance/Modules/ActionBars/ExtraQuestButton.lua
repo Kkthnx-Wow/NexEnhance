@@ -789,6 +789,10 @@ end
 -- Throttled per-frame work: only the range tint needs OnUpdate, plus a slow
 -- safety rescan. Both early-out cheaply when nothing is due.
 local function Button_OnUpdate(self, elapsed)
+	if not self:IsShown() then
+		return
+	end
+
 	if self.updateRange then
 		self.rangeTimer = (self.rangeTimer or 0) + elapsed
 		if not InCombatLockdown() and self.rangeTimer > TOOLTIP_UPDATE_TIME then
@@ -1044,6 +1048,9 @@ local function EnsureActive()
 		return
 	end
 	BuildButton()
+	if button then
+		button:SetScript("OnUpdate", Button_OnUpdate)
+	end
 	ActivateSecure()
 end
 
@@ -1111,6 +1118,7 @@ function EQB:OnDisable()
 	self:UnregisterModuleEvents()
 	self.pendingEnable = nil
 	if button then
+		button:SetScript("OnUpdate", nil)
 		button:Hide()
 	end
 end
@@ -1128,14 +1136,7 @@ end
 
 function EQB:OnSettingChanged(key, value)
 	if key == "enable" then
-		if value then
-			-- Build/activate now; nothing to tear down (a state-driven secure
-			-- button cannot be safely destroyed, so a reload is cleanest to
-			-- fully remove it - matches our other secure modules).
-			EnsureActive()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 

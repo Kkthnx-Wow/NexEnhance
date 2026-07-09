@@ -24,6 +24,9 @@ local C_Spell_GetSpellTexture = C_Spell.GetSpellTexture
 local newString = "0:0:64:64:5:59:5:59"
 
 function Tooltip:SetupTooltipIcon(icon)
+	if not Tooltip:IsEnabled() or not ns.db.tooltip.showIcons then
+		return
+	end
 	local title = icon and _G[self:GetName() .. "TextLeft1"]
 	local titleText = title and title:GetText()
 	if titleText and F.NotSecret(titleText) and not strfind(titleText, ":20:20:") then

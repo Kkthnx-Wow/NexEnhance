@@ -385,13 +385,9 @@ function RangeColors:OnDisable()
 	Deactivate()
 end
 
-function RangeColors:OnSettingChanged(key, value)
+function RangeColors:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			Activate()
-		else
-			Deactivate()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 

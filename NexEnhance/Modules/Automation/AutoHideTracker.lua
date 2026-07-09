@@ -293,11 +293,23 @@ function AutoHideTracker:Setup()
 end
 
 function AutoHideTracker:OnEnable()
-	ns:RegisterAddOnLoadedCallback("Blizzard_ObjectiveTracker", function()
-		AutoHideTracker:Setup()
-	end)
+	if not ns.db.autoHideTracker.enable then
+		return
+	end
+	-- One LOD wait for the session — re-enable must not stack callbacks.
+	if not self._lodRegistered then
+		self._lodRegistered = true
+		ns:RegisterAddOnLoadedCallback("Blizzard_ObjectiveTracker", function()
+			if AutoHideTracker:IsEnabled() then
+				AutoHideTracker:Setup()
+				AutoHideTracker:UpdateDriver()
+			end
+		end)
+	end
 	if C_AddOns_IsAddOnLoaded("Blizzard_ObjectiveTracker") then
 		self:Setup()
+		-- Setup is one-shot; re-enable after OnDisable must re-register the driver.
+		self:UpdateDriver()
 	end
 end
 
@@ -305,9 +317,9 @@ function AutoHideTracker:OnDisable()
 	self:UpdateDriver()
 end
 
-function AutoHideTracker:OnSettingChanged(key, value)
-	if key == "enable" and not value then
-		self:OnDisable()
+function AutoHideTracker:OnSettingChanged(key)
+	if key == "enable" then
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 	self:UpdateDriver()

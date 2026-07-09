@@ -621,12 +621,9 @@ function MapPinNavigation:OnDisable()
 end
 
 function MapPinNavigation:OnSettingChanged(key, value)
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
+		return
 	elseif key == "waypointSlash" and value then
 		RegisterWaypointSlash()
 	elseif key == "showEta" and not value then

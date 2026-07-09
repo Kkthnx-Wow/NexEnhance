@@ -196,6 +196,9 @@ local playerCoordsFmt = PLAYER .. classColorStr .. ": %.1f, %.1f"
 local playerNoneFmt = PLAYER .. classColorStr .. ": --, --"
 
 local function UpdateCoords(self, elapsed)
+	if not WorldMap:IsEnabled() or not cfg or not cfg.coordinates then
+		return
+	end
 	if not _G.WorldMapFrame:IsShown() then
 		return
 	end
@@ -228,7 +231,7 @@ end
 -- ---------------------------------------------------------------------------
 local function SetLargeWorldMap()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap then
+	if not WorldMap:IsEnabled() or not cfg or not cfg.smallMap then
 		return
 	end
 
@@ -248,7 +251,7 @@ end
 
 local function UpdateMaximizedSize()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap then
+	if not WorldMap:IsEnabled() or not cfg or not cfg.smallMap then
 		return
 	end
 
@@ -259,7 +262,7 @@ end
 
 local function SynchronizeDisplayState()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap then
+	if not WorldMap:IsEnabled() or not cfg or not cfg.smallMap then
 		return
 	end
 
@@ -274,7 +277,7 @@ end
 
 local function SetSmallWorldMap()
 	local wmf = _G.WorldMapFrame
-	if not cfg.smallMap or wmf:IsMaximized() then
+	if not WorldMap:IsEnabled() or not cfg or not cfg.smallMap or wmf:IsMaximized() then
 		return
 	end
 	AnchorMapToMover(wmf)
@@ -284,7 +287,7 @@ end
 -- Fade while moving
 -- ---------------------------------------------------------------------------
 local function MapShouldFade()
-	return cfg.fadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
+	return WorldMap:IsEnabled() and cfg and cfg.fadeWhenMoving and not _G.WorldMapFrame:IsMouseOver()
 end
 
 local function MapFadeOnUpdate(self, elapsed)
@@ -348,6 +351,9 @@ end
 
 -- Intercept Blizzard's frame fader so our predicate takes over for the map.
 local function UpdateMapFade(...)
+	if not WorldMap:IsEnabled() or not cfg or not cfg.enable then
+		return
+	end
 	local arg1, arg2 = ...
 
 	local frame
@@ -518,8 +524,23 @@ function WorldMap:OnEnable()
 	end
 end
 
-function WorldMap:OnSettingChanged()
+function WorldMap:OnDisable()
+	-- Small-map blackout clear + Maximize hooks need /reload to fully restore.
+	-- Stop live OnUpdate work so an off module isn't polling coords/fade.
+	StopMapFromFading()
+	SetCoordsShown(false)
+	local wmf = _G.WorldMapFrame
+	if wmf then
+		wmf:SetAlpha(1)
+	end
+end
+
+function WorldMap:OnSettingChanged(key)
 	cfg = ns.db.worldMap
+	-- ApplyModuleSetting owns enable lifecycle.
+	if key == "enable" then
+		return
+	end
 	if not cfg.enable then
 		return
 	end

@@ -45,6 +45,24 @@ local TargetFrameLayout = ns:NewModule("TargetFrameLayout", "targetFrameLayout",
 local eventHandles = {}
 local eventsRegistered = false
 
+local TARGET_LAYOUT_UNITS = {
+	target = true,
+	focus = true,
+}
+for i = 1, 5 do
+	TARGET_LAYOUT_UNITS["boss" .. i] = true
+end
+
+local function IsTargetLayoutUnit(unit)
+	return not unit or TARGET_LAYOUT_UNITS[unit] == true
+end
+
+local scheduleRefreshAll = F.Debounce(0, function()
+	if ns.db.targetFrameLayout.enable then
+		TargetFrameLayout:RefreshAll()
+	end
+end)
+
 -- Player: name TOPLEFT 88,-27 vs portrait TOPLEFT 24,-19 (60 wide) -> 4px gap, -8px Y.
 -- Target mirror: name TOPRIGHT to portrait TOPLEFT.
 local NAME_PORTRAIT_X = -4
@@ -232,11 +250,22 @@ function TargetFrameLayout:RegisterModuleEvents()
 		return
 	end
 	eventsRegistered = true
-	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshAll")
-	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "RefreshAll")
-	self:TrackEvent(eventHandles, "PLAYER_FOCUS_CHANGED", "RefreshAll")
-	self:TrackEvent(eventHandles, "UNIT_FACTION", "RefreshAll")
-	self:TrackEvent(eventHandles, "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshAll")
+	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "ScheduleRefreshAll")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "ScheduleRefreshAll")
+	self:TrackEvent(eventHandles, "PLAYER_FOCUS_CHANGED", "ScheduleRefreshAll")
+	self:TrackEvent(eventHandles, "UNIT_FACTION", "ScheduleRefreshAllUnit")
+	self:TrackEvent(eventHandles, "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "ScheduleRefreshAll")
+end
+
+function TargetFrameLayout:ScheduleRefreshAll()
+	scheduleRefreshAll()
+end
+
+function TargetFrameLayout:ScheduleRefreshAllUnit(unit)
+	if unit and not IsTargetLayoutUnit(unit) then
+		return
+	end
+	scheduleRefreshAll()
 end
 
 function TargetFrameLayout:UnregisterModuleEvents()
@@ -260,11 +289,8 @@ end
 
 function TargetFrameLayout:OnSettingChanged(key)
 	if key == "enable" then
-		if ns.db.targetFrameLayout.enable then
-			self:RegisterModuleEvents()
-		else
-			self:UnregisterModuleEvents()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 	self:RefreshAll()
 end

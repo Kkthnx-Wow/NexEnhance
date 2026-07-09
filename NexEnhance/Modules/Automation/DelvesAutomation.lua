@@ -138,13 +138,10 @@ function DelvesAutomation:OnDisable()
 	UnsubscribeChoice()
 end
 
-function DelvesAutomation:OnSettingChanged()
-	if db().enable then
-		EnsureDelveGate():Enable()
-	elseif delveGate then
-		delveGate:Disable()
-	else
-		UnsubscribeChoice()
+function DelvesAutomation:OnSettingChanged(key)
+	if key == "enable" then
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

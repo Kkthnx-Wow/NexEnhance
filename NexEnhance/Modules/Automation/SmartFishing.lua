@@ -202,13 +202,10 @@ function SmartFishing:OnDisable()
 	StopSmartFishing()
 end
 
-function SmartFishing:OnSettingChanged(key, value)
+function SmartFishing:OnSettingChanged(key)
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
+		return
 	end
 end
 

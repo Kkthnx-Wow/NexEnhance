@@ -21,7 +21,7 @@
 --]]
 
 local _, ns = ...
-local F, L = ns.F, ns.L
+local F, C, L = ns.F, ns.C, ns.L
 
 -- Localised hot globals / APIs.
 local C_NamePlate = C_NamePlate
@@ -35,7 +35,6 @@ local IsSecret = F.IsSecret
 local match, format, tonumber = string.match, string.format, tonumber
 local ipairs, pairs = ipairs, pairs
 
-local PLAYER_NAME = UnitName("player")
 
 local LINE_TITLE = Enum.TooltipDataLineType.QuestTitle -- 17
 local LINE_PLAYER = Enum.TooltipDataLineType.QuestPlayer -- 18
@@ -189,7 +188,7 @@ local function Widget_UpdateQuest(self)
 			if not CanAccess(l.leftText) then
 				break
 			end
-			local isPlayer = l.leftText == PLAYER_NAME
+			local isPlayer = l.leftText == C.Player.name
 			i = i + 1
 			l = lines[i]
 			while l and l.type == LINE_OBJECTIVE and CanAccess(l.completed) do
@@ -556,15 +555,9 @@ function Module:OnQuestLogChanged()
 	end
 end
 
-function Module:OnSettingChanged(key, value)
+function Module:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			running = true
-			self:EnsureEvents()
-			self:Apply()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 	if running then

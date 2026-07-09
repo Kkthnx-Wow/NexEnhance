@@ -75,7 +75,13 @@ local function StripInlineTextures(text)
 end
 
 local function NormalizeBubbleText(text)
-	if not text or text == "" then
+	if not text then
+		return ""
+	end
+	if F.IsSecret(text) then
+		return ""
+	end
+	if text == "" then
 		return ""
 	end
 	text = F.StripColorCodes(text)
@@ -94,7 +100,13 @@ local function GetChatTypeColor(chatType)
 end
 
 local function RecordBubbleMessage(event, message)
-	if not message or message == "" or F.IsSecret(message) then
+	if not message then
+		return
+	end
+	if F.IsSecret(message) then
+		return
+	end
+	if message == "" then
 		return
 	end
 	if not ChatTypeGroupInverted then
@@ -131,7 +143,17 @@ local function MatchPendingMessage(chatBubble, displayKey, emojiSrcKey)
 end
 
 local function ResolveBubbleChatType(chatBubble, displayText)
-	if not displayText or displayText == "" or F.IsSecret(displayText) then
+	if not displayText then
+		chatBubble.__nexBubbleKey = nil
+		chatBubble.__nexChatType = nil
+		return nil
+	end
+	if F.IsSecret(displayText) then
+		chatBubble.__nexBubbleKey = nil
+		chatBubble.__nexChatType = nil
+		return nil
+	end
+	if displayText == "" then
 		chatBubble.__nexBubbleKey = nil
 		chatBubble.__nexChatType = nil
 		return nil
@@ -204,6 +226,10 @@ local function ReskinBubble(chatBubble)
 
 	local str = frame.String
 	local text = str and str.GetText and str:GetText()
+	if text and F.IsSecret(text) then
+		UpdateBubbleColors(chatBubble, frame, chatBubble.__nexChatType)
+		return
+	end
 	local chatType = ResolveBubbleChatType(chatBubble, text)
 	UpdateBubbleColors(chatBubble, frame, chatType)
 end
@@ -248,6 +274,15 @@ local function CreateWorker()
 	end
 end
 
+local function EnsureWorkerEvents()
+	if not worker then
+		return
+	end
+	for event in pairs(BUBBLE_EVENT_CVARS) do
+		worker:RegisterEvent(event)
+	end
+end
+
 local FONT_REDUCTION = 4
 local function ShrinkBubbleFont()
 	local font = _G.ChatBubbleFont
@@ -267,7 +302,16 @@ function ChatBubbles:OnEnable()
 		return
 	end
 	CreateWorker()
+	EnsureWorkerEvents()
 	ShrinkBubbleFont()
+end
+
+function ChatBubbles:OnDisable()
+	if worker then
+		worker:UnregisterAllEvents()
+		worker:SetScript("OnUpdate", nil)
+		worker:Hide()
+	end
 end
 
 function ChatBubbles:RegisterOptions(category, builder)

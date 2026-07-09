@@ -8,6 +8,8 @@
 	  - auto-dismisses the throwaway "informational"/expired LFG popups
 	  - shows the leader's M+/PvP rating on each result, with a cross-faction
 	    crest, and trims the long "Zone:" activity prefix
+	  - optional locale region tag (MX, OCE, DE, etc.) when the leader's realm
+	    locale differs from yours (Blizzard realm-list metadata)
 	  - a one-time HelpTip pointing out the double-click shortcut (F.ShowHelpTip)
 
 	Blizzard_GroupFinder is load-on-demand — we don't touch LFGListFrame at file
@@ -20,11 +22,13 @@ local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
 
 local select = select
+local format = string.format
 local gsub = string.gsub
 local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
 local GetTime = GetTime
 local IsAltKeyDown = IsAltKeyDown
+local InCombatLockdown = InCombatLockdown
 local UnitIsGroupLeader = UnitIsGroupLeader
 local StaticPopup_Hide = StaticPopup_Hide
 local StaticPopupSpecial_Hide = StaticPopupSpecial_Hide
@@ -33,9 +37,10 @@ local HideUIPanel = HideUIPanel
 local C_Timer_After = C_Timer.After
 local C_LFGList_GetSearchResultInfo = C_LFGList and C_LFGList.GetSearchResultInfo
 local C_LFGList_GetActivityInfoTable = C_LFGList and C_LFGList.GetActivityInfoTable
-local C_LFGList_InviteApplicant = C_LFGList and C_LFGList.InviteApplicant
+local C_LFGList_GetActivityFullName = C_LFGList and C_LFGList.GetActivityFullName
 local C_ChallengeMode_GetDungeonScoreRarityColor = C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor
 local IsAddOnLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
+local CreateAtlasMarkup = _G.CreateAtlasMarkup
 
 local HEADER_COLON = _G["HEADER_COLON"] or ":"
 local LE_PARTY_CATEGORY_HOME = _G["LE_PARTY_CATEGORY_HOME"] or 1
@@ -46,20 +51,35 @@ local HIGHLIGHT_FONT_COLOR = HIGHLIGHT_FONT_COLOR
 -- muted and the score itself rarity-coloured.
 local GRAY = ("|cff%02x%02x%02x"):format(C.Colors.gray[1] * 255, C.Colors.gray[2] * 255, C.Colors.gray[3] * 255)
 local SCORE_FORMAT = GRAY .. "(%s) |r%s"
-
--- Full texture paths so the per-row search-result update never concatenates.
-local FACTION_LOGO = { [0] = "Interface\\Timer\\Horde-Logo", [1] = "Interface\\Timer\\Alliance-Logo" }
+local REGION_FORMAT = "|cff%02x%02x%02x[%s]|r %s"
 
 ns:RegisterDefaults({
 	quickJoin = {
 		enable = false,
 		autoAccept = false, -- persisted state of the on-frame "Auto-accept" check
 		leaderScore = true,
+		leaderRegion = true,
 		autoHide = true,
 	},
 })
 
+-- Cross-faction leader crest (inline atlas markup on the activity line).
+local FACTION_ATLAS = { [0] = "questlog-questtypeicon-horde", [1] = "questlog-questtypeicon-alliance" }
+local FACTION_LOGO_SIZE = 16
+
+local function GetFactionPrefix(info)
+	if not (ns.db.quickJoin.leaderScore and info and not info.crossFactionListing) then
+		return ""
+	end
+	local atlas = FACTION_ATLAS[info.leaderFactionGroup]
+	if not atlas or not CreateAtlasMarkup then
+		return ""
+	end
+	return CreateAtlasMarkup(atlas, FACTION_LOGO_SIZE, FACTION_LOGO_SIZE) .. " "
+end
+
 local QuickJoin = ns:NewModule("QuickJoin", "quickJoin", { group = "automation", title = L["Quick Join"], order = 35, since = "1.2.9" })
+local RealmCatalog = ns.RealmCatalog
 
 local eventHandles = {}
 local eventsRegistered = false
@@ -125,59 +145,111 @@ local function QueuePopupHide(popup)
 end
 
 -- ---------------------------------------------------------------------------
--- Leader rating + cross-faction crest on each search result
+-- Leader rating, region tag, and cross-faction crest on each search result
 -- ---------------------------------------------------------------------------
-local function ShowLeaderScore(self)
-	if not ns.db.quickJoin.enable or not ns.db.quickJoin.leaderScore then
+local function GetBaseActivityName(info)
+	if not info or not F.NotSecret(info.activityIDs) or not C_LFGList_GetActivityFullName then
+		return
+	end
+	local activityName = C_LFGList_GetActivityFullName(info.activityIDs[1], nil, info.isWarMode)
+	if not activityName or F.IsSecret(activityName) then
+		return
+	end
+	return gsub(activityName, ".-" .. HEADER_COLON, "")
+end
+
+local function EnhanceSearchEntry(self)
+	if not ns.db.quickJoin.enable then
+		return
+	end
+	if not (ns.db.quickJoin.leaderScore or ns.db.quickJoin.leaderRegion) then
 		return
 	end
 
 	local resultID = self.resultID
 	local info = resultID and C_LFGList_GetSearchResultInfo and C_LFGList_GetSearchResultInfo(resultID)
-	-- activityIDs can be a 12.0 secret value; bail rather than index it.
-	if not info or not F.NotSecret(info.activityIDs) then
+	if not info then
 		return
 	end
 
-	local activityInfo = C_LFGList_GetActivityInfoTable and C_LFGList_GetActivityInfoTable(info.activityIDs[1], nil, info.isWarMode)
-	if activityInfo then
-		local score = (activityInfo.isMythicPlusActivity and info.leaderOverallDungeonScore) or (activityInfo.isRatedPvpActivity and info.leaderPvpRatingInfo and info.leaderPvpRatingInfo.rating)
-		if score then
-			local oldName = self.ActivityName:GetText()
-			if F.NotSecret(oldName) then
-				oldName = gsub(oldName, ".-" .. HEADER_COLON, "") -- trim "Tazavesh:" etc.
-				self.ActivityName:SetFormattedText(SCORE_FORMAT, ColorScore(score), oldName)
-			end
-			if not self.nexCrossFactionLogo then
-				local logo = self:CreateTexture(nil, "OVERLAY")
-				logo:SetPoint("TOPLEFT", -6, 5)
-				logo:SetSize(24, 24)
-				self.nexCrossFactionLogo = logo
+	local activityName = GetBaseActivityName(info)
+	if not activityName then
+		return
+	end
+
+	local displayText = activityName
+
+	if ns.db.quickJoin.leaderRegion and RealmCatalog and info.leaderName and F.NotSecret(info.leaderName) then
+		local tag = RealmCatalog:GetLocaleTag(info.leaderName)
+		if tag then
+			displayText = format(REGION_FORMAT, C.Colors.orange[1] * 255, C.Colors.orange[2] * 255, C.Colors.orange[3] * 255, tag, displayText)
+		end
+	end
+
+	local factionPrefix = GetFactionPrefix(info)
+	if factionPrefix ~= "" then
+		displayText = factionPrefix .. displayText
+	end
+
+	if ns.db.quickJoin.leaderScore and F.NotSecret(info.activityIDs) then
+		local activityInfo = C_LFGList_GetActivityInfoTable and C_LFGList_GetActivityInfoTable(info.activityIDs[1], nil, info.isWarMode)
+		if activityInfo then
+			local pvpInfo = info.leaderPvpRatingInfo and info.leaderPvpRatingInfo[1]
+			local score = (activityInfo.isMythicPlusActivity and info.leaderOverallDungeonScore) or (activityInfo.isRatedPvpActivity and pvpInfo and pvpInfo.rating)
+			if score then
+				displayText = format(SCORE_FORMAT, ColorScore(score), displayText)
 			end
 		end
 	end
 
-	if self.nexCrossFactionLogo then
-		if info.crossFactionListing or not FACTION_LOGO[info.leaderFactionGroup] then
-			self.nexCrossFactionLogo:Hide()
-		else
-			self.nexCrossFactionLogo:SetTexture(FACTION_LOGO[info.leaderFactionGroup])
-			self.nexCrossFactionLogo:Show()
-		end
+	self.ActivityName:SetText(displayText)
+end
+
+local function AddLeaderRegionTooltip(tooltip, resultID)
+	if not (ns.db.quickJoin.enable and ns.db.quickJoin.leaderRegion and RealmCatalog) then
+		return
 	end
+	local info = resultID and C_LFGList_GetSearchResultInfo and C_LFGList_GetSearchResultInfo(resultID)
+	if not info or not info.leaderName or F.IsSecret(info.leaderName) then
+		return
+	end
+	local tag = RealmCatalog:GetLocaleTag(info.leaderName)
+	if not tag then
+		return
+	end
+	local realm = RealmCatalog:ParseLeaderRealm(info.leaderName)
+	local line = realm and format(L["Leader region: %s (%s)"], tag, realm) or format(L["Leader region: %s"], tag)
+	tooltip:AddLine(line, C.Colors.orange[1], C.Colors.orange[2], C.Colors.orange[3])
+	-- Blizzard's function already called Show(); relayout so the new line fits inside the frame.
+	tooltip:Show()
 end
 
 -- ---------------------------------------------------------------------------
 -- Auto-accept applicants (leader only), driven by the on-frame check box
 -- ---------------------------------------------------------------------------
 local lastInviteAt = 0
+local function GetInviteButton(button)
+	if button.InviteButtonSmall and button.InviteButtonSmall:IsShown() then
+		return button.InviteButtonSmall
+	end
+	return button.InviteButton
+end
+
 local function InviteApplicant(button)
-	if button.applicantID and button.InviteButton and button.InviteButton:IsEnabled() then
-		C_LFGList_InviteApplicant(button.applicantID)
+	if not button.applicantID then
+		return
+	end
+	local invite = GetInviteButton(button)
+	if invite and invite:IsEnabled() then
+		-- InviteApplicant is protected; route through Blizzard's row button (same as a manual click).
+		invite:Click()
 	end
 end
 
 function QuickJoin:LFG_LIST_APPLICANT_LIST_UPDATED()
+	if InCombatLockdown() then
+		return
+	end
 	if not (ns.db.quickJoin.enable and self.autoAcceptCheck and self.autoAcceptCheck:GetChecked()) then
 		return
 	end
@@ -245,6 +317,10 @@ function QuickJoin:Setup()
 	end
 	self.setupDone = true
 
+	if RealmCatalog then
+		RealmCatalog:RefreshPlayerContext()
+	end
+
 	-- One-shot nudge about the double-click shortcut, the first time the sign-up
 	-- button shows. F.ShowHelpTip handles the "once per account" bookkeeping.
 	LFGListFrame.SearchPanel.SignUpButton:HookScript("OnShow", function()
@@ -278,8 +354,9 @@ function QuickJoin:Setup()
 		end
 	end)
 
-	-- Leader rating on results.
-	hooksecurefunc("LFGListSearchEntry_Update", ShowLeaderScore)
+	-- Leader rating / region tags on results.
+	hooksecurefunc("LFGListSearchEntry_Update", EnhanceSearchEntry)
+	hooksecurefunc("LFGListUtil_SetSearchEntryTooltip", AddLeaderRegionTooltip)
 
 	-- Auto-accept applicants.
 	self:CreateAutoAcceptCheck()
@@ -341,25 +418,27 @@ function QuickJoin:OnDisable()
 	self:Stop()
 end
 
-function QuickJoin:OnSettingChanged(key, value)
+function QuickJoin:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:TrySetup()
-		else
-			self:Stop()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 
 function QuickJoin:OnEnable()
+	if RealmCatalog then
+		RealmCatalog:RefreshPlayerContext()
+	end
 	self:TrySetup()
 end
 
 function QuickJoin:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Join"], L["Double-click Group Finder results to apply, auto-invite applicants, hide throwaway LFG popups and show leader rating."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Join"], L["Double-click Group Finder results to apply, auto-invite applicants, hide throwaway LFG popups, and show leader rating and region tags."])
 	local _, scoreInit = builder:Checkbox(category, self, "leaderScore", L["Show Leader Rating"], L["Show the group leader's Mythic+/PvP rating on each search result, with a cross-faction crest."])
+	local _, regionInit = builder:Checkbox(category, self, "leaderRegion", L["Show Leader Region"], L["Show a locale region tag (e.g. MX, OCE, DE) on Group Finder results when the leader is on a different realm locale than yours."])
 	local _, hideInit = builder:Checkbox(category, self, "autoHide", L["Auto-hide LFG Popups"], L["Automatically dismiss the throwaway informational and expired-listing LFG popups."])
 
 	builder:DependsOn(scoreInit, enableInit)
+	builder:DependsOn(regionInit, enableInit)
 	builder:DependsOn(hideInit, enableInit)
 end

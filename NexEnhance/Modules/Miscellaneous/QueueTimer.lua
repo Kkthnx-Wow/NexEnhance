@@ -416,13 +416,10 @@ function QueueTimer:OnEnable()
 	self:RegisterModuleEvents()
 end
 
-function QueueTimer:OnSettingChanged(key, value)
+function QueueTimer:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:RegisterModuleEvents()
-		else
-			self:OnDisable()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
 	end
 end
 

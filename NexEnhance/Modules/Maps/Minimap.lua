@@ -428,8 +428,23 @@ local function CreatePulse()
 	fader:SetSmoothing("OUT")
 end
 
-local function UpdatePulse()
+local function StopPulse()
 	if not (pulseFrame and pulseAnim) then
+		return
+	end
+	if pulseAnim:IsPlaying() then
+		pulseAnim:Stop()
+	end
+	pulseFrame:SetAlpha(0)
+	pulseFrame:Hide()
+end
+
+local function UpdatePulse()
+	if not Module:IsEnabled() or not (pulseFrame and pulseAnim) then
+		return
+	end
+	if not (ns.db.minimap.mailPulse and ns.db.minimap.border) then
+		StopPulse()
 		return
 	end
 
@@ -450,11 +465,7 @@ local function UpdatePulse()
 			pulseAnim:Play()
 		end
 	else
-		if pulseAnim:IsPlaying() then
-			pulseAnim:Stop()
-		end
-		pulseFrame:SetAlpha(0)
-		pulseFrame:Hide()
+		StopPulse()
 	end
 end
 
@@ -567,13 +578,19 @@ local function ApplyClusterFootprint()
 end
 
 local function ScheduleClusterFootprint()
+	-- hooksecurefunc can't uninstall — gate so Layout/SetSize stay idle when off.
+	if not Module:IsEnabled() then
+		return
+	end
 	if footprintPending then
 		return
 	end
 	footprintPending = true
 	C_Timer.After(0, function()
 		footprintPending = false
-		ApplyClusterFootprint()
+		if Module:IsEnabled() then
+			ApplyClusterFootprint()
+		end
 	end)
 end
 
@@ -1048,7 +1065,16 @@ local binBlacklist = {
 
 -- Name patterns to leave alone: our own widgets and map "pins" that must stay
 -- anchored to the world map rather than being parked.
-local binIgnorePatterns = { "^NexEnhance", "GatherMatePin", "HandyNotes%.-Pin", "TTMinimapButton" }
+-- HandyNotes Midnight uses HandyNotes_MidnightPinNN (underscore, not dot).
+local binIgnorePatterns = {
+	"^NexEnhance",
+	"^HandyNotes",
+	"GatherMatePin",
+	"TomTomPin",
+	"SilverDragon",
+	"HereBeDragons",
+	"TTMinimapButton",
+}
 
 local binToggleAnchor = {
 	[1] = { "BOTTOMLEFT", -7, -7 },
@@ -1066,8 +1092,11 @@ local binPopAnchor = {
 
 local binFrame, binToggle
 local binCollected, binShown = {}, {}
-local binScanCount, binAutoCloseTimer = 0, nil
-local OpenBin, CloseBin, LayoutBin, StartAutoClose, StopAutoClose
+local binScanCount, binAutoCloseTimer, binAddonScanTimer = 0, nil, nil
+local binEventsHooked = false
+local binAddonLoadedHandler, binEnteringWorldHandler
+local pulseMailHandler, pulseCalendarHandler, pulsePEWHandler, clusterPEWHandler
+local OpenBin, CloseBin, LayoutBin, StartAutoClose, StopAutoClose, SyncBinToggleVisibility, ScheduleBinAddonScan, ScanBinButtons
 
 local function RefreshButtonBinPosition()
 	if not binToggle then
@@ -1087,9 +1116,42 @@ local function RefreshButtonBinPosition()
 end
 
 local function BinIgnored(name)
+	if not name then
+		return
+	end
 	for i = 1, #binIgnorePatterns do
 		if strmatch(name, binIgnorePatterns[i]) then
 			return true
+		end
+	end
+	-- Numbered map pins (HandyNotes_MidnightPin19, …) — not LDB minimap buttons.
+	if not strfind(strupper(name), "BUTTON") and strmatch(name, "Pin%d+$") then
+		return true
+	end
+end
+
+local function ReleaseBinButton(button, index)
+	if not button then
+		return
+	end
+	button:SetParent(Minimap)
+	button.nexBinned = nil
+	button.nexParked = nil
+	if button.nexBinBorder then
+		button.nexBinBorder:Hide()
+		button.nexBinBorder = nil
+	end
+	if index then
+		tremove(binCollected, index)
+	end
+end
+
+local function PurgeIgnoredBinButtons()
+	for i = #binCollected, 1, -1 do
+		local button = binCollected[i]
+		local name = button and button.GetName and button:GetName()
+		if name and BinIgnored(name) then
+			ReleaseBinButton(button, i)
 		end
 	end
 end
@@ -1154,6 +1216,11 @@ local function SkinBinRegions(frame, button, name)
 end
 
 local function SkinBinButton(button, name)
+	if button.nexBinned then
+		return
+	end
+	button.nexBinned = true
+
 	SkinBinRegions(button, button, name)
 
 	-- Some addons (e.g. AllTheThings) draw their icon on a child frame rather
@@ -1184,10 +1251,24 @@ local function ParkBinButtons()
 			if button:HasScript("OnDragStop") then
 				button:SetScript("OnDragStop", nil)
 			end
-			-- Close the tray after a click so it doesn't linger.
+			-- Close the tray after a left-click; right-click is often a config/menu
+			-- that hides the ldb icon — restore visibility while it stays in our tray.
 			if button:HasScript("OnClick") then
-				button:HookScript("OnClick", function()
-					CloseBin()
+				button:HookScript("OnClick", function(self, clickButton)
+					if clickButton == "LeftButton" then
+						CloseBin()
+					end
+					C_Timer.After(0, function()
+						if not self.nexParked then
+							return
+						end
+						if self.IsShown and not self:IsShown() then
+							self:Show()
+						end
+						if binFrame and binFrame:IsShown() then
+							LayoutBin()
+						end
+					end)
 				end)
 			end
 
@@ -1217,7 +1298,8 @@ end
 LayoutBin = function()
 	wipe(binShown)
 	for _, b in ipairs(binCollected) do
-		if b and b.IsShown and b:IsShown() then
+		if b and b.nexParked then
+			b:Show()
 			tinsert(binShown, b)
 		end
 	end
@@ -1245,10 +1327,39 @@ LayoutBin = function()
 	end
 end
 
-local function ScanBinButtons()
+SyncBinToggleVisibility = function()
+	if not binToggle then
+		return
+	end
+	if #binCollected > 0 then
+		binToggle:Show()
+	else
+		binToggle:Hide()
+		if binFrame and binFrame:IsShown() then
+			CloseBin()
+		end
+	end
+end
+
+ScheduleBinAddonScan = function()
+	if not binFrame or not ns.db.minimap.collectButtons then
+		return
+	end
+	if binAddonScanTimer then
+		binAddonScanTimer:Cancel()
+	end
+	binAddonScanTimer = C_Timer.NewTimer(1, function()
+		binAddonScanTimer = nil
+		ScanBinButtons(true)
+	end)
+end
+
+ScanBinButtons = function(rescan)
 	if not ns.db.minimap.collectButtons or not binFrame then
 		return
 	end
+
+	PurgeIgnoredBinButtons()
 
 	local num = Minimap:GetNumChildren()
 	local kids = { Minimap:GetChildren() }
@@ -1264,10 +1375,17 @@ local function ScanBinButtons()
 	end
 
 	ParkBinButtons()
+	SyncBinToggleVisibility()
+
+	if rescan then
+		return
+	end
 
 	binScanCount = binScanCount + 1
 	if binScanCount < BIN_SCAN_PASSES then
-		C_Timer.After(BIN_SCAN_INTERVAL, ScanBinButtons)
+		C_Timer.After(BIN_SCAN_INTERVAL, function()
+			ScanBinButtons()
+		end)
 	end
 end
 
@@ -1296,18 +1414,20 @@ CloseBin = function()
 	UIFrameFadeOut(binFrame, 0.25, binFrame:GetAlpha(), 0)
 	C_Timer.After(0.25, function()
 		if binFrame and binFrame:GetAlpha() <= 0.05 then
+			binFrame:SetAlpha(0)
 			binFrame:Hide()
 		end
 	end)
 end
 
 OpenBin = function()
-	if not binFrame then
+	if not binFrame or #binCollected == 0 then
 		return
 	end
 	PlaySound(BIN_SOUND)
-	LayoutBin()
+	binFrame:SetAlpha(0)
 	binFrame:Show()
+	LayoutBin()
 	UIFrameFadeIn(binFrame, 0.25, 0, 1)
 	StartAutoClose()
 end
@@ -1320,7 +1440,10 @@ local function CreateCollectButtons()
 	binToggle = CreateFrame("Button", nil, Minimap)
 	binToggle.nexBinSelf = true
 	binToggle:SetSize(16, 16)
-	binToggle:SetFrameLevel(Minimap:GetFrameLevel() + 6)
+	binToggle:SetFrameLevel(Minimap:GetFrameLevel() + 8)
+	if minimapClicker then
+		minimapClicker:SetFrameLevel(Minimap:GetFrameLevel() + 2)
+	end
 	binToggle:SetAlpha(0.25)
 	binToggle.icon = binToggle:CreateTexture(nil, "ARTWORK")
 	binToggle.icon:SetAllPoints()
@@ -1355,6 +1478,10 @@ local function CreateCollectButtons()
 		GameTooltip:SetOwner(self, "ANCHOR_LEFT")
 		GameTooltip:AddLine(L["Minimap Buttons"], HDR[1], HDR[2], HDR[3])
 		GameTooltip:AddLine(L["Collect addon minimap buttons into a pop-out tray."], LBL[1], LBL[2], LBL[3], true)
+		local n = #binCollected
+		if n > 0 then
+			GameTooltip:AddLine(format(L["%d buttons in tray"], n), 1, 1, 1)
+		end
 		GameTooltip:Show()
 	end)
 	binToggle:SetScript("OnLeave", function(self)
@@ -1373,6 +1500,19 @@ local function CreateCollectButtons()
 	end)
 
 	ScanBinButtons()
+
+	if not binEventsHooked then
+		binEventsHooked = true
+		-- Named so OnDisable can UnregisterEvent the same refs.
+		binAddonLoadedHandler = function()
+			ScheduleBinAddonScan()
+		end
+		binEnteringWorldHandler = function()
+			ScheduleBinAddonScan()
+		end
+		ns:RegisterEvent("ADDON_LOADED", binAddonLoadedHandler)
+		ns:RegisterEvent("PLAYER_ENTERING_WORLD", binEnteringWorldHandler)
+	end
 end
 
 -- Required by LibDBIcon-style libraries so minimap buttons hug a square edge.
@@ -1500,66 +1640,123 @@ function Module:OnEnable()
 	if not minimapClicker then
 		minimapClicker = CreateFrame("Frame", "NexEnhanceMinimapClicker", Minimap)
 		minimapClicker:SetAllPoints(Minimap)
-		minimapClicker:EnableMouse(true)
-		minimapClicker:EnableMouseWheel(true)
 		if minimapClicker.SetPassThroughButtons then
 			minimapClicker:SetPassThroughButtons("LeftButton")
 		end
 		if minimapClicker.SetPropagateMouseMotion then
 			minimapClicker:SetPropagateMouseMotion(true)
 		end
-		minimapClicker:SetScript("OnMouseWheel", OnMouseWheel)
-		minimapClicker:SetScript("OnMouseUp", function(_, button)
-			if button == "MiddleButton" and cfg.microMenu then
-				ShowMicroMenu()
-			elseif button == "RightButton" then
-				ShowTrackingMenu()
-			end
-		end)
-
-		-- These gestures are completely invisible (no button, no label), so a
-		-- first-hover nudge is the only way the player ever learns they exist.
-		-- Build the line list from cfg so we never promise a disabled gesture.
-		minimapClicker:SetScript("OnEnter", function(self)
-			local lines = { L["MinimapTipTracking"] }
-			if cfg.microMenu then
-				tinsert(lines, L["MinimapTipMenu"])
-			end
-			if cfg.easyVolume then
-				tinsert(lines, L["MinimapTipVolume"])
-			end
-			local text = L["Minimap shortcuts"] .. "\n" .. table.concat(lines, "\n")
-			local point = HelpTip and HelpTip.Point and HelpTip.Point.LeftEdgeCenter
-			F.ShowHelpTip(self, "MinimapGestures", text, { targetPoint = point })
-		end)
 	end
+	-- Re-bind every OnEnable — OnDisable clears scripts / hides the clicker.
+	minimapClicker:EnableMouse(true)
+	minimapClicker:EnableMouseWheel(true)
+	minimapClicker:Show()
+	minimapClicker:SetScript("OnMouseWheel", OnMouseWheel)
+	minimapClicker:SetScript("OnMouseUp", function(_, button)
+		if button == "MiddleButton" and cfg.microMenu then
+			ShowMicroMenu()
+		elseif button == "RightButton" then
+			ShowTrackingMenu()
+		end
+	end)
+	-- These gestures are completely invisible (no button, no label), so a
+	-- first-hover nudge is the only way the player ever learns they exist.
+	minimapClicker:SetScript("OnEnter", function(self)
+		local lines = { L["MinimapTipTracking"] }
+		if cfg.microMenu then
+			tinsert(lines, L["MinimapTipMenu"])
+		end
+		if cfg.easyVolume then
+			tinsert(lines, L["MinimapTipVolume"])
+		end
+		local text = L["Minimap shortcuts"] .. "\n" .. table.concat(lines, "\n")
+		local point = HelpTip and HelpTip.Point and HelpTip.Point.LeftEdgeCenter
+		F.ShowHelpTip(self, "MinimapGestures", text, { targetPoint = point })
+	end)
 
 	Declutter()
 	CreateBorder()
 	ReskinRegions()
+	ns:UnregisterCallback("SettingChanged.timeText.enable", RefreshIndicatorPosition)
 	ns:RegisterCallback("SettingChanged.timeText.enable", RefreshIndicatorPosition)
 	ReskinQueueStatus()
 	CreatePulse()
 
 	if cfg.collectButtons then
 		CreateCollectButtons()
+		if binToggle then
+			binToggle:Show()
+		end
 	end
+	ns:UnregisterCallback("SettingChanged.minimap.buttonBinPosition", RefreshButtonBinPosition)
 	ns:RegisterCallback("SettingChanged.minimap.buttonBinPosition", RefreshButtonBinPosition)
 
 	-- Keep the Edit Mode selection box flush with the square minimap (deferred
 	-- so we run after Blizzard's ResizeLayoutFrame pass, not during it).
 	HookClusterFootprint()
-	ns:RegisterEvent("PLAYER_ENTERING_WORLD", ScheduleClusterFootprint)
+	clusterPEWHandler = clusterPEWHandler or ScheduleClusterFootprint
+	ns:UnregisterEvent("PLAYER_ENTERING_WORLD", clusterPEWHandler)
+	ns:RegisterEvent("PLAYER_ENTERING_WORLD", clusterPEWHandler)
 
 	-- Mirror the minimap options onto the native Minimap Edit Mode dialog.
 	SetupEditModeSettings()
 
 	-- Status pulse events (the pulse colours the border, so it needs both on).
 	-- Pending mail / calendar invites only - no combat flash.
+	pulseMailHandler = pulseMailHandler or UpdatePulse
+	pulseCalendarHandler = pulseCalendarHandler or UpdatePulse
+	pulsePEWHandler = pulsePEWHandler or UpdatePulse
+	ns:UnregisterEvent("UPDATE_PENDING_MAIL", pulseMailHandler)
+	ns:UnregisterEvent("CALENDAR_UPDATE_PENDING_INVITES", pulseCalendarHandler)
+	ns:UnregisterEvent("PLAYER_ENTERING_WORLD", pulsePEWHandler)
 	if cfg.mailPulse and cfg.border then
-		ns:RegisterEvent("UPDATE_PENDING_MAIL", UpdatePulse)
-		ns:RegisterEvent("CALENDAR_UPDATE_PENDING_INVITES", UpdatePulse)
-		ns:RegisterEvent("PLAYER_ENTERING_WORLD", UpdatePulse)
+		ns:RegisterEvent("UPDATE_PENDING_MAIL", pulseMailHandler)
+		ns:RegisterEvent("CALENDAR_UPDATE_PENDING_INVITES", pulseCalendarHandler)
+		ns:RegisterEvent("PLAYER_ENTERING_WORLD", pulsePEWHandler)
+	end
+end
+
+function Module:OnDisable()
+	-- Square mask / GetMinimapShape / border art need /reload to fully restore —
+	-- we only stop live work (events, pulse, clicker, callbacks) here.
+	ns:UnregisterCallback("SettingChanged.timeText.enable", RefreshIndicatorPosition)
+	ns:UnregisterCallback("SettingChanged.minimap.buttonBinPosition", RefreshButtonBinPosition)
+
+	if clusterPEWHandler then
+		ns:UnregisterEvent("PLAYER_ENTERING_WORLD", clusterPEWHandler)
+	end
+	if pulseMailHandler then
+		ns:UnregisterEvent("UPDATE_PENDING_MAIL", pulseMailHandler)
+		ns:UnregisterEvent("CALENDAR_UPDATE_PENDING_INVITES", pulseCalendarHandler)
+		ns:UnregisterEvent("PLAYER_ENTERING_WORLD", pulsePEWHandler)
+	end
+	if binAddonLoadedHandler then
+		ns:UnregisterEvent("ADDON_LOADED", binAddonLoadedHandler)
+		ns:UnregisterEvent("PLAYER_ENTERING_WORLD", binEnteringWorldHandler)
+		binEventsHooked = false
+	end
+
+	StopPulse()
+	if minimapClicker then
+		minimapClicker:SetScript("OnMouseWheel", nil)
+		minimapClicker:SetScript("OnMouseUp", nil)
+		minimapClicker:SetScript("OnEnter", nil)
+		minimapClicker:EnableMouse(false)
+		minimapClicker:EnableMouseWheel(false)
+		minimapClicker:Hide()
+	end
+	if binFrame then
+		binFrame:Hide()
+	end
+	if binToggle then
+		binToggle:Hide()
+	end
+end
+
+function Module:OnSettingChanged(key)
+	-- ApplyModuleSetting owns enable lifecycle.
+	if key == "enable" then
+		return
 	end
 end
 

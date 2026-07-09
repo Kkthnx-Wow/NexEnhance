@@ -191,6 +191,48 @@ local function AdjustCharacterModelZoom()
 	end
 end
 
+local function FitCharacterEnchantAnimationToInset()
+	local CharacterFrame = _G.CharacterFrame
+	local CharacterModelScene = _G.CharacterModelScene
+	local inset = CharacterFrame and CharacterFrame.Inset
+	local enchant = CharacterModelScene and CharacterModelScene.GearEnchantAnimation
+	if not (inset and enchant and enchant.FrameFX and enchant.TopFrame) then
+		return
+	end
+
+	local width = inset:GetWidth()
+	local height = inset:GetHeight()
+	if not (width and height and width > 0 and height > 0) then
+		return
+	end
+
+	-- Blizzard's enchant animation is authored as a centered 128x128 widget.
+	-- Our custom CharacterFrame layout is wider, so pin and size it to the inset
+	-- (minus tiny border offsets) or the glow hugs the middle instead of the frame.
+	enchant:ClearAllPoints()
+	enchant:SetPoint("TOPLEFT", inset, "TOPLEFT", 1, -1)
+	enchant:SetPoint("BOTTOMRIGHT", inset, "BOTTOMRIGHT", -1, 1)
+	enchant.FrameFX:ClearAllPoints()
+	enchant.FrameFX:SetAllPoints(enchant)
+	enchant.TopFrame:ClearAllPoints()
+	enchant.TopFrame:SetAllPoints(enchant)
+
+	local glowTextures = {
+		enchant.FrameFX.PurpleGlow,
+		enchant.FrameFX.BlueGlow,
+		enchant.FrameFX.Sparkles,
+		enchant.FrameFX.Mask,
+		enchant.TopFrame.Frame,
+	}
+	for i = 1, #glowTextures do
+		local tex = glowTextures[i]
+		if tex then
+			tex:ClearAllPoints()
+			tex:SetAllPoints(enchant)
+		end
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- Character frame layout (post-UpdateSize)
 -- ---------------------------------------------------------------------------
@@ -282,8 +324,12 @@ function CharacterFrames:StyleCharacterFrame()
 
 	CharacterModelScene:SetSize(0, 0)
 	CharacterModelScene:ClearAllPoints()
-	CharacterModelScene:SetPoint("TOPLEFT", CharacterFrame.Inset, 4, -4)
-	CharacterModelScene:SetPoint("BOTTOMRIGHT", CharacterFrame.Inset, -4, 4)
+	-- Keep the model scene inside Blizzard's paper-doll inner frame (not the full
+	-- inset). When we stretched the scene to the whole inset, GearEnchantAnimation
+	-- (anchored to CharacterModelScene center) looked offset/oversized.
+	CharacterModelScene:SetPoint("TOPLEFT", CharacterFrame.Inset, 46, -4)
+	CharacterModelScene:SetPoint("BOTTOMRIGHT", CharacterFrame.Inset, -47, 31)
+	FitCharacterEnchantAnimationToInset()
 
 	if not self.charUpdateHooked then
 		self.charUpdateHooked = true
@@ -293,6 +339,7 @@ function CharacterFrames:StyleCharacterFrame()
 			-- status bar code to fail when comparing health/power (secret values). Slay the taint!
 			C_Timer.After(0, function()
 				CharacterFrames:ApplyCharacterLayout()
+				FitCharacterEnchantAnimationToInset()
 			end)
 		end)
 	end
@@ -328,6 +375,7 @@ function CharacterFrames:StyleCharacterFrame()
 		hooksecurefunc("PaperDollFrame_SetPlayer", function()
 			if ShouldStyle() then
 				AdjustCharacterModelZoom()
+				FitCharacterEnchantAnimationToInset()
 				RefreshPawnButtons()
 			end
 		end)
@@ -342,6 +390,7 @@ function CharacterFrames:StyleCharacterFrame()
 
 	self:ApplyCharacterLayout()
 	AdjustCharacterModelZoom()
+	FitCharacterEnchantAnimationToInset()
 	RefreshPawnButtons()
 end
 

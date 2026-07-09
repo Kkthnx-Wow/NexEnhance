@@ -95,6 +95,7 @@ local function RegisterEditBox(editBox)
 	end
 	editBox.__nexRegistered = true
 	chatEditBoxes[#chatEditBoxes + 1] = editBox
+	ns:TriggerCallback("Chat.EditBoxRegistered", editBox)
 end
 
 local function UpdateEditBoxAnchor(editBox)
@@ -1093,12 +1094,24 @@ function Chat:OnInitialize()
 	})
 end
 
+-- Whisper handlers are anonymous wrappers — store the same refs for UnregisterEvent.
+local function OnWhisperEvent(event, ...)
+	if not Chat:IsEnabled() then
+		return
+	end
+	Chat:PlayWhisperSound(event, ...)
+	Chat:FlashOnWhisper(event, ...)
+	Chat:OnChatWhisper(event, ...)
+end
+
 function Chat:OnEnable()
 	cfg = ns.db.chat
 	if not cfg.enable then
 		return
 	end
 
+	-- Idempotent: unregister first so a double OnEnable doesn't stack listeners.
+	ns:UnregisterCallback("UIScaleApplied", "OnUIScaleApplied", self)
 	ns:RegisterCallback("UIScaleApplied", "OnUIScaleApplied", self)
 
 	for i = 1, NUM_CHAT_WINDOWS do
@@ -1106,25 +1119,46 @@ function Chat:OnEnable()
 	end
 
 	-- Handle temporary (whisper/combat-log popout) windows as they open.
-	hooksecurefunc("FCF_OpenTemporaryWindow", function()
-		for _, chatFrameName in ipairs(CHAT_FRAMES) do
-			local frame = _G[chatFrameName]
-			if frame and frame.isTemporary then
-				self:SetupChat(frame)
+	-- hooksecurefunc can't uninstall — gate with IsEnabled() inside SetupChat callers.
+	if not self._tempWindowHooked then
+		self._tempWindowHooked = true
+		hooksecurefunc("FCF_OpenTemporaryWindow", function()
+			if not Chat:IsEnabled() then
+				return
 			end
-		end
-	end)
+			for _, chatFrameName in ipairs(CHAT_FRAMES) do
+				local frame = _G[chatFrameName]
+				if frame and frame.isTemporary then
+					Chat:SetupChat(frame)
+				end
+			end
+		end)
+	end
 
-	if cfg.tabChannelSwitch and _G["ChatEdit_CustomTabPressed"] then
-		hooksecurefunc("ChatEdit_CustomTabPressed", Chat.UpdateTabChannelSwitch)
+	if cfg.tabChannelSwitch and _G["ChatEdit_CustomTabPressed"] and not self._tabSwitchHooked then
+		self._tabSwitchHooked = true
+		-- Blizzard calls this as ChatEdit_CustomTabPressed(editBox); our method
+		-- expects self = editBox (same as the old bare Chat.UpdateTabChannelSwitch hook).
+		hooksecurefunc("ChatEdit_CustomTabPressed", function(editBox)
+			if not Chat:IsEnabled() or not cfg or not cfg.tabChannelSwitch then
+				return
+			end
+			return Chat.UpdateTabChannelSwitch(editBox)
+		end)
 	end
 
 	-- The Combat Log frame is load-on-demand: selecting its tab loads
 	-- Blizzard_CombatLog and sets up its quick-button bar, which re-anchors the
 	-- shared edit box. Re-skin that frame (and re-apply the anchor) once it
 	-- exists so the box does not snap back below the tabs.
-	if cfg.editBoxTop and _G["FCF_SelectDockFrame"] then
-		hooksecurefunc("FCF_SelectDockFrame", UpdateAllEditBoxAnchors)
+	if cfg.editBoxTop and _G["FCF_SelectDockFrame"] and not self._dockSelectHooked then
+		self._dockSelectHooked = true
+		hooksecurefunc("FCF_SelectDockFrame", function(...)
+			if not Chat:IsEnabled() or not cfg or not cfg.editBoxTop then
+				return
+			end
+			UpdateAllEditBoxAnchors(...)
+		end)
 	end
 
 	SetupBNToast()
@@ -1132,19 +1166,30 @@ function Chat:OnEnable()
 
 	self:ChatWhisperSticky()
 
-	ns:RegisterEvent("CHAT_MSG_WHISPER", function(event, ...)
-		Chat:PlayWhisperSound(event, ...)
-		Chat:FlashOnWhisper(event, ...)
-		Chat:OnChatWhisper(event, ...)
-	end)
-	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", function(event, ...)
-		Chat:PlayWhisperSound(event, ...)
-		Chat:FlashOnWhisper(event, ...)
-		Chat:OnChatWhisper(event, ...)
-	end)
+	self._whisperHandler = self._whisperHandler or OnWhisperEvent
+	ns:UnregisterEvent("CHAT_MSG_WHISPER", self._whisperHandler)
+	ns:UnregisterEvent("CHAT_MSG_BN_WHISPER", self._whisperHandler)
+	ns:RegisterEvent("CHAT_MSG_WHISPER", self._whisperHandler)
+	ns:RegisterEvent("CHAT_MSG_BN_WHISPER", self._whisperHandler)
 
 	if cfg.fontSizeMenu then
 		SetupFontSizeMenu()
+	end
+end
+
+function Chat:OnDisable()
+	-- Sticky whisper is a ChatTypeInfo flag — restore Blizzard default (0).
+	if ChatTypeInfo["WHISPER"] then
+		ChatTypeInfo["WHISPER"].sticky = 0
+	end
+	if ChatTypeInfo["BN_WHISPER"] then
+		ChatTypeInfo["BN_WHISPER"].sticky = 0
+	end
+
+	ns:UnregisterCallback("UIScaleApplied", "OnUIScaleApplied", self)
+	if self._whisperHandler then
+		ns:UnregisterEvent("CHAT_MSG_WHISPER", self._whisperHandler)
+		ns:UnregisterEvent("CHAT_MSG_BN_WHISPER", self._whisperHandler)
 	end
 end
 

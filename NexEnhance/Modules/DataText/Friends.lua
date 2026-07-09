@@ -16,7 +16,7 @@ local F, C, L = ns.F, ns.C, ns.L
 
 local _G = _G
 local format = string.format
-local strmatch, gsub = string.match, string.gsub
+local strmatch, strfind, gsub = string.match, string.find, string.gsub
 local ipairs, pairs, sort, wipe, tonumber, tremove = ipairs, pairs, sort, wipe, tonumber, tremove
 
 local GameTooltip = GameTooltip
@@ -72,6 +72,13 @@ local clientSorted = {} -- client tokens in display order
 
 local AFK_TAG = format(" |cffFFFFFF[|r|cffFF9900%s|r|cffFFFFFF]|r", _G.AFK or "AFK")
 local DND_TAG = format(" |cffFFFFFF[|r|cffFF3333%s|r|cffFFFFFF]|r", _G.DND or "DND")
+
+-- Plain-text fragments from ERR_FRIEND_* for CHAT_MSG_SYSTEM roster invalidation (ElvUI pattern).
+local friendOnline, friendOffline
+if _G.ERR_FRIEND_ONLINE_SS and _G.ERR_FRIEND_OFFLINE_S then
+	friendOnline = gsub(_G.ERR_FRIEND_ONLINE_SS, "|Hplayer:%%s|h%[%%s%]|h", "")
+	friendOffline = gsub(_G.ERR_FRIEND_OFFLINE_S, "%%s", "")
+end
 
 -- Client display order and short tags for Battle.net friend grouping.
 local MOBILE = _G.BNET_FRIEND_TOOLTIP_MOBILE or "Mobile"
@@ -448,6 +455,14 @@ function FriendsText:BuildTooltip(button)
 				end
 			end
 		end
+		if shown >= limit then
+			break
+		end
+	end
+
+	if totalOnline > shown then
+		local count = totalOnline - shown
+		GameTooltip:AddLine(format("+%d %s...", count, FRIENDS_LIST_ONLINE or "online"), LBL.r, LBL.g, LBL.b)
 	end
 
 	if not shiftDown then
@@ -485,6 +500,17 @@ function FriendsText:BN_FRIEND_ACCOUNT_OFFLINE()
 end
 
 function FriendsText:BN_FRIEND_INFO_CHANGED()
+	dataValid = false
+	self:RefreshIfHovering()
+end
+
+function FriendsText:CHAT_MSG_SYSTEM(_, arg1)
+	if not friendOnline or not arg1 or F.IsSecret(arg1) then
+		return
+	end
+	if not strfind(arg1, friendOnline, 1, true) and not strfind(arg1, friendOffline, 1, true) then
+		return
+	end
 	dataValid = false
 	self:RefreshIfHovering()
 end
@@ -527,6 +553,7 @@ function FriendsText:RegisterModuleEvents()
 	self:TrackEvent(eventHandles, "BN_FRIEND_ACCOUNT_ONLINE", "BN_FRIEND_ACCOUNT_ONLINE")
 	self:TrackEvent(eventHandles, "BN_FRIEND_ACCOUNT_OFFLINE", "BN_FRIEND_ACCOUNT_OFFLINE")
 	self:TrackEvent(eventHandles, "BN_FRIEND_INFO_CHANGED", "BN_FRIEND_INFO_CHANGED")
+	self:TrackEvent(eventHandles, "CHAT_MSG_SYSTEM", "CHAT_MSG_SYSTEM")
 	self:TrackEvent(eventHandles, "MODIFIER_STATE_CHANGED", "MODIFIER_STATE_CHANGED")
 end
 
@@ -557,12 +584,10 @@ end
 function FriendsText:OnSettingChanged(key)
 	cfg = ns.db.friendsText
 	if key == "enable" then
-		if cfg.enable then
-			self:Create()
-		else
-			self:Stop()
-		end
-	elseif key == "maxFriends" then
+		-- ApplyModuleSetting owns enable lifecycle.
+		return
+	end
+	if key == "maxFriends" then
 		self:RefreshIfHovering()
 	end
 end

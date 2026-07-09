@@ -22,10 +22,10 @@ local C, L, F = ns.C, ns.L, ns.F
 -- Localised globals (hot-path friendly).
 local _G = _G
 local ipairs = ipairs
+local wipe = wipe
 local gsub = string.gsub
 local hooksecurefunc = hooksecurefunc
 local InCombatLockdown = InCombatLockdown
-local IsEquippedAction = C_ActionBar and C_ActionBar.IsEquippedAction
 local UnitExists = UnitExists
 local C_Timer = C_Timer
 -- NOTE: UIFrameFadeIn / UIFrameFadeOut are intentionally NOT used here.
@@ -119,7 +119,8 @@ local replaces = {
 local hotkeyCache = {}
 
 function ActionBars:UpdateHotKey(hotkey)
-	if not hotkey then
+	-- hooksecurefunc stays forever — gate when Action Bars is off.
+	if not self:IsEnabled() or not hotkey then
 		return
 	end
 
@@ -466,11 +467,11 @@ local function GetEquipGlow(button)
 	return glow
 end
 
--- Post-hook for ActionBarActionButtonMixin:Update (and our refresh pass). We
--- resolve the equipped state the same way Blizzard does (C_ActionBar.IsEquippedAction
--- on the paged slot) rather than reading our own hidden border, so toggling the
--- option back off cleanly restores the green border. Skip in combat — touching
--- secure action buttons taints them and blocks Blizzard's own SetShown/SetAttribute.
+-- Post-hook for ActionBarActionButtonMixin:Update (and our refresh pass). Blizzard
+-- sets Border show/hide in the same Update() immediately before this hook runs.
+-- Do NOT call C_ActionBar.IsEquippedAction here — SecretArguments
+-- AllowedWhenUntainted means tainted addon code can get a secret boolean and we
+-- would early-return with a stale glow still visible.
 local function ApplyEquipGlow(button)
 	if InCombatLockdown() then
 		pendingStyling = true
@@ -482,15 +483,15 @@ local function ApplyEquipGlow(button)
 		return
 	end
 
-	local action = button.GetPagedID and button:GetPagedID()
-	local equipped = action and IsEquippedAction and IsEquippedAction(action)
-	-- On 12.0 action state can read secret in combat/instances; never branch on a
-	-- secret boolean (it would error). Leave the current look untouched.
-	if F.IsSecret(equipped) then
+	local borderVisible = border:IsShown()
+	if F.IsSecret(borderVisible) then
+		if button.nexEquipGlow then
+			button.nexEquipGlow:Hide()
+		end
 		return
 	end
 
-	if ns.db.actionbars.equipGlow and equipped then
+	if ns.db.actionbars.equipGlow and borderVisible then
 		border:Hide()
 		local glow = GetEquipGlow(button)
 		if glow then
@@ -499,13 +500,10 @@ local function ApplyEquipGlow(button)
 		return
 	end
 
-	-- Glow disabled, or this slot isn't an equipped item: clear our glow. When the
-	-- option is off we also re-show Blizzard's green border (it may have been
-	-- hidden on an earlier pass while the option was on).
 	if button.nexEquipGlow then
 		button.nexEquipGlow:Hide()
 	end
-	if equipped then
+	if borderVisible then
 		border:SetVertexColor(0, 1.0, 0, 0.5)
 		border:Show()
 	end
@@ -750,6 +748,23 @@ local actionButtonSets = {
 	{ prefix = "PetActionButton", count = 10 },
 }
 
+local function RefreshEquippedGlowOnButtons()
+	if InCombatLockdown() then
+		pendingStyling = true
+		return
+	end
+	for _, set in ipairs(actionButtonSets) do
+		if set.equip then
+			for i = 1, set.count do
+				local button = _G[set.prefix .. i]
+				if button and button.Update then
+					button:Update()
+				end
+			end
+		end
+	end
+end
+
 function ActionBars:RefreshActionBarStyling()
 	if not self:IsEnabled() then
 		return
@@ -769,8 +784,9 @@ function ActionBars:RefreshActionBarStyling()
 			local button = _G[prefix .. i]
 			if button then
 				StyleActionButton(button, config)
-				if set.equip then
-					ApplyEquipGlow(button)
+				if set.equip and button.Update then
+					-- Update() runs Blizzard's equip border logic, then our post-hook.
+					button:Update()
 				end
 			end
 		end
@@ -871,6 +887,7 @@ function ActionBars:RegisterModuleEvents()
 	self:TrackEvent(eventHandles, "UPDATE_BINDINGS", "RefreshActionBarStyling")
 	self:TrackEvent(eventHandles, "ACTIONBAR_PAGE_CHANGED", "RefreshActionBarStyling")
 	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshActionBarStyling")
+	self:TrackEvent(eventHandles, "PLAYER_EQUIPMENT_CHANGED", "RefreshEquipGlow")
 	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED")
 	self:TrackEvent(eventHandles, "PLAYER_REGEN_DISABLED", "UpdateMouseoverVisibility")
 	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "UpdateMouseoverVisibility")
@@ -886,6 +903,18 @@ end
 
 function ActionBars:OnDisable()
 	self:UnregisterModuleEvents()
+	-- Stop in-flight mouseover fades so SetAlpha doesn't keep running after off.
+	wipe(activeFades)
+	if fadeFrame then
+		fadeFrame:SetScript("OnUpdate", nil)
+	end
+end
+
+function ActionBars:RefreshEquipGlow()
+	if not self:IsEnabled() then
+		return
+	end
+	RefreshEquippedGlowOnButtons()
 end
 
 -- Re-apply any scale, styling, or equip-glow change that was blocked in combat.

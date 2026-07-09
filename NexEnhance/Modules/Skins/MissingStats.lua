@@ -351,6 +351,9 @@ end
 -- only fall back to Blizzard's value instead of erroring.
 -- ---------------------------------------------------------------------------
 local function EnhanceItemLevel(statFrame, unit)
+	if not MissingStats:IsEnabled() then
+		return
+	end
 	if unit ~= "player" then
 		return
 	end
@@ -375,6 +378,9 @@ end
 -- Rating percentages: Blizzard rounds to a whole number; show two decimals.
 -- ---------------------------------------------------------------------------
 local function EnhancePercentage(statFrame, label, _, isPercentage)
+	if not MissingStats:IsEnabled() then
+		return
+	end
 	if not (isPercentage or label == STAT_HASTE) then
 		return
 	end
@@ -432,7 +438,7 @@ local function ColorItemLevel()
 end
 
 local function OnUpdateStats()
-	if InCombatLockdown() then
+	if not MissingStats:IsEnabled() or InCombatLockdown() then
 		return
 	end
 	AddMissingStatRows()
@@ -442,6 +448,9 @@ local function OnUpdateStats()
 end
 
 function MissingStats:PLAYER_REGEN_ENABLED()
+	if not self:IsEnabled() then
+		return
+	end
 	if extentPendingCombat then
 		extentPendingCombat = false
 		UpdateStatsScrollExtent()
@@ -459,16 +468,31 @@ function MissingStats:OnEnable()
 
 	EnsureStatsScrollFrame()
 
-	if type(PaperDollFrame_SetItemLevel) == "function" then
-		hooksecurefunc("PaperDollFrame_SetItemLevel", EnhanceItemLevel)
+	-- hooksecurefunc can't uninstall — handlers gate on IsEnabled().
+	if not self._hooksInstalled then
+		self._hooksInstalled = true
+		if type(PaperDollFrame_SetItemLevel) == "function" then
+			hooksecurefunc("PaperDollFrame_SetItemLevel", EnhanceItemLevel)
+		end
+		if type(PaperDollFrame_SetLabelAndText) == "function" then
+			hooksecurefunc("PaperDollFrame_SetLabelAndText", EnhancePercentage)
+		end
+		hooksecurefunc("PaperDollFrame_UpdateStats", OnUpdateStats)
 	end
-	if type(PaperDollFrame_SetLabelAndText) == "function" then
-		hooksecurefunc("PaperDollFrame_SetLabelAndText", EnhancePercentage)
-	end
-	hooksecurefunc("PaperDollFrame_UpdateStats", OnUpdateStats)
 	MissingStats:RegisterEvent("PLAYER_REGEN_ENABLED")
 end
 
+function MissingStats:OnDisable()
+	self:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	extentPendingCombat = false
+end
+
+function MissingStats:OnSettingChanged(key)
+	if key == "enable" then
+		return
+	end
+end
+
 function MissingStats:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Missing Stats"], L["Show the hidden character-sheet stats (attack power, weapon speed, spell power, regen, movement) and tidy the readouts (reload to disable)."])
+	builder:Checkbox(category, self, "enable", L["Enable Missing Stats"], L["Show the hidden character-sheet stats (attack power, weapon speed, spell power, regen, movement) and tidy the readouts (reload to fully restore Blizzard layout)."])
 end

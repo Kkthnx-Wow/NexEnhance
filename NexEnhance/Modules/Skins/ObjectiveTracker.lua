@@ -187,12 +187,8 @@ end
 
 -- Live re-tint when the class-colour toggle flips.
 function ObjectiveTracker:OnSettingChanged(key, value)
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
 		return
 	end
 	if key == "classColor" and self.trackers then

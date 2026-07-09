@@ -43,6 +43,124 @@ local BACKDROP = C.Backdrops.window
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.6.0",
+		date = "2026-07-09",
+		intro = "Cursor group (ring + trail), target-plate class resource, /pc pull countdown, and best-quest coin.",
+		sections = {
+			{ "Core", {
+				"Settings / keybinds / Edit Mode: defer OpenSettingsPanel until out of combat (fixes ADDON_ACTION_BLOCKED).",
+				"/nex version (ver, build): print addon + client patch/build/date/tocversion for bug reports.",
+				"Chat prefix: blue Nex + gold Enhance (TOC title); cleaner login line (Loaded. /nex vX.Y.Z).",
+				"Settings: new Cursor sidebar group (Ring + Trail moved out of Action Bars).",
+				"Settings: fractional sliders format cleanly (0.45 instead of 0.45000001788139).",
+			} },
+			{ "Cursor", {
+				"Cursor Ring: optional GCD (+ cast) under cursor; custom Media/Cursor/CursorRing.tga donut; off by default.",
+				"Cursor Ring: secret-safe IsZero; refresh when enabled mid-GCD/cast; enable lifecycle no longer double-fires.",
+				"Cursor Trail: soft glow mouse trail — pooled ADD dots, idle sleep, mouselook/cinematic hide; class/custom/rainbow; off by default.",
+				"Cursor Trail: slow moves leave a trail; no streak across suppress gaps; live offset re-anchors.",
+			} },
+			{ "Nameplates", {
+				"Target Resource: optional class resource under the current target's nameplate — reparents Blizzard's mechanic bar; off by default.",
+				"Target Resource: clearing target restores Blizzard's personal-plate class bar (no orphan on previous plate).",
+			} },
+			{ "Automation", {
+				"Best Quest Reward: gold coin on the highest vendor-value choice (visual only).",
+				"Auction Search History: close the focus dropdown when the Auction House closes (UIParent orphan).",
+				"Auto Hide Tracker: re-enable re-registers the secure state driver after disable.",
+			} },
+			{ "Announcements", {
+				"Pull Countdown: /pc [seconds] (alias /jenkins) group chat pull timer; second /pc cancels.",
+				"Rare Alert: left-click target works with Cast On Key Down — useOnKeyDown=false + AnyUp/AnyDown (no PreClick CVar flip).",
+			} },
+			{ "Action Bars", {
+				"Equipped Item Border: fix green glow sticking after gear changes — trust Blizzard border state from Update(), refresh on PLAYER_EQUIPMENT_CHANGED.",
+				"Hotkey abbreviate: gate SetText hook on IsEnabled() when Action Bars is off.",
+				"OnDisable clears mouseover fade OnUpdate and activeFades table.",
+			} },
+			{ "Chat", {
+				"Chat Emojis: optional autocomplete for :name: tokens using Blizzard's native dropdown (Tab / Enter / click).",
+				"Toggle under Chat Emojis; shares the same Media/Emojis texture set as inline replacements.",
+				"Chat Emojis: revamp — Unicode-style Media/Emojis names, Slack shortcodes + ASCII emoticons per research guide; class icons kept.",
+				"Chat Emojis: fix patterns with noses (:-) ) that were silently dropped by a bad :% filter in BuildReplacementList.",
+				"Chat Emojis: fix chat freeze/lag — hint scan on every colon removed; broken :* patterns fixed; literal precheck before gsub.",
+				"Chat Emojis: autocomplete layout — taller rows and 14px aligned icons (Blizzard rows are 14px; 16px icons clipped).",
+				"Chat Emojis: autocomplete matches Blizzard AutoComplete_Update(text, cursor); clears on disallowAutoComplete (backspace).",
+				"Chat Emojis: bubble events only while bubbles enabled; AC layout hook gated; byte cursor with strsub (no UTF-8 mix).",
+				"OnDisable tears down whisper listeners + UIScaleApplied; sticky whisper restored; hooks gated with IsEnabled().",
+			} },
+			{ "Tooltip", {
+				"Item Level: clear inspect state on tooltip hide — stop delayed NotifyInspect after hover ends.",
+				"Hover Tips: gate OnHyperlinkEnter/Leave on enable + hoverTips setting.",
+				"Core + ID/icons/mount/reagents/ilvl hooks gate on Tooltip:IsEnabled() when the module is off.",
+			} },
+			{ "Unit Frames", {
+				"Unit Frame Text: optional White Name and Level on HUD frames (incl. pet, ToT, party portraits); compact raid/party unchanged.",
+				"Unit Frame Text: target level no longer stays yellow when Level Colours is on — default difficulty band becomes white; red/orange/green/grey kept.",
+				"Player Cast Bar: clear OnUpdate on deactivate; reattach when waking.",
+				"Player Cast Bar: secret-safe IsShown / ShouldShowCastBar (fail closed when unreadable).",
+			} },
+			{ "Maps", {
+				"Minimap Collect Buttons: ignore HandyNotes map pins (Midnight underscore naming); release wrongly collected pins on scan.",
+				"Minimap: OnDisable tears down pulse/clicker/bin events; cluster footprint hooks gate on IsEnabled().",
+				"World Map: OnDisable stops coords/fade OnUpdate; Maximize/fade hooks gate on module enable.",
+				"Map Reveal / Wowhead Links: OnDisable hides tiles/boxes live; enable no longer double-fires Setup.",
+			} },
+			{ "Miscellaneous", {
+				"AFK Camera: hide game UI via SetUIVisibility (Alt+Z) instead of UIParent:Hide() — fixes Midnight TextStatusBar secret crash.",
+				"AFK Camera: OnDisable unregisters frame events + model OnUpdate; re-enable rebinds cleanly.",
+				"Exp / Rep Bar: secret-safe XP/honor/azerite math; bar still paints, percent text skips when unreadable.",
+				"Loot Roll: never compare secret GetLootRollTimeLeft — route to SetValue or clear on plain expiry.",
+			} },
+			{ "Skins", {
+				"Missing Stats: hook handlers + PLAYER_REGEN_ENABLED gate/teardown on disable.",
+			} },
+			{ "Core", {
+				"/nex toggle uses ApplyModuleSetting so OnEnable/OnDisable run (modules no longer stay live after toggle off).",
+				"Settings: modules no longer double-call OnEnable/OnDisable from OnSettingChanged(enable) — ApplyModuleSetting owns lifecycle (automation, DataText, unit frames, nameplates, action bars, inventory, misc).",
+			} },
+		},
+	},
+	{
+		version = "1.5.8",
+		date = "2026-07-07",
+		intro = "Performance and lifecycle fixes from the UI audit.",
+		sections = {
+			{ "Unit Frames", {
+				"Class Colours: debounce refresh; ignore faction/threat/connection events for units outside HUD frames.",
+				"Target Frame Layout: same unit filtering + debounced refresh; install hooks when toggled on in settings.",
+			} },
+			{ "Nameplates", {
+				"Reaction Colors: no full-plate rescan fallback on non-nameplate unit events; debounced post-combat refresh.",
+				"Quest Indicator: compare tooltip player lines against C.Player.name (not a load-time cache).",
+			} },
+			{ "Action Bars", {
+				"Extra Quest Button: clear OnUpdate when disabled; skip per-frame work while hidden.",
+			} },
+			{ "Automation", {
+				"Cancel Bad Buffs: debounce UNIT_AURA sweeps (0.25s).",
+			} },
+			{ "Miscellaneous", {
+				"Popup QoL: F.NotSecret guard on merchant price before affordability math.",
+			} },
+			{ "Skins", {
+				"Chat Bubbles: OnDisable stops worker events and poll OnUpdate.",
+			} },
+			{ "Core", {
+				"Settings: toggling enable off/on calls OnDisable/OnEnable without /reload.",
+				"Player context: refresh C.Player name/realm/key at database init.",
+			} },
+			{ "Filters", {
+				"Chat Filter: use C.Player.name at filter time instead of a load-time cache.",
+			} },
+			{ "DataText", {
+				"Stats: fix hidden addon memory total when the tooltip caps listed addons.",
+				"Friends: +N online overflow when Max Friends is exceeded; CHAT_MSG_SYSTEM roster invalidation.",
+				"Guild: F.IsSecret guard on class name in tooltip colours.",
+			} },
+		},
+	},
+	{
 		version = "1.5.7",
 		date = "2026-07-05",
 		intro = "ElvUI-style chat emoji textures.",
@@ -58,9 +176,48 @@ local CHANGELOG = {
 			} },
 			{ "Skins", {
 				"Chat Bubbles: resolve channel colour from recent chat events + ChatTypeInfo so recycled bubbles no longer show party blue on instance chat.",
+				"Chat Bubbles: skip secret chat message payloads in instances (MONSTER_YELL etc.) instead of comparing them to empty string.",
+			} },
+			{ "Action Bars", {
+				"Fishing Button removed: no addon API for fishable water / facing (Blizzard validates only on cast).",
+			} },
+			{ "Announcements", {
+				"Rare Alert: RareScanner atlas allowlist + false-positive NPC ignores; Plumber-style duplicate announce guard; skip during pet battles.",
+				"Rare Alert: duplicate guard ignores NexEnhance auto chat lines; only blocks when another player shared the map pin.",
+			} },
+			{ "Automation", {
+				"Quick Join: auto-accept clicks Blizzard invite buttons (protected C_LFGList.InviteApplicant fix).",
+				"Quick Join: Show Leader Region — locale tag (MX, OCE, DE, etc.) on Group Finder rows and tooltip when the leader's realm locale differs from yours (Blizzard realm-list metadata).",
 			} },
 			{ "Miscellaneous", {
 				"Install: chat layout sets General, Trade, and Local Defense channel colors (CHANNEL1–3).",
+				"Loot Roll: fix barByRollID nil global when async item data returns for ilvl display.",
+			} },
+			{ "Unit Frames", {
+				"Range Fade removed (unreliable with Blizzard frame hooks and Midnight secret range APIs).",
+			} },
+			{ "Maps", {
+				"Minimap: button collector rescans on ADDON_LOADED and zone changes; tray toggle hides when empty; clicker no longer blocks toggle; duplicate skin guard; right-click tray icons stay visible (undo ldb Hide, left-click only closes tray).",
+			} },
+			{ "Tooltip", {
+				"Unit identity from tooltip data.guid + clean raid/party tokens (EllesmereUI pattern) for Midnight secure-frame hovers.",
+				"Dedupe target/M+/NPC lines on tooltip refresh; item level tracks visible tooltip GUID and defers during manual inspect.",
+			} },
+			{ "Announcements", {
+				"Quest Notification: batch accepts and same-tick completions into one line; dedupe duplicate QUEST_ACCEPTED; Batch Announcements toggle (default on); Announce World Quests toggle (default off).",
+				"Quest Notification: fix world quests still announcing when toggle is off (IsWorldQuest lags on QUEST_ACCEPTED — now uses tag info + classification with one-tick defer).",
+			} },
+			{ "Core", {
+				"Reset helpers: F.GetSecondsUntilDailyReset/WeeklyReset with SavedInstances-style guards; server offset and GetTimeToTime for diagnostics.",
+			} },
+			{ "DataText", {
+				"Clock: tooltip timers refresh every 1s while hovered (was 30s); daily reset hides bogus GetQuestResetTime in instances/DST.",
+				"Clock: /nex debug clock dumps reset times, server offset, and next daily/weekly in local vs realm time.",
+				"Clock: saved raids/dungeons show 5 per section by default; hold SHIFT for the full lockout list.",
+				"Clock: Legion invasion and BfA assault timers anchor from live POIs (LegionInvasionTimer / BFAInvasionTimer logic), persist in account data, import legacy SavedVariables, and show upcoming Legion windows in the SHIFT tooltip.",
+			} },
+			{ "Inventory", {
+				"Mail: Collect Gold / Take All aligned with Blizzard Open-All — skip GM and COD mail, inbox drift reset, HasInboxItem + command-pending queue, bag-full stop; MAIL_SHOW setup retry; OnDisable teardown.",
 			} },
 		},
 	},

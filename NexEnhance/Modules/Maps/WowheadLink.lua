@@ -324,19 +324,24 @@ function WowheadLink:Refresh()
 end
 
 function WowheadLink:OnEnable()
-	if ns.db.wowheadLink.enable then
-		self:Setup()
+	if not ns.db.wowheadLink.enable then
+		return
 	end
+	self:Setup()
+	-- Setup is one-shot; Refresh re-shows boxes / hides map title on re-enable.
+	self:Refresh()
+end
+
+function WowheadLink:OnDisable()
+	-- hooksecurefunc / LOD callbacks stay; hide boxes and restore map title.
+	self:Refresh()
 end
 
 function WowheadLink:OnSettingChanged(key)
-	if key ~= "enable" then
+	-- ApplyModuleSetting owns enable lifecycle (OnEnable/OnDisable call Refresh).
+	if key == "enable" then
 		return
 	end
-	if ns.db.wowheadLink.enable then
-		self:Setup()
-	end
-	self:Refresh()
 end
 
 function WowheadLink:RegisterOptions(category, builder)

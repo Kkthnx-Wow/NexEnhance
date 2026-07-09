@@ -111,14 +111,9 @@ function LootFrameModule:OnDisable()
 	self:Stop()
 end
 
-function LootFrameModule:OnSettingChanged(key, value)
+function LootFrameModule:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			self:RegisterModuleEvents()
-			Apply()
-		else
-			self:Stop()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 	Apply()

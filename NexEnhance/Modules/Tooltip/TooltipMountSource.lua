@@ -69,6 +69,9 @@ end
 
 -- Only annotate while Shift is held over another player (not yourself).
 local function HandleAura(tip, unit, spellID)
+	if not Tooltip:IsEnabled() or not ns.db.tooltip.mountSource then
+		return
+	end
 	if not spellID or F.IsSecret(spellID) then
 		return
 	end

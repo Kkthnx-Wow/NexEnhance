@@ -241,20 +241,12 @@ function LevelAnnouncer:OnDisable()
 end
 
 function LevelAnnouncer:OnSettingChanged(key, value)
-	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
-		if not value then
-			return
-		end
+	-- ApplyModuleSetting owns OnEnable/OnDisable. On enable, still kick-start
+	-- the clock so the first ding after toggle shows a meaningful duration.
+	if key == "enable" and not value then
+		return
 	end
 
-	-- No subscription changes beyond enable; event handlers already check the DB flag.
-	-- If the player just toggled it on, kick-start the clock for the current
-	-- level so the first ding after enable shows a meaningful time.
 	if ns.db.levelAnnouncer.enable then
 		local currentLevel = UnitLevel("player")
 		if currentLevel and not F.IsSecret(currentLevel) then

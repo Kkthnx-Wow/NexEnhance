@@ -315,14 +315,10 @@ end
 -- ---------------------------------------------------------------------------
 -- Options & lifecycle
 -- ---------------------------------------------------------------------------
-function DeleteCheapest:OnSettingChanged(key, value)
-	if key ~= "enable" then
+function DeleteCheapest:OnSettingChanged(key)
+	-- ApplyModuleSetting owns enable lifecycle.
+	if key == "enable" then
 		return
-	end
-	if value then
-		self:OnEnable()
-	else
-		self:OnDisable()
 	end
 end
 

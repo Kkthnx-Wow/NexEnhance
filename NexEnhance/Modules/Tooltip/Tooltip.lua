@@ -45,6 +45,8 @@ local UnitIsUnit = UnitIsUnit
 local UnitHealthPercent = _G["UnitHealthPercent"]
 local GetCreatureDifficultyColor = GetCreatureDifficultyColor
 local InCombatLockdown, IsShiftKeyDown = InCombatLockdown, IsShiftKeyDown
+local IsInRaid, IsInGroup = IsInRaid, IsInGroup
+local GetNumGroupMembers, GetNumSubgroupMembers = GetNumGroupMembers, GetNumSubgroupMembers
 
 local C_ChallengeMode_GetDungeonScoreRarityColor = C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor
 local C_PlayerInfo_GetPlayerMythicPlusRatingSummary = C_PlayerInfo and C_PlayerInfo.GetPlayerMythicPlusRatingSummary
@@ -128,47 +130,114 @@ local FACTION_COLORS = {
 -- ---------------------------------------------------------------------------
 -- Unit resolution (secret-safe)
 -- ---------------------------------------------------------------------------
-function Tooltip:GetDisplayedUnit(tt)
-	tt = tt or self
-	if tt.GetPrimaryTooltipData then
-		if tt.IsTooltipType and not tt:IsTooltipType(Enum.TooltipDataType.Unit) then
-			return
-		end
-		local data = tt:GetPrimaryTooltipData()
-		local guid = data and data.guid
-		if guid and F.NotSecret(guid) then
-			return UnitTokenFromGUID(guid)
-		end
+-- Build a clean literal raid/party token for a GUID. On Midnight, secure frame
+-- tooltips can return secret unit tokens even when the GUID is readable.
+local function CleanTokenForGUID(guid)
+	if not guid or F.IsSecret(guid) then
 		return
 	end
-
-	local _, unit = tt:GetUnit()
-	return unit
+	if UnitGUID("player") == guid then
+		return "player"
+	end
+	if IsInRaid() then
+		for i = 1, GetNumGroupMembers() do
+			local tk = "raid" .. i
+			local tg = UnitGUID(tk)
+			if tg and F.NotSecret(tg) and tg == guid then
+				return tk
+			end
+		end
+	elseif IsInGroup() then
+		for i = 1, GetNumSubgroupMembers() do
+			local tk = "party" .. i
+			local tg = UnitGUID(tk)
+			if tg and F.NotSecret(tg) and tg == guid then
+				return tk
+			end
+		end
+	end
 end
 
-function Tooltip:GetUnitToken(tt)
-	tt = tt or self
-	if not tt or tt:IsForbidden() then
+-- Authoritative identity for a unit tooltip: data.guid first, then a token that
+-- provably maps to that GUID. Never trust a stale mouseover token alone.
+local function ResolveTipIdentity(tt, data)
+	if not tt or (tt.IsForbidden and tt:IsForbidden()) then
 		return
 	end
 
-	local mouseoverExists = UnitExists("mouseover")
-	local mouseover = (F.NotSecret(mouseoverExists) and mouseoverExists) and "mouseover" or nil
+	local guid = data and data.guid
+	if guid and F.IsSecret(guid) then
+		guid = nil
+	end
+	if not guid and tt.GetPrimaryTooltipData then
+		local primary = tt:GetPrimaryTooltipData()
+		guid = primary and primary.guid
+		if guid and F.IsSecret(guid) then
+			guid = nil
+		end
+	end
 
-	local unit = Tooltip.GetDisplayedUnit(tt)
-	if unit then
-		local exists = F.NotSecret(unit) and UnitExists(unit)
-		return (F.NotSecret(exists) and exists and unit) or mouseover
+	local token
+	local ok, _, u = pcall(function()
+		return tt:GetUnit()
+	end)
+	if ok and u and F.NotSecret(u) and UnitExists(u) then
+		local g = UnitGUID(u)
+		if g and F.NotSecret(g) then
+			if not guid then
+				guid = g
+			end
+			if g == guid then
+				token = u
+			end
+		end
+	end
+
+	if guid and not token then
+		token = CleanTokenForGUID(guid)
+	end
+
+	if guid and not token and UnitTokenFromGUID then
+		local tu = UnitTokenFromGUID(guid)
+		if tu and F.NotSecret(tu) and UnitExists(tu) then
+			token = tu
+		end
+	end
+
+	if guid and not token and UnitExists("mouseover") then
+		local mg = UnitGUID("mouseover")
+		if mg and F.NotSecret(mg) and mg == guid then
+			token = "mouseover"
+		end
 	end
 
 	local owner = tt.GetOwner and tt:GetOwner()
 	local ownerUnit = owner and owner.GetAttribute and owner:GetAttribute("unit")
-	if ownerUnit then
-		local exists = F.NotSecret(ownerUnit) and UnitExists(ownerUnit)
-		return (F.NotSecret(exists) and exists and ownerUnit) or mouseover
+	if not token and ownerUnit and F.NotSecret(ownerUnit) and UnitExists(ownerUnit) then
+		local g = UnitGUID(ownerUnit)
+		if g and F.NotSecret(g) and (not guid or g == guid) then
+			if not guid then
+				guid = g
+			end
+			token = ownerUnit
+		end
 	end
 
-	return mouseover
+	return guid, token
+end
+
+function Tooltip:ResolveTipIdentity(tt, data)
+	return ResolveTipIdentity(tt or self, data)
+end
+
+function Tooltip:GetDisplayedUnit(tt)
+	local _, unit = ResolveTipIdentity(tt or self, nil)
+	return unit
+end
+
+function Tooltip:GetUnitToken(tt)
+	local _, unit = ResolveTipIdentity(tt or self, nil)
+	return unit
 end
 
 -- Kept for the sibling item-level module.
@@ -261,6 +330,10 @@ end
 
 -- Faction line rewrite (AddLinePreCall) -------------------------------------
 function Tooltip:UpdateFactionLine(lineData)
+	-- hooksecurefunc / TooltipDataProcessor can't uninstall — gate when off.
+	if not Tooltip:IsEnabled() then
+		return
+	end
 	if self:IsForbidden() or not self:IsTooltipType(Enum.TooltipDataType.Unit) then
 		return
 	end
@@ -314,6 +387,9 @@ end
 
 -- Clear transient tooltip state on cleared, not hide (icons/border linger otherwise).
 function Tooltip:OnTooltipCleared()
+	if not Tooltip:IsEnabled() then
+		return
+	end
 	if self:IsForbidden() then
 		return
 	end
@@ -340,6 +416,12 @@ local function OnGameTooltipHide()
 	if GameTooltip:IsForbidden() then
 		return
 	end
+	Tooltip._tipShownGUID = nil
+	-- Drop pending inspect state so UNIT_INVENTORY_CHANGED / delayed NotifyInspect
+	-- do not keep hitting the server after the tip is gone.
+	if Tooltip.ClearItemLevelInspectState then
+		Tooltip:ClearItemLevelInspectState()
+	end
 	-- Hide unconditionally: Hide() is a no-op when already hidden, and once a
 	-- secret health value is pushed into the bar IsShown() may itself be secret.
 	local bar = GameTooltipStatusBar
@@ -360,7 +442,7 @@ function Tooltip:ShowUnitMythicPlusScore(unit)
 	end
 	local summary = C_PlayerInfo_GetPlayerMythicPlusRatingSummary(unit)
 	local score = summary and summary.currentSeasonScore
-	if score and score > 0 then
+	if score and score > 0 and not F.TooltipHasLineContaining(self, "Mythic") then
 		self:AddLine(format(L["Mythic+ Score: %s"], GetDungeonScore(score)))
 	end
 end
@@ -381,6 +463,9 @@ end
 
 -- The main unit tooltip rewrite ---------------------------------------------
 function Tooltip:OnTooltipSetUnit(data)
+	if not Tooltip:IsEnabled() then
+		return
+	end
 	if self:IsForbidden() or self ~= GameTooltip then
 		return
 	end
@@ -390,10 +475,11 @@ function Tooltip:OnTooltipSetUnit(data)
 		return
 	end
 
-	local unit = Tooltip.GetUnitToken(self)
+	local guid, unit = ResolveTipIdentity(self, data)
 	if not unit then
 		return
 	end
+	Tooltip._tipShownGUID = guid
 
 	local isShiftKeyDown = IsShiftKeyDown()
 	local isPlayer = UnitIsPlayer(unit)
@@ -529,7 +615,7 @@ function Tooltip:OnTooltipSetUnit(data)
 
 	local targetUnit = unit .. "target"
 	local targetExists = UnitExists(targetUnit)
-	if F.NotSecret(targetExists) and targetExists then
+	if F.NotSecret(targetExists) and targetExists and not F.TooltipHasLineContaining(self, TARGET) then
 		local targetIcon = GetRaidTargetIndex(targetUnit)
 		local targetIconStr
 		if targetIcon and F.NotSecret(targetIcon) and targetIcon <= 8 then
@@ -541,12 +627,12 @@ function Tooltip:OnTooltipSetUnit(data)
 	if not isPlayer and isShiftKeyDown then
 		local guid = (data and data.guid) or UnitGUID(unit)
 		local npcID = F.GetNPCID(guid)
-		if npcID then
+		if npcID and not F.TooltipHasLineContaining(self, "NpcID") then
 			self:AddLine(format(npcIDstring, "NpcID:", npcID))
 		end
 		if cfg.showNPCSpawnAge then
 			local age = F.GetNPCSpawnAge(guid)
-			if age then
+			if age and not F.TooltipHasLineContaining(self, L["Spawn Age"]) then
 				self:AddLine(format(npcIDstring, L["Spawn Age"] .. ":", F.FormatShortDuration(age)))
 			end
 		end
@@ -554,7 +640,7 @@ function Tooltip:OnTooltipSetUnit(data)
 
 	if isPlayer then
 		if cfg.showItemLevel and Tooltip.InspectUnitItemLevel then
-			Tooltip.InspectUnitItemLevel(self, unit)
+			Tooltip.InspectUnitItemLevel(self, unit, guid)
 		end
 		Tooltip.ShowUnitMythicPlusScore(self, unit)
 	end
@@ -564,6 +650,9 @@ end
 -- Colour the bar from the unit, and seed the health text. Runs as the Unit
 -- post-call, which gives us the exact tooltip Blizzard is updating.
 function Tooltip:UpdateStatusBarColor()
+	if not Tooltip:IsEnabled() then
+		return
+	end
 	local bar = self.StatusBar or GameTooltipStatusBar
 	if not bar then
 		return
@@ -625,6 +714,9 @@ end
 -- the tooltip (it auto-tracks size since it pins to GameTooltip's top edge).
 local savedBarPoints
 local function RepositionStatusBar()
+	if not Tooltip:IsEnabled() then
+		return
+	end
 	local bar = GameTooltipStatusBar
 	if not bar then
 		return
@@ -658,6 +750,9 @@ end
 -- values and returns a secret string SetText accepts — we never inspect the
 -- number. Falls back to UnitHealthPercent, then DEAD for corpses.
 function UpdateHealthText(bar)
+	if not Tooltip:IsEnabled() then
+		return
+	end
 	bar = bar or GameTooltipStatusBar
 	if not bar then
 		return
@@ -726,6 +821,9 @@ end
 -- We never reskin or reposition the tooltip; we only tint Blizzard's own
 -- default (NineSlice) border by item quality.
 function Tooltip:UpdateItemQualityBorder()
+	if not Tooltip:IsEnabled() then
+		return
+	end
 	if cfg.qualityBorder and GetDisplayedItem then
 		local _, link = GetDisplayedItem(self)
 		if link then
@@ -843,9 +941,16 @@ end
 function Tooltip:OnDisable()
 	ns:UnregisterModuleEventHandles(eventHandles)
 	self._itemLevelEventsRegistered = false
+	if self.ClearItemLevelInspectState then
+		self:ClearItemLevelInspectState()
+	end
 end
 
-function Tooltip:OnSettingChanged(key)
+function Tooltip:OnSettingChanged(key, value)
+	-- ApplyModuleSetting owns enable lifecycle; hooks stay gated via IsEnabled().
+	if key == "enable" then
+		return
+	end
 	if key == "statusBarPosition" or key == "statusBarHeight" then
 		RepositionStatusBar()
 	elseif key == "healthBarText" then
@@ -855,6 +960,11 @@ function Tooltip:OnSettingChanged(key)
 		end
 	elseif (key == "showIcons" or key == "qualityBorder") and Tooltip.RefreshPawnIntegration then
 		Tooltip:RefreshPawnIntegration()
+	elseif key == "hoverTips" and value and Tooltip.SetupHoverTips then
+		-- One-shot install; handlers already gate on cfg.hoverTips + IsEnabled().
+		Tooltip:SetupHoverTips()
+	elseif key == "showItemLevel" and value and Tooltip.SetupItemLevel then
+		Tooltip:SetupItemLevel()
 	end
 end
 

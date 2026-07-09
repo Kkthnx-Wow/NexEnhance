@@ -225,12 +225,9 @@ function HolidayDungeon:UnregisterModuleEvents()
 end
 
 function HolidayDungeon:OnSettingChanged(key, value)
+	-- ApplyModuleSetting owns enable lifecycle.
 	if key == "enable" then
-		if value then
-			self:OnEnable()
-		else
-			self:OnDisable()
-		end
+		return
 	end
 end
 

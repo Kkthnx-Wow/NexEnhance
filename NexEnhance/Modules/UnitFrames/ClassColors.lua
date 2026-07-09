@@ -86,6 +86,28 @@ local ClassColors = ns:NewModule("ClassColors", "classColors", { group = "unitfr
 local eventHandles = {}
 local eventsRegistered = false
 
+local HUD_REFRESH_UNITS = {
+	target = true,
+	focus = true,
+	pet = true,
+}
+for i = 1, 4 do
+	HUD_REFRESH_UNITS["party" .. i] = true
+end
+for i = 1, 5 do
+	HUD_REFRESH_UNITS["boss" .. i] = true
+end
+
+local function IsHUDRefreshUnit(unit)
+	return not unit or HUD_REFRESH_UNITS[unit] == true
+end
+
+local scheduleRefreshStandard = F.Debounce(0, function()
+	if ns.db.classColors.enable then
+		ClassColors:RefreshStandard()
+	end
+end)
+
 -- Returns the class colour for a unit, or DISCONNECTED_COLOR when offline,
 -- or nil if it should keep Blizzard's default (NPC, classless, or secret).
 -- Each identity read is gated by F.IsSecret *before* we boolean-test it,
@@ -457,7 +479,14 @@ end
 -- finally be coloured). Our handler runs after Blizzard's because the default
 -- frames registered these events at load, before our PLAYER_LOGIN.
 function ClassColors:RefreshEvent()
-	self:RefreshStandard()
+	scheduleRefreshStandard()
+end
+
+function ClassColors:RefreshEventUnit(unit)
+	if unit and not IsHUDRefreshUnit(unit) then
+		return
+	end
+	scheduleRefreshStandard()
 end
 
 function ClassColors:RegisterModuleEvents()
@@ -469,13 +498,13 @@ function ClassColors:RegisterModuleEvents()
 	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshEvent")
 	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "RefreshEvent")
 	self:TrackEvent(eventHandles, "PLAYER_FOCUS_CHANGED", "RefreshEvent")
-	self:TrackEvent(eventHandles, "UNIT_CLASSIFICATION_CHANGED", "RefreshEvent")
+	self:TrackEvent(eventHandles, "UNIT_CLASSIFICATION_CHANGED", "RefreshEventUnit")
 	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED", "RefreshEvent")
 	self:TrackEvent(eventHandles, "GROUP_ROSTER_UPDATE", "RefreshEvent")
-	self:TrackEvent(eventHandles, "UNIT_FACTION", "RefreshEvent")
-	self:TrackEvent(eventHandles, "UNIT_THREAT_LIST_UPDATE", "RefreshEvent")
-	self:TrackEvent(eventHandles, "UNIT_THREAT_SITUATION_UPDATE", "RefreshEvent")
-	self:TrackEvent(eventHandles, "UNIT_CONNECTION", "RefreshEvent")
+	self:TrackEvent(eventHandles, "UNIT_FACTION", "RefreshEventUnit")
+	self:TrackEvent(eventHandles, "UNIT_THREAT_LIST_UPDATE", "RefreshEventUnit")
+	self:TrackEvent(eventHandles, "UNIT_THREAT_SITUATION_UPDATE", "RefreshEventUnit")
+	self:TrackEvent(eventHandles, "UNIT_CONNECTION", "RefreshEventUnit")
 	self:TrackUnitEvent(eventHandles, "UNIT_PET", "RefreshEvent", "player")
 	self:TrackEvent(eventHandles, "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
 end
@@ -499,16 +528,10 @@ function ClassColors:OnDisable()
 	self:RefreshStandard()
 end
 
-function ClassColors:OnSettingChanged(key, value)
-	if key ~= "enable" then
+function ClassColors:OnSettingChanged(key)
+	if key == "enable" then
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
-	end
-	if value then
-		self:InstallHooks()
-		self:RegisterModuleEvents()
-		self:RefreshStandard()
-	else
-		self:OnDisable()
 	end
 end
 

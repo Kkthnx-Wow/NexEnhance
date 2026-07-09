@@ -103,45 +103,61 @@ end
 
 local ShowUIPanel = ShowUIPanel
 local LoadAddOn = LoadAddOn
+local InCombatLockdown = InCombatLockdown
+
+-- Settings / Edit Mode panels are protected in combat (OpenSettingsPanel taint).
+-- Queue via AfterCombatCallback and tell the player once.
+local function RunOutOfCombat(fn, pendingMsg)
+	if not InCombatLockdown() then
+		fn()
+		return
+	end
+	F.Print(pendingMsg or L["Settings will open when you leave combat."])
+	ns:AfterCombatCallback(fn)
+end
 
 -- Mirror Blizzard_ChatFrameBase/Mainline/SlashCommandsOverrides.lua (EDITMODE).
 local function OpenEditMode()
-	local frame = _G.EditModeManagerFrame
-	if not frame and LoadAddOn then
-		pcall(LoadAddOn, "Blizzard_EditMode")
-		frame = _G.EditModeManagerFrame
-	end
-	if not frame then
-		F.Print(L["Edit Mode is not available right now."])
-		return
-	end
-	if frame.CanEnterEditMode and not frame:CanEnterEditMode() then
-		local msg = _G.ERROR_SLASH_EDITMODE_CANNOT_ENTER
-		if msg and _G.ChatFrameUtil and ChatFrameUtil.DisplaySystemMessageInPrimary then
-			ChatFrameUtil.DisplaySystemMessageInPrimary(msg)
-		else
-			F.Print(L["Cannot enter Edit Mode right now."])
+	RunOutOfCombat(function()
+		local frame = _G.EditModeManagerFrame
+		if not frame and LoadAddOn then
+			pcall(LoadAddOn, "Blizzard_EditMode")
+			frame = _G.EditModeManagerFrame
 		end
-		return
-	end
-	ShowUIPanel(frame)
+		if not frame then
+			F.Print(L["Edit Mode is not available right now."])
+			return
+		end
+		if frame.CanEnterEditMode and not frame:CanEnterEditMode() then
+			local msg = _G.ERROR_SLASH_EDITMODE_CANNOT_ENTER
+			if msg and _G.ChatFrameUtil and ChatFrameUtil.DisplaySystemMessageInPrimary then
+				ChatFrameUtil.DisplaySystemMessageInPrimary(msg)
+			else
+				F.Print(L["Cannot enter Edit Mode right now."])
+			end
+			return
+		end
+		ShowUIPanel(frame)
+	end, L["Edit Mode will open when you leave combat."])
 end
 
 -- Key bindings live in Settings (Settings.KEYBINDINGS_CATEGORY_ID from
 -- Blizzard_SettingsDefinitions_Frame/Keybindings.lua); no global /keybinds slash.
 local function OpenKeyBindings()
-	local catID = Settings and Settings.KEYBINDINGS_CATEGORY_ID
-	if not catID then
-		F.Print(L["Key Bindings settings are not available right now."])
-		return
-	end
-	if Settings.OpenToCategory then
-		Settings.OpenToCategory(catID)
-	elseif _G.C_SettingsUtil and C_SettingsUtil.OpenSettingsPanel then
-		C_SettingsUtil.OpenSettingsPanel(catID)
-	else
-		F.Print(L["Key Bindings settings are not available right now."])
-	end
+	RunOutOfCombat(function()
+		local catID = Settings and Settings.KEYBINDINGS_CATEGORY_ID
+		if not catID then
+			F.Print(L["Key Bindings settings are not available right now."])
+			return
+		end
+		if Settings.OpenToCategory then
+			Settings.OpenToCategory(catID)
+		elseif _G.C_SettingsUtil and C_SettingsUtil.OpenSettingsPanel then
+			C_SettingsUtil.OpenSettingsPanel(catID)
+		else
+			F.Print(L["Key Bindings settings are not available right now."])
+		end
+	end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -172,12 +188,37 @@ handlers.help = function(_)
 	F.Print("  /nex credits       -", L["Open the credits panel"])
 	F.Print("  /nex profile       -", L["Open the profile import/export panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
+	F.Print("  /nex version, ver  -", L["Print addon and WoW client version info"])
 	F.Print("  /nex uiscale         -", L["Dump UI scale and chat dock debug info"])
 	F.Print("  /nex uiscale apply   -", L["Force UI scale apply now"])
 	F.Print("  /nex debug           -", L["Debug system help (dumps, logging, export)"])
 	F.Print("  /nex poiscan       -", L["Dump area POIs on your current map (event setup)"])
 	F.Print("  /nex newreset      -", L["Reset new-update badges for testing"])
 end
+
+-- Patch / TOC dump for bug reports — fuller than the one-liner in /nex debug env.
+handlers.version = function(_)
+	local GetBuildInfo = _G.GetBuildInfo
+	local patch, build, buildDate, tocVersion = GetBuildInfo()
+	local tocMeta = C_AddOns and C_AddOns.GetAddOnMetadata and C_AddOns.GetAddOnMetadata(ns.name, "Interface")
+	local client = C.Client
+	local project = _G.WOW_PROJECT_ID
+	local projectLabel = (project == _G.WOW_PROJECT_MAINLINE and "retail")
+		or (project == _G.WOW_PROJECT_CLASSIC and "classic")
+		or tostring(project or "?")
+
+	F.Print(F.Colorize(L["Version"] .. ":", "brand"))
+	F.Print(format("  addon: %s", Brand(ns.version or "?")))
+	F.Print(format("  toc Interface (metadata): %s", Brand(tocMeta or "?")))
+	F.Print(format("  client patch: %s", Brand(patch or (client and client.version) or "?")))
+	F.Print(format("  build: %s", Brand(build or (client and client.build) or "?")))
+	F.Print(format("  build date: %s", Brand(buildDate or "?")))
+	F.Print(format("  tocversion: %s", Brand(tocVersion or (client and client.interface) or "?")))
+	F.Print(format("  locale: %s | project: %s", Brand((client and client.locale) or GetLocale() or "?"), Brand(projectLabel)))
+end
+
+handlers.ver = handlers.version
+handlers.build = handlers.version
 
 handlers.profile = function(_)
 	if ns.OpenProfiles then
@@ -240,6 +281,9 @@ handlers.modules = function(_)
 	end
 end
 
+-- Forward: slash toggle must use the same enable path as the Settings panel.
+local ApplyModuleSetting
+
 handlers.toggle = function(name)
 	if not name or name == "" then
 		F.Print(L["Usage"] .. ": /nex toggle <module>")
@@ -257,13 +301,9 @@ handlers.toggle = function(name)
 	local state = settings.enable and F.Colorize(L["Enabled"], "green") or F.Colorize(L["Disabled"], "red")
 	local label = module.title or module.name
 	F.Print(label, "->", state)
-	if module.isPlugin then
-		ns:ApplyPluginEnable(module, settings.enable)
-	end
-	if module.OnSettingChanged then
-		module:OnSettingChanged("enable", settings.enable)
-	end
-	ns:TriggerCallback("SettingChanged." .. module.dbKey .. ".enable", settings.enable, module)
+	-- Incident (Commands, Jul 2026): old path only called OnSettingChanged and
+	-- skipped OnEnable/OnDisable — modules stayed live after /nex toggle off.
+	ApplyModuleSetting(module, "enable", settings.enable)
 end
 
 handlers.plugins = function(_)
@@ -604,9 +644,15 @@ _G["SlashCmdList"]["NEXENHANCE"] = HandleSlash
 -- ---------------------------------------------------------------------------
 -- Options panel (modern Settings API, guarded)
 -- ---------------------------------------------------------------------------
-local function ApplyModuleSetting(module, key, value)
-	if key == "enable" and module.isPlugin then
-		ns:ApplyPluginEnable(module, value)
+ApplyModuleSetting = function(module, key, value)
+	if key == "enable" then
+		if module.isPlugin then
+			ns:ApplyPluginEnable(module, value)
+		elseif not value and type(module.OnDisable) == "function" then
+			module:OnDisable()
+		elseif value and type(module.OnEnable) == "function" and module:IsEnabled() then
+			module:OnEnable()
+		end
 	end
 
 	if module.OnSettingChanged then
@@ -672,6 +718,21 @@ function OptionBuilder:Checkbox(category, module, key, name, tooltip)
 	return setting, MarkResettable(initializer)
 end
 
+-- Infer how many decimals to show from `step` (0.05 → 2, 0.5 → 1, 1 → 0).
+-- Binary floats make 0.45 print as 0.45000001788139 without a formatter.
+local function SliderDecimalsFromStep(step)
+	if type(step) ~= "number" or step <= 0 or step >= 1 then
+		return 0
+	end
+	local s = tostring(step)
+	local frac = s:match("%.(%d+)")
+	local decimals = frac and #frac or 2
+	if decimals > 4 then
+		decimals = 4
+	end
+	return decimals
+end
+
 function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, maxValue, step, formatValue)
 	local setting = RegisterSetting(category, module, key, name)
 
@@ -680,7 +741,15 @@ function OptionBuilder:Slider(category, module, key, name, tooltip, minValue, ma
 		if type(formatValue) == "function" then
 			options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, formatValue)
 		else
-			options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+			local decimals = SliderDecimalsFromStep(step)
+			if decimals > 0 then
+				local fmt = "%." .. decimals .. "f"
+				options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(value)
+					return format(fmt, value or 0)
+				end)
+			else
+				options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+			end
 		end
 	end
 	local initializer = Settings.CreateSlider(category, setting, options, tooltip)
@@ -1048,6 +1117,7 @@ end
 local GROUP_ORDER = {
 	{ key = "general", title = L["General"], icon = [[Interface\ICONS\Trade_Engineering]], desc = L["DESC_GENERAL"] },
 	{ key = "actionbars", title = L["Action Bars"], icon = [[Interface\ICONS\Ability_Warrior_Charge]], desc = L["DESC_ACTIONBARS"] },
+	{ key = "cursor", title = L["Cursor"], icon = [[Interface\ICONS\Ability_Hunter_Pathfinding]], desc = L["DESC_CURSOR"] },
 	{ key = "unitframes", title = L["Unit Frames"], icon = [[Interface\ICONS\Ability_Warrior_BattleShout]], desc = L["DESC_UNITFRAMES"] },
 	{ key = "nameplates", title = L["Nameplates"], icon = [[Interface\ICONS\Ability_Hunter_SniperShot]], desc = L["DESC_NAMEPLATES"] },
 	{ key = "auras", title = L["Auras"], icon = [[Interface\ICONS\Spell_Holy_WordFortitude]], desc = L["DESC_AURAS"] },
@@ -1174,13 +1244,16 @@ local function AcknowledgeNewVersion()
 	if not ns.global or ns.global.newSeen == ns.version then
 		return
 	end
+	-- Snapshot BEFORE stamping newSeen — GetNewModules() hides since-tagged
+	-- modules once dismissed, so folding after the stamp left knownModules empty
+	-- for those modules (they'd reappear as "new" on the next version bump).
+	local list = GetNewModules()
 	ns.global.newSeen = ns.version
 	local known = ns.global.knownModules
 	if not known then
 		known = {}
 		ns.global.knownModules = known
 	end
-	local list = GetNewModules()
 	for i = 1, #list do
 		known[list[i].name] = true
 	end
@@ -2084,11 +2157,16 @@ local function BuildOptions()
 	end
 
 	function ns:OpenOptions()
-		if Settings.OpenToCategory then
-			Settings.OpenToCategory(category.ID)
-		elseif _G["C_SettingsUtil"] and _G["C_SettingsUtil"].OpenSettingsPanel then
-			_G["C_SettingsUtil"].OpenSettingsPanel(category.ID)
-		end
+		-- Incident (Commands, Jul 2026): OpenSettingsPanel is protected in combat
+		-- (ADDON_ACTION_BLOCKED). Defer via AfterCombatCallback for /nex config
+		-- and the Escape-menu button.
+		RunOutOfCombat(function()
+			if Settings.OpenToCategory then
+				Settings.OpenToCategory(category.ID)
+			elseif _G["C_SettingsUtil"] and _G["C_SettingsUtil"].OpenSettingsPanel then
+				_G["C_SettingsUtil"].OpenSettingsPanel(category.ID)
+			end
+		end)
 	end
 
 	ns.optionsBuilt = true

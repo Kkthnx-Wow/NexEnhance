@@ -71,15 +71,36 @@ local function GetOverlayBar()
 	return _G["OverlayPlayerCastingBarFrame"]
 end
 
+-- Frame:IsShown() / ShouldShowCastBar can return Secret booleans in combat —
+-- never branch on the raw return; F.BooleanIsTrue yields nil when unreadable.
+-- Defined above IsCastActive — local function helpers are nil if called before
+-- their declaration (same footgun as UIScale's DumpState).
+local function FrameIsShown(frame)
+	if not frame then
+		return false
+	end
+	local shown = F.BooleanIsTrue(frame:IsShown())
+	return shown == true
+end
+
+local function CastBarShouldShow(bar)
+	if not (bar and bar.ShouldShowCastBar) then
+		return true
+	end
+	local should = F.BooleanIsTrue(bar:ShouldShowCastBar())
+	-- Unreadable → treat as "don't mirror" (fail closed) rather than crash.
+	return should == true
+end
+
 local function IsCastActive(bar)
 	if not bar then
 		return false
 	end
 	-- casting/channeling can be Secret in combat; truthiness tests would error.
 	if F.IsSecret(bar.casting) or F.IsSecret(bar.channeling) or F.IsSecret(bar.reverseChanneling) then
-		return bar:IsShown()
+		return FrameIsShown(bar)
 	end
-	return bar.casting or bar.channeling or bar.reverseChanneling
+	return not not (bar.casting or bar.channeling or bar.reverseChanneling)
 end
 
 -- nil when channel direction is unreadable (Secret flags).
@@ -97,16 +118,16 @@ end
 -- Whichever Blizzard player cast bar is currently showing a cast (Edit Mode excluded).
 local function GetActiveCastBar()
 	local overlayBar = GetOverlayBar()
-	if overlayBar and overlayBar:IsShown() and IsCastActive(overlayBar) then
-		if overlayBar.ShouldShowCastBar and not overlayBar:ShouldShowCastBar() then
+	if overlayBar and FrameIsShown(overlayBar) and IsCastActive(overlayBar) then
+		if not CastBarShouldShow(overlayBar) then
 			return nil
 		end
 		return overlayBar
 	end
 
 	local bar = GetBar()
-	if bar and bar:IsShown() and IsCastActive(bar) and not IsEditModeActive(bar) then
-		if bar.ShouldShowCastBar and not bar:ShouldShowCastBar() then
+	if bar and FrameIsShown(bar) and IsCastActive(bar) and not IsEditModeActive(bar) then
+		if not CastBarShouldShow(bar) then
 			return nil
 		end
 		return bar
@@ -263,10 +284,10 @@ local function ShouldMirrorPlayerBar(bar)
 	if IsEditModeActive(bar) then
 		return false
 	end
-	if bar.ShouldShowCastBar and not bar:ShouldShowCastBar() then
+	if not CastBarShouldShow(bar) then
 		return false
 	end
-	return bar:IsShown()
+	return FrameIsShown(bar)
 end
 
 local function HookCastBarSuppression()
@@ -519,10 +540,11 @@ local function WakeDriver()
 	if not driver then
 		driver = CreateFrame("Frame", nil, _G["UIParent"])
 		driver:Hide()
-		driver:SetScript("OnUpdate", OnUpdate)
 	end
+	-- Reattach after Deactivate clears the script; Hide() alone already stops ticks.
+	driver:SetScript("OnUpdate", OnUpdate)
 	elapsed = UPDATE_INTERVAL -- evaluate on the very next frame
-	if not driver:IsShown() then
+	if not FrameIsShown(driver) then
 		driver:Show()
 	end
 	UpdateMirror()
@@ -568,6 +590,7 @@ local function Deactivate()
 	UnregisterDriverEvents()
 	if driver then
 		driver:Hide()
+		driver:SetScript("OnUpdate", nil)
 	end
 	HideOverlay()
 end
@@ -599,14 +622,9 @@ function PlayerCastBar:OnDisable()
 	Deactivate()
 end
 
-function PlayerCastBar:OnSettingChanged(key, value)
+function PlayerCastBar:OnSettingChanged(key)
 	if key == "enable" then
-		if value then
-			RegisterDriverEvents()
-			Activate()
-		else
-			Deactivate()
-		end
+		-- ApplyModuleSetting owns enable lifecycle.
 		return
 	end
 

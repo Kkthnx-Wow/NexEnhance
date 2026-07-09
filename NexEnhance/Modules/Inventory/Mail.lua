@@ -23,6 +23,7 @@ local C_Timer_After = C_Timer.After
 local GetInboxNumItems = GetInboxNumItems
 local GetInboxHeaderInfo = GetInboxHeaderInfo
 local GetInboxItem = GetInboxItem
+local HasInboxItem = HasInboxItem
 local TakeInboxMoney = TakeInboxMoney
 local TakeInboxItem = TakeInboxItem
 local InboxItemCanDelete = InboxItemCanDelete
@@ -31,13 +32,16 @@ local C_Mail_HasInboxMoney = C_Mail.HasInboxMoney
 local C_Mail_IsCommandPending = C_Mail.IsCommandPending
 local C_Item_GetItemInfo = C_Item.GetItemInfo
 local C_Item_GetItemQualityColor = C_Item.GetItemQualityColor
+local C_Container_CalculateTotalNumberOfFreeBagSlots = C_Container and C_Container.CalculateTotalNumberOfFreeBagSlots
 
 local DELETE = _G.DELETE
 local ERR_MAIL_DELETE_ITEM_ERROR = _G.ERR_MAIL_DELETE_ITEM_ERROR
+local ERR_INV_FULL = _G.ERR_INV_FULL
 -- Blizzard_MailFrame loads at login (DefaultState: enabled), so these globals
 -- exist; fall back to current live values just in case the constants move.
 local MAX_RECEIVE = _G.ATTACHMENTS_MAX_RECEIVE or 16
 local PER_PAGE = _G.INBOXITEMS_TO_DISPLAY or 7
+local OPEN_ALL_MAIL_MIN_DELAY = 0.15
 
 ns:RegisterDefaults({
 	mail = {
@@ -48,19 +52,47 @@ ns:RegisterDefaults({
 local Mail = ns:NewModule("Mail", "mail", { group = "inventory", title = L["Mail"], order = 30 })
 
 local goldButton
+local takeAllButton
 local isGoldCollecting
+local isTakeAllRunning
 local mailIndex = 0
-local timeToWait = 0.15
+local goldInboxSnapshot
+local takeAllAttachment = MAX_RECEIVE
+local timeToWait = OPEN_ALL_MAIL_MIN_DELAY
+local eventHandles = {}
+local eventsRegistered = false
+local inboxHooked
 
 -- ---------------------------------------------------------------------------
 -- Shared helpers
 -- ---------------------------------------------------------------------------
+local function MailFrameOpen()
+	local mailFrame = _G["MailFrame"]
+	return mailFrame and mailFrame:IsShown()
+end
+
+local function ShouldSkipMailForGoldCollect(index)
+	local _, _, _, _, money, codAmount, _, _, _, _, _, _, isGM = GetInboxHeaderInfo(index)
+	if isGM then
+		return true
+	end
+	if codAmount and F.NotSecret(codAmount) and codAmount > 0 then
+		return true
+	end
+	if not (money and F.NotSecret(money) and money > 0) then
+		return true
+	end
+	return false
+end
+
 local function GetTotalInboxMoney()
 	local total = 0
 	for i = 1, GetInboxNumItems() do
-		local money = select(5, GetInboxHeaderInfo(i)) or 0
-		if F.NotSecret(money) then
-			total = total + money
+		if not ShouldSkipMailForGoldCollect(i) then
+			local money = select(5, GetInboxHeaderInfo(i)) or 0
+			if F.NotSecret(money) then
+				total = total + money
+			end
 		end
 	end
 	return total
@@ -72,37 +104,51 @@ local function UpdateGoldButtonText(opening)
 	end
 end
 
+local function StopTakeAll()
+	isTakeAllRunning = false
+	takeAllAttachment = MAX_RECEIVE
+end
+
+local function StopGoldCollect()
+	isGoldCollecting = false
+	mailIndex = 0
+	goldInboxSnapshot = nil
+	UpdateGoldButtonText(false)
+end
+
 -- ---------------------------------------------------------------------------
 -- Collect all gold
 --   Walk the inbox back-to-front taking attached money, one mail per tick so
 --   the server's command queue keeps up (mirrors the default Open-All cadence).
 -- ---------------------------------------------------------------------------
 local function CollectGold()
-	-- Bail if the mailbox closed mid-collection so we stop poking inbox APIs
-	-- (and the queued timer chain) out of context.
-	local mailFrame = _G["MailFrame"]
-	if not mailFrame or not mailFrame:IsShown() then
-		isGoldCollecting = false
-		UpdateGoldButtonText(false)
+	if not MailFrameOpen() then
+		StopGoldCollect()
 		return
 	end
 
 	if mailIndex > 0 then
 		if not C_Mail_IsCommandPending() then
-			if C_Mail_HasInboxMoney(mailIndex) then
+			local numItems = GetInboxNumItems()
+			if goldInboxSnapshot and numItems ~= goldInboxSnapshot then
+				mailIndex = numItems
+			end
+			goldInboxSnapshot = numItems
+
+			if not ShouldSkipMailForGoldCollect(mailIndex) and C_Mail_HasInboxMoney(mailIndex) then
 				TakeInboxMoney(mailIndex)
 			end
 			mailIndex = mailIndex - 1
+			goldInboxSnapshot = GetInboxNumItems()
 		end
 		C_Timer_After(timeToWait, CollectGold)
 	else
-		isGoldCollecting = false
-		UpdateGoldButtonText(false)
+		StopGoldCollect()
 	end
 end
 
 local function CollectAllGold()
-	if isGoldCollecting then
+	if isGoldCollecting or isTakeAllRunning then
 		return
 	end
 	if GetTotalInboxMoney() == 0 then
@@ -111,6 +157,7 @@ local function CollectAllGold()
 
 	isGoldCollecting = true
 	mailIndex = GetInboxNumItems()
+	goldInboxSnapshot = mailIndex
 	UpdateGoldButtonText(true)
 	CollectGold()
 end
@@ -129,6 +176,10 @@ local function GoldButton_OnEnter(self)
 end
 
 local function CreateGoldButton()
+	if goldButton then
+		return
+	end
+
 	local inbox = _G["InboxFrame"]
 	local openAll = _G["OpenAllMail"]
 	if not (inbox and openAll) then
@@ -150,44 +201,92 @@ end
 -- ---------------------------------------------------------------------------
 -- Take All (open mail)
 -- ---------------------------------------------------------------------------
-local function CollectAttachment()
-	local openMail = _G["OpenMailFrame"]
-	for i = 1, MAX_RECEIVE do
-		local attachmentButton = openMail.OpenMailAttachments[i]
-		if attachmentButton and attachmentButton:IsShown() then
-			TakeInboxItem(_G["InboxFrame"].openMailID, i)
-			C_Timer_After(timeToWait, CollectAttachment)
+local function TakeAllStep()
+	if not isTakeAllRunning or not MailFrameOpen() then
+		StopTakeAll()
+		return
+	end
+
+	local inbox = _G["InboxFrame"]
+	local mailID = inbox and inbox.openMailID
+	if not mailID or mailID == 0 or mailID > GetInboxNumItems() then
+		StopTakeAll()
+		return
+	end
+
+	if C_Mail_IsCommandPending() then
+		C_Timer_After(timeToWait, TakeAllStep)
+		return
+	end
+
+	if C_Container_CalculateTotalNumberOfFreeBagSlots and C_Container_CalculateTotalNumberOfFreeBagSlots() == 0 then
+		UIErrorsFrame:AddMessage(F.Colorize(ERR_INV_FULL, "red"))
+		StopTakeAll()
+		return
+	end
+
+	while takeAllAttachment >= 1 do
+		if HasInboxItem(mailID, takeAllAttachment) then
+			TakeInboxItem(mailID, takeAllAttachment)
+			takeAllAttachment = takeAllAttachment - 1
+			C_Timer_After(timeToWait, TakeAllStep)
 			return
 		end
+		takeAllAttachment = takeAllAttachment - 1
 	end
+
+	StopTakeAll()
 end
 
 local function CollectCurrent()
+	if isTakeAllRunning or isGoldCollecting then
+		return
+	end
+
 	local openMail = _G["OpenMailFrame"]
-	if openMail.cod then
+	local inbox = _G["InboxFrame"]
+	if not (openMail and inbox) then
+		return
+	end
+
+	local cod = openMail.cod
+	if cod and (F.IsSecret(cod) or cod > 0) then
 		UIErrorsFrame:AddMessage(F.Colorize(L["This letter is cash on delivery."], "red"))
 		return
 	end
 
-	local currentID = _G["InboxFrame"].openMailID
+	local currentID = inbox.openMailID
+	if not currentID or currentID == 0 or currentID > GetInboxNumItems() then
+		return
+	end
+
+	isTakeAllRunning = true
+	takeAllAttachment = MAX_RECEIVE
+
 	if C_Mail_HasInboxMoney(currentID) then
 		TakeInboxMoney(currentID)
+		C_Timer_After(timeToWait, TakeAllStep)
+	else
+		TakeAllStep()
 	end
-	CollectAttachment()
 end
 
 local function CreateTakeAllButton()
+	if takeAllButton then
+		return
+	end
+
 	local openMail = _G["OpenMailFrame"]
 	local replyButton = _G["OpenMailReplyButton"]
 	if not (openMail and replyButton) then
 		return
 	end
 
-	local button = CreateFrame("Button", nil, openMail, "UIPanelButtonTemplate")
-	button:SetSize(82, 22)
-	button:SetPoint("RIGHT", replyButton, "LEFT", -1, 0)
-	button:SetText(L["Take All"])
-	button:SetScript("OnClick", CollectCurrent)
+	takeAllButton = CreateFrame("Button", nil, openMail, "UIPanelButtonTemplate")
+	takeAllButton:SetSize(82, 22)
+	takeAllButton:SetPoint("RIGHT", replyButton, "LEFT", -1, 0)
+	takeAllButton:SetText(L["Take All"])
+	takeAllButton:SetScript("OnClick", CollectCurrent)
 end
 
 -- ---------------------------------------------------------------------------
@@ -195,6 +294,10 @@ end
 -- ---------------------------------------------------------------------------
 local function DeleteButton_OnClick(self)
 	local inbox = _G["InboxFrame"]
+	if not inbox then
+		return
+	end
+
 	local selectedID = self.id + (inbox.pageNum - 1) * PER_PAGE
 	if InboxItemCanDelete(selectedID) then
 		DeleteInboxItem(selectedID)
@@ -249,9 +352,11 @@ local function InboxItem_OnEnter(self)
 	end
 
 	for attachID = 1, MAX_RECEIVE do
-		local _, itemID, _, itemCount = GetInboxItem(self.index, attachID)
-		if itemID and itemCount and F.NotSecret(itemCount) and itemCount > 0 then
-			inboxItems[itemID] = (inboxItems[itemID] or 0) + itemCount
+		if HasInboxItem(self.index, attachID) then
+			local _, itemID, _, itemCount = GetInboxItem(self.index, attachID)
+			if itemID and itemCount and F.NotSecret(itemID) and F.NotSecret(itemCount) and itemCount > 0 then
+				inboxItems[itemID] = (inboxItems[itemID] or 0) + itemCount
+			end
 		end
 	end
 
@@ -260,7 +365,8 @@ local function InboxItem_OnEnter(self)
 		local itemName, _, itemQuality, _, _, _, _, _, _, itemTexture = C_Item_GetItemInfo(itemID)
 		if itemName then
 			local r, g, b = C_Item_GetItemQualityColor(itemQuality)
-			GameTooltip:AddDoubleLine(format(" |T%s:12:12:0:0:50:50:4:46:4:46|t %s", itemTexture, itemName), count, r, g, b)
+			local tex = itemTexture or "Interface\\Icons\\INV_Misc_QuestionMark"
+			GameTooltip:AddDoubleLine(format(" |T%s:12:12:0:0:50:50:4:46:4:46|t %s", tex, itemName), count, r, g, b)
 		end
 	end
 	GameTooltip:Show()
@@ -270,25 +376,48 @@ end
 -- Lifecycle
 -- ---------------------------------------------------------------------------
 function Mail:Setup()
-	if self.done then
+	if not ns.db.mail.enable then
 		return
 	end
-	self.done = true
 
 	CreateDeleteButtons()
 	CreateGoldButton()
 	CreateTakeAllButton()
 
-	if _G["InboxFrameItem_OnEnter"] then
+	if not inboxHooked and _G["InboxFrameItem_OnEnter"] then
 		hooksecurefunc("InboxFrameItem_OnEnter", InboxItem_OnEnter)
+		inboxHooked = true
 	end
+end
+
+function Mail:RegisterModuleEvents()
+	if eventsRegistered then
+		return
+	end
+	eventsRegistered = true
+	self:TrackEvent(eventHandles, "MAIL_SHOW", "Setup")
+end
+
+function Mail:UnregisterModuleEvents()
+	if not eventsRegistered then
+		return
+	end
+	eventsRegistered = false
+	ns:UnregisterModuleEventHandles(eventHandles)
 end
 
 function Mail:OnEnable()
 	if not ns.db.mail.enable then
 		return
 	end
+	self:RegisterModuleEvents()
 	self:Setup()
+end
+
+function Mail:OnDisable()
+	self:UnregisterModuleEvents()
+	StopGoldCollect()
+	StopTakeAll()
 end
 
 function Mail:RegisterOptions(category, builder)

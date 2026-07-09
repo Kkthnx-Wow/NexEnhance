@@ -1,14 +1,18 @@
 --[[
 	NexEnhance - Chat Emojis
 	-------------------------------------------------------------------------
-	Replaces common text emoticons (:D, :smile:, <3, …) with inline textures
-	from Media/Emojis. Chat log lines embed a hidden nexmoji hyperlink so
-	Chat Copy can recover the original text; optional speech bubbles get
-	textures only (no links).
+	Replaces :shortcode: tokens and classic ASCII emoticons with inline
+	textures from Media/Emojis (Unicode-style names, spaces → underscores).
+	Chat log lines embed a hidden nexmoji hyperlink so Chat Copy can recover
+	the original text; optional speech bubbles get textures only (no links).
 
 	ChatFrame_AddMessageEventFilter only — hyperlink spans are left alone; plain
-	text gets scanned. Bubbles use C_ChatBubbles on a throttled poll (same
-	worker pattern as the Chat Bubbles skin).
+	text gets scanned. Bubbles use C_ChatBubbles on a throttled poll.
+
+	Optional autocomplete: type : in chat for Blizzard's AutoComplete dropdown
+	(Tab / Enter / click). Literals are longest-match first; :token: aliases map to
+	the same textures as Slack-style shortcodes (:smile:, :heart:, …). Source follows
+	AutoComplete_Update(text, cursor) — shortcode parsed from text before the cursor.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -18,10 +22,11 @@ local F, C, L = ns.F, ns.C, ns.L
 local byte = string.byte
 local format = string.format
 local gsub = string.gsub
-local strfind, strmatch, strsub = string.find, string.match, string.sub
+local strfind, strmatch, strsub, strlower = string.find, string.match, string.sub, string.lower
 local strlen = string.len
 local tconcat = table.concat
 local wipe = wipe
+local unpack = unpack
 local ipairs = ipairs
 local pairs = pairs
 local CreateFrame = CreateFrame
@@ -35,115 +40,175 @@ ns:RegisterDefaults({
 	chatEmojis = {
 		enable = true,
 		bubbles = false,
+		autocomplete = true,
 	},
 })
 
 local ChatEmojis = ns:NewModule("ChatEmojis", "chatEmojis", { group = "chat", title = L["Chat Emojis"], order = 25 })
 
 local cfg
-local entries = {} -- sorted { pattern, texture } built once from DEFINITIONS
+local entries = {} -- sorted { literal, pattern, textures } built once from DEFINITIONS
+local emoticonHintChars = {} -- byte -> true; cheap precheck before ~110-pattern scan
 local listReady = false
+local autocompleteCatalog = {} -- sorted { token, label } for :name: picker
+local autocompleteReady = false
+local hookedEditBoxes = {}
+local matchScratch = {}
+
+local AC_PRIORITY = (Enum and Enum.AutoCompletePriority and Enum.AutoCompletePriority.Other)
+	or LE_AUTOCOMPLETE_PRIORITY_OTHER
+
+-- Blizzard AutoComplete_Update uses UTF-8 cursor for name sources; we slice with
+-- byte-based strsub/strlen, so stay on GetCursorPosition (byte index). Mixing
+-- GetUTF8CursorPosition with strsub breaks shortcodes after multibyte text.
+local function GetEditBoxCursor(editBox)
+	return editBox:GetCursorPosition()
+end
+
+-- :token must start the line or follow whitespace/punctuation (not URLs or times).
+local function GetIncompleteShortcode(beginning)
+	if not beginning or beginning == "" then
+		return nil
+	end
+	local code = strmatch(beginning, "^(:[^:][^:]*)$") or strmatch(beginning, "[%s%p](:[^:][^:]*)$")
+	if code then
+		return code
+	end
+	if strmatch(beginning, "^:$") or strmatch(beginning, "[%s%p]:$") then
+		return ":"
+	end
+end
 
 local EMOJI_PX = 16
 local BUBBLE_EMOJI_PX = 12
+-- Blizzard AutoCompleteButtonTemplate is 14px tall — 16px icons clip and look smooshed.
+local AC_EMOJI_PX = 14
+local AC_EMOJI_YOFFSET = 1
+local AC_ROW_HEIGHT = 20
+local AC_TOKEN_COLOR = "|cffd0d0d0"
 -- Blizzard caps bubble width around 300px; String inset is 16px per side.
 local BUBBLE_MAX_TEXT_WIDTH = 268
 local NEXMOJI_SCHEME = "nexmoji:"
 local NEXMOJI_LINK_PAD = "|cFFffffff|r|h"
-local EMOTICON_HINT = "[%(:;<>=3♥XD]" -- quick reject when segment cannot match
 
--- { pattern, texKey } — pattern is a Lua match fragment; texKey maps to C.Media.Emojis.
+-- { literal, texKey } — literal is the raw emoticon text; we escape to a Lua pattern at build.
+-- Longest literals win via sort in BuildReplacementList.
 local DEFINITIONS = {
-	-- :token: names
-	{ ":angry:", "Angry" },
-	{ ":blush:", "Blush" },
-	{ ":broken_heart:", "BrokenHeart" },
-	{ ":call_me:", "CallMe" },
-	{ ":cry:", "Cry" },
-	{ ":facepalm:", "Facepalm" },
-	{ ":grin:", "Grin" },
-	{ ":heart:", "Heart" },
-	{ ":heart_eyes:", "HeartEyes" },
-	{ ":joy:", "Joy" },
-	{ ":kappa:", "Kappa" },
-	{ ":middle_finger:", "MiddleFinger" },
-	{ ":murloc:", "Murloc" },
-	{ ":ok_hand:", "OkHand" },
-	{ ":open_mouth:", "OpenMouth" },
-	{ ":poop:", "Poop" },
-	{ ":rage:", "Rage" },
-	{ ":sadkitty:", "SadKitty" },
-	{ ":scream:", "Scream" },
-	{ ":scream_cat:", "ScreamCat" },
-	{ ":slight_frown:", "SlightFrown" },
-	{ ":slight_smile:", "SlightSmile" },
-	{ ":smile:", "Smile" },
-	{ ":smirk:", "Smirk" },
-	{ ":sob:", "Sob" },
-	{ ":sunglasses:", "Sunglasses" },
-	{ ":thinking:", "Thinking" },
-	{ ":thumbs_up:", "ThumbsUp" },
-	{ ":semi_colon:", "SemiColon" },
-	{ ":wink:", "Wink" },
-	{ ":zzz:", "ZZZ" },
-	{ ":stuck_out_tongue:", "StuckOutTongue" },
-	{ ":stuck_out_tongue_closed_eyes:", "StuckOutTongueClosedEyes" },
-	{ ":meaw:", "Meaw" },
-	-- ASCII / shorthand
-	{ ">:(", "Rage" },
-	{ ":%$", "Blush" },
-	{ "<\\3", "BrokenHeart" },
-	{ ":'%)", "Joy" },
-	{ ";'%)", "Joy" },
-	{ ",,!,,", "MiddleFinger" },
-	{ "D:<", "Rage" },
-	{ ":o3", "ScreamCat" },
-	{ "XP", "StuckOutTongueClosedEyes" },
-	{ "8%-%)", "Sunglasses" },
-	{ "8%)", "Sunglasses" },
-	{ ":%+1:", "ThumbsUp" },
-	{ ":;:", "SemiColon" },
-	{ ";o;", "Sob" },
-	{ ":%-@", "Angry" },
-	{ ":@", "Angry" },
-	{ ":%-%)", "SlightSmile" },
-	{ ":%)", "SlightSmile" },
-	{ ":D", "Smile" },
-	{ ":%-D", "Smile" },
-	{ ";%-D", "Grin" },
-	{ ";D", "Grin" },
-	{ "=D", "Grin" },
-	{ "xD", "Grin" },
-	{ "XD", "Grin" },
-	{ ":%-%(", "SlightFrown" },
-	{ ":%(", "SlightFrown" },
-	{ ":o", "OpenMouth" },
-	{ ":%-o", "OpenMouth" },
-	{ ":%-O", "OpenMouth" },
-	{ ":O", "OpenMouth" },
-	{ ":%-0", "OpenMouth" },
-	{ ":P", "StuckOutTongue" },
-	{ ":%-P", "StuckOutTongue" },
-	{ ":p", "StuckOutTongue" },
-	{ ":%-p", "StuckOutTongue" },
-	{ "=P", "StuckOutTongue" },
-	{ "=p", "StuckOutTongue" },
-	{ ";%-p", "StuckOutTongueClosedEyes" },
-	{ ";p", "StuckOutTongueClosedEyes" },
-	{ ";P", "StuckOutTongueClosedEyes" },
-	{ ";%-P", "StuckOutTongueClosedEyes" },
-	{ ";%-%)", "Wink" },
-	{ ";%)", "Wink" },
-	{ ":S", "Smirk" },
-	{ ":%-S", "Smirk" },
-	{ ":,%(", "Cry" },
-	{ ":,%-%(", "Cry" },
-	{ ":\'%(", "Cry" },
-	{ ":\'%-%(", "Cry" },
-	{ ":F", "MiddleFinger" },
-	{ "</3", "BrokenHeart" },
-	{ "<3", "Heart" },
-	{ "♥", "Heart" },
+	-- :shortcode: (Slack / CLDR style)
+	{ ":smile:", "Grinning_Face_with_Big_Eyes" },
+	{ ":joy:", "Face_with_Tears_of_Joy" },
+	{ ":laughing:", "Grinning_Squinting_Face" },
+	{ ":wink:", "Winking_Face" },
+	{ ":blush:", "Smiling_Face_with_Smiling_Eyes" },
+	{ ":heart_eyes:", "Smiling_Face_with_Heart_Eyes" },
+	{ ":kissing_heart:", "Face_Blowing_a_Kiss" },
+	{ ":kissing:", "Kissing_Face" },
+	{ ":yum:", "Face_Savoring_Food" },
+	{ ":relieved:", "Relieved_Face" },
+	{ ":sweat_smile:", "Smiling_Face_with_Sweat" },
+	{ ":heart:", "Red_Heart" },
+	{ ":broken_heart:", "Broken_Heart" },
+	{ ":thumbsup:", "Thumbs_Up" },
+	{ ":+1:", "Thumbs_Up" },
+	{ ":thumbsdown:", "Thumbs_Down" },
+	{ ":-1:", "Thumbs_Down" },
+	{ ":wave:", "Waving_Hand" },
+	{ ":ok_hand:", "OK_Hand" },
+	{ ":sparkles:", "Sparkles" },
+	{ ":warning:", "Warning" },
+	{ ":eyes:", "Eyes" },
+	-- Unicode-style :name: (filename stems)
+	{ ":slightly_smiling_face:", "Slightly_Smiling_Face" },
+	{ ":slightly_frowning_face:", "Slightly_Frowning_Face" },
+	{ ":crying_face:", "Crying_Face" },
+	{ ":angry_face:", "Angry_Face" },
+	{ ":angry:", "Angry_Face" },
+	{ ":rage:", "Face_with_Symbols_on_Mouth" },
+	{ ":open_mouth:", "Face_with_Open_Mouth" },
+	{ ":expressionless:", "Expressionless_Face" },
+	{ ":confused:", "Confused_Face" },
+	{ ":stuck_out_tongue:", "Face_with_Tongue" },
+	{ ":stuck_out_tongue_winking_eye:", "Winking_Face_with_Tongue" },
+	-- Class icons (13 classes + common aliases)
+	{ ":death_knight:", "Death_knight" },
+	{ ":deathknight:", "Death_knight" },
+	{ ":dk:", "Death_knight" },
+	{ ":demon_hunter:", "Demon_hunter" },
+	{ ":demonhunter:", "Demon_hunter" },
+	{ ":dh:", "Demon_hunter" },
+	{ ":druid:", "Druid" },
+	{ ":evoker:", "Evoker" },
+	{ ":hunter:", "Hunter" },
+	{ ":mage:", "Mage" },
+	{ ":monk:", "Monk" },
+	{ ":paladin:", "Paladin" },
+	{ ":pally:", "Paladin" },
+	{ ":priest:", "Priest" },
+	{ ":rogue:", "Rogue" },
+	{ ":shaman:", "Shaman" },
+	{ ":shammy:", "Shaman" },
+	{ ":warlock:", "Warlock" },
+	{ ":lock:", "Warlock" },
+	{ ":warrior:", "Warrior" },
+	{ ":warr:", "Warrior" },
+	-- ASCII — happy / affectionate
+	{ ":-)", "Slightly_Smiling_Face" },
+	{ ":)", "Slightly_Smiling_Face" },
+	{ "=:)", "Slightly_Smiling_Face" },
+	{ "=-)", "Slightly_Smiling_Face" },
+	{ "=)", "Slightly_Smiling_Face" },
+	{ ":-D", "Grinning_Face_with_Big_Eyes" },
+	{ ":D", "Grinning_Face_with_Big_Eyes" },
+	{ "=-D", "Grinning_Face_with_Big_Eyes" },
+	{ "=D", "Grinning_Face_with_Big_Eyes" },
+	{ "xD", "Face_with_Tears_of_Joy" },
+	{ "XD", "Face_with_Tears_of_Joy" },
+	{ ":'-)", "Face_with_Tears_of_Joy" },
+	{ string.char(58, 39, 41), "Face_with_Tears_of_Joy" }, -- :') happy tears, no nose
+	{ ";-)", "Winking_Face" },
+	{ ";)", "Winking_Face" },
+	{ ";-P", "Winking_Face_with_Tongue" },
+	{ ";P", "Winking_Face_with_Tongue" },
+	{ ":-P", "Face_with_Tongue" },
+	{ ":P", "Face_with_Tongue" },
+	{ "=-P", "Face_with_Tongue" },
+	{ "=P", "Face_with_Tongue" },
+	{ ":-p", "Face_with_Tongue" },
+	{ ":p", "Face_with_Tongue" },
+	{ "=-p", "Face_with_Tongue" },
+	{ "=p", "Face_with_Tongue" },
+	{ ":-*", "Face_Blowing_a_Kiss" },
+	{ ":*", "Face_Blowing_a_Kiss" },
+	{ "=-*", "Face_Blowing_a_Kiss" },
+	{ "=*", "Face_Blowing_a_Kiss" },
+	{ "<3", "Red_Heart" },
+	{ "♥", "Red_Heart" },
+	{ "</3", "Broken_Heart" },
+	-- ASCII — sad / angry
+	{ ":-(", "Slightly_Frowning_Face" },
+	{ ":(", "Slightly_Frowning_Face" },
+	{ "=-(", "Slightly_Frowning_Face" },
+	{ "=(", "Slightly_Frowning_Face" },
+	{ ":'-(", "Crying_Face" },
+	{ ":'(", "Crying_Face" },
+	{ '=("', "Crying_Face" },
+	{ "='-(", "Crying_Face" },
+	{ ">:-(", "Angry_Face" },
+	{ ">:(", "Angry_Face" },
+	{ ">=-(", "Angry_Face" },
+	{ ">=(", "Angry_Face" },
+	{ ":-@", "Face_with_Symbols_on_Mouth" },
+	{ ":@", "Face_with_Symbols_on_Mouth" },
+	{ "=-@", "Face_with_Symbols_on_Mouth" },
+	{ "=@", "Face_with_Symbols_on_Mouth" },
+	-- ASCII — shocked / neutral
+	{ ":-O", "Face_with_Open_Mouth" },
+	{ ":O", "Face_with_Open_Mouth" },
+	{ ":-o", "Face_with_Open_Mouth" },
+	{ ":o", "Face_with_Open_Mouth" },
+	{ "-_-", "Expressionless_Face" },
+	{ "o_O", "Confused_Face" },
+	{ "O_o", "Confused_Face" },
 }
 
 -- Same event set as Chat Channels (URL filter); omit loot — no emoticons there.
@@ -196,48 +261,312 @@ local function NexMojiLink(matched)
 end
 
 -- ---------------------------------------------------------------------------
--- Build sorted replacement list (longest pattern first)
+-- Build sorted replacement list (longest literal first)
 -- ---------------------------------------------------------------------------
+local function EscapeLuaPattern(literal)
+	return (gsub(literal, "([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1"))
+end
+
+local function RegisterHintChars(literal)
+	for j = 1, #literal do
+		emoticonHintChars[strsub(literal, j, j)] = true
+	end
+end
+
+local function SegmentMightHaveEmoticon(segment)
+	-- Incident (ChatEmojis, Jul 2026): scanning every ':' (timestamps, Player: msg) +
+	-- broken :* regex froze the client — only enter the pattern loop when a known byte appears.
+	for i = 1, #segment do
+		if emoticonHintChars[strsub(segment, i, i)] then
+			return true
+		end
+	end
+	return false
+end
+
 local function BuildReplacementList()
 	if listReady then
 		return
 	end
 	listReady = true
+	wipe(emoticonHintChars)
 
 	local n = 0
 	for i = 1, #DEFINITIONS do
-		local pattern, texKey = DEFINITIONS[i][1], DEFINITIONS[i][2]
-		if pattern and texKey and not strfind(pattern, ":%%", 1, true) then
+		local literal, texKey = DEFINITIONS[i][1], DEFINITIONS[i][2]
+		if literal and texKey then
 			local path = C.Media.Emojis[texKey]
 			if path then
 				n = n + 1
 				entries[n] = {
-					pattern = pattern,
+					literal = literal,
+					pattern = EscapeLuaPattern(literal),
 					chatTexture = F.ChatTexture(path, EMOJI_PX, EMOJI_PX),
 					bubbleTexture = F.ChatTexture(path, BUBBLE_EMOJI_PX, BUBBLE_EMOJI_PX),
 				}
+				RegisterHintChars(literal)
 			end
 		end
 	end
 
 	table.sort(entries, function(a, b)
-		return #a.pattern > #b.pattern
+		return #a.literal > #b.literal
 	end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Autocomplete catalog (:name: tokens only; one entry per texture)
+-- ---------------------------------------------------------------------------
+local function FormatAutocompleteLabel(path, token)
+	local icon = F.ChatTexture(path, AC_EMOJI_PX, AC_EMOJI_PX, 0, AC_EMOJI_YOFFSET)
+	return icon .. "  " .. AC_TOKEN_COLOR .. token .. "|r"
+end
+
+local acLayoutHooked = false
+
+local function InstallAutocompleteLayoutHook()
+	if acLayoutHooked then
+		return
+	end
+	acLayoutHooked = true
+
+	-- Blizzard sizes rows at 14px; our emoji rows need headroom for 14px icons + GameFontNormal.
+	hooksecurefunc("AutoComplete_UpdateResults", function(box, results)
+		if not ChatEmojis:IsEnabled() or not (cfg and cfg.autocomplete) then
+			return
+		end
+		local isEmoji = results and results[1] and results[1].insertToken
+		if not isEmoji then
+			return
+		end
+		local rowH = AC_ROW_HEIGHT
+		local maxButtons = AUTOCOMPLETE_MAX_BUTTONS or 5
+		local numShown = 0
+
+		for i = 1, maxButtons do
+			local button = _G["AutoCompleteButton" .. i]
+			if button then
+				button:SetHeight(rowH)
+				local fs = button:GetFontString()
+				if fs then
+					fs:ClearAllPoints()
+					fs:SetPoint("LEFT", button, "LEFT", 10, 0)
+				end
+				if button:IsShown() then
+					numShown = numShown + 1
+				end
+			end
+		end
+
+		if numShown > 0 and box and box:IsShown() then
+			box:SetHeight(numShown * rowH + 35)
+		end
+	end)
+end
+
+local function BuildAutocompleteCatalog()
+	if autocompleteReady then
+		return
+	end
+	autocompleteReady = true
+
+	local seenTex = {}
+	for i = 1, #DEFINITIONS do
+		local literal, texKey = DEFINITIONS[i][1], DEFINITIONS[i][2]
+		if literal and texKey and strmatch(literal, "^:[^:]+:$") and not seenTex[texKey] then
+			local path = C.Media.Emojis[texKey]
+			if path then
+				seenTex[texKey] = true
+				autocompleteCatalog[#autocompleteCatalog + 1] = {
+					token = literal,
+					label = FormatAutocompleteLabel(path, literal),
+				}
+			end
+		end
+	end
+
+	table.sort(autocompleteCatalog, function(a, b)
+		return a.token < b.token
+	end)
+end
+
+local function GetEmojiAutoCompleteMatches(text, maxResults, cursorPosition)
+	wipe(matchScratch)
+	if not text or text == "" then
+		return matchScratch
+	end
+
+	maxResults = maxResults or (AUTOCOMPLETE_MAX_BUTTONS or 5)
+	local beginning = strsub(text, 1, cursorPosition or strlen(text))
+	local shortCode = GetIncompleteShortcode(beginning)
+	if not shortCode then
+		return matchScratch
+	end
+
+	local q = strlower(shortCode)
+	local n = 0
+	for i = 1, #autocompleteCatalog do
+		local entry = autocompleteCatalog[i]
+		if strfind(strlower(entry.token), q, 1, true) == 1 then
+			n = n + 1
+			matchScratch[n] = {
+				name = entry.label,
+				priority = AC_PRIORITY,
+				insertToken = entry.token,
+			}
+			if n >= maxResults then
+				break
+			end
+		end
+	end
+	return matchScratch
+end
+
+-- Forward declarations — CompleteEmojiToken calls ClearEmojiAutocomplete on complete.
+local ClearEmojiAutocomplete, ActivateEmojiAutocomplete, CompleteEmojiToken
+
+ClearEmojiAutocomplete = function(editBox)
+	if not editBox or not editBox.__nexEmojiACActive then
+		return
+	end
+	AutoCompleteEditBox_SetCustomAutoCompleteFunction(editBox, editBox.__nexSavedAutoCompleteFn)
+	local savedSource = editBox.__nexSavedACSource
+	local savedParams = editBox.__nexSavedACParams
+	if savedSource then
+		AutoCompleteEditBox_SetAutoCompleteSource(editBox, savedSource, unpack(savedParams or {}))
+	else
+		AutoCompleteEditBox_SetAutoCompleteSource(editBox, nil)
+	end
+	AutoComplete_HideIfAttachedTo(editBox)
+	editBox.__nexEmojiACActive = nil
+end
+
+ActivateEmojiAutocomplete = function(editBox)
+	if not editBox.__nexEmojiACActive then
+		editBox.__nexSavedACSource = editBox.autoCompleteSource
+		editBox.__nexSavedACParams = editBox.autoCompleteParams
+		editBox.__nexSavedAutoCompleteFn = editBox.customAutoCompleteFunction
+	end
+	AutoCompleteEditBox_SetAutoCompleteSource(editBox, GetEmojiAutoCompleteMatches)
+	AutoCompleteEditBox_SetCustomAutoCompleteFunction(editBox, CompleteEmojiToken)
+	editBox.__nexEmojiACActive = true
+	AutoComplete_Update(editBox, editBox:GetText(), GetEditBoxCursor(editBox))
+end
+
+CompleteEmojiToken = function(editBox, _, nameInfo)
+	local token = nameInfo and nameInfo.insertToken
+	if not token then
+		return false
+	end
+
+	local cursorPosition = GetEditBoxCursor(editBox)
+	local text = editBox:GetText()
+	local beginning = strsub(text, 1, cursorPosition)
+	local incomplete = GetIncompleteShortcode(beginning)
+	if not incomplete then
+		return false
+	end
+
+	local startPos = strlen(beginning) - strlen(incomplete) + 1
+	local newBeginning = strsub(beginning, 1, startPos - 1) .. token .. " "
+	local newText = newBeginning .. strsub(text, cursorPosition + 1)
+	local newCursor = strlen(newBeginning)
+
+	-- SetText fires OnTextChanged before the cursor moves; ignore it so we do not
+	-- re-open autocomplete on the stale partial token (e.g. :poo while inserting :poop:).
+	editBox.ignoreTextChange = true
+	editBox:SetText(newText)
+	editBox:SetCursorPosition(newCursor)
+	editBox.ignoreTextChange = nil
+	ClearEmojiAutocomplete(editBox)
+	return true
+end
+
+local function OnEditBoxTextChanged(editBox, userInput)
+	if editBox.ignoreTextChange then
+		return
+	end
+	if editBox.disallowAutoComplete then
+		ClearEmojiAutocomplete(editBox)
+		return
+	end
+	if not cfg or not cfg.enable or not cfg.autocomplete then
+		return
+	end
+
+	local text = editBox:GetText()
+	local cursorPosition = GetEditBoxCursor(editBox)
+	local beginning = strsub(text, 1, cursorPosition)
+	local shortCode = GetIncompleteShortcode(beginning)
+
+	-- Blizzard skips autocomplete on programmatic SetText; still react to paste or
+	-- clearing a prior emoji dropdown when the incomplete token is removed.
+	if not userInput and not shortCode and not editBox.__nexEmojiACActive then
+		return
+	end
+
+	if shortCode then
+		ActivateEmojiAutocomplete(editBox)
+	else
+		ClearEmojiAutocomplete(editBox)
+	end
+end
+
+local function SetupEditBoxAutocomplete(editBox)
+	if not editBox or not editBox.HookScript or editBox.__nexEmojiAutoCompleteHooked then
+		return
+	end
+	editBox.__nexEmojiAutoCompleteHooked = true
+	hookedEditBoxes[#hookedEditBoxes + 1] = editBox
+	editBox:HookScript("OnTextChanged", OnEditBoxTextChanged)
+end
+
+local function InstallEditBoxAutocomplete()
+	if not (cfg and cfg.enable and cfg.autocomplete) then
+		return
+	end
+	BuildAutocompleteCatalog()
+	InstallAutocompleteLayoutHook()
+
+	for i = 1, NUM_CHAT_WINDOWS do
+		local editBox = _G["ChatFrame" .. i .. "EditBox"]
+		if editBox then
+			SetupEditBoxAutocomplete(editBox)
+		end
+	end
+
+	if CHAT_FRAMES then
+		for _, frameName in ipairs(CHAT_FRAMES) do
+			local frame = _G[frameName]
+			local editBox = frame and (frame.editBox or _G[frameName .. "EditBox"])
+			if editBox then
+				SetupEditBoxAutocomplete(editBox)
+			end
+		end
+	end
+end
+
+local function TeardownEditBoxAutocomplete()
+	for i = 1, #hookedEditBoxes do
+		ClearEmojiAutocomplete(hookedEditBoxes[i])
+	end
 end
 
 -- ---------------------------------------------------------------------------
 -- Plain-segment replacement
 -- ---------------------------------------------------------------------------
 local function ReplaceInSegment(segment, useLinks, textureKey)
-	if not strfind(segment, EMOTICON_HINT, 1) then
+	if not SegmentMightHaveEmoticon(segment) then
 		return segment
 	end
 
 	for i = 1, #entries do
 		local entry = entries[i]
+		local literal = entry.literal
 		local pat = entry.pattern
 		local tex = entry[textureKey]
-		if tex and strmatch(segment, "[%s%p]-" .. pat .. "[%s%p]*") then
+		-- Plain search first — avoids catastrophic backtracking on patterns like :*
+		if tex and strfind(segment, literal, 1, true) then
 			segment = gsub(segment, "([%s%p]-)(" .. pat .. ")([%s%p]*)", function(prefix, matched, suffix)
 				local mid = tex
 				if useLinks then
@@ -429,6 +758,7 @@ local function CreateBubbleWorker()
 	bubbleWorker = CreateFrame("Frame")
 	bubbleWorker:Hide()
 
+	-- Hidden frames do not receive OnUpdate — Show() arms a one-shot poll, Hide() sleeps.
 	bubbleWorker:SetScript("OnUpdate", function(self, elapsed)
 		bubblePollElapsed = bubblePollElapsed + (elapsed or 0)
 		if bubblePollElapsed < 0.1 then
@@ -448,16 +778,34 @@ local function CreateBubbleWorker()
 			self:Show()
 		end
 	end)
+end
 
+local function EnsureBubbleWorkerEvents()
+	if not bubbleWorker then
+		return
+	end
 	for event in pairs(bubbleCVars) do
 		bubbleWorker:RegisterEvent(event)
 	end
 end
 
+local function TearDownBubbleWorker()
+	if not bubbleWorker then
+		return
+	end
+	bubbleWorker:UnregisterAllEvents()
+	bubbleWorker:Hide()
+end
+
 local function SyncBubbleWorker()
+	if not (cfg and cfg.enable and cfg.bubbles) then
+		TearDownBubbleWorker()
+		return
+	end
 	if not bubbleWorker then
 		CreateBubbleWorker()
 	end
+	EnsureBubbleWorkerEvents()
 	if bubbleWorker then
 		bubbleWorker:Hide()
 	end
@@ -512,12 +860,14 @@ function ChatEmojis:OnEnable()
 	BuildReplacementList()
 	InstallMessageFilters()
 	SyncBubbleWorker()
+	InstallEditBoxAutocomplete()
+	ns:RegisterCallback("Chat.EditBoxRegistered", SetupEditBoxAutocomplete)
 end
 
 function ChatEmojis:OnDisable()
-	if bubbleWorker then
-		bubbleWorker:Hide()
-	end
+	TearDownBubbleWorker()
+	TeardownEditBoxAutocomplete()
+	ns:UnregisterCallback("Chat.EditBoxRegistered", SetupEditBoxAutocomplete)
 end
 
 function ChatEmojis:OnSettingChanged(key)
@@ -525,10 +875,19 @@ function ChatEmojis:OnSettingChanged(key)
 	if key == "bubbles" or key == "enable" then
 		SyncBubbleWorker()
 	end
+	if key == "autocomplete" or key == "enable" then
+		if cfg.enable and cfg.autocomplete then
+			InstallEditBoxAutocomplete()
+		else
+			TeardownEditBoxAutocomplete()
+		end
+	end
 end
 
 function ChatEmojis:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat Emojis"], L["Replace text emoticons like :D and :smile: with emoji textures in chat."])
 	local _, bubbleInit = builder:Checkbox(category, self, "bubbles", L["Show in Chat Bubbles"], L["Also replace emoticons in speech bubbles above characters (say, yell, party). Skipped when bubbles are forbidden or text is secret."])
+	local _, acInit = builder:Checkbox(category, self, "autocomplete", L["Emoji Autocomplete"], L["Type : in chat to pick :name: emojis from a list. Tab, Enter, or click to insert."])
 	builder:DependsOn(bubbleInit, enableInit)
+	builder:DependsOn(acInit, enableInit)
 end

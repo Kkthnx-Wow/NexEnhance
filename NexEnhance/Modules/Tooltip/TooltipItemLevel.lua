@@ -34,8 +34,13 @@ local relicScratch = {}
 -- The inspect cache is keyed by GUID; cap it so a long session of mousing over
 -- many players (cities, raids) can't grow it without bound.
 local cacheCount, CACHE_MAX = 0, 200
-local currentUNIT, currentGUID
+local currentUNIT, currentGUID, tipShownGUID
 local lastTime = 0
+local userInspectUntil = 0
+
+hooksecurefunc("InspectUnit", function()
+	userInspectUntil = GetTime() + 2
+end)
 
 local function checkUnitGUID(unit)
 	local guid = UnitGUID(unit)
@@ -163,11 +168,13 @@ end
 
 -- Write (or refresh) the item-level line on the mouseover tooltip.
 local function SetupItemLevelLine(level)
-	if not Tooltip:UnitExists("mouseover") then
+	if not GameTooltip:IsShown() then
 		return
 	end
-	local guid = UnitGUID("mouseover")
-	if F.IsSecret(guid) or guid ~= currentGUID then
+	if not tipShownGUID or F.IsSecret(tipShownGUID) or tipShownGUID ~= currentGUID then
+		return
+	end
+	if Tooltip._tipShownGUID ~= tipShownGUID then
 		return
 	end
 
@@ -196,11 +203,23 @@ updater:SetScript("OnUpdate", function(self, elapsed)
 		self.elapsed = 0
 		self:Hide()
 		ClearInspectPlayer()
-		if currentUNIT and checkUnitGUID(currentUNIT) == currentGUID then
+		-- Incident (TooltipItemLevel, Jul 2026): after tooltip hide, stale currentUNIT
+		-- kept NotifyInspect firing. Only inspect while this tip is still the shown one.
+		if not currentUNIT or not currentGUID or Tooltip._tipShownGUID ~= tipShownGUID then
+			return
+		end
+		if checkUnitGUID(currentUNIT) == currentGUID then
 			NotifyInspect(currentUNIT)
 		end
 	end
 end)
+
+-- Called from Tooltip.lua OnGameTooltipHide — stop inspect work when the tip closes.
+function Tooltip:ClearItemLevelInspectState()
+	currentUNIT, currentGUID, tipShownGUID = nil, nil, nil
+	updater.elapsed = frequency
+	updater:Hide()
+end
 
 local function InspectUnit(unit, forced)
 	local level
@@ -243,13 +262,17 @@ local function InspectUnit(unit, forced)
 	if InspectFrame and InspectFrame:IsShown() then
 		return
 	end
+	if GetTime() < userInspectUntil then
+		return
+	end
 
 	SetupItemLevelLine()
 	updater:Show()
 end
 
 function Tooltip:INSPECT_READY(guid)
-	if F.NotSecret(guid) and guid == currentGUID then
+	if F.NotSecret(guid) and guid == currentGUID and guid == tipShownGUID
+		and Tooltip._tipShownGUID == tipShownGUID then
 		local db = cache[currentGUID]
 		if not db then
 			return
@@ -269,6 +292,9 @@ function Tooltip:UNIT_INVENTORY_CHANGED(unit)
 	if InCombatLockdown() then
 		return
 	end
+	if not currentGUID or Tooltip._tipShownGUID ~= tipShownGUID then
+		return
+	end
 	local thisTime = GetTime()
 	if thisTime - lastTime > 0.1 then
 		lastTime = thisTime
@@ -279,7 +305,10 @@ function Tooltip:UNIT_INVENTORY_CHANGED(unit)
 end
 
 -- Entry point called from the unit tooltip rewrite.
-function Tooltip:InspectUnitItemLevel(unit)
+function Tooltip:InspectUnitItemLevel(unit, guid)
+	if not Tooltip:IsEnabled() or not ns.db.tooltip.showItemLevel then
+		return
+	end
 	if ns.db.tooltip.itemLevelByShift and not IsShiftKeyDown() then
 		return
 	end
@@ -287,7 +316,9 @@ function Tooltip:InspectUnitItemLevel(unit)
 	if not unit or not CanInspect(unit) then
 		return
 	end
-	currentUNIT, currentGUID = unit, checkUnitGUID(unit)
+	currentUNIT = unit
+	currentGUID = (guid and F.NotSecret(guid) and guid) or checkUnitGUID(unit)
+	tipShownGUID = currentGUID
 	if not currentGUID then
 		return
 	end

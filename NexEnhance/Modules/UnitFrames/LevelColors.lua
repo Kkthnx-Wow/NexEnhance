@@ -32,10 +32,8 @@
 	  * These frames are Edit Mode-managed, so - like the cast bar - we do NOT
 	    write any fields onto them. Hooks are installed exactly once via a
 	    module-level flag over the known frames (all exist, hidden, from login).
-	  * Secret-safe (Patch 12.0): UnitEffectiveLevel / UnitIs*BattlePet* can
-	    return Secret values in instances/combat. We gate every read with
-	    NexEnhance's shared F.IsSecret helper before any boolean test or
-	    comparison, and simply leave Blizzard's display when a value is Secret.
+	  * UnitEffectiveLevel / UnitClassification / UnitIs*BattlePet* are
+	    SecretArguments only (Resources 12.0.7) — returns are plain values.
 
 	Default ON. Lives under Unit Frames.
 --]]
@@ -64,7 +62,6 @@ local UNKNOWN_COLOR = RED_FONT_COLOR or CreateColor(1, 0.1, 0.1)
 -- (same red->grey-vs-player palette, confirmed present) so a missing global can
 -- never hard-error on the call.
 local GetCreatureDifficultyColor = GetCreatureDifficultyColor or GetQuestDifficultyColor
-local IsSecret = F.IsSecret
 
 -- White Name and Level: keep difficulty tints (red/orange/green/grey) but swap
 -- Blizzard's default yellow band (GetRelativeDifficultyColor "difficult") for white.
@@ -91,7 +88,7 @@ end
 -- to ~2 above player). White mode replaces only that default — not red/orange/green/grey.
 local function IsDefaultYellowDifficultyBand(creatureLevel)
 	local playerLevel = UnitEffectiveLevel("player")
-	if IsSecret(playerLevel) or IsSecret(creatureLevel) or not playerLevel or not creatureLevel then
+	if not playerLevel or not creatureLevel then
 		return false
 	end
 	local levelDiff = creatureLevel - playerLevel
@@ -127,20 +124,13 @@ local function GetLevelRegions(frame)
 	return levelText, highLevel
 end
 
--- Returns a non-secret numeric level (may be <= 0 for "too high to tell"), or
--- nil when a read is Secret / unavailable (so the caller leaves Blizzard alone).
+-- Returns a numeric level (may be <= 0 for "too high to tell"), or nil when
+-- unavailable (so the caller leaves Blizzard alone).
 local function GetUnitLevel(unit)
 	local isWild = UnitIsWildBattlePet(unit)
-	if IsSecret(isWild) then
-		return nil
-	end
-
 	local isCompanion = false
 	if not isWild then
 		isCompanion = UnitIsBattlePetCompanion(unit)
-		if IsSecret(isCompanion) then
-			return nil
-		end
 	end
 
 	local level
@@ -150,7 +140,7 @@ local function GetUnitLevel(unit)
 		level = UnitEffectiveLevel(unit)
 	end
 
-	if IsSecret(level) or not level then
+	if not level then
 		return nil
 	end
 	return level
@@ -175,12 +165,9 @@ local function GetDifficultyHex(level)
 end
 
 -- Returns the suffix to append for the unit's classification ("R", "+", "R+"),
--- or nil. Secret-safe: leaves it off when the read is restricted.
+-- or nil.
 local function GetClassificationSuffix(unit)
 	local class = UnitClassification(unit)
-	if IsSecret(class) then
-		return nil
-	end
 	if class == "rareelite" then
 		return MARKER_COLOR:WrapTextInColorCode("R+")
 	elseif class == "elite" then
@@ -191,13 +178,8 @@ local function GetClassificationSuffix(unit)
 	return nil
 end
 
--- Is this unit a world boss? Secret-safe (returns false when restricted).
 local function IsWorldBoss(unit)
-	local class = UnitClassification(unit)
-	if IsSecret(class) then
-		return false
-	end
-	return class == "worldboss"
+	return UnitClassification(unit) == "worldboss"
 end
 
 -- ---------------------------------------------------------------------------

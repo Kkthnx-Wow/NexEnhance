@@ -32,7 +32,7 @@ local DetailsSkin = ns:NewModule("DetailsSkin", "detailsSkin", { group = "skins"
 -- A classic Blizzard tooltip border + dark background fill.
 local DETAILS_BACKDROP = {
 	bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+	edgeFile = "Interface\\AddOns\\NexEnhance\\Media\\Border\\NexBorder",
 	tile = true,
 	tileSize = 16,
 	edgeSize = 14,

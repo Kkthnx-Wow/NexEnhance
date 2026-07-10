@@ -15,14 +15,13 @@
 	  * BoP / soulbound rolls raise CONFIRM_LOOT_ROLL / CONFIRM_DISENCHANT_ROLL,
 	    answered with ConfirmLootRoll(rollID, rollType).
 
-	Midnight: item quality can be a secret value inside instances, so the rarity
-	gate is taken behind F.NotSecret - if we cannot read it, we leave the roll
-	for the player rather than guessing.
+	Midnight: GetLootRollItemInfo quality is not SecretReturns in Resources 12.0.7 —
+	rarity gating uses plain comparisons. Leave the roll alone when quality is nil.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
 local _, ns = ...
-local F, L = ns.F, ns.L
+local L = ns.L
 
 local _G = _G
 
@@ -91,8 +90,8 @@ function AutoGreed:START_LOOT_ROLL(rollID)
 		return
 	end
 
-	-- Never act on a rarity we cannot actually read (secret in instances).
-	if F.IsSecret(quality) or quality == nil then
+	-- Skip when quality is missing (cold loot data).
+	if quality == nil then
 		return
 	end
 

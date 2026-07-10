@@ -3,14 +3,17 @@
 	-------------------------------------------------------------------------
 	Quality-of-life pass over Blizzard's Group Finder (Premade Groups):
 	  - double-click a search result to sign up (Alt skips the confirm dialog)
-	  - an "Auto-accept" check on the applicant viewer that auto-invites
-	    applicants while you're the leader
 	  - auto-dismisses the throwaway "informational"/expired LFG popups
 	  - shows the leader's M+/PvP rating on each result, with a cross-faction
 	    crest, and trims the long "Zone:" activity prefix
 	  - optional locale region tag (MX, OCE, DE, etc.) when the leader's realm
 	    locale differs from yours (Blizzard realm-list metadata)
 	  - a one-time HelpTip pointing out the double-click shortcut (F.ShowHelpTip)
+
+	Auto-invite applicants is intentionally NOT implemented: C_LFGList.InviteApplicant
+	is protected. Addon-initiated button:Click() still runs tainted and triggers
+	ADDON_ACTION_BLOCKED. Use Blizzard's listing Auto-accept when
+	C_LFGList.CanActiveEntryUseAutoAccept() shows it.
 
 	Blizzard_GroupFinder is load-on-demand — we don't touch LFGListFrame at file
 	scope. Hooks install once the addon loads, and each hook re-checks the live
@@ -24,12 +27,8 @@ local F, C, L = ns.F, ns.C, ns.L
 local select = select
 local format = string.format
 local gsub = string.gsub
-local CreateFrame = CreateFrame
 local hooksecurefunc = hooksecurefunc
-local GetTime = GetTime
 local IsAltKeyDown = IsAltKeyDown
-local InCombatLockdown = InCombatLockdown
-local UnitIsGroupLeader = UnitIsGroupLeader
 local StaticPopup_Hide = StaticPopup_Hide
 local StaticPopupSpecial_Hide = StaticPopupSpecial_Hide
 local HideUIPanel = HideUIPanel
@@ -43,8 +42,6 @@ local IsAddOnLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
 local CreateAtlasMarkup = _G.CreateAtlasMarkup
 
 local HEADER_COLON = _G["HEADER_COLON"] or ":"
-local LE_PARTY_CATEGORY_HOME = _G["LE_PARTY_CATEGORY_HOME"] or 1
-local LFG_LIST_AUTO_ACCEPT = _G["LFG_LIST_AUTO_ACCEPT"] or "Auto-accept"
 local HIGHLIGHT_FONT_COLOR = HIGHLIGHT_FONT_COLOR
 
 -- Grey "(%s)" wrapper so the rating reads "(1234) Group Name" with the brackets
@@ -56,7 +53,9 @@ local REGION_FORMAT = "|cff%02x%02x%02x[%s]|r %s"
 ns:RegisterDefaults({
 	quickJoin = {
 		enable = false,
-		autoAccept = false, -- persisted state of the on-frame "Auto-accept" check
+		-- Legacy key from the removed addon auto-invite checkbox; kept so CopyDefaults
+		-- does not thrash old profiles. Blizzard's AutoAcceptButton is the only legal path.
+		autoAccept = false,
 		leaderScore = true,
 		leaderRegion = true,
 		autoHide = true,
@@ -80,9 +79,6 @@ end
 
 local QuickJoin = ns:NewModule("QuickJoin", "quickJoin", { group = "automation", title = L["Quick Join"], order = 35, since = "1.2.9" })
 local RealmCatalog = ns.RealmCatalog
-
-local eventHandles = {}
-local eventsRegistered = false
 
 -- ---------------------------------------------------------------------------
 -- Score helper (mirrors the Tooltip module's GetDungeonScore colouring)
@@ -225,87 +221,6 @@ local function AddLeaderRegionTooltip(tooltip, resultID)
 end
 
 -- ---------------------------------------------------------------------------
--- Auto-accept applicants (leader only), driven by the on-frame check box
--- ---------------------------------------------------------------------------
-local lastInviteAt = 0
-local function GetInviteButton(button)
-	if button.InviteButtonSmall and button.InviteButtonSmall:IsShown() then
-		return button.InviteButtonSmall
-	end
-	return button.InviteButton
-end
-
-local function InviteApplicant(button)
-	if not button.applicantID then
-		return
-	end
-	local invite = GetInviteButton(button)
-	if invite and invite:IsEnabled() then
-		-- InviteApplicant is protected; route through Blizzard's row button (same as a manual click).
-		invite:Click()
-	end
-end
-
-function QuickJoin:LFG_LIST_APPLICANT_LIST_UPDATED()
-	if InCombatLockdown() then
-		return
-	end
-	if not (ns.db.quickJoin.enable and self.autoAcceptCheck and self.autoAcceptCheck:GetChecked()) then
-		return
-	end
-	if not UnitIsGroupLeader("player", LE_PARTY_CATEGORY_HOME) then
-		return
-	end
-
-	local viewer = LFGListFrame and LFGListFrame.ApplicationViewer
-	if not viewer then
-		return
-	end
-	viewer.ScrollBox:ForEachFrame(InviteApplicant)
-
-	-- Nudge the viewer to refresh, but no more than once a second so a noisy
-	-- applicant list can't turn into a click storm.
-	if viewer:IsShown() then
-		local now = GetTime()
-		if now - lastInviteAt > 1 then
-			lastInviteAt = now
-			viewer.RefreshButton:Click()
-		end
-	end
-end
-
-function QuickJoin:CreateAutoAcceptCheck()
-	if self.autoAcceptCheck then
-		return
-	end
-
-	local viewer = LFGListFrame and LFGListFrame.ApplicationViewer
-	if not viewer then
-		return
-	end
-
-	local check = CreateFrame("CheckButton", nil, viewer, "UICheckButtonTemplate")
-	check:SetSize(24, 24)
-	check:SetHitRectInsets(0, -130, 0, 0)
-	check:SetPoint("BOTTOMLEFT", viewer.InfoBackground or viewer, 12, 5)
-	check:SetChecked(ns.db.quickJoin.autoAccept)
-	if check.text then
-		check.text:SetText(LFG_LIST_AUTO_ACCEPT)
-	end
-	check:SetScript("OnClick", function(self)
-		ns.db.quickJoin.autoAccept = self:GetChecked() or false
-	end)
-
-	-- Only the group leader can invite, so only show the check for them - and
-	-- never on top of Blizzard's own auto-accept toggle when it's present.
-	hooksecurefunc("LFGListApplicationViewer_UpdateInfo", function(frame)
-		check:SetShown(ns.db.quickJoin.enable and UnitIsGroupLeader("player", LE_PARTY_CATEGORY_HOME) and not frame.AutoAcceptButton:IsShown())
-	end)
-
-	self.autoAcceptCheck = check
-end
-
--- ---------------------------------------------------------------------------
 -- Setup (runs once, after Blizzard_GroupFinder is loaded)
 -- ---------------------------------------------------------------------------
 function QuickJoin:Setup()
@@ -357,26 +272,6 @@ function QuickJoin:Setup()
 	-- Leader rating / region tags on results.
 	hooksecurefunc("LFGListSearchEntry_Update", EnhanceSearchEntry)
 	hooksecurefunc("LFGListUtil_SetSearchEntryTooltip", AddLeaderRegionTooltip)
-
-	-- Auto-accept applicants.
-	self:CreateAutoAcceptCheck()
-	self:RegisterModuleEvents()
-end
-
-function QuickJoin:RegisterModuleEvents()
-	if eventsRegistered or not self.setupDone then
-		return
-	end
-	eventsRegistered = true
-	self:TrackEvent(eventHandles, "LFG_LIST_APPLICANT_LIST_UPDATED", "LFG_LIST_APPLICANT_LIST_UPDATED")
-end
-
-function QuickJoin:UnregisterModuleEvents()
-	if not eventsRegistered then
-		return
-	end
-	eventsRegistered = false
-	ns:UnregisterModuleEventHandles(eventHandles)
 end
 
 function QuickJoin:StopWaiting()
@@ -388,7 +283,6 @@ function QuickJoin:StopWaiting()
 end
 
 function QuickJoin:Stop()
-	self:UnregisterModuleEvents()
 	self:StopWaiting()
 end
 
@@ -433,7 +327,7 @@ function QuickJoin:OnEnable()
 end
 
 function QuickJoin:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Join"], L["Double-click Group Finder results to apply, auto-invite applicants, hide throwaway LFG popups, and show leader rating and region tags."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Join"], L["Double-click Group Finder results to apply, hide throwaway LFG popups, and show leader rating and region tags."])
 	local _, scoreInit = builder:Checkbox(category, self, "leaderScore", L["Show Leader Rating"], L["Show the group leader's Mythic+/PvP rating on each search result, with a cross-faction crest."])
 	local _, regionInit = builder:Checkbox(category, self, "leaderRegion", L["Show Leader Region"], L["Show a locale region tag (e.g. MX, OCE, DE) on Group Finder results when the leader is on a different realm locale than yours."])
 	local _, hideInit = builder:Checkbox(category, self, "autoHide", L["Auto-hide LFG Popups"], L["Automatically dismiss the throwaway informational and expired-listing LFG popups."])

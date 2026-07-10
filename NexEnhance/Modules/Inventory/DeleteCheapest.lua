@@ -14,9 +14,8 @@
 	skipped outright, and optional per-item-class filters let you protect whole
 	categories (quest items are protected by default).
 
-	Vendor sell price comes from C_Item.GetItemInfo (static, never secret). Stack
-	count in a bag slot can be secret in combat — we gate with F.IsSecret and
-	treat it as a single item rather than doing arithmetic on it.
+	Vendor sell price and bag stackCount have no SecretReturns in Resources 12.0.7 —
+	multiply stack totals with plain Lua.
 --]]
 
 -- luacheck: read_globals C_Container C_Item Enum NUM_BAG_SLOTS BACKPACK_CONTAINER BagItemAutoSortButton DeleteCursorItem
@@ -108,16 +107,12 @@ local function FindCheapest()
 						ns:RequestItemData(itemID, function() end)
 					end
 				end
-				-- sellPrice is static item data (not Secret); guard anyway.
-				if sellPrice and F.NotSecret(sellPrice) and sellPrice > 0 and not IsFiltered(info.hyperlink) then
-					-- Stack count can be Secret in combat; only multiply when
-					-- it is a plain number, otherwise price the single item.
-					local count = info.stackCount
+				-- sellPrice / stackCount: no SecretReturns in Resources 12.0.7.
+				if sellPrice and sellPrice > 0 and not IsFiltered(info.hyperlink) then
+					local count = info.stackCount or 1
 					local total = sellPrice
-					if count and F.NotSecret(count) and count > 1 then
+					if count > 1 then
 						total = sellPrice * count
-					else
-						count = 1
 					end
 
 					if not bestValue or total < bestValue then

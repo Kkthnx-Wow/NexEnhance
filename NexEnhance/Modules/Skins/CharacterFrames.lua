@@ -413,7 +413,8 @@ function CharacterFrames:ApplyInspectLayout(tabID)
 		ApplyPaperdollInset(InspectFrame, INSPECT_INSET_OFFSET_PAPER)
 
 		local _, targetClass = UnitClass("target")
-		if F.NotSecret(targetClass) and targetClass then
+		-- classFilename (2nd return): no ConditionalSecret.
+		if targetClass then
 			InspectFrame.Inset.Bg:SetTexture("Interface\\DressUpFrame\\DressingRoom" .. targetClass)
 			InspectFrame.Inset.Bg:SetTexCoord(0.00195312, 0.935547, 0.00195312, 0.978516)
 			InspectFrame.Inset.Bg:SetHorizTile(false)
@@ -500,7 +501,8 @@ function CharacterFrames:StyleInspectFrame()
 				return
 			end
 			local ilvl = _G.C_PaperDollInfo.GetInspectItemLevel(unit)
-			if ilvl and F.NotSecret(ilvl) then
+			-- GetInspectItemLevel: SecretArguments only.
+			if ilvl then
 				F.SetPlainFormattedText(averageItemLevelText, _G.DUNGEON_SCORE_LINK_ITEM_LEVEL or "Item Level %d", ilvl)
 			end
 		end)

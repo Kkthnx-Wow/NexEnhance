@@ -38,16 +38,10 @@
 	hooksecurefunc is used for both, so we never taint the secure unit buttons.
 	SetStatusBarColor / SetStatusBarDesaturated accept tainted callers (12.0+).
 
-	Patch 12.0 "Secret Values" (the bit that was breaking us):
-	  When a unit's identity is restricted (in combat, instances, etc.) the
-	  identity APIs -- UnitIsPlayer / UnitIsConnected / UnitClass -- hand back
-	  *secret* values. Tainted addon code is NOT allowed to run a boolean test
-	  or comparison on a secret boolean, so `if not UnitIsPlayer(unit)` throws
-	  "attempt to ... a secret value", which silently aborted our hook and left
-	  the bar Blizzard-green. We now probe each result with F.IsSecret and
-	  bail (leaving Blizzard's colour) whenever the answer is secret. Player and
-	  group members are never identity-restricted, so they always colour; an
-	  arbitrary target/focus colours out of combat and falls back in combat.
+	Patch 12.0: UnitIsPlayer / UnitIsConnected / UnitTreatAsPlayerForDisplay /
+	UnitClass classFilename are SecretArguments only (Resources 12.0.7) — plain
+	booleans / tokens. Only UnitClass's first return (className) is ConditionalSecret;
+	we use the second return (classFilename) without a secret gate.
 --]]
 
 local _, ns = ...
@@ -63,10 +57,6 @@ local UnitTreatAsPlayerForDisplay = UnitTreatAsPlayerForDisplay
 local SetDesaturation = SetDesaturation
 local hooksecurefunc = hooksecurefunc
 local ipairs = ipairs
-
--- Shared secret-value gate (Core/Functions.lua). It accepts any value and never
--- errors, so it is safe to call before we branch on a possibly-secret result.
-local IsSecret = F.IsSecret
 
 local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS
 
@@ -109,35 +99,27 @@ local scheduleRefreshStandard = F.Debounce(0, function()
 end)
 
 -- Returns the class colour for a unit, or DISCONNECTED_COLOR when offline,
--- or nil if it should keep Blizzard's default (NPC, classless, or secret).
--- Each identity read is gated by F.IsSecret *before* we boolean-test it,
--- so this never errors on a secret value under tainted execution.
+-- or nil if it should keep Blizzard's default (NPC / classless).
 local function GetPlayerClassColor(unit)
 	if not unit then
 		return nil
 	end
 
 	local isPlayer = UnitIsPlayer(unit)
-	if IsSecret(isPlayer) then
-		return nil
-	end
 	if not isPlayer then
 		local treatAsPlayer = UnitTreatAsPlayerForDisplay and UnitTreatAsPlayerForDisplay(unit)
-		if IsSecret(treatAsPlayer) or not treatAsPlayer then
+		if not treatAsPlayer then
 			return nil
 		end
 	end
 
 	local connected = UnitIsConnected(unit)
-	if IsSecret(connected) then
-		return nil
-	end
 	if not connected then
 		return DISCONNECTED_COLOR
 	end
 
 	local _, class = UnitClass(unit)
-	if IsSecret(class) or not class then
+	if not class then
 		return nil
 	end
 
@@ -153,22 +135,13 @@ local function GetUnitHealthColor(unit)
 	end
 
 	local connected = UnitIsConnected(unit)
-	local connectedKnown = F.BooleanIsTrue(connected)
-	if connectedKnown == nil then
-		return nil
-	end
-	if not connectedKnown then
+	if not connected then
 		return DISCONNECTED_COLOR.r, DISCONNECTED_COLOR.g, DISCONNECTED_COLOR.b
 	end
 
-	local isPlayer = F.BooleanIsTrue(UnitIsPlayer(unit))
-	if isPlayer == nil then
-		return nil
-	end
-
-	if isPlayer then
+	if UnitIsPlayer(unit) then
 		local _, class = UnitClass(unit)
-		if IsSecret(class) or not class then
+		if not class then
 			return nil
 		end
 		local color = CLASS_COLORS[class]
@@ -192,9 +165,9 @@ local function GetUnitHealthColor(unit)
 	end
 
 	local treatAsPlayer = UnitTreatAsPlayerForDisplay and UnitTreatAsPlayerForDisplay(unit)
-	if not IsSecret(treatAsPlayer) and treatAsPlayer then
+	if treatAsPlayer then
 		local _, class = UnitClass(unit)
-		if not IsSecret(class) and class then
+		if class then
 			local color = CLASS_COLORS[class]
 			if color then
 				return color.r, color.g, color.b
@@ -239,15 +212,10 @@ local function ShouldShowDisconnect(unit)
 	if not unit or not UnitExists(unit) then
 		return false
 	end
-	local isPlayer = F.BooleanIsTrue(UnitIsPlayer(unit))
-	if isPlayer ~= true then
+	if not UnitIsPlayer(unit) then
 		return false
 	end
-	local connected = F.BooleanIsTrue(UnitIsConnected(unit))
-	if connected == nil then
-		return false
-	end
-	return not connected
+	return not UnitIsConnected(unit)
 end
 
 local function IsPartyHudMemberFrame(frame)
@@ -567,7 +535,7 @@ local function DumpFrame(label, frame)
 	local hr, hg, hb = GetUnitHealthColor(unit)
 	local isPlayer = unit and UnitIsPlayer(unit)
 	local desat = bar.IsStatusBarDesaturated and bar:IsStatusBarDesaturated() or nil
-	ns.F.Print(string.format("%s unit=%s lockColor=%s isPlayer=%s secret=%s computed=[%s] barColor=[%s] desat=%s", label, tostring(unit), tostring(bar.lockColor), tostring(IsSecret(isPlayer) and "SECRET" or isPlayer), tostring(IsSecret(isPlayer)), hr and fmt(hr, hg, hb) or "nil", fmt(r, g, b), tostring(desat)))
+	ns.F.Print(string.format("%s unit=%s lockColor=%s isPlayer=%s computed=[%s] barColor=[%s] desat=%s", label, tostring(unit), tostring(bar.lockColor), tostring(isPlayer), hr and fmt(hr, hg, hb) or "nil", fmt(r, g, b), tostring(desat)))
 end
 
 function ClassColors:Debug()

@@ -62,7 +62,7 @@ local HIGHLIGHT_FONT_COLOR = HIGHLIGHT_FONT_COLOR
 
 -- A unit is "secret" when the token itself is secret or identity is hidden.
 local function IsSecretUnit(unit)
-	return F.IsSecret(unit) or F.IsSecretUnit(unit)
+	return F.IsSecretUnit(unit)
 end
 
 -- Retail unit-frame fill atlas, matching the experience bar. The "-Status"
@@ -181,6 +181,9 @@ local function ResolveTipIdentity(tt, data)
 	local ok, _, u = pcall(function()
 		return tt:GetUnit()
 	end)
+	-- GetUnit can return a *secret* token even when UnitGUID(u) is readable
+	-- (secure nameplate/unit-frame tips). Never keep a secret token — APIs like
+	-- UnitRealmRelationship are SecretArguments AllowedWhenUntainted.
 	if ok and u and F.NotSecret(u) and UnitExists(u) then
 		local g = UnitGUID(u)
 		if g and F.NotSecret(g) then
@@ -191,6 +194,13 @@ local function ResolveTipIdentity(tt, data)
 				token = u
 			end
 		end
+	elseif ok and u and F.IsSecret(u) then
+		-- Still harvest a plain GUID if the secret token can feed UnitGUID
+		-- (UnitGUID: SecretArguments AllowedWhenTainted on many paths).
+		local gOk, g = pcall(UnitGUID, u)
+		if gOk and g and F.NotSecret(g) and not guid then
+			guid = g
+		end
 	end
 
 	if guid and not token then
@@ -198,6 +208,7 @@ local function ResolveTipIdentity(tt, data)
 	end
 
 	if guid and not token and UnitTokenFromGUID then
+		-- UnitTokenFromGUID returns a plain token string.
 		local tu = UnitTokenFromGUID(guid)
 		if tu and F.NotSecret(tu) and UnitExists(tu) then
 			token = tu
@@ -245,8 +256,8 @@ function Tooltip:UnitExists(unit)
 	if not unit or IsSecretUnit(unit) then
 		return
 	end
-	local exists = UnitExists(unit)
-	return F.NotSecret(exists) and exists
+	-- UnitExists: SecretArguments only.
+	return UnitExists(unit)
 end
 
 local function replaceSpecInfo(str)
@@ -279,9 +290,6 @@ function Tooltip:GetLevelLine()
 end
 
 function Tooltip:GetTarget(unit)
-	if F.IsSecret(unit) then
-		return ""
-	end
 	local isPlayerTarget = F.SafeUnitIsUnit(unit, "player")
 	if isPlayerTarget then
 		return format("|cffff0000%s|r", ">" .. strupper(YOU) .. "<")
@@ -344,7 +352,7 @@ function Tooltip:UpdateFactionLine(lineData)
 	end
 
 	local isPlayer = UnitIsPlayer(unit)
-	isPlayer = F.NotSecret(isPlayer) and isPlayer
+	-- UnitClass 1st return (className) is ConditionalSecret; creature type is identity-restricted.
 	local unitClass = isPlayer and UnitClass(unit)
 	if unitClass and F.IsSecret(unitClass) then
 		unitClass = nil
@@ -367,9 +375,9 @@ function Tooltip:UpdateFactionLine(lineData)
 		else
 			lineData.leftText = format(FACTION_COLORS[linetext], linetext)
 		end
-	elseif unitClass and F.NotSecret(unitClass) and strfind(linetext, unitClass) then
+	elseif unitClass and strfind(linetext, unitClass) then
 		lineData.leftText = gsub(linetext, "(.-)%S+$", replaceSpecInfo)
-	elseif unitCreature and F.NotSecret(unitCreature) and linetext == unitCreature then
+	elseif unitCreature and linetext == unitCreature then
 		return true
 	end
 end
@@ -483,7 +491,6 @@ function Tooltip:OnTooltipSetUnit(data)
 
 	local isShiftKeyDown = IsShiftKeyDown()
 	local isPlayer = UnitIsPlayer(unit)
-	isPlayer = F.NotSecret(isPlayer) and isPlayer
 
 	if isPlayer then
 		local name, realm = UnitName(unit)
@@ -493,7 +500,9 @@ function Tooltip:OnTooltipSetUnit(data)
 			name = UNKNOWN or "Unknown"
 		end
 		local pvpName = UnitPVPName(unit)
-		local relationship = UnitRealmRelationship(unit)
+		-- UnitRealmRelationship: SecretArguments AllowedWhenUntainted — unit must be plain.
+		local relationship = F.NotSecret(unit) and UnitRealmRelationship(unit) or nil
+		-- UnitPVPName: SecretWhenUnitIdentityRestricted.
 		if not cfg.hideTitle and pvpName and F.NotSecret(pvpName) and pvpName ~= "" then
 			name = pvpName
 		end
@@ -507,8 +516,8 @@ function Tooltip:OnTooltipSetUnit(data)
 			end
 		end
 
-		local connected = UnitIsConnected(unit)
-		local offline = F.NotSecret(connected) and not connected and PLAYER_OFFLINE
+		-- UnitIsConnected: SecretArguments only. UnitIsAFK/DND: SecretInChatMessagingLockdown — keep.
+		local offline = not UnitIsConnected(unit) and PLAYER_OFFLINE
 		local status = CheckUnitStatus(UnitIsAFK, unit, AFK) or CheckUnitStatus(UnitIsDND, unit, DND) or offline
 		if status then
 			status = format(" |cffffcc00[%s]|r", status)
@@ -516,8 +525,9 @@ function Tooltip:OnTooltipSetUnit(data)
 		GameTooltipTextLeft1:SetFormattedText("%s", name .. (status or ""))
 
 		if cfg.factionIcon then
+			-- UnitFactionGroup: SecretArguments only.
 			local faction = UnitFactionGroup(unit)
-			if F.NotSecret(faction) and faction ~= "Neutral" then
+			if faction and faction ~= "Neutral" then
 				Tooltip.InsertFactionFrame(self, faction)
 			end
 		end
@@ -529,13 +539,14 @@ function Tooltip:OnTooltipSetUnit(data)
 			end
 		end
 
+		-- GetGuildInfo: no secret tags in Resources 12.0.7 docs.
 		local guildName, rank, rankIndex, guildRealm = GetGuildInfo(unit)
 		local hasText = GameTooltipTextLeft2:GetText()
-		if guildName and F.NotSecret(guildName) and hasText then
+		if guildName and hasText then
 			local myGuild, _, _, myGuildRealm = GetGuildInfo("player")
-			local sameGuild = IsInGuild() and F.NotSecret(myGuild) and guildName == myGuild
+			local sameGuild = IsInGuild() and myGuild and guildName == myGuild
 			if sameGuild and guildRealm and myGuildRealm then
-				sameGuild = F.NotSecret(guildRealm) and F.NotSecret(myGuildRealm) and guildRealm == myGuildRealm
+				sameGuild = guildRealm == myGuildRealm
 			end
 			if sameGuild then
 				GameTooltipTextLeft2:SetTextColor(0.25, 1, 0.25)
@@ -543,14 +554,14 @@ function Tooltip:OnTooltipSetUnit(data)
 				GameTooltipTextLeft2:SetTextColor(LBL[1], LBL[2], LBL[3])
 			end
 
-			if F.NotSecret(rankIndex) then
+			if rankIndex ~= nil then
 				rankIndex = (rankIndex or 0) + 1
-				local rankText = (not cfg.hideRank and rank and F.NotSecret(rank) and rank) or ""
+				local rankText = (not cfg.hideRank and rank) or ""
 				local displayGuild = guildName
-				if guildRealm and F.NotSecret(guildRealm) and isShiftKeyDown then
+				if guildRealm and isShiftKeyDown then
 					displayGuild = guildName .. "-" .. guildRealm
 				end
-				if F.NotSecret(displayGuild) and strlen(displayGuild) > 31 and not isShiftKeyDown then
+				if strlen(displayGuild) > 31 and not isShiftKeyDown then
 					displayGuild = "..."
 				end
 				GameTooltipTextLeft2:SetText("<" .. displayGuild .. "> " .. rankText .. "(" .. rankIndex .. ")")
@@ -561,6 +572,7 @@ function Tooltip:OnTooltipSetUnit(data)
 	local hexColor = F.ColorStr(F.UnitColor(unit))
 	local text = GameTooltipTextLeft1:GetText()
 	if text then
+		-- GetRaidTargetIndex: SecretReturns — keep guard.
 		local ricon = GetRaidTargetIndex(unit)
 		local rionStr = ""
 		if ricon and F.NotSecret(ricon) and ricon <= 8 then
@@ -569,18 +581,20 @@ function Tooltip:OnTooltipSetUnit(data)
 		GameTooltipTextLeft1:SetFormattedText("%s%s%s", rionStr, hexColor, text)
 	end
 
+	-- UnitIsDeadOrGhost / UnitLevel / UnitClassification / UnitRace / UnitIsPVP /
+	-- UnitReaction / UnitExists: SecretArguments only (or untagged).
 	local dead = UnitIsDeadOrGhost(unit)
-	local alive = F.NotSecret(dead) and not dead
+	local alive = not dead
 	local level
 	local isWildPet = UnitIsWildBattlePet(unit)
 	local isPetCompanion = UnitIsBattlePetCompanion(unit)
-	if (F.NotSecret(isWildPet) and isWildPet) or (F.NotSecret(isPetCompanion) and isPetCompanion) then
+	if isWildPet or isPetCompanion then
 		level = UnitBattlePetLevel(unit)
 	else
 		level = UnitLevel(unit)
 	end
 
-	if level and F.NotSecret(level) then
+	if level then
 		local boss
 		if level == -1 then
 			boss = "|cffff0000??|r"
@@ -588,22 +602,24 @@ function Tooltip:OnTooltipSetUnit(data)
 
 		local diff = GetCreatureDifficultyColor(level)
 		local classify = UnitClassification(unit)
-		local classifySuffix = (classify and F.NotSecret(classify) and classification[classify]) or ""
+		local classifySuffix = (classify and classification[classify]) or ""
 		local textLevel = format("%s%s%s|r", F.ColorStr(diff.r, diff.g, diff.b), boss or format("%d", level), classifySuffix)
 		local tiptextLevel = Tooltip.GetLevelLine(self)
+		-- className (1st UnitClass return) is ConditionalSecret.
 		local unitClass = isPlayer and select(1, UnitClass(unit))
 		if unitClass and F.IsSecret(unitClass) then
 			unitClass = nil
 		end
 		if tiptextLevel then
 			local reaction = UnitReaction(unit, "player")
-			local standingText = (not isPlayer and reaction and F.NotSecret(reaction) and hexColor .. (_G["FACTION_STANDING_LABEL" .. reaction] or "") .. "|r ") or ""
+			local standingText = (not isPlayer and reaction and hexColor .. (_G["FACTION_STANDING_LABEL" .. reaction] or "") .. "|r ") or ""
 			local pvp = UnitIsPVP(unit)
-			local pvpFlag = (isPlayer and F.NotSecret(pvp) and pvp and format(" |cffff0000%s|r", PVP)) or ""
+			local pvpFlag = (isPlayer and pvp and format(" |cffff0000%s|r", PVP)) or ""
 			local race = isPlayer and UnitRace(unit)
+			-- UnitCreatureType: SecretWhenUnitIdentityRestricted — keep.
 			local creatureType = (not isPlayer) and UnitCreatureType(unit)
 			local unitClassStr = ""
-			if isPlayer and F.NotSecret(race) and F.NotSecret(unitClass) then
+			if isPlayer and race and unitClass then
 				unitClassStr = format("%s %s", race or "", hexColor .. (unitClass or "") .. "|r")
 			elseif creatureType and F.NotSecret(creatureType) then
 				unitClassStr = creatureType
@@ -615,7 +631,7 @@ function Tooltip:OnTooltipSetUnit(data)
 
 	local targetUnit = unit .. "target"
 	local targetExists = UnitExists(targetUnit)
-	if F.NotSecret(targetExists) and targetExists and not F.TooltipHasLineContaining(self, TARGET) then
+	if targetExists and not F.TooltipHasLineContaining(self, TARGET) then
 		local targetIcon = GetRaidTargetIndex(targetUnit)
 		local targetIconStr
 		if targetIcon and F.NotSecret(targetIcon) and targetIcon <= 8 then
@@ -769,10 +785,8 @@ function UpdateHealthText(bar)
 		return
 	end
 
-	-- Dead/ghost flag may itself be a secret boolean in combat; only act on it
-	-- when readable, otherwise fall through to the numeric display.
-	local dead = UnitIsDeadOrGhost(unit)
-	if F.NotSecret(dead) and dead then
+	-- UnitIsDeadOrGhost: SecretArguments only.
+	if UnitIsDeadOrGhost(unit) then
 		text:SetText(DEAD)
 		return
 	end
@@ -789,6 +803,7 @@ function UpdateHealthText(bar)
 	end
 
 	if UnitHealthPercent then
+		-- UnitHealthPercent: SecretReturns — keep guard.
 		local ok, percent = pcall(UnitHealthPercent, unit, true, ScaleTo100)
 		if ok and percent and F.NotSecret(percent) then
 			text:SetFormattedText("%d%%", percent)

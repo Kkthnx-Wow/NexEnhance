@@ -72,14 +72,15 @@ local function MailFrameOpen()
 end
 
 local function ShouldSkipMailForGoldCollect(index)
+	-- GetInboxHeaderInfo money/COD/itemCount: no SecretReturns in Mail docs (12.0.7).
 	local _, _, _, _, money, codAmount, _, _, _, _, _, _, isGM = GetInboxHeaderInfo(index)
 	if isGM then
 		return true
 	end
-	if codAmount and F.NotSecret(codAmount) and codAmount > 0 then
+	if codAmount and codAmount > 0 then
 		return true
 	end
-	if not (money and F.NotSecret(money) and money > 0) then
+	if not (money and money > 0) then
 		return true
 	end
 	return false
@@ -90,9 +91,7 @@ local function GetTotalInboxMoney()
 	for i = 1, GetInboxNumItems() do
 		if not ShouldSkipMailForGoldCollect(i) then
 			local money = select(5, GetInboxHeaderInfo(i)) or 0
-			if F.NotSecret(money) then
-				total = total + money
-			end
+			total = total + money
 		end
 	end
 	return total
@@ -250,7 +249,7 @@ local function CollectCurrent()
 	end
 
 	local cod = openMail.cod
-	if cod and (F.IsSecret(cod) or cod > 0) then
+	if cod and cod > 0 then
 		UIErrorsFrame:AddMessage(F.Colorize(L["This letter is cash on delivery."], "red"))
 		return
 	end
@@ -347,14 +346,14 @@ local function InboxItem_OnEnter(self)
 	wipe(inboxItems)
 
 	local itemAttached = select(8, GetInboxHeaderInfo(self.index))
-	if not (itemAttached and F.NotSecret(itemAttached) and itemAttached > 1) then
+	if not (itemAttached and itemAttached > 1) then
 		return
 	end
 
 	for attachID = 1, MAX_RECEIVE do
 		if HasInboxItem(self.index, attachID) then
 			local _, itemID, _, itemCount = GetInboxItem(self.index, attachID)
-			if itemID and itemCount and F.NotSecret(itemID) and F.NotSecret(itemCount) and itemCount > 0 then
+			if itemID and itemCount and itemCount > 0 then
 				inboxItems[itemID] = (inboxItems[itemID] or 0) + itemCount
 			end
 		end

@@ -83,7 +83,7 @@ do
 end
 
 local function ClassColorRGB(class)
-	if not class or F.IsSecret(class) then
+	if not class then
 		return 1, 1, 1
 	end
 	local token = classToken[class] or class
@@ -95,7 +95,7 @@ local function ClassColorRGB(class)
 end
 
 local function ShortName(name)
-	if not name or F.IsSecret(name) then
+	if not name then
 		return name
 	end
 	if Ambiguate then
@@ -105,7 +105,7 @@ local function ShortName(name)
 end
 
 local function InGroup(name)
-	if not name or F.IsSecret(name) then
+	if not name then
 		return ""
 	end
 	return (UnitInParty(name) or UnitInRaid(name)) and "|cffaaaaaa*|r" or ""
@@ -146,6 +146,7 @@ local function SortGuildTable(shiftDown)
 	end
 end
 
+-- Friend/guild roster APIs: no SecretReturns in Resources 12.0.7.
 local function BuildClubTable()
 	wipe(clubTable)
 	if not (C_Club and C_Club.GetSubscribedClubs and CommunitiesUtil) then
@@ -153,13 +154,13 @@ local function BuildClubTable()
 	end
 
 	local clubs = C_Club.GetSubscribedClubs()
-	if not (F.NotSecret(clubs) and clubs) then
+	if not clubs then
 		return
 	end
 
 	local guildClubID
 	for _, data in pairs(clubs) do
-		if F.NotSecretTable(data) and data.clubType == Enum.ClubType.Guild then
+		if data and data.clubType == Enum.ClubType.Guild then
 			guildClubID = data.clubId
 			break
 		end
@@ -169,7 +170,7 @@ local function BuildClubTable()
 	end
 
 	local ok, members = pcall(CommunitiesUtil.GetMemberIdsSortedByName, guildClubID)
-	if not ok or not F.NotSecret(members) then
+	if not ok or not members then
 		return
 	end
 
@@ -184,7 +185,7 @@ local function BuildClubTable()
 	end
 
 	for _, data in pairs(members) do
-		if F.NotSecretTable(data) and data.guid then
+		if data and data.guid then
 			clubTable[data.guid] = data
 		end
 	end
@@ -195,7 +196,7 @@ function GuildText:BuildGuildTable()
 	BuildClubTable()
 
 	local totalMembers = GetNumGuildMembers()
-	if not totalMembers or F.IsSecret(totalMembers) then
+	if not totalMembers then
 		return
 	end
 
@@ -212,26 +213,20 @@ function GuildText:BuildGuildTable()
 
 		if connected or isMobile then
 			local clubMember = guid and clubTable[guid]
-			local safeNote = F.NotSecret(note) and note or ""
-			local safeOfficerNote = F.NotSecret(officerNote) and officerNote or ""
-			local safeZone = F.NotSecret(zone) and zone or ""
-			local safeRank = F.NotSecret(rank) and rank or ""
-			local safeRankIndex = F.NotSecret(rankIndex) and rankIndex or 0
-			local safeLevel = F.NotSecret(level) and level or 0
 
 			guildTable[#guildTable + 1] = {
 				name = ShortName(name),
-				rank = safeRank,
-				level = safeLevel,
-				zone = safeZone,
-				note = safeNote,
-				officerNote = safeOfficerNote,
+				rank = rank or "",
+				level = level or 0,
+				zone = zone or "",
+				note = note or "",
+				officerNote = officerNote or "",
 				status = statusInfo,
-				class = F.NotSecret(className) and className or nil,
-				rankIndex = safeRankIndex,
+				class = className,
+				rankIndex = rankIndex or 0,
 				isMobile = isMobile,
-				timerunningID = clubMember and F.NotSecret(clubMember.timerunningSeasonID) and clubMember.timerunningSeasonID or nil,
-				faction = clubMember and F.NotSecret(clubMember.faction) and clubMember.faction or nil,
+				timerunningID = clubMember and clubMember.timerunningSeasonID or nil,
+				faction = clubMember and clubMember.faction or nil,
 			}
 		end
 	end
@@ -242,7 +237,7 @@ function GuildText:UpdateMotD()
 		return
 	end
 	local motd = GetGuildRosterMOTD and GetGuildRosterMOTD()
-	guildMotD = F.NotSecret(motd) and motd or ""
+	guildMotD = motd or ""
 end
 
 function GuildText:UpdateDisplay()
@@ -275,18 +270,15 @@ function GuildText:ShowTooltip(noUpdate)
 	SortGuildTable(shiftDown)
 
 	local online = #guildTable
-	local total = GetNumGuildMembers()
-	if F.IsSecret(total) then
-		total = online
-	end
+	local total = GetNumGuildMembers() or online
 
 	GameTooltip:SetOwner(button, "ANCHOR_RIGHT")
 	GameTooltip:ClearLines()
 
 	local guildName, guildRank = GetGuildInfo("player")
-	if guildName and F.NotSecret(guildName) then
+	if guildName then
 		GameTooltip:AddDoubleLine(guildName, format("%s: %d/%d", GUILD or "Guild", online, total), HDR.r, HDR.g, HDR.b, HDR.r, HDR.g, HDR.b)
-		if guildRank and F.NotSecret(guildRank) then
+		if guildRank then
 			GameTooltip:AddLine(guildRank, HDR.r, HDR.g, HDR.b)
 		end
 	end
@@ -394,7 +386,7 @@ function GuildText:GUILD_MOTD(_, arg1)
 	if not cfg.enable then
 		return
 	end
-	guildMotD = F.NotSecret(arg1) and arg1 or ""
+	guildMotD = arg1 or ""
 	local button = _G.GuildMicroButton
 	if button and MouseIsOver(button) and cfg.showMOTD then
 		self:ShowTooltip(true)

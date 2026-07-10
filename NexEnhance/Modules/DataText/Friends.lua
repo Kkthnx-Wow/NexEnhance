@@ -117,7 +117,7 @@ do
 end
 
 local function ClassColorRGB(class)
-	if not class or F.IsSecret(class) then
+	if not class then
 		return 1, 1, 1
 	end
 	local token = classToken[class] or class
@@ -130,7 +130,7 @@ end
 
 local playerRealm
 local function InGroup(name, realm)
-	if not name or F.IsSecret(name) then
+	if not name then
 		return ""
 	end
 	if realm and realm ~= "" and realm ~= playerRealm then
@@ -141,6 +141,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Roster building
+-- Friend/guild roster APIs: no SecretReturns in Resources 12.0.7.
 -- ---------------------------------------------------------------------------
 
 local function SortByName(a, b)
@@ -152,7 +153,7 @@ end
 local function BuildFriendTable()
 	wipe(friendTable)
 	local total = C_FriendList.GetNumFriends()
-	if not total or F.IsSecret(total) then
+	if not total then
 		return
 	end
 
@@ -161,10 +162,10 @@ local function BuildFriendTable()
 		if info and info.connected then
 			local status = (info.afk and AFK_TAG) or (info.dnd and DND_TAG) or ""
 			friendTable[#friendTable + 1] = {
-				name = F.NotSecret(info.name) and info.name or "?",
-				level = F.NotSecret(info.level) and info.level or 0,
-				class = F.NotSecret(info.className) and info.className or nil,
-				zone = F.NotSecret(info.area) and info.area or "",
+				name = info.name or "?",
+				level = info.level or 0,
+				class = info.className,
+				zone = info.area or "",
 				status = status,
 			}
 		end
@@ -230,27 +231,24 @@ end
 local function MakeBNetObject(account, game)
 	local client = game.clientProgram or ""
 	local characterName = BNet_GetValidatedCharacterName(game.characterName, account.battleTag, client) or ""
-	if F.IsSecret(characterName) then
-		characterName = ""
-	end
 
 	local afk = account.isAFK or game.isGameAFK
 	local dnd = account.isDND or game.isGameBusy
 
 	local obj = {
 		accountID = account.bnetAccountID,
-		accountName = F.NotSecret(account.accountName) and account.accountName or "?",
-		battleTag = F.NotSecret(account.battleTag) and account.battleTag or "",
+		accountName = account.accountName or "?",
+		battleTag = account.battleTag or "",
 		characterName = characterName,
 		client = client,
 		isWoW = client == WOW_STRING,
 		wowProjectID = game.wowProjectID,
-		faction = F.NotSecret(game.factionName) and game.factionName or nil,
-		className = F.NotSecret(game.className) and game.className or nil,
-		realmName = F.NotSecret(game.realmName) and game.realmName or "",
-		zone = F.NotSecret(game.areaName) and game.areaName or "",
-		level = F.NotSecret(game.characterLevel) and tonumber(game.characterLevel) or 0,
-		gameText = F.NotSecret(game.richPresence) and game.richPresence or "",
+		faction = game.factionName,
+		className = game.className,
+		realmName = game.realmName or "",
+		zone = game.areaName or "",
+		level = tonumber(game.characterLevel) or 0,
+		gameText = game.richPresence or "",
 		status = (afk and AFK_TAG) or (dnd and DND_TAG) or "",
 	}
 
@@ -278,7 +276,7 @@ local function BuildBNetTable()
 	wipe(clientSorted)
 
 	local total = BNGetNumFriends()
-	if not total or F.IsSecret(total) then
+	if not total then
 		return
 	end
 

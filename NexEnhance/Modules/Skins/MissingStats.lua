@@ -15,6 +15,11 @@
 
 	The extra rows skip combat entirely — some PaperDoll APIs return secrets there
 	and Blizzard's setters compare internally.
+
+	Scroll extent never uses GetVerticalScrollRange — that API is
+	SecretReturnsForAspect(ScrollRange). Parenting CharacterStatsPane (PaperDoll
+	secret contamination) marks the aspect; comparing the secret range throws.
+	We clamp from our own SetSize heights instead (Incident Jul 2026).
 --]]
 
 -- luacheck: globals PAPERDOLL_STATCATEGORIES PAPERDOLL_STATINFO CharacterStatsPane
@@ -56,7 +61,6 @@ ns:RegisterDefaults({
 local MissingStats = ns:NewModule("MissingStats", "missingStats", { group = "skins", title = L["Missing Stats"], order = 25 })
 
 -- CharacterStatsPane is anchored to InsetRight in CharacterFrame.xml (12.0.7).
--- Extra rows from AddMissingStatRows exceed that viewport; wrap the pane in a
 -- Extra stat rows live in the scroll child without touching Blizzard's categories.
 local scrollContainer
 local scrollFrame
@@ -64,6 +68,8 @@ local scrollChild
 local scrollInstalled = false
 local extentPending = false
 local extentPendingCombat = false
+-- Last plain content height — GetTop/GetBottom are SecretWhenAnchoringSecret.
+local lastContentHeight = 1
 
 local INSET_PAD_LEFT = 3
 local INSET_PAD_TOP = -3
@@ -72,15 +78,16 @@ local INSET_PAD_BOTTOM = 2
 
 local function GetPaneContentHeight(pane)
 	local paneTop = pane:GetTop()
+	-- SecretWhenAnchoringSecret: PaperDoll can mark the pane; keep last good height.
 	if not paneTop or F.IsSecret(paneTop) then
-		return 1
+		return lastContentHeight
 	end
 
 	local lowestBottom = paneTop
 	local function track(frame)
 		if frame and frame.IsShown and frame:IsShown() then
 			local bottom = frame:GetBottom()
-			if bottom and not F.IsSecret(bottom) and bottom < lowestBottom then
+			if bottom and F.NotSecret(bottom) and bottom < lowestBottom then
 				lowestBottom = bottom
 			end
 		end
@@ -94,10 +101,26 @@ local function GetPaneContentHeight(pane)
 		track(statFrame)
 	end
 
-	if F.IsSecret(lowestBottom) then
-		return 1
+	local height = max(paneTop - lowestBottom + 16, 1)
+	if F.IsSecret(height) then
+		return lastContentHeight
 	end
-	return max(paneTop - lowestBottom + 16, 1)
+	lastContentHeight = height
+	return height
+end
+
+-- Range from sizes we own — never GetVerticalScrollRange (ScrollRange aspect).
+-- GetHeight(true) = ignoreRect, the SetSize value, not the secret-anchored rect.
+local function GetOwnedScrollRange()
+	if not (scrollChild and scrollFrame) then
+		return nil
+	end
+	local childH = scrollChild:GetHeight(true)
+	local viewH = scrollFrame:GetHeight(true)
+	if not (childH and viewH and F.NotSecret(childH) and F.NotSecret(viewH)) then
+		return nil
+	end
+	return max(0, childH - viewH)
 end
 
 local function UpdateStatsScrollExtent()
@@ -111,23 +134,24 @@ local function UpdateStatsScrollExtent()
 	end
 
 	local pane = CharacterStatsPane
-	local width = scrollContainer:GetWidth()
-	if not width or width <= 0 or F.IsSecret(width) then
+	local width = scrollContainer:GetWidth(true)
+	if not width or F.IsSecret(width) or width <= 0 then
 		width = 200
 	end
 
 	local height = GetPaneContentHeight(pane)
-	if F.IsSecret(height) then
-		return
-	end
 	scrollChild:SetSize(width, height)
 	if scrollFrame.UpdateScrollChildRect then
 		scrollFrame:UpdateScrollChildRect()
 	end
 
-	local range = scrollFrame:GetVerticalScrollRange()
+	local range = GetOwnedScrollRange()
+	if not range then
+		return
+	end
+	-- GetVerticalScroll is SecretReturnsForAspect(ScrollOffset); skip clamp if marked.
 	local scroll = scrollFrame:GetVerticalScroll()
-	if not F.IsSecret(range) and not F.IsSecret(scroll) and scroll > range then
+	if F.NotSecret(scroll) and scroll > range then
 		scrollFrame:SetVerticalScroll(range)
 	end
 end
@@ -144,9 +168,13 @@ local function ScheduleStatsScrollExtent()
 end
 
 local function OnStatsScrollWheel(frame, delta)
+	-- SetVerticalScroll is protected; also skip when ScrollOffset/range are unreadable.
+	if InCombatLockdown() then
+		return
+	end
 	local cur = frame:GetVerticalScroll()
-	local range = frame:GetVerticalScrollRange()
-	if F.IsSecret(cur) or F.IsSecret(range) or F.IsSecret(delta) then
+	local range = GetOwnedScrollRange()
+	if not range or not F.NotSecret(cur) then
 		return
 	end
 	local step = 20
@@ -326,7 +354,7 @@ local function AddMissingStatRows()
 			info.updateFunc(statFrame, "player")
 
 			local value = statFrame.numericValue
-			if statFrame:IsShown() and not F.IsSecret(value) and (not stat.hideAt or stat.hideAt ~= value) then
+			if statFrame:IsShown() and (not stat.hideAt or stat.hideAt ~= value) then
 				statFrame:SetPoint("TOP", lastAnchor, "BOTTOM", 0, 0)
 				numAdded = numAdded + 1
 				if statFrame.Background then
@@ -347,8 +375,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Item level: show "equipped / overall" (with a decimal) when they differ.
--- Item level is not Secret today, but guard anyway so a future predicate can
--- only fall back to Blizzard's value instead of erroring.
+-- GetAverageItemLevel / GetMinItemLevel: no return-secret tags (Resources 12.0.7).
 -- ---------------------------------------------------------------------------
 local function EnhanceItemLevel(statFrame, unit)
 	if not MissingStats:IsEnabled() then
@@ -360,9 +387,6 @@ local function EnhanceItemLevel(statFrame, unit)
 
 	local avgItemLevel, avgItemLevelEquipped = GetAverageItemLevel()
 	local minItemLevel = C_PaperDollInfo.GetMinItemLevel()
-	if F.IsSecret(avgItemLevel) or F.IsSecret(avgItemLevelEquipped) or F.IsSecret(minItemLevel) then
-		return
-	end
 
 	local displayItemLevel = max(minItemLevel or 0, avgItemLevelEquipped or 0)
 	local equipped = format("%.1f", displayItemLevel)
@@ -386,10 +410,6 @@ local function EnhancePercentage(statFrame, label, _, isPercentage)
 	end
 
 	local value = statFrame.numericValue
-	if F.IsSecret(value) then
-		return
-	end -- 12.0: leave Blizzard's rounded text
-
 	statFrame.Value:SetFormattedText("%.2f%%", value)
 end
 
@@ -428,7 +448,7 @@ local function ColorItemLevel()
 	end
 
 	local r, g, b = GetItemLevelColor()
-	if not (r and g and b) or F.IsSecret(r) or F.IsSecret(g) or F.IsSecret(b) then
+	if not (r and g and b) then
 		return
 	end
 

@@ -124,14 +124,15 @@ local function OwnedCount(info, primaryField, legacyField)
 	if v == nil then
 		v = info[legacyField]
 	end
-	return F.NotSecret(v) and v > 0
+	-- HousingCatalogEntryInfo quantity fields: no ConditionalSecret.
+	return v and v > 0
 end
 
 local function EntryInfoOwned(info)
 	if not info then
 		return false
 	end
-	if OwnedCount(info, "totalNumStored", "quantity") or OwnedCount(info, "totalNumPlaced", "numPlaced") or (F.NotSecret(info.remainingRedeemable) and info.remainingRedeemable > 0) then
+	if OwnedCount(info, "totalNumStored", "quantity") or OwnedCount(info, "totalNumPlaced", "numPlaced") or (info.remainingRedeemable and info.remainingRedeemable > 0) then
 		return true
 	end
 
@@ -285,7 +286,7 @@ local function UpdateMerchantInfo()
 			local isUsable = info and info.isUsable
 			if isUsable and IsAlreadyKnown(GetMerchantItemLink(index)) then
 				local r, g, b = COLOR.r, COLOR.g, COLOR.b
-				if numAvailable and F.NotSecret(numAvailable) and numAvailable == 0 then
+				if numAvailable and numAvailable == 0 then
 					r, g, b = r * 0.5, g * 0.5, b * 0.5
 				end
 				SetItemButtonTextureVertexColor(button, r, g, b)

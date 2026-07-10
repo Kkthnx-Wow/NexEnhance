@@ -141,7 +141,7 @@ local function StartSelling()
 				local key = bag * 100 + slot
 				local quality = info.quality
 				local isCustomJunk = itemID and junkList[itemID]
-				local isPoorJunk = F.NotSecret(quality) and quality == POOR_QUALITY
+				local isPoorJunk = quality == POOR_QUALITY
 				if not sellCache[key] and (isPoorJunk or isCustomJunk) and not IsPetTrash(itemID) then
 					sellCache[key] = true
 					C_Container_UseContainerItem(bag, slot)
@@ -162,7 +162,7 @@ local repairShown, isBankEmpty, repairAllCost, canRepair
 local function NeedToRepair()
 	for slot = 1, 18 do
 		local cur, max = GetInventoryItemDurability(slot)
-		if cur and max and F.NotSecret(cur) and F.NotSecret(max) and max > 0 and cur < max then
+		if cur and max and max > 0 and cur < max then
 			return true
 		end
 	end
@@ -193,23 +193,22 @@ function AutoVendor:Repair(override)
 	isBankEmpty = false
 
 	repairAllCost, canRepair = GetRepairAllCost()
-	-- Bail unless we have a readable, positive cost. Order matters: check for a
-	-- nil/secret value before the `<= 0` compare so we never do arithmetic on one.
-	if not canRepair or not repairAllCost or F.IsSecret(repairAllCost) or repairAllCost <= 0 then
+	-- No SecretReturns on GetMoney / repair cost in Resources 12.0.7.
+	if not canRepair or not repairAllCost or repairAllCost <= 0 then
 		return
 	end
 
 	-- GetGuildBankWithdrawMoney() returns -1 for ranks with unlimited
 	-- withdrawal (e.g. guild master); treat that as "can always cover it".
 	local guildWithdraw = GetGuildBankWithdrawMoney()
-	local guildCanCover = F.NotSecret(guildWithdraw) and F.NotSecret(repairAllCost) and (guildWithdraw == -1 or guildWithdraw >= repairAllCost)
+	local guildCanCover = guildWithdraw == -1 or (guildWithdraw and guildWithdraw >= repairAllCost)
 	if (not override) and db.useGuildFunds and IsInGuild() and CanGuildBankRepair() and guildCanCover then
 		RepairAllItems(true)
 		-- Wait for a possible "not enough guild money" error, then confirm.
 		C_Timer_After(0.5, ReportGuildRepair)
 	else
 		local money = GetMoney()
-		if F.NotSecret(money) and F.NotSecret(repairAllCost) and money >= repairAllCost then
+		if money and money >= repairAllCost then
 			RepairAllItems(false)
 			F.Print(format(L["Repaired equipment for %s"], F.FormatMoney(repairAllCost)))
 		else

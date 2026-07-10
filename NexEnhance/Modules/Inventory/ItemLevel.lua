@@ -205,14 +205,9 @@ local function CreateMissingIcon(parent, point, x, y, slotName)
 	return icon
 end
 
--- Quality and item level can both read Secret inside instances on 12.0 (Blizzard
--- locks loot/bag data to thwart automation). A secret poisons every >, <= and
--- table-index it touches, so we gate before comparing. A skipped overlay beats a
--- Lua error mid-loot any day of the week.
+-- Quality / ilvl from C_Item / ContainerItemInfo: SecretArguments only, no
+-- ConditionalSecret on returns (Resources 12.0.7). Plain compares are fine.
 local function GetQualityColor(quality)
-	if F.IsSecret(quality) then
-		return 1, 1, 1
-	end
 	local color = quality and QUALITY_COLORS and QUALITY_COLORS[quality]
 	if not color then
 		return 1, 1, 1
@@ -220,12 +215,7 @@ local function GetQualityColor(quality)
 	return color.r, color.g, color.b
 end
 
--- True only when both reads are non-secret and worth painting (quality above
--- Common, real item level). Either being secret short-circuits to false.
 local function LevelIsShowable(level, quality)
-	if F.IsSecret(level) or F.IsSecret(quality) then
-		return false
-	end
 	return level and level > 1 and quality and quality > 1
 end
 
@@ -462,8 +452,7 @@ local function SetSimpleLevel(button, link, quality, bagID, slotID)
 		button.nexILvl:SetPoint("BOTTOMLEFT", 1, 1)
 	end
 
-	-- Secret quality means "instance loot we can't reason about" -> clear, bail.
-	if not link or F.IsSecret(quality) or (quality and quality <= 1) then
+	if not link or (quality and quality <= 1) then
 		button.nexILvl:SetText("")
 		return
 	end
@@ -635,7 +624,7 @@ local function UpdateBagSlot(button)
 	local quality = info and info.quality
 	local link = info and info.hyperlink
 
-	if F.NotSecret(quality) and quality and quality > 1 then
+	if quality and quality > 1 then
 		local level = F.GetItemLevel(link, bagID, slotID)
 		button.nexILvl:SetText(level)
 		button.nexILvl:SetTextColor(GetQualityColor(quality))

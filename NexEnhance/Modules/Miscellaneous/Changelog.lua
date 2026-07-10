@@ -64,14 +64,30 @@ local CHANGELOG = {
 				"Target Resource: optional class resource under the current target's nameplate — reparents Blizzard's mechanic bar; off by default.",
 				"Target Resource: clearing target restores Blizzard's personal-plate class bar (no orphan on previous plate).",
 			} },
+			{ "Miscellaneous", {
+				"AFK Camera: hide game UI via SetUIVisibility (Alt+Z) instead of UIParent:Hide() — fixes Midnight TextStatusBar secret crash.",
+				"AFK Camera: OnDisable unregisters frame events + model OnUpdate; re-enable rebinds cleanly.",
+				"Exp / Rep Bar: XP/honor/azerite use plain math (Resources 12.0.7 — no SecretReturns on those APIs).",
+				"Loot Roll: plain timer/quality; prefer C_Loot.GetLootRollDuration when available.",
+				"Secrets (docs pass 2): prune speculative IsSecret on SecretArguments-only / untagged APIs; keep identity, threat, raid markers, chat/LFG, auras, spell CDs, casts. See wow-midnight-secret-values-guide.mdc.",
+			} },
+			{ "DataText", {
+				"Currency & Gold / Friends / Guild: prune speculative IsSecret on GetMoney, currencies, and roster fields; keep chat-payload guards.",
+			} },
 			{ "Automation", {
+				"Quick Join: removed addon auto-invite of LFG applicants — InviteApplicant is protected; button:Click() still ADDON_ACTION_BLOCKED. Use Blizzard listing Auto-accept when available.",
 				"Best Quest Reward: gold coin on the highest vendor-value choice (visual only).",
 				"Auction Search History: close the focus dropdown when the Auction House closes (UIParent orphan).",
 				"Auto Hide Tracker: re-enable re-registers the secure state driver after disable.",
+				"Auto Vendor / Warband Gold / Auto Greed: prune money/repair/quality secret folklore.",
 			} },
 			{ "Announcements", {
 				"Pull Countdown: /pc [seconds] (alias /jenkins) group chat pull timer; second /pc cancels.",
 				"Rare Alert: left-click target works with Cast On Key Down — useOnKeyDown=false + AnyUp/AnyDown (no PreClick CVar flip).",
+				"Level Announcer: UnitLevel / level-up payload are not secret-tagged — plain comparisons.",
+			} },
+			{ "Inventory", {
+				"Delete Cheapest: plain stack × sellPrice math (no speculative stackCount secret path).",
 			} },
 			{ "Action Bars", {
 				"Equipped Item Border: fix green glow sticking after gear changes — trust Blizzard border state from Update(), refresh on PLAYER_EQUIPMENT_CHANGED.",
@@ -93,6 +109,8 @@ local CHANGELOG = {
 				"Item Level: clear inspect state on tooltip hide — stop delayed NotifyInspect after hover ends.",
 				"Hover Tips: gate OnHyperlinkEnter/Leave on enable + hoverTips setting.",
 				"Core + ID/icons/mount/reagents/ilvl hooks gate on Tooltip:IsEnabled() when the module is off.",
+				"IDs: nameplate aura From: skips secret sourceUnit; never GetUnitName(..., true) → UnitRealmRelationship (AllowedWhenUntainted).",
+				"ResolveTipIdentity: never keep a secret GetUnit() token; fall through to clean raid/party / UnitTokenFromGUID.",
 			} },
 			{ "Unit Frames", {
 				"Unit Frame Text: optional White Name and Level on HUD frames (incl. pet, ToT, party portraits); compact raid/party unchanged.",
@@ -106,13 +124,8 @@ local CHANGELOG = {
 				"World Map: OnDisable stops coords/fade OnUpdate; Maximize/fade hooks gate on module enable.",
 				"Map Reveal / Wowhead Links: OnDisable hides tiles/boxes live; enable no longer double-fires Setup.",
 			} },
-			{ "Miscellaneous", {
-				"AFK Camera: hide game UI via SetUIVisibility (Alt+Z) instead of UIParent:Hide() — fixes Midnight TextStatusBar secret crash.",
-				"AFK Camera: OnDisable unregisters frame events + model OnUpdate; re-enable rebinds cleanly.",
-				"Exp / Rep Bar: secret-safe XP/honor/azerite math; bar still paints, percent text skips when unreadable.",
-				"Loot Roll: never compare secret GetLootRollTimeLeft — route to SetValue or clear on plain expiry.",
-			} },
 			{ "Skins", {
+				"Missing Stats: scroll clamp uses owned SetSize heights — GetVerticalScrollRange is SecretReturnsForAspect(ScrollRange) and throws when PaperDoll marks the pane.",
 				"Missing Stats: hook handlers + PLAYER_REGEN_ENABLED gate/teardown on disable.",
 			} },
 			{ "Core", {

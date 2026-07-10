@@ -58,9 +58,7 @@ local function GetUnitItemLevel(unit)
 	end
 
 	local class = select(2, UnitClass(unit))
-	if F.IsSecret(class) then
-		class = nil
-	end
+	-- classFilename (2nd return): no ConditionalSecret — only className is tagged.
 
 	local boa, total, haveWeapon, twohand = 0, 0, 0, 0
 	local ilvl
@@ -234,7 +232,8 @@ local function InspectUnit(unit, forced)
 		return
 	end
 	local isPlayer = UnitIsPlayer(unit)
-	if F.IsSecret(isPlayer) or not isPlayer then
+	-- UnitIsPlayer: SecretArguments only.
+	if not isPlayer then
 		return
 	end
 
@@ -253,10 +252,8 @@ local function InspectUnit(unit, forced)
 		updater.elapsed = frequency
 		return
 	end
-	local isVisible = UnitIsVisible(unit)
-	local playerDead = UnitIsDeadOrGhost("player")
-	local playerOnTaxi = UnitOnTaxi("player")
-	if F.IsSecret(isVisible) or not isVisible or F.IsSecret(playerDead) or playerDead or F.IsSecret(playerOnTaxi) or playerOnTaxi then
+	-- UnitIsVisible / UnitIsDeadOrGhost / UnitOnTaxi: SecretArguments only.
+	if not UnitIsVisible(unit) or UnitIsDeadOrGhost("player") or UnitOnTaxi("player") then
 		return
 	end
 	if InspectFrame and InspectFrame:IsShown() then

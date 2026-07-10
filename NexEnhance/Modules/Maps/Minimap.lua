@@ -375,7 +375,7 @@ end
 -- Border: the game's tooltip border (UI-Tooltip-Border) framed just outside the
 -- square minimap. Border-only (no fill) so the map stays visible.
 -- ---------------------------------------------------------------------------
-local MINIMAP_BORDER_SIZE = 16
+local MINIMAP_BORDER_SIZE = 12
 local borderFrame
 
 local function CreateBorder()
@@ -516,12 +516,7 @@ local function Declutter()
 		-- header space or re-measure dead frames — that pass is what makes the
 		-- cluster briefly jump before our footprint hook snaps it back.
 		if MinimapCluster.MarkIgnoreInLayout then
-			MinimapCluster:MarkIgnoreInLayout(
-				MinimapCluster.BorderTop,
-				MinimapCluster.ZoneTextButton,
-				MinimapCluster.Tracking,
-				MinimapCluster.IndicatorFrame
-			)
+			MinimapCluster:MarkIgnoreInLayout(MinimapCluster.BorderTop, MinimapCluster.ZoneTextButton, MinimapCluster.Tracking, MinimapCluster.IndicatorFrame)
 		end
 
 		-- Tracking is the one piece we keep alive (invisible) so right-click can
@@ -1457,8 +1452,8 @@ local function CreateCollectButtons()
 	binFrame:SetSize(BIN_ICON_SIZE + BIN_PAD * 2, BIN_ICON_SIZE + BIN_PAD * 2)
 	binFrame:SetBackdrop({
 		bgFile = C.Media.Textures.blank,
-		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-		edgeSize = 14,
+		edgeFile = "Interface\\AddOns\\NexEnhance\\Media\\Border\\NexBorder",
+		edgeSize = 12,
 		insets = { left = 3, right = 3, top = 3, bottom = 3 },
 	})
 	binFrame:SetBackdropColor(0.06, 0.06, 0.06, 0.9)

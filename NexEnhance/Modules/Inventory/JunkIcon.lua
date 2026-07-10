@@ -42,10 +42,7 @@ local function ForceJunkIcon(button, quality, noValue)
 		return
 	end -- already shown by Blizzard
 
-	-- Quality is a plain enum on bag items (not Secret), but guard anyway.
-	if F.IsSecret(quality) then
-		return
-	end
+	-- ContainerItemInfo.quality has no ConditionalSecret in Resources 12.0.7.
 	if quality ~= Enum.ItemQuality.Poor or noValue then
 		return
 	end

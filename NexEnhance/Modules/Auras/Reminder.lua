@@ -207,8 +207,8 @@ local combatSnapshot = {} -- spell ids present on player at combat start (secret
 
 -- Tooltip-style border (same art as minimap); edge tinted red for missing buffs.
 local REMINDER_BORDER = {
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	edgeSize = 14,
+	edgeFile = "Interface\\AddOns\\NexEnhance\\Media\\Border\\NexBorder",
+	edgeSize = 12,
 }
 local REMINDER_BORDER_COLOR = { 1, 0.15, 0.1 }
 local REMINDER_GLOW_COLOR = { 1, 0.15, 0.1 }
@@ -350,7 +350,7 @@ local function Reminder_WantsGlow()
 end
 
 local function Reminder_FrameStep()
-	return iconSize + 5
+	return iconSize + 8
 end
 
 local function Reminder_SetGlowVisible(frame, visible)

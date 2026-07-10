@@ -238,7 +238,7 @@ F.SetBorderColor = setBorderColor
 --   :SetInside, :SetBorderColor and the standard SetBackdrop* methods.
 -- ---------------------------------------------------------------------------
 local TOOLTIP_BG = "Interface\\Tooltips\\UI-Tooltip-Background"
-local TOOLTIP_EDGE = "Interface\\Tooltips\\UI-Tooltip-Border"
+local TOOLTIP_EDGE = "Interface\\AddOns\\NexEnhance\\Media\\Border\\NexBorder"
 
 function F.CreateTooltipBackdrop(frame, opts)
 	if not frame then

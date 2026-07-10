@@ -9,8 +9,8 @@
 	  * Range flips via ACTION_RANGE_CHECK_UPDATE / ActionButton_UpdateRangeIndicator
 	  * Discover buttons through ActionBarButtonEventsFrame (+ hook RegisterFrame)
 
-	12.0: IsUsableAction / IsActionInRange can return secret booleans in combat.
-	We gate with F.IsSecret and fall back to the neutral tint instead of erroring.
+	IsUsableAction / IsActionInRange / C_Spell.IsSpellUsable are SecretArguments
+	only (Resources 12.0.7) — returns are plain booleans; no IsSecret gate.
 	Hooks install once; an `active` flag lets the feature toggle live.
 --]]
 
@@ -22,7 +22,6 @@ local _G = _G
 local pairs = pairs
 local strbyte = string.byte
 local hooksecurefunc = hooksecurefunc
-local IsSecret = F.IsSecret
 
 local IsUsableAction = IsUsableAction
 local IsActionInRange = IsActionInRange
@@ -88,7 +87,7 @@ local function RebuildColors()
 end
 
 -- ---------------------------------------------------------------------------
--- State resolution (secret-guarded usability / range reads)
+-- State resolution (usability / range reads)
 -- ---------------------------------------------------------------------------
 local function GetActionState(slot)
 	local isUsable, notEnoughMana
@@ -110,19 +109,7 @@ local function GetActionState(slot)
 		isUsable, notEnoughMana = IsUsableAction(slot)
 	end
 
-	-- Range: only an explicit `false` is out-of-range. A secret result can't be
-	-- compared, so treat it as "no range info" (leave the action in range).
-	local outOfRange = false
-	local inRange = IsActionInRange(slot)
-	if not IsSecret(inRange) then
-		outOfRange = inRange == false
-	end
-
-	-- Secret usability in combat: skip the usable/oom/unusable buckets and fall
-	-- back to neutral; branching on a secret boolean would error.
-	if IsSecret(isUsable) or IsSecret(notEnoughMana) then
-		return "normal", outOfRange
-	end
+	local outOfRange = IsActionInRange(slot) == false
 
 	if isUsable then
 		return outOfRange and "oor" or "normal", outOfRange
@@ -132,21 +119,13 @@ end
 
 local function GetPetActionState(index)
 	local _, _, _, _, _, _, spellID, checksRange, inRange = GetPetActionInfo(index)
-
-	local outOfRange = false
-	if not (IsSecret(checksRange) or IsSecret(inRange)) then
-		outOfRange = (checksRange and not inRange) or false
-	end
+	local outOfRange = (checksRange and not inRange) or false
 
 	local isUsable, notEnoughMana
 	if spellID and C_Spell_IsSpellUsable then
 		isUsable, notEnoughMana = C_Spell_IsSpellUsable(spellID)
 	elseif GetPetActionSlotUsable then
 		isUsable, notEnoughMana = GetPetActionSlotUsable(index), false
-	end
-
-	if IsSecret(isUsable) or IsSecret(notEnoughMana) then
-		return "normal"
 	end
 
 	if isUsable then
@@ -190,14 +169,9 @@ local function Button_Update(button)
 	end
 end
 
--- Incremental range flip (hooked onto ActionButton_UpdateRangeIndicator). The
--- engine hands us plain booleans here in the normal case; in combat they may be
--- secret, in which case we leave the last applied state untouched.
+-- Incremental range flip (hooked onto ActionButton_UpdateRangeIndicator).
 local function Button_UpdateRange(button, checksRange, inRange)
 	if not active or not registered[button] then
-		return
-	end
-	if IsSecret(checksRange) or IsSecret(inRange) then
 		return
 	end
 

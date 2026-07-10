@@ -12,7 +12,7 @@
 
 	SuperTrackedFrame lives in load-on-demand Blizzard_QuestNavigation. Frame
 	method overrides gate on IsEnabled(); full visual revert needs /reload.
-	C_Navigation.GetDistance is guarded with F.IsSecret before arithmetic.
+	C_Navigation.GetDistance has no secret tags (Resources 12.0.7) — plain math.
 	ETA FontString copies DistanceText shadow (not CreatePlainFS) — Slug shadow
 	regression on 12.0.7 if we used our plain-font helper here.
 --]]
@@ -98,9 +98,6 @@ local function NavCvarEnabled()
 end
 
 local function DistanceInRange(distance)
-	if F.IsSecret(distance) then
-		return false
-	end
 	local cfg = db()
 	local minD = cfg.minDistance or 0
 	local maxD = cfg.maxDistance or 0
@@ -114,9 +111,6 @@ local function DistanceInRange(distance)
 end
 
 local function FormatDistance(distance)
-	if F.IsSecret(distance) then
-		return ""
-	end
 	local cfg = db()
 	local measure = " yds"
 	if cfg.useMeters then
@@ -152,9 +146,9 @@ local function DebugNavSnapshot(frame)
 	lastSnapshotTime = now
 
 	local distance = GetDistance and GetDistance()
-	local distStr = (distance == nil and "nil") or (F.IsSecret(distance) and "secret") or tostring(Round(distance))
+	local distStr = (distance == nil and "nil") or tostring(Round(distance))
 	local clamped = WasClampedToScreen and WasClampedToScreen() or false
-	local inRange = distance and F.NotSecret(distance) and DistanceInRange(distance) or false
+	local inRange = distance and DistanceInRange(distance) or false
 	local targetAlpha = frame.GetTargetAlphaBaseValue and frame:GetTargetAlphaBaseValue() or -1
 	local key = format("%s|%s|%s|%.2f", distStr, tostring(clamped), tostring(inRange), targetAlpha)
 	if key == debugSnapshotKey then
@@ -219,7 +213,7 @@ local function UpdateEta(frame, elapsed)
 	end
 
 	local distance = GetDistance()
-	if distance == nil or F.IsSecret(distance) then
+	if distance == nil then
 		return
 	end
 	if distance <= 0 then
@@ -289,8 +283,8 @@ local function GetTargetAlphaBaseValue(frame)
 	end
 
 	local distance = GetDistance and GetDistance()
-	if distance == nil or F.IsSecret(distance) then
-		DebugAlphaSkip("distance_unavailable", F.IsSecret(distance) and " (secret)" or "")
+	if distance == nil then
+		DebugAlphaSkip("distance_unavailable")
 		return origMethods.GetTargetAlphaBaseValue(frame)
 	end
 
@@ -320,7 +314,7 @@ local function UpdateDistanceText(frame)
 
 	if not frame.isClamped then
 		local distance = GetDistance and GetDistance()
-		if distance ~= nil and not F.IsSecret(distance) then
+		if distance ~= nil then
 			frame.DistanceText:SetText(FormatDistance(distance))
 			frame.distance = distance
 		end
@@ -438,7 +432,7 @@ local function FindZoneId(zoneName, parentMapID)
 	parentMapID = parentMapID or 0
 	for mapID = 0, 4000 do
 		local info = C_Map.GetMapInfo(mapID)
-		if info and info.name and not F.IsSecret(info.name) and lower(info.name) == zoneName then
+		if info and info.name and lower(info.name) == zoneName then
 			if parentMapID == 0 or info.parentMapID == parentMapID then
 				return mapID
 			end
@@ -722,8 +716,8 @@ function MapPinNavigation:OnInitialize()
 			F.Print(format("  questNavLoaded=%s navCvar=%s TomTom=%s SlashPin=%s", tostring(C_AddOns.IsAddOnLoaded("Blizzard_QuestNavigation")), tostring(navCvarEnabled), tostring(C_AddOns.IsAddOnLoaded("TomTom")), tostring(C_AddOns.IsAddOnLoaded("SlashPin"))))
 			if frame then
 				local distance = GetDistance and GetDistance()
-				local distStr = (distance == nil and "nil") or (F.IsSecret(distance) and "secret") or tostring(Round(distance))
-				local distNum = (distance and not F.IsSecret(distance)) and Round(distance) or nil
+				local distStr = (distance == nil and "nil") or tostring(Round(distance))
+				local distNum = distance and Round(distance) or nil
 				local fadeDist = cfg and cfg.fadeDistance or 1000
 				local longAlpha = (cfg and cfg.pinAlphaLong or 60) / 100
 				local unlimited = distNum and distNum > fadeDist and frame:GetAlpha() > 0.01

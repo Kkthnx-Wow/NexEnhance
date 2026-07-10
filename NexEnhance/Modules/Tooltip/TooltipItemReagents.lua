@@ -106,7 +106,8 @@ local function ResolveReagents(itemID)
 end
 
 local function FormatQuantity(have, need)
-	if F.IsSecret(have) or F.IsSecret(need) then
+	-- GetItemCount / currency quantity: SecretArguments only — plain format.
+	if have == nil or need == nil then
 		return nil
 	end
 	return format("%s/%s", have, need)
@@ -180,7 +181,7 @@ local function AppendReagents(tip, itemID)
 		end
 	end
 
-	if maxOutput and maxOutput > 1 and info.outputItemID and F.NotSecret(maxOutput) then
+	if maxOutput and maxOutput > 1 and info.outputItemID then
 		tip:AddLine(" ")
 		tip:AddLine(format(L["Can Create Multiple Item Format"], maxOutput), 1, 0.82, 0, true)
 	end
@@ -208,14 +209,14 @@ function Tooltip:SetupItemReagents()
 			return
 		end
 		local id = data and data.id
-		if id and F.NotSecret(id) then
+		if id then
 			AppendReagents(tip, id)
 		end
 	end)
 
 	if GameTooltip.SetHyperlink then
 		hooksecurefunc(GameTooltip, "SetHyperlink", function(tip, link)
-			if not Tooltip:IsEnabled() or not ns.db.tooltip.itemReagents or tip:IsForbidden() or not link or F.IsSecret(link) then
+			if not Tooltip:IsEnabled() or not ns.db.tooltip.itemReagents or tip:IsForbidden() or not link then
 				return
 			end
 			local id = tonumber(link:match("item:(%d+)"))

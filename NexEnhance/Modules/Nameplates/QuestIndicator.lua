@@ -31,7 +31,6 @@ local GetUnitTooltipInfo = C_TooltipInfo and C_TooltipInfo.GetUnit
 local UnitIsPlayer = UnitIsPlayer
 local IsInInstance = IsInInstance
 local CanAccess = F.CanAccessValue
-local IsSecret = F.IsSecret
 local match, format, tonumber = string.match, string.format, tonumber
 local ipairs, pairs = ipairs, pairs
 
@@ -314,11 +313,9 @@ function Module:UpdateNameplateForUnit(unit)
 	if not unit then
 		return
 	end
-	-- UnitIsPlayer hands back a secret value when identity is restricted; bail
-	-- safely rather than boolean-testing a secret. Short-circuit avoids reading
-	-- isPlayer when it is secret.
+	-- UnitIsPlayer: SecretArguments only (Resources 12.0.7) — plain boolean.
 	local isPlayer = UnitIsPlayer(unit)
-	if IsSecret(isPlayer) or isPlayer then
+	if isPlayer then
 		return
 	end
 	local nameplate = C_NamePlate.GetNamePlateForUnit(unit)

@@ -125,7 +125,9 @@ function ActionBars:UpdateHotKey(hotkey)
 	end
 
 	local text = hotkey:GetText()
-	if not text or text == "" or F.IsSecret(text) then
+	-- Binding text is not a secret-tagged API; FontString:GetText is only secret
+	-- after secret paint into that string (we don't do that here).
+	if not text or text == "" then
 		return
 	end
 
@@ -145,7 +147,7 @@ function ActionBars:UpdateHotKey(hotkey)
 
 	-- SetFormattedText does not fire the SetText hook, so no recursion. Skip the
 	-- write when the text already matches (nothing to abbreviate).
-	if abbr ~= text and not F.IsSecret(abbr) then
+	if abbr ~= text then
 		hotkey:SetFormattedText("%s", abbr)
 	end
 end
@@ -484,13 +486,8 @@ local function ApplyEquipGlow(button)
 	end
 
 	local borderVisible = border:IsShown()
-	if F.IsSecret(borderVisible) then
-		if button.nexEquipGlow then
-			button.nexEquipGlow:Hide()
-		end
-		return
-	end
-
+	-- Equip border isn't fed combat secrets; IsShown aspect secrecy only follows
+	-- secret paint. Resources don't tag an equip-state return here.
 	if ns.db.actionbars.equipGlow and borderVisible then
 		border:Hide()
 		local glow = GetEquipGlow(button)

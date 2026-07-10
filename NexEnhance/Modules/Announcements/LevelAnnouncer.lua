@@ -152,10 +152,8 @@ function LevelAnnouncer:PLAYER_ENTERING_WORLD()
 		return
 	end
 	local currentLevel = UnitLevel("player")
-	-- Midnight: UnitLevel can be secret inside instances. Don't store or
-	-- compare a secret value — skip initialization and let the next event
-	-- (zone change out, logout/login) try again with a readable value.
-	if not currentLevel or F.IsSecret(currentLevel) then
+	-- UnitLevel has no SecretReturns in Resources 12.0.7.
+	if not currentLevel then
 		return
 	end
 	local tracker = GetTracker()
@@ -175,30 +173,13 @@ function LevelAnnouncer:PLAYER_LEVEL_UP(newLevel)
 	if not ns.db.levelAnnouncer.enable or not newLevel then
 		return
 	end
-	-- Midnight: event payload values can be secret in combat / instances.
-	-- format("%d", secretValue) would error, so bail out and let the normal
-	-- level display handle it. The clock still advances: we reset it below
-	-- using UnitLevel() after guarding that call too.
-	if F.IsSecret(newLevel) then
-		-- Clock reset: read the current level separately, guard it the same way.
-		local safeLevel = UnitLevel("player")
-		if safeLevel and not F.IsSecret(safeLevel) then
-			StartClock(safeLevel)
-		end
-		return
-	end
 
 	local tracker = GetTracker()
 	-- time() is a plain Lua function — it never returns a secret value.
 	local elapsed = tracker.startTime and (time() - tracker.startTime) or 0
 	local durationStr = elapsed > 0 and FormatDuration(elapsed) or nil
 
-	-- GetMaxPlayerLevel() is a static lookup; guard defensively.
-	local maxLevel = GetMaxPlayerLevel()
-	if maxLevel and F.IsSecret(maxLevel) then
-		maxLevel = nil
-	end
-	maxLevel = maxLevel or MIDNIGHT_MAX_LEVEL
+	local maxLevel = GetMaxPlayerLevel() or MIDNIGHT_MAX_LEVEL
 
 	local isMax = newLevel >= maxLevel
 
@@ -249,7 +230,7 @@ function LevelAnnouncer:OnSettingChanged(key, value)
 
 	if ns.db.levelAnnouncer.enable then
 		local currentLevel = UnitLevel("player")
-		if currentLevel and not F.IsSecret(currentLevel) then
+		if currentLevel then
 			local tracker = GetTracker()
 			if tracker.level ~= currentLevel or not tracker.startTime then
 				StartClock(currentLevel)

@@ -78,12 +78,12 @@ local function HandleAura(tip, unit, spellID)
 	if not IsShiftKeyDown() then
 		return
 	end
-	if not unit or F.IsSecret(unit) or F.IsSecretUnit(unit) then
+	if not unit or F.IsSecretUnit(unit) then
 		return
 	end
-	local isPlayer = UnitIsPlayer(unit)
+	-- UnitIsPlayer: SecretArguments only.
 	local isSelf = F.SafeUnitIsUnit(unit, "player")
-	if F.IsSecret(isPlayer) or not isPlayer or isSelf then
+	if not UnitIsPlayer(unit) or isSelf then
 		return
 	end
 

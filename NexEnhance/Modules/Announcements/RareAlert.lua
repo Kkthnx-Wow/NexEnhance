@@ -12,7 +12,7 @@
 	Detection filters:
 	  * Skip loot/lore container atlases (treasure chests aren't rares)
 	  * Ignore list accepts NPC IDs parsed from objectGUID, not just vignetteIDs
-	  * F.NotSecret on name/position before any string or arithmetic
+	  * F.NotSecret on name/GUID identity before string ops (map x/y are plain)
 
 	Right-click shares the rare plus a map-pin link. Custom pin text gets dropped
 	by the server, so the broadcast uses the default map-pin hyperlink. Group
@@ -59,7 +59,7 @@ local ANNOUNCE_COOLDOWN = 20 -- don't flood chat on repeat right-clicks
 -- so the popup reads as part of the same UI (see Modules/Maps/Minimap.lua).
 local BANNER_BACKDROP = {
 	bgFile = C.Media.Textures.blank,
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+	edgeFile = "Interface\\AddOns\\NexEnhance\\Media\\Border\\NexBorder",
 	edgeSize = 14,
 	insets = { left = 3, right = 3, top = 3, bottom = 3 },
 }
@@ -114,11 +114,55 @@ local defaultIgnored = {
 
 -- NPC IDs that spam false alerts (RareScanner RSConstants.IGNORED_VIGNETTES_NPCS).
 local defaultIgnoredNpcs = {
-	156480, 155660, 163373, 182160, 182668, 182667, 185261, 200002, 190034, 191125,
-	210081, 210084, 210544, 210550, 226647, 226657, 226528, 221630, 206978, 206980,
-	206981, 209780, 209781, 127025, 136466, 136472, 136144, 136109, 128660, 128661,
-	128662, 128665, 98141, 92600, 227481, 147188, 171743, 219827, 90173, 92682, 92703,
-	247220, 256569, 155796, 157718, 193681, 9046, 158037, 265828,
+	156480,
+	155660,
+	163373,
+	182160,
+	182668,
+	182667,
+	185261,
+	200002,
+	190034,
+	191125,
+	210081,
+	210084,
+	210544,
+	210550,
+	226647,
+	226657,
+	226528,
+	221630,
+	206978,
+	206980,
+	206981,
+	209780,
+	209781,
+	127025,
+	136466,
+	136472,
+	136144,
+	136109,
+	128660,
+	128661,
+	128662,
+	128665,
+	98141,
+	92600,
+	227481,
+	147188,
+	171743,
+	219827,
+	90173,
+	92682,
+	92703,
+	247220,
+	256569,
+	155796,
+	157718,
+	193681,
+	9046,
+	158037,
+	265828,
 }
 
 -- Zones where rare/vignette spam is unwanted (warfronts & their scenarios).
@@ -336,8 +380,7 @@ local function ChatAlreadyAnnouncedRare(mapID, x, y)
 		local text = fontString:GetText()
 		if text and F.NotSecret(text) and not strfind(text, addonPrefix, 1, true) then
 			-- Right-click / player share uses the default map-pin hyperlink label.
-			if strfind(text, linkKey, 1, true)
-				and (strfind(text, "Waypoint%-MapPin%-ChatIcon", 1, true) or strfind(text, "Map Pin Location", 1, true)) then
+			if strfind(text, linkKey, 1, true) and (strfind(text, "Waypoint%-MapPin%-ChatIcon", 1, true) or strfind(text, "Map Pin Location", 1, true)) then
 				return true
 			end
 		end
@@ -713,8 +756,9 @@ local function Popup_ShowPreview()
 	if mapID and C_Map and C_Map.GetPlayerMapPosition then
 		local pos = C_Map.GetPlayerMapPosition(mapID, "player")
 		if pos then
+			-- GetPlayerMapPosition: SecretArguments only — plain GetXY.
 			local px, py = pos:GetXY()
-			if px and py and F.NotSecret(px) and F.NotSecret(py) then
+			if px and py then
 				x, y = px, py
 			end
 		end
@@ -905,15 +949,14 @@ local function OnVignette(_, vignetteGUID)
 	UIErrorsFrame:AddMessage(format("%s%s %s%s", C.InfoColor, L["Rare Found"], icon, name))
 
 	-- Resolve the rare's position once (shared by the chat link and the popup).
-	-- Coordinates can be secret inside instances on 12.0; arithmetic on a secret
-	-- value errors, so leave x/y nil when guarded - both consumers handle that.
+	-- GetVignettePosition: SecretArguments only — plain GetXY.
 	local mapID, x, y
 	if cfg.printToChat or cfg.showPopup then
 		mapID = C_Map_GetBestMapForUnit and C_Map_GetBestMapForUnit("player")
 		local pos = mapID and C_VignetteInfo.GetVignettePosition(vignetteGUID, mapID)
 		if pos then
 			local px, py = pos:GetXY()
-			if px and py and F.NotSecret(px) and F.NotSecret(py) then
+			if px and py then
 				x, y = px, py
 			end
 		end

@@ -47,10 +47,8 @@ function F.RefreshPlayerContext()
 	if C.Player.name and C.Player.realm then
 		C.Player.key = C.Player.name .. " - " .. C.Player.realm
 	end
-	local level = UnitLevel("player")
-	if F.NotSecret(level) then
-		C.Player.level = level
-	end
+	-- UnitLevel: SecretArguments only (Resources 12.0.7) — plain assign.
+	C.Player.level = UnitLevel("player")
 end
 
 -- ---------------------------------------------------------------------------
@@ -160,18 +158,7 @@ function F.SidebarIconMarkup(iconPath, size)
 	local rightTexel = floor(r * fileSize + 0.5)
 	local topTexel = floor(t * fileSize + 0.5)
 	local bottomTexel = floor(b * fileSize + 0.5)
-	return format(
-		"|T%s:%d:%d:0:0:%d:%d:%d:%d:%d:%d|t",
-		iconPath,
-		size,
-		size,
-		fileSize,
-		fileSize,
-		leftTexel,
-		rightTexel,
-		topTexel,
-		bottomTexel
-	)
+	return format("|T%s:%d:%d:0:0:%d:%d:%d:%d:%d:%d|t", iconPath, size, size, fileSize, fileSize, leftTexel, rightTexel, topTexel, bottomTexel)
 end
 
 --- Compact |T| tag for inline chat icons (emoji, badges). Width and height default to 16.
@@ -783,9 +770,7 @@ do
 		if factionIdx == 3 then
 			local boost = UNFRIENDLY_ORANGE_BOOST
 			local mix = UNFRIENDLY_ORANGE_BLEND
-			return color.r + (boost.r - color.r) * mix,
-				color.g + (boost.g - color.g) * mix,
-				color.b + (boost.b - color.b) * mix
+			return color.r + (boost.r - color.r) * mix, color.g + (boost.g - color.g) * mix, color.b + (boost.b - color.b) * mix
 		end
 
 		return color.r, color.g, color.b
@@ -805,34 +790,22 @@ do
 			end
 		end
 
-		if UnitIsOtherPlayersPet then
-			local otherPet = UnitIsOtherPlayersPet(unit)
-			if F.NotSecret(otherPet) and otherPet then
-				return true
-			end
+		-- UnitIsOtherPlayersPet / UnitPlayerControlled / UnitIsFriend /
+		-- UnitIsOwnerOrControllerOfUnit: SecretArguments only (Resources 12.0.7).
+		if UnitIsOtherPlayersPet and UnitIsOtherPlayersPet(unit) then
+			return true
 		end
 
-		if not UnitPlayerControlled then
+		if not UnitPlayerControlled or not UnitPlayerControlled(unit) then
 			return false
 		end
 
-		local controlled = UnitPlayerControlled(unit)
-		if F.IsSecret(controlled) or not controlled then
-			return false
+		if UnitIsOwnerOrControllerOfUnit and UnitIsOwnerOrControllerOfUnit("player", unit) then
+			return true
 		end
 
-		if UnitIsOwnerOrControllerOfUnit then
-			local owned = UnitIsOwnerOrControllerOfUnit("player", unit)
-			if F.NotSecret(owned) and owned then
-				return true
-			end
-		end
-
-		if UnitIsFriend then
-			local friend = UnitIsFriend("player", unit)
-			if F.NotSecret(friend) and friend then
-				return true
-			end
+		if UnitIsFriend and UnitIsFriend("player", unit) then
+			return true
 		end
 
 		return false
@@ -841,7 +814,7 @@ do
 	--- NPC reaction tint: read UnitSelectionType/Color (same source as nameplates),
 	--- then output the darker FACTION_BAR_COLORS entry so unit frames and tooltips
 	--- match nameplate category without bright selection RGB. Falls back to
-	--- UnitReaction when selection APIs are secret or unavailable.
+	--- UnitReaction when selection APIs are unavailable.
 	function F.GetNpcReactionColor(unit)
 		if not unit or not FACTION_BAR_COLORS then
 			return nil
@@ -852,28 +825,25 @@ do
 		end
 
 		local factionIdx
-		local selTypeResolved = false
 
+		-- UnitSelectionType / UnitSelectionColor / UnitReaction: SecretArguments only.
 		if UnitSelectionType then
 			local selType = UnitSelectionType(unit, false)
-			if F.NotSecret(selType) and selType ~= nil then
-				selTypeResolved = true
+			if selType ~= nil then
 				factionIdx = SELECTION_TYPE_TO_FACTION[selType]
 			end
 		end
 
-		-- RGB fallback when category is unknown (secret/unmapped selType). Skip only
-		-- when selType resolved to a known non-NPC category with no faction mapping.
 		if not factionIdx and UnitSelectionColor then
 			local sr, sg, sb = UnitSelectionColor(unit, false)
-			if F.NotSecret(sr) and F.NotSecret(sg) and F.NotSecret(sb) then
+			if sr then
 				factionIdx = FactionIndexFromSelectionRGB(sr, sg, sb)
 			end
 		end
 
 		if not factionIdx then
 			local reaction = UnitReaction(unit, "player")
-			if F.IsSecret(reaction) or not reaction then
+			if not reaction then
 				return nil
 			end
 			factionIdx = reaction
@@ -882,13 +852,11 @@ do
 		-- Neutral/yellow mobs turn bright red (1,0,0) on nameplates when pulled;
 		-- CompactUnitFrame considerSelectionInCombatAsHostile. Use darker hostile
 		-- red so nameplate + target frame stay on our palette.
+		-- Threat list can still be secret (UnitThreatSituation); friend flag is plain.
 		if CompactUnitFrame_IsOnThreatListWithPlayer and UnitIsFriend then
 			local onThreat = CompactUnitFrame_IsOnThreatListWithPlayer(unit)
-			if F.NotSecret(onThreat) and onThreat then
-				local isFriend = UnitIsFriend("player", unit)
-				if F.NotSecret(isFriend) and not isFriend then
-					factionIdx = 2
-				end
+			if F.NotSecret(onThreat) and onThreat and not UnitIsFriend("player", unit) then
+				factionIdx = 2
 			end
 		end
 
@@ -911,17 +879,17 @@ do
 	end
 
 	--- Resolve a unit's display colour: class colour for players, reaction colour
-	--- for NPCs, white otherwise. Every identity read is secret-gated.
+	--- for NPCs, white otherwise. UnitIsPlayer / classFilename are SecretArguments-only;
+	--- className (1st UnitClass return) is ConditionalSecret — we use the 2nd.
 	function F.UnitColor(unit)
 		local r, g, b = 1, 1, 1
 		if not unit then
 			return r, g, b
 		end
 
-		local isPlayer = UnitIsPlayer(unit)
-		if F.NotSecret(isPlayer) and isPlayer then
+		if UnitIsPlayer(unit) then
 			local _, class = UnitClass(unit)
-			if F.NotSecret(class) and class then
+			if class then
 				local color = CLASS_COLORS[class]
 				if color then
 					return color.r, color.g, color.b
@@ -1270,8 +1238,9 @@ function F.SafeRefreshTooltipData(tooltip, opts)
 		if opts.itemOnly then
 			return false
 		end
+		-- GetUnit() returns a unit token string — not a secret-tagged API return.
 		local unit = tooltip.GetUnit and tooltip:GetUnit()
-		if unit and F.IsSecret(unit) then
+		if unit and F.IsSecretUnit(unit) then
 			return false
 		end
 	end

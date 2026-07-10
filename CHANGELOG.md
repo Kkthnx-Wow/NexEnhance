@@ -33,6 +33,14 @@
 
 ### Fixed
 
+- **Skins — Missing Stats:** scroll clamp no longer reads `GetVerticalScrollRange`
+  (`SecretReturnsForAspect(ScrollRange)` — PaperDoll contamination marks the aspect).
+  Range is computed from our `SetSize` heights; `GetTop`/`GetBottom` fall back to the
+  last plain content height when anchoring-secret.
+- **Automation — Quick Join:** removed addon auto-invite of LFG applicants —
+  `C_LFGList.InviteApplicant` is protected; programmatic `InviteButton:Click()` still
+  runs tainted and caused `ADDON_ACTION_BLOCKED`. Use Blizzard's listing Auto-accept
+  when `CanActiveEntryUseAutoAccept` shows it.
 - **Cursor — Cursor Trail:** slow mouse moves now leave a trail — spacing accumulates
   from the last emitted dot instead of resetting every frame.
 - **Cursor — Cursor Trail:** no streak across mouselook/combat-only gaps; paint loop
@@ -41,11 +49,25 @@
   mid-cooldown; enable lifecycle no longer double-fires OnEnable/OnDisable.
 - **Nameplates — Target Resource:** clearing target restores Blizzard's personal-plate
   class bar (no longer orphaned on the previous nameplate).
-- **Miscellaneous — Exp / Rep Bar:** guard XP/honor/azerite arithmetic and tooltip
-  percent text when values are secret; StatusBar still receives raw values.
+- **Miscellaneous — Exp / Rep Bar:** XP/honor/azerite use plain math — Resources
+  12.0.7 does not mark those APIs `SecretReturns` (removed speculative secret path).
+- **Miscellaneous — Loot Roll:** plain timer/quality handling; prefer
+  `C_Loot.GetLootRollDuration` when available.
 - **Chat:** `OnDisable` tears down whisper sound/invite listeners and `UIScaleApplied`;
   sticky whisper restored; secure hooks gated with `IsEnabled()`.
-- **Miscellaneous — Loot Roll:** do not compare secret `GetLootRollTimeLeft` values.
+- **Secrets (docs pass 2):** pruned speculative `IsSecret`/`NotSecret` on APIs that are
+  only `SecretArguments` or untagged in Resources 12.0.7 (nav distance, action
+  usability/range, item/money/merchant/quest objectives, levels/`classFilename`,
+  gossip names, mail/durability, map coords, UIWidget timers, housing counts, …).
+  Kept identity (`UnitName`/`UnitGUID`/`UnitCreatureType`), threat, raid markers,
+  chat/LFG lockdown, auras, spell cooldowns, cast secrets. Truth tables:
+  `wow-midnight-secret-values-guide.mdc`.
+- **DataText — Currency & Gold / Friends / Guild:** drop speculative `IsSecret` on
+  `GetMoney`, currencies, and roster fields (docs-untagged); keep chat-payload guards.
+- **Automation — Auto Vendor / Warband Gold / Auto Greed:** prune money/repair/quality
+  secret folklore; normal comparisons.
+- **Announcements — Level Announcer:** `UnitLevel` / level-up payload are not secret-tagged.
+- **Inventory — Delete Cheapest:** plain stack × sellPrice math.
 - **Unit Frames — Player Cast Bar:** secret-safe `IsShown` / `ShouldShowCastBar` checks.
 - **Action Bars:** clear mouseover fade `OnUpdate` + `activeFades` on disable.
 - **Maps — Minimap:** `OnDisable` tears down pulse/clicker/bin events and SettingChanged
@@ -55,6 +77,13 @@
 - **Miscellaneous — AFK Camera:** `OnDisable` unregisters frame events and model OnUpdate;
   re-enable rebinds cleanly.
 - **Tooltip:** core + ID/icons/mount/reagents/ilvl hooks gate on `Tooltip:IsEnabled()`.
+- **Tooltip — IDs:** nameplate aura "From:" no longer calls `GetUnitName(sourceUnit, true)`
+  when `AuraData.sourceUnit` is a secret token (that path hits `UnitRealmRelationship`,
+  which is `SecretArguments = AllowedWhenUntainted`). Skip when the token is secret;
+  otherwise use `UnitName` only.
+- **Tooltip:** `ResolveTipIdentity` never keeps a secret `GetUnit()` token (same
+  `UnitRealmRelationship` footgun on unit tips); falls through to clean raid/party /
+  `UnitTokenFromGUID` tokens.
 - **Skins — Missing Stats:** hook handlers + `PLAYER_REGEN_ENABLED` gate/teardown on disable.
 - **Core — Settings:** modules no longer double-call `OnEnable`/`OnDisable` from
   `OnSettingChanged("enable")` (`ApplyModuleSetting` already owns lifecycle) —

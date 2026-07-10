@@ -26,8 +26,6 @@ local UnitSelectionColor = UnitSelectionColor
 local hooksecurefunc = hooksecurefunc
 local ipairs = ipairs
 
-local IsSecret = F.IsSecret
-
 ns:RegisterDefaults({
 	targetFrameLayout = {
 		enable = false,
@@ -128,10 +126,8 @@ local function RestoreReputationStrip(frame)
 	if not unit then
 		return
 	end
+	-- UnitSelectionColor: SecretArguments only in 12.0.7 — returns are plain.
 	local r, g, b = UnitSelectionColor(unit)
-	if IsSecret(r) then
-		return
-	end
 	if r then
 		strip:SetVertexColor(r, g, b)
 	end

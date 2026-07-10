@@ -110,8 +110,8 @@ end
 -- panels). Border-only: the dark trough is drawn separately so the bar's fill
 -- never paints over the frame.
 local BLIZZARD_BORDER = {
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	edgeSize = 14,
+	edgeFile = "Interface\\AddOns\\NexEnhance\\Media\\Border\\NexBorder",
+	edgeSize = 12,
 	insets = { left = 3, right = 3, top = 3, bottom = 3 },
 }
 
@@ -213,13 +213,8 @@ local function IsMaxLevel()
 end
 
 local function SetBarValues(statusbar, minValue, maxValue, value)
-	-- StatusBar accepts secrets; only the min/max clamp needs a plain-number path.
-	-- Incident (ExpRep, Jul 2026): comparing secret max/min throws in combat.
-	if F.IsSecret(minValue) or F.IsSecret(maxValue) or F.IsSecret(value) then
-		statusbar:SetMinMaxValues(minValue, maxValue)
-		statusbar:SetValue(value)
-		return
-	end
+	-- XP / honor / rep / azerite / housing reads are plain in Resources 12.0.7
+	-- (no SecretReturns). Clamp only — no speculative issecretvalue branch.
 	if maxValue <= minValue then
 		maxValue = minValue + 1
 	end
@@ -228,10 +223,6 @@ local function SetBarValues(statusbar, minValue, maxValue, value)
 end
 
 local function Progress(minValue, maxValue, value)
-	-- Callers must pass plain numbers; secret inputs bail before arithmetic.
-	if F.IsSecret(minValue) or F.IsSecret(maxValue) or F.IsSecret(value) then
-		return 0, 1, 0, true, 0
-	end
 	if not maxValue or maxValue <= 0 then
 		return 0, 1, 0, true, 0
 	end
@@ -253,9 +244,6 @@ end
 
 local function AddRemainingLine(state)
 	local cur, maxV, remaining = state.cur, state.max, state.remaining
-	if F.IsSecret(cur) or F.IsSecret(maxV) or F.IsSecret(remaining) then
-		return
-	end
 	remaining = remaining or ((maxV or 0) - (cur or 0))
 	if remaining < 0 then
 		remaining = 0
@@ -422,16 +410,7 @@ local function BuildExperienceState()
 	local maxXP = UnitXPMax("player") or 1
 	local rested = GetXPExhaustion() or 0
 
-	-- Docs (12.0.7) don't mark UnitXP SecretReturns, but combat loot/XP ticks
-	-- have bitten other bars — route secrets to the widget, skip percent text.
-	if F.IsSecret(cur) or F.IsSecret(maxXP) or F.IsSecret(rested) then
-		xpState.available = true
-		xpState.secret = true
-		xpState.cur, xpState.max, xpState.rested = cur, maxXP, rested
-		xpState.percent, xpState.remaining, xpState.display = nil, nil, ""
-		return true
-	end
-
+	-- UnitXP / UnitXPMax / GetXPExhaustion: no SecretReturns in Resources 12.0.7.
 	if maxXP <= 0 then
 		maxXP = 1
 	end
@@ -439,7 +418,6 @@ local function BuildExperienceState()
 	local remaining = maxXP - cur
 
 	xpState.available = true
-	xpState.secret = nil
 	xpState.cur, xpState.max, xpState.percent = cur, maxXP, percent
 	xpState.rested, xpState.remaining = rested, remaining
 	xpState.display = format("%s - %s (%.1f%%)", F.ShortValue(cur), F.ShortValue(maxXP), percent)
@@ -537,21 +515,13 @@ local function BuildHonorState()
 	local maxHonor = UnitHonorMax("player") or 1
 	local level = UnitHonorLevel("player") or 0
 
-	if F.IsSecret(cur) or F.IsSecret(maxHonor) or F.IsSecret(level) then
-		honorState.available = true
-		honorState.secret = true
-		honorState.cur, honorState.max, honorState.level = cur, maxHonor, level
-		honorState.percent, honorState.remaining, honorState.display = nil, nil, ""
-		return true
-	end
-
+	-- UnitHonor*: no SecretReturns in Resources 12.0.7.
 	if maxHonor <= 0 then
 		maxHonor = 1
 	end
 	local percent = (cur / maxHonor) * 100
 
 	honorState.available = true
-	honorState.secret = nil
 	honorState.cur, honorState.max, honorState.percent = cur, maxHonor, percent
 	honorState.level, honorState.remaining = level, maxHonor - cur
 	honorState.display = format("%s - %s (%.1f%%) [%s]", F.ShortValue(cur), F.ShortValue(maxHonor), percent, level)
@@ -572,13 +542,7 @@ local function BuildAzeriteState()
 
 	local cur, maxAz = C_AzeriteItem_GetAzeriteItemXPInfo(loc)
 	local level = C_AzeriteItem_GetPowerLevel(loc)
-	if F.IsSecret(cur) or F.IsSecret(maxAz) or F.IsSecret(level) then
-		azeriteState.available = true
-		azeriteState.secret = true
-		azeriteState.cur, azeriteState.max, azeriteState.level = cur or 0, maxAz, level or 0
-		azeriteState.percent, azeriteState.remaining, azeriteState.display = nil, nil, ""
-		return true
-	end
+	-- C_AzeriteItem XP/power: no SecretReturns in Resources 12.0.7.
 	if not maxAz or maxAz <= 0 then
 		azeriteState.available = nil
 		return false
@@ -588,7 +552,6 @@ local function BuildAzeriteState()
 	local percent = (cur / maxAz) * 100
 
 	azeriteState.available = true
-	azeriteState.secret = nil
 	azeriteState.cur, azeriteState.max, azeriteState.percent = cur, maxAz, percent
 	azeriteState.level, azeriteState.remaining = level or 0, maxAz - cur
 	azeriteState.display = format("%s - %s (%.1f%%) [%s]", F.ShortValue(cur), F.ShortValue(maxAz), percent, level or 0)
@@ -687,12 +650,7 @@ local function ShowExperience()
 	bar.fill:SetStatusBarColor(0, 0.4, 1, 0.9)
 	SetBarValues(bar.fill, 0, xpState.max, xpState.cur)
 
-	-- Rested overlay needs cur+rested arithmetic — skip when any value is secret.
-	local showRested = ns.db.expRep.showRested
-		and not xpState.secret
-		and F.NotSecret(xpState.rested)
-		and xpState.rested
-		and xpState.rested > 0
+	local showRested = ns.db.expRep.showRested and xpState.rested and xpState.rested > 0
 
 	if showRested then
 		bar.rest:SetStatusBarColor(1, 0, 1, 0.35)
@@ -769,12 +727,9 @@ local function AddExperienceTooltip()
 
 	_G.GameTooltip:AddDoubleLine("|cff0070ff" .. (_G.COMBAT_XP_GAIN or "Experience") .. "|r", format("%s %d", _G.LEVEL or "Level", UnitLevel("player")))
 	_G.GameTooltip:AddLine(" ")
-	if xpState.secret or not xpState.percent then
-		return true
-	end
 	_G.GameTooltip:AddDoubleLine(L["XP"], format("%s - %s (%.1f%%)", F.ShortValue(xpState.cur), F.ShortValue(xpState.max), xpState.percent or 0), 1, 1, 1)
 	AddRemainingLine(xpState)
-	if F.NotSecret(xpState.rested) and xpState.rested and xpState.rested > 0 then
+	if xpState.rested and xpState.rested > 0 then
 		local pct = xpState.max and xpState.max > 0 and (xpState.rested / xpState.max * 100) or 0
 		_G.GameTooltip:AddDoubleLine(L["Rested"], format("+%s (%.1f%%)", F.ShortValue(xpState.rested), pct), 1, 1, 1)
 	end
@@ -811,12 +766,9 @@ local function AddHonorTooltip(addSpacing)
 	if addSpacing then
 		AddTooltipDivider()
 	end
-	local levelText = F.NotSecret(honorState.level) and ((_G.LEVEL or "Level") .. " " .. (honorState.level or 0)) or (_G.HONOR or "Honor")
+	local levelText = (_G.LEVEL or "Level") .. " " .. (honorState.level or 0)
 	_G.GameTooltip:AddDoubleLine("|cff00bdfc" .. (_G.HONOR or "Honor") .. "|r", levelText)
 	_G.GameTooltip:AddLine(" ")
-	if honorState.secret or not honorState.percent then
-		return true
-	end
 	_G.GameTooltip:AddDoubleLine(L["Honor XP"], format("%s - %s (%.1f%%)", F.ShortValue(honorState.cur), F.ShortValue(honorState.max), honorState.percent or 0), 1, 1, 1)
 	AddRemainingLine(honorState)
 	return true
@@ -830,12 +782,9 @@ local function AddAzeriteTooltip(addSpacing)
 	if addSpacing then
 		AddTooltipDivider()
 	end
-	local levelText = F.NotSecret(azeriteState.level) and ((_G.LEVEL or "Level") .. " " .. (azeriteState.level or 0)) or (_G.AZERITE_POWER or "Azerite")
+	local levelText = (_G.LEVEL or "Level") .. " " .. (azeriteState.level or 0)
 	_G.GameTooltip:AddDoubleLine("|cff00bdfc" .. (_G.AZERITE_POWER or "Azerite") .. "|r", levelText)
 	_G.GameTooltip:AddLine(" ")
-	if azeriteState.secret or not azeriteState.percent then
-		return true
-	end
 	_G.GameTooltip:AddDoubleLine(L["XP"], format("%s - %s (%.1f%%)", F.ShortValue(azeriteState.cur), F.ShortValue(azeriteState.max), azeriteState.percent or 0), 1, 1, 1)
 	AddRemainingLine(azeriteState)
 	return true

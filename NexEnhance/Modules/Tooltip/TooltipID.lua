@@ -15,7 +15,6 @@ end
 local _G = _G
 local strmatch, format, tonumber, select = string.match, string.format, tonumber, select
 local hooksecurefunc = hooksecurefunc
-local GetUnitName = GetUnitName
 local UnitName = UnitName
 local IsPlayerSpell = IsPlayerSpell
 local C_Item_GetItemCount = C_Item.GetItemCount
@@ -83,16 +82,17 @@ function Tooltip:AddLineForID(id, linkType, noadd)
 	end
 
 	if linkType == types.item then
+		-- C_Item.GetItemCount / itemStackCount: SecretArguments only (Resources 12.0.7).
 		local bagCount = C_Item_GetItemCount(id)
 		local totalCount = C_Item_GetItemCount(id, true, nil, true, true)
-		local bankCount = (F.NotSecret(bagCount) and F.NotSecret(totalCount)) and (totalCount - bagCount) or 0
+		local bankCount = (totalCount or 0) - (bagCount or 0)
 		local itemStackCount = GetItemStackCount(id)
-		if F.NotSecret(bankCount) and bankCount > 0 then
+		if bankCount > 0 then
 			self:AddDoubleLine(BAGSLOT .. "/" .. BANK .. ":", C.InfoColor .. bagCount .. "/" .. bankCount)
-		elseif F.NotSecret(bagCount) and bagCount > 0 then
+		elseif bagCount and bagCount > 0 then
 			self:AddDoubleLine(BAGSLOT .. ":", C.InfoColor .. bagCount)
 		end
-		if itemStackCount and F.NotSecret(itemStackCount) and itemStackCount > 1 then
+		if itemStackCount and itemStackCount > 1 then
 			self:AddDoubleLine(L["Stack Cap"] .. ":", C.InfoColor .. itemStackCount)
 		end
 	end
@@ -140,23 +140,24 @@ function Tooltip:SetupTooltipID()
 			return
 		end
 		local id, caster = data.spellId, data.sourceUnit
-		if id then
+		if id and F.NotSecret(id) then
 			Tooltip.AddLineForID(tip, id, types.spell)
 		end
-		if caster then
-			if F.IsSecret(caster) then
-				local ok, name = pcall(UnitName, caster)
-				if ok and F.NotSecret(name) then
-					tip:AddDoubleLine(L["From"] .. ":", name)
-					tip:Show()
-				end
-			else
-				local name = GetUnitName(caster, true)
-				local hexColor = F.ColorStr(F.UnitColor(caster))
-				tip:AddDoubleLine(L["From"] .. ":", hexColor .. (name or UNKNOWN))
-				tip:Show()
-			end
+		-- Incident (TooltipID, Jul 2026): nameplate aura tips can hand us a *secret*
+		-- sourceUnit. GetUnitName(unit, true) → UnitRealmRelationship, and that API
+		-- is SecretArguments AllowedWhenUntainted — tainted code may not pass a
+		-- secret unit. Skip "From:" when the token itself is secret; otherwise use
+		-- UnitName (AllowedWhenTainted) and never ask for the realm suffix path.
+		if not caster or F.IsSecret(caster) then
+			return
 		end
+		local ok, name = pcall(UnitName, caster)
+		if not (ok and name and F.NotSecret(name)) then
+			return
+		end
+		local hexColor = F.ColorStr(F.UnitColor(caster))
+		tip:AddDoubleLine(L["From"] .. ":", hexColor .. name)
+		tip:Show()
 	end
 
 	hooksecurefunc(GameTooltip, "SetUnitAura", function(tip, ...)

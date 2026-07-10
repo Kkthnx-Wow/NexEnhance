@@ -56,11 +56,8 @@ local function AutoSync()
 		targetGold = 0
 	end
 	local targetCopper = math.floor((targetGold * COPPER_PER_GOLD) + 0.5)
-	local playerMoney = GetMoney()
-	if F.IsSecret(playerMoney) then
-		return
-	end
-	playerMoney = playerMoney or 0
+	local playerMoney = GetMoney() or 0
+	-- GetMoney / FetchDepositedMoney: no SecretReturns in Resources 12.0.7.
 
 	if playerMoney > targetCopper then
 		-- We have more gold than our target threshold. Deposit the excess.
@@ -93,7 +90,7 @@ local function AutoSync()
 	local warbandMoney = 0
 	if C_Bank.FetchDepositedMoney then
 		local ok, money = pcall(C_Bank.FetchDepositedMoney, bankType)
-		if ok and F.NotSecret(money) then
+		if ok and money then
 			warbandMoney = money or 0
 		end
 	end

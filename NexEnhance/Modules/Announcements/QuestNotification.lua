@@ -8,8 +8,7 @@
 	Progress detection: we diff structured objective counts from
 	C_QuestLog.GetQuestObjectives off a debounced QUEST_LOG_UPDATE scan instead
 	of pattern-matching localized UI_INFO_MESSAGE text. Locale-independent, no
-	string parsing, fires for every quest regardless of tracking — and the text
-	can be a Secret value in instances anyway.
+	string parsing, fires for every quest regardless of tracking.
 --]]
 
 -- The Lua Language Server types quest IDs as optional; silence those false positives.
@@ -66,14 +65,14 @@ local function IsWorldQuestLike(questID)
 	end
 	if C_QuestInfoSystem_GetQuestClassification then
 		local class = C_QuestInfoSystem_GetQuestClassification(questID)
-		if F.NotSecret(class) and class == LE_QUEST_CLASSIFICATION_WORLD_QUEST then
+		if class == LE_QUEST_CLASSIFICATION_WORLD_QUEST then
 			return true
 		end
 	end
 	local logIndex = C_QuestLog_GetLogIndexForQuestID(questID)
 	if logIndex then
 		local info = C_QuestLog_GetInfo(logIndex)
-		if info and F.NotSecret(info.questClassification) and info.questClassification == LE_QUEST_CLASSIFICATION_WORLD_QUEST then
+		if info and info.questClassification == LE_QUEST_CLASSIFICATION_WORLD_QUEST then
 			return true
 		end
 	end
@@ -103,14 +102,15 @@ local function IsHiddenLogQuest(questID)
 	if info.isHidden then
 		return true
 	end
-	if F.NotSecret(info.isInternalOnly) and info.isInternalOnly then
+	if info.isInternalOnly then
 		return true
 	end
 	return false
 end
 
 local function HasObjectiveText(o)
-	return o and F.NotSecret(o.text) and o.text ~= "" and o.text:match("%S") ~= nil
+	-- QuestObjectiveInfo fields: no ConditionalSecret (Resources 12.0.7).
+	return o and o.text and o.text ~= "" and o.text:match("%S") ~= nil
 end
 
 local function ShouldAnnounceQuest(questID)
@@ -367,17 +367,14 @@ local function ScanQuestProgress(questID, announce)
 
 	for index = 1, #objectives do
 		local o = objectives[index]
-		-- Midnight: GetQuestObjectives fields can be secret in instances. We can't
-		-- read, compare, mod, or broadcast a secret, so skip the objective entirely
-		-- rather than fight taint. Out in the world they're plain numbers/strings.
-		if o and F.NotSecret(o.finished) and not o.finished then
+		-- QuestObjectiveInfo: no ConditionalSecret on finished/type/counts/text.
+		if o and not o.finished then
 			local key = questID * 100 + index
-			if F.NotSecret(o.type) and o.type == "progressbar" then
+			if o.type == "progressbar" then
 				-- Percent-style objective ("73% complete"). The count fields read 0
-				-- here; the real value lives behind GetQuestProgressBarPercent (which
-				-- can also be a secret in instances, so guard it the same way).
+				-- here; the real value lives behind GetQuestProgressBarPercent.
 				local pct = GetQuestProgressBarPercent and GetQuestProgressBarPercent(questID)
-				if F.NotSecret(pct) and pct and pct > 0 then
+				if pct and pct > 0 then
 					local step = floor(pct / 20) -- one chime per 20%, not per point
 					local prev = objectiveProgress[key]
 					if prev ~= step then
@@ -387,7 +384,7 @@ local function ScanQuestProgress(questID, announce)
 						end
 					end
 				end
-			elseif F.NotSecret(o.numFulfilled) and F.NotSecret(o.numRequired) and F.NotSecret(o.text) and HasObjectiveText(o) then
+			elseif o.numFulfilled and o.numRequired and HasObjectiveText(o) then
 				local cur, req = o.numFulfilled, o.numRequired
 				local prev = objectiveProgress[key]
 				if cur and prev ~= cur then
@@ -428,7 +425,7 @@ local function FindQuestAccept(_, questID)
 		local questLogIndex = C_QuestLog_GetLogIndexForQuestID(questID)
 		if questLogIndex then
 			local info = C_QuestLog_GetInfo(questLogIndex)
-			if info and F.NotSecret(info.frequency) then
+			if info then
 				daily = info.frequency == LE_QUEST_FREQUENCY_DAILY
 			end
 		end
@@ -453,13 +450,13 @@ local function ScanQuestLog()
 			-- Seed world quests silently so toggling the option on mid-session
 			-- does not dump completions for quests already finished.
 			local isComplete = C_QuestLog_IsComplete(questID)
-			if F.NotSecret(isComplete) and isComplete and not completedQuest[questID] then
+			if isComplete and not completedQuest[questID] then
 				completedQuest[questID] = true
 				clearQuestProgress(questID)
 			end
 		else
 			local isComplete = C_QuestLog_IsComplete(questID)
-			if F.NotSecret(isComplete) and isComplete then
+			if isComplete then
 				if not completedQuest[questID] then
 					if initComplete then
 						QueueQuestComplete(questID)
@@ -550,7 +547,7 @@ function QuestNotification:ToggleDebug()
 		for i = 1, C_QuestLog_GetNumQuestLogEntries() do
 			local questID = C_QuestLog_GetQuestIDForLogIndex(i)
 			local isComplete = questID and C_QuestLog_IsComplete(questID)
-			if questID and ShouldAnnounceQuest(questID) and F.NotSecret(isComplete) and not isComplete then
+			if questID and ShouldAnnounceQuest(questID) and not isComplete then
 				eligible = eligible + 1
 				-- Seed counts silently so the next live update prints instead of seeding.
 				ScanQuestProgress(questID, false)

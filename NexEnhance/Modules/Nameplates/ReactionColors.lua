@@ -64,7 +64,8 @@ local scheduleRegenRefresh = F.Debounce(0.1, function()
 end)
 
 local function IsNameplateUnit(unit)
-	return unit and not IsSecret(unit) and strfind(unit, "nameplate") ~= nil
+	-- Unit token strings are not secret-tagged API returns.
+	return unit and strfind(unit, "nameplate") ~= nil
 end
 
 -- IsForbidden can return a secret ObjectSecurity value on restricted frames.
@@ -122,19 +123,19 @@ local function ShouldSkipNpcNameplate(frame, unit)
 	end
 
 	local isPlayer = UnitIsPlayer(unit)
-	if F.NotSecret(isPlayer) and isPlayer then
+	if isPlayer then
 		return true
 	end
 
 	if UnitTreatAsPlayerForDisplay then
 		local treatAsPlayer = UnitTreatAsPlayerForDisplay(unit)
-		if F.NotSecret(treatAsPlayer) and treatAsPlayer then
+		if treatAsPlayer then
 			return true
 		end
 	end
 
-	local isDead = UnitIsDead(unit)
-	if F.NotSecret(isDead) and isDead then
+	-- UnitIsDead: SecretArguments only (Resources 12.0.7).
+	if UnitIsDead(unit) then
 		return true
 	end
 

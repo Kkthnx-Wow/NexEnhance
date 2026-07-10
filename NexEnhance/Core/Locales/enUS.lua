@@ -291,7 +291,7 @@ L["Last blocked: none yet."] = "Last blocked: none yet."
 -- Quick Join
 L["Quick Join"] = "Quick Join"
 L["Enable Quick Join"] = "Enable Quick Join"
-L["Double-click Group Finder results to apply, auto-invite applicants, hide throwaway LFG popups, and show leader rating and region tags."] = "Double-click Group Finder results to apply, auto-invite applicants, hide throwaway LFG popups, and show leader rating and region tags."
+L["Double-click Group Finder results to apply, hide throwaway LFG popups, and show leader rating and region tags."] = "Double-click Group Finder results to apply, hide throwaway LFG popups, and show leader rating and region tags."
 L["Show Leader Rating"] = "Show Leader Rating"
 L["Show the group leader's Mythic+/PvP rating on each search result, with a cross-faction crest."] = "Show the group leader's Mythic+/PvP rating on each search result, with a cross-faction crest."
 L["Show Leader Region"] = "Show Leader Region"

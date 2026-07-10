@@ -740,9 +740,7 @@ local function QuestName(questID)
 end
 
 -- Returns the in-log "Choose Your Path" path quest's name and objective progress
--- ("1/3"), or nil when no tracked path is in the quest log. Objective counts are
--- guarded against 12.0 secret values (they can be secret inside instances), in
--- which case the progress string is omitted but the path name still shows.
+-- ("1/3"), or nil when no tracked path is in the quest log.
 local function GetActivePathProgress()
 	if not C_QuestLog.GetLogIndexForQuestID then
 		return
@@ -752,7 +750,8 @@ local function GetActivePathProgress()
 			local progress
 			local objectives = C_QuestLog.GetQuestObjectives and C_QuestLog.GetQuestObjectives(questID)
 			local o = objectives and objectives[1]
-			if o and o.numFulfilled and o.numRequired and F.NotSecret(o.numFulfilled) and F.NotSecret(o.numRequired) and o.numRequired > 0 then
+			-- numFulfilled/numRequired: no ConditionalSecret (Resources 12.0.7).
+			if o and o.numFulfilled and o.numRequired and o.numRequired > 0 then
 				progress = format("%d/%d", o.numFulfilled, o.numRequired)
 			end
 			return QuestName(questID), progress
@@ -977,7 +976,7 @@ local worldEventScanBuffer = {}
 local worldEventByName = {}
 
 local function ParseWidgetTextSeconds(text)
-	if not text or text == "" or F.IsSecret(text) then
+	if not text or text == "" then
 		return
 	end
 	-- WoW pluralization tokens like "|4Min:Min;" can sit between the number and
@@ -1007,18 +1006,19 @@ local function WidgetTimerSeconds(info)
 	if not info or info.shownState == Enum.WidgetShownState.Hidden then
 		return
 	end
-	if info.timerValue and info.timerMin and F.NotSecret(info.timerValue) and F.NotSecret(info.timerMin) then
+	-- UIWidget timer/bar fields: no ConditionalSecret (Resources 12.0.7).
+	if info.timerValue and info.timerMin then
 		local remaining = info.timerValue - info.timerMin
 		if remaining > 0 then
 			return remaining
 		end
 	end
-	if info.hasTimer and info.barValue and info.barMin and F.NotSecret(info.barValue) and F.NotSecret(info.barMin) then
+	if info.hasTimer and info.barValue and info.barMin then
 		local remaining = info.barValue - info.barMin
 		if remaining > 0 then
 			return remaining
 		end
-		if info.barMax and F.NotSecret(info.barMax) then
+		if info.barMax then
 			remaining = info.barMax - info.barValue
 			if remaining > 0 then
 				return remaining
@@ -1033,9 +1033,6 @@ local function WidgetProgressPercent(info)
 		return
 	end
 	if not (info.barValue and info.barMin and info.barMax) then
-		return
-	end
-	if F.IsSecret(info.barValue) or F.IsSecret(info.barMin) or F.IsSecret(info.barMax) then
 		return
 	end
 
@@ -1091,7 +1088,7 @@ local function GetPoiWidgetSecondsLeft(poi)
 	for _, widget in ipairs(widgets) do
 		local info = GetWidgetVisInfo(widget.widgetID, widget.widgetType)
 		local secs = info and WidgetTimerSeconds(info)
-		if secs and F.NotSecret(secs) and secs > 0 and (not best or secs < best) then
+		if secs and secs > 0 and (not best or secs < best) then
 			best = secs
 		end
 	end
@@ -1119,7 +1116,7 @@ end
 
 local function GetPoiSecondsLeft(poiID, poi)
 	local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft and C_AreaPoiInfo.GetAreaPOISecondsLeft(poiID)
-	if secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 0 then
+	if secondsLeft and secondsLeft > 0 then
 		return secondsLeft
 	end
 	if poi then
@@ -1150,7 +1147,7 @@ local function IsTrackedWorldEvent(name, atlasName, secs)
 	if IsMidnightWorldBossName(name) then
 		return false
 	end
-	if secs and F.NotSecret(secs) and secs > 0 then
+	if secs and secs > 0 then
 		return true
 	end
 	local lowerName = name:lower()
@@ -1181,12 +1178,12 @@ local function MergeWorldEvent(byName, name, secs, pct)
 		byName[name] = { name = name, secs = secs, pct = pct }
 		return
 	end
-	if secs and F.NotSecret(secs) and secs > 0 then
+	if secs and secs > 0 then
 		if not entry.secs or entry.secs <= 0 or secs < entry.secs then
 			entry.secs = secs
 		end
 	end
-	if pct and F.NotSecret(pct) then
+	if pct then
 		entry.pct = pct
 	end
 end
@@ -1263,11 +1260,11 @@ local function AddWorldEvents()
 	AddTooltipTitle(L["World Events"])
 	for _, entry in ipairs(list) do
 		local secs = entry.secs
-		if entry.pct and F.NotSecret(entry.pct) then
+		if entry.pct then
 			GameTooltip:AddDoubleLine(entry.name, format("%d%%", floor(entry.pct + 0.5)), 1, 1, 1, 1, 0.82, 0)
 		elseif IsActiveVoidIncursion(entry.name) then
 			GameTooltip:AddDoubleLine(entry.name, L["Active"], 1, 1, 1, 0.75, 0.75, 0.75)
-		elseif secs and F.NotSecret(secs) and secs > 0 then
+		elseif secs and secs > 0 then
 			-- Same compact format/color as Daily/Weekly Reset and Delves.
 			GameTooltip:AddDoubleLine(entry.name, FormatTimer(secs), 1, 1, 1, 1, 1, 1)
 		else
@@ -1280,7 +1277,7 @@ end
 -- Shift-held world-event helpers (Legion / BfA invasion timers)
 -- ---------------------------------------------------------------------------
 local function ValidInvasionSeconds(secondsLeft, maxDuration)
-	return secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 60 and secondsLeft <= maxDuration + 1
+	return secondsLeft and secondsLeft > 60 and secondsLeft <= maxDuration + 1
 end
 
 function GetInvasionTimers()
@@ -1521,7 +1518,7 @@ local function AddShiftWorldEvents()
 					AddTooltipTitle(poi.name)
 					local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(poiID)
 					local map = C_Map.GetMapInfo(mapID)
-					local timerText = (secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 0) and FormatTimer(secondsLeft) or L["Active"]
+					local timerText = (secondsLeft and secondsLeft > 0) and FormatTimer(secondsLeft) or L["Active"]
 					GameTooltip:AddDoubleLine((map and map.name or L["Unknown"]) .. GetElementalType(eType), timerText, 1, 1, 1, 1, 1, 1)
 					break
 				end
@@ -1535,7 +1532,7 @@ local function AddShiftWorldEvents()
 			AddTooltipTitle(poi.name)
 			local secondsLeft = C_AreaPoiInfo.GetAreaPOISecondsLeft(areaID)
 			local map = C_Map.GetMapInfo(mapID)
-			local timerText = (secondsLeft and F.NotSecret(secondsLeft) and secondsLeft > 0) and FormatTimer(secondsLeft) or L["Active"]
+			local timerText = (secondsLeft and secondsLeft > 0) and FormatTimer(secondsLeft) or L["Active"]
 			GameTooltip:AddDoubleLine(map and map.name or L["Unknown"], timerText, 1, 1, 1, 1, 1, 1)
 			break
 		end

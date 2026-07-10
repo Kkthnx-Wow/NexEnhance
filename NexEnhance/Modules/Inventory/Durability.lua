@@ -102,13 +102,15 @@ local function GetSlotRepairCost(slot)
 	end
 
 	local cost = data.repairCost
-	if cost and F.NotSecret(cost) and cost > 0 then
+	-- repairCost / GetRepairAllCost / GetInventoryItemDurability: no SecretReturns
+	-- in Resources 12.0.7 (TooltipData struct also has no ConditionalSecret tags).
+	if cost and cost > 0 then
 		return cost
 	end
 
 	if data.args then
 		for _, arg in ipairs(data.args) do
-			if arg.field == "repairCost" and arg.intVal and F.NotSecret(arg.intVal) and arg.intVal > 0 then
+			if arg.field == "repairCost" and arg.intVal and arg.intVal > 0 then
 				return arg.intVal
 			end
 		end
@@ -117,7 +119,7 @@ local function GetSlotRepairCost(slot)
 		for _, line in ipairs(data.lines) do
 			if line.args then
 				for _, arg in ipairs(line.args) do
-					if arg.field == "repairCost" and arg.intVal and F.NotSecret(arg.intVal) and arg.intVal > 0 then
+					if arg.field == "repairCost" and arg.intVal and arg.intVal > 0 then
 						return arg.intVal
 					end
 				end
@@ -130,7 +132,7 @@ end
 -- Total equipped repair bill; same API the merchant Repair All button uses.
 local function GetTotalRepairCost()
 	local total, canRepair = GetRepairAllCost()
-	if canRepair and total and F.NotSecret(total) and total > 0 then
+	if canRepair and total and total > 0 then
 		return total
 	end
 	return nil
@@ -143,7 +145,7 @@ local function UpdateAllSlots()
 		local index = slots[i][1]
 		if GetInventoryItemLink("player", index) then
 			local current, max = GetInventoryItemDurability(index)
-			if current and max and F.NotSecret(current) and F.NotSecret(max) and max > 0 then
+			if current and max and max > 0 then
 				slots[i][3] = current / max
 				numSlots = numSlots + 1
 			end

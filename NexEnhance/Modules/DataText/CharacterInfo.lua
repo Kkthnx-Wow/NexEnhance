@@ -6,8 +6,8 @@
 	totals, Warband bank gold, and backpack-tracked currencies. The button keeps
 	its native click (opens the character pane); we only add the hover tooltip.
 
-	GetMoney() and currency quantities can go secret in combat/instances —
-	gate every read with F.NotSecret before arithmetic, comparison, or storage.
+	GetMoney() and currency quantities have no SecretReturns in Resources 12.0.7
+	— store and compare as plain numbers.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
@@ -106,17 +106,16 @@ local function UpdateWarband()
 		return
 	end
 	local ok, money = pcall(FetchDepositedMoney, WARBAND_BANK_TYPE)
-	if ok and F.NotSecret(money) then
+	if ok and money then
 		warbandGold = money or 0
 	end
 end
 
 -- Record the player's current money in the ledger and fold the delta into the
--- session counters. Secret money (in combat) is skipped so we never do
--- arithmetic on it or overwrite a good value with an opaque one.
+-- session counters. GetMoney has no SecretReturns (Resources 12.0.7).
 function CharacterInfo:RecordMoney(countSession)
 	local money = GetMoney()
-	if F.IsSecret(money) then
+	if not money then
 		return
 	end
 
@@ -163,7 +162,7 @@ local function AddCurrencies()
 	local info = C_CurrencyInfo.GetBackpackCurrencyInfo(index)
 	while info do
 		local quantity = info.quantity
-		if info.name and F.NotSecret(quantity) and quantity then
+		if info.name and quantity then
 			if index == 1 then
 				GameTooltip:AddLine(" ")
 				GameTooltip:AddLine(CURRENCY or "Currency", HDR.r, HDR.g, HDR.b)
@@ -186,7 +185,7 @@ function CharacterInfo:BuildTooltip(button)
 		return
 	end
 
-	-- Refresh live values (skips silently if money is secret in combat).
+	-- Refresh live values.
 	self:RecordMoney(false)
 	UpdateWarband()
 
@@ -274,7 +273,7 @@ function CharacterInfo:BuildTooltip(button)
 	if C_WowTokenPublic and C_WowTokenPublic.GetCurrentMarketPrice then
 		RequestTokenPrice()
 		local price = C_WowTokenPublic.GetCurrentMarketPrice()
-		if F.NotSecret(price) and price then
+		if price then
 			GameTooltip:AddLine(" ")
 			GameTooltip:AddLine(L["WoW Token"], HDR.r, HDR.g, HDR.b)
 			GameTooltip:AddDoubleLine(L["Price"], F.FormatMoney(price), LBL.r, LBL.g, LBL.b, 1, 1, 1)

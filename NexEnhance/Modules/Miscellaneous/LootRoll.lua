@@ -11,8 +11,8 @@
 	Unregistering that event on UIParent stops the default bars; we handle display.
 	AlertFrames only repositions the empty GroupLootContainer — no fight.
 
-	GetLootRollItemInfo quality can be secret in instances — colour/ilvl behind
-	F.NotSecret; roll buttons and timer never inspect secret data.
+	Loot roll quality / duration are not SecretReturns in Resources 12.0.7 —
+	plain Lua is fine. Prefer C_Loot.GetLootRollDuration when present.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
@@ -34,7 +34,8 @@ local HandleModifiedItemClick = HandleModifiedItemClick
 
 local GetLootRollItemInfo = GetLootRollItemInfo
 local GetLootRollItemLink = GetLootRollItemLink
-local GetLootRollTimeLeft = GetLootRollTimeLeft
+-- Prefer documented C_Loot API; fall back to the legacy global.
+local GetLootRollTimeLeft = (C_Loot and C_Loot.GetLootRollDuration) or GetLootRollTimeLeft
 local RollOnLoot = RollOnLoot
 local GetItemInfo = C_Item.GetItemInfo
 local GetItemIconByID = C_Item.GetItemIconByID
@@ -56,7 +57,7 @@ local function ApplyBarItemLevel(bar, link)
 		return
 	end
 	local _, _, _, itemLevel, _, _, _, _, itemEquipLoc = GetItemInfo(link)
-	local showIlvl = itemEquipLoc and itemEquipLoc ~= "" and F.NotSecret(itemLevel) and itemLevel and itemLevel > 1
+	local showIlvl = itemEquipLoc and itemEquipLoc ~= "" and itemLevel and itemLevel > 1
 	if showIlvl then
 		local r, g, b = bar.name:GetTextColor()
 		bar.button.ilvl:SetShown(true)
@@ -242,12 +243,7 @@ local function StatusBar_OnUpdate(status, elapsed)
 	end
 
 	local timeLeft = GetLootRollTimeLeft(bar.rollID)
-	-- Incident (LootRoll, Jul 2026): timeLeft can be secret in instances —
-	-- never compare; route to SetValue and only clear on a plain expired value.
-	if F.IsSecret(timeLeft) then
-		status:SetValue(timeLeft)
-		return
-	end
+	-- C_Loot.GetLootRollDuration / GetLootRollTimeLeft: no SecretReturns (12.0.7).
 	if not timeLeft or timeLeft <= 0 then
 		LootRoll:ClearBar(bar)
 	else
@@ -504,9 +500,9 @@ function LootRoll:START_LOOT_ROLL(rollID, rollTime)
 	bar.button.stack:SetShown(count and count > 1)
 	bar.button.stack:SetText(count or "")
 
-	-- Quality colour (secret-safe). Default to white when we can't read quality.
+	-- Quality colour. Default to white when quality is missing.
 	local r, g, b = 1, 1, 1
-	if F.NotSecret(quality) and quality then
+	if quality then
 		local qc = C.QualityColors[quality]
 		if qc then
 			r, g, b = qc.r, qc.g, qc.b

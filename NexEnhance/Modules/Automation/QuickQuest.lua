@@ -362,8 +362,9 @@ local function QuestTurnInCostsMoney()
 	if not GetQuestMoneyToGet then
 		return false
 	end
+	-- GetQuestMoneyToGet: no SecretReturns in Resources 12.0.7 docs.
 	local cost = GetQuestMoneyToGet()
-	return F.NotSecret(cost) and (cost or 0) > 0
+	return (cost or 0) > 0
 end
 
 local function TurnInHasCost()
@@ -681,7 +682,8 @@ local QUEST_STRING = "cFF0000FF.-" .. TRANSMOG_SOURCE_2
 -- brackets ("<Convince Rommath...> <Skip Mini Game.>"), so we must not treat
 -- every <...> segment as a story skip.
 local function IsMiniGameSkipGossip(name)
-	if not name or F.IsSecret(name) then
+	-- GossipOptionUIInfo.name: no ConditionalSecret (Resources 12.0.7).
+	if not name then
 		return false
 	end
 	local upper = strupper(name)
@@ -692,14 +694,14 @@ local function IsMiniGameSkipGossip(name)
 		return true
 	end
 	local miniGameLabel = _G["11_0_0_DELVES_MINIGAME_01"]
-	if miniGameLabel and F.NotSecret(miniGameLabel) then
+	if miniGameLabel then
 		return strfind(upper, strupper(miniGameLabel), 1, true) ~= nil
 	end
 	return false
 end
 
 local function IsSkipGossip(name)
-	if not name or F.IsSecret(name) or IsMiniGameSkipGossip(name) then
+	if not name or IsMiniGameSkipGossip(name) then
 		return false
 	end
 	return strfind(strupper(name), "<SKIP") ~= nil
@@ -754,7 +756,7 @@ local function IsGossipOptionSelectable(option)
 end
 
 local function IsStealthClassSkipGossip(name)
-	if not name or F.IsSecret(name) then
+	if not name then
 		return false
 	end
 	local upper = strupper(name)
@@ -801,7 +803,7 @@ end
 local function HasUnsafeGossipOption(options)
 	for i = 1, #options do
 		local name = options[i] and options[i].name
-		if name and F.NotSecret(name) then
+		if name then
 			local upper = strupper(name)
 			if (strfind(upper, "|C") or strfind(upper, "<")) and not strfind(upper, "FF0008E8") then
 				return true
@@ -892,7 +894,7 @@ Register("GOSSIP_SHOW", function()
 	for i = 1, numOptions do
 		local option = gossipInfoTable[i]
 		local name = option.name
-		if name and F.NotSecret(name) then
+		if name then
 			if IsSkipGossip(name) then
 				numSkipGossips = numSkipGossips + 1
 				skipGossipID = option.gossipOptionID
@@ -947,9 +949,9 @@ Register("GOSSIP_CONFIRM", function(gossipID, _, cost)
 
 	-- Story-skip follow-up: when we just auto-selected a lone "<Skip ...>" option,
 	-- accept its confirmation so the skip actually goes through. Never auto-accept a
-	-- confirmation that costs money, or whose cost reads Secret - leave those to the
-	-- player (cost is nil/0 for free story skips).
-	if pendingSkipConfirm and (not cost or (F.NotSecret(cost) and cost == 0)) then
+	-- confirmation that costs money — leave those to the player (cost is nil/0 for
+	-- free story skips). GOSSIP_CONFIRM cost has no SecretReturns in Resources.
+	if pendingSkipConfirm and (not cost or cost == 0) then
 		pendingSkipConfirm = nil
 		C_GossipInfo_SelectOption(gossipID, "", true)
 		StaticPopup_Hide("GOSSIP_CONFIRM")

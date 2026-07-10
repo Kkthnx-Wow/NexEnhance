@@ -32,7 +32,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
-local L, F = ns.L, ns.F
+local L = ns.L
 
 local _G = _G
 local pcall = pcall
@@ -98,12 +98,8 @@ local function AnyHostileBossUnit()
 	for i = 1, 5 do
 		local unit = "boss" .. i
 		if UnitExists(unit) then
-			local enemy = UnitIsEnemy("player", unit)
-			if F.NotSecret(enemy) then
-				if enemy then
-					return true
-				end
-			elseif C_InstanceEncounter and C_InstanceEncounter.IsEncounterInProgress() then
+			-- UnitIsEnemy: SecretArguments only (Resources 12.0.7).
+			if UnitIsEnemy("player", unit) then
 				return true
 			end
 		end

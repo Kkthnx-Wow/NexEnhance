@@ -119,12 +119,12 @@ local function ChoiceVendorValue(index)
 		sellPrice = cashRewards[itemID]
 	end
 
-	if not sellPrice or F.IsSecret(sellPrice) then
+	if not sellPrice then
 		return 0
 	end
 
 	local _, _, amount = GetQuestItemInfo("choice", index)
-	if amount and F.NotSecret(amount) and amount > 1 then
+	if amount and amount > 1 then
 		return sellPrice * amount
 	end
 	return sellPrice
@@ -163,7 +163,7 @@ local function RefreshHighlight()
 		end
 		if itemID then
 			pendingItemID = itemID
-		elseif value and F.NotSecret(value) and value > bestValue then
+		elseif value and value > bestValue then
 			bestValue, bestIndex = value, index
 		end
 	end

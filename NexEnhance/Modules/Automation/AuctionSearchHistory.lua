@@ -84,10 +84,6 @@ function AuctionSearchHistory:PushSearch(text)
 		self:DebugLog("info", "PushSearch skipped (empty)")
 		return
 	end
-	if F.IsSecret(text) then
-		self:DebugLog("warn", "PushSearch skipped (secret text)")
-		return
-	end
 
 	local recent = HistoryList()
 	for i = #recent, 1, -1 do

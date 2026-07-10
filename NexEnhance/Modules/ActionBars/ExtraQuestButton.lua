@@ -14,8 +14,9 @@
 	    Edit Mode mover. The secure button is never re-pointed after creation,
 	    which keeps repositioning taint-free even though the button can be hidden
 	    while no quest item is relevant.
-	  * Quest data can be Secret inside instances; the link/count/distance reads
-	    are guarded with F.NotSecret before any string/arithmetic use.
+	  * Quest item count / map position / distanceSq / GetItemCooldown are
+	    SecretArguments only (Resources 12.0.7). UnitGUID / npcID identity
+	    still needs NotSecret before string parse / compare.
 --]]
 
 local _, ns = ...
@@ -435,7 +436,7 @@ local function GetBestFallbackItemLink(questID)
 		for _, itemID in next, fallbackItemID do
 			local link = GetItemLinkFromID(itemID)
 			local count = C_Item.GetItemCount(link)
-			if NotSecret(count) and count > 0 then
+			if count and count > 0 then
 				return link
 			end
 		end
@@ -481,7 +482,7 @@ local function GetDistanceSqToPoint(mapID, x, y)
 	end
 
 	local playerX, playerY = position:GetXY()
-	if not NotSecret(playerX) or not NotSecret(playerY) then
+	if not playerX or not playerY then
 		return
 	end
 
@@ -499,13 +500,12 @@ local function GetQuestDistanceWithItem(questID, maxDistanceYd)
 	if not itemLink then
 		itemLink = GetBestFallbackItemLink(questID)
 	end
-	-- Quest item links can be Secret inside instances; bail before string use.
-	if not itemLink or not NotSecret(itemLink) then
+	if not itemLink then
 		return
 	end
 
 	local count = C_Item.GetItemCount(itemLink)
-	if not NotSecret(count) or count == 0 then
+	if not count or count == 0 then
 		return
 	end
 
@@ -533,7 +533,7 @@ local function GetQuestDistanceWithItem(questID, maxDistanceYd)
 	end
 
 	local distanceSq = C_QuestLog_GetDistanceSqToQuest(questID)
-	local distanceYd = distanceSq and NotSecret(distanceSq) and sqrt(distanceSq)
+	local distanceYd = distanceSq and sqrt(distanceSq)
 	if distanceYd and distanceYd <= maxDistanceYd then
 		return distanceYd, itemLink
 	end
@@ -650,7 +650,7 @@ local function Button_BagUpdateCooldown(self)
 	end
 	if C_DurationUtil_CreateDuration then
 		local start, duration = C_Item.GetItemCooldown(self.itemID)
-		if NotSecret(duration) and duration and duration > 0 and NotSecret(start) then
+		if duration and duration > 0 and start then
 			local durObj = C_DurationUtil_CreateDuration()
 			durObj:SetTimeFromStart(start, duration)
 			cd:SetCooldownFromDurationObject(durObj)
@@ -660,7 +660,7 @@ local function Button_BagUpdateCooldown(self)
 		end
 	else
 		local start, duration = C_Item.GetItemCooldown(self.itemID)
-		if duration and NotSecret(duration) and duration > 0 then
+		if duration and duration > 0 then
 			cd:SetCooldown(start, duration)
 			cd:Show()
 			return
@@ -672,7 +672,7 @@ end
 local function Button_UpdateCount(self)
 	if self:IsShown() and self.itemLink then
 		local count = C_Item.GetItemCount(self.itemLink)
-		if NotSecret(count) and count and count > 1 then
+		if count and count > 1 then
 			self.Count:SetFormattedText("%d", count)
 		else
 			self.Count:SetText("")
@@ -762,7 +762,7 @@ local function Button_UpdateTarget(self)
 	local targetItemID = npcID and targetItems[npcID]
 	if targetItemID then
 		local count = C_Item.GetItemCount(targetItemID)
-		if NotSecret(count) and count > 0 then
+		if count and count > 0 then
 			self.targetItemLink = GetItemLinkFromID(targetItemID)
 			return
 		end

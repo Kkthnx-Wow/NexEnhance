@@ -9,6 +9,7 @@
 ## X-Support: Midnight
 ## X-Category: Interface Enhancements
 ## X-Curse-Project-ID: 1090729
+## X-Wago-ID: BNBea0Gx
 
 ## Category-enUS: Kkthnx's AddOns
 ## Category-deDE: Kkthnx's AddOns

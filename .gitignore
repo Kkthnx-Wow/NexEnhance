@@ -1,1 +1,4 @@
 NexEnhance/Tools/gen_realm_catalog.py
+
+# Packager output
+.release/

@@ -1,0 +1,24 @@
+package-as: NexEnhance
+
+# The addon lives in the NexEnhance folder inside the repo, not at the repo root.
+# The packager copies the whole checkout into NexEnhance/ and this lifts the
+# addon out of the nested folder so the zip holds one NexEnhance/ with the TOC
+# directly inside. Indent with spaces only, the packager rejects tabs.
+move-folders:
+    NexEnhance/NexEnhance: NexEnhance
+
+# Everything is bundled in Libs, so there is no separate no-lib build.
+enable-nolib-creation: no
+
+# Repository furniture that has no business inside the addon folder.
+ignore:
+    - .gitignore
+    - .gitattributes
+    - .github
+    - .luacheckrc
+    - stylua.toml
+    - CODE_OF_CONDUCT.md
+    - CHANGELOG.md
+    - LICENSE
+    - README.md
+    - NexEnhance/Tools

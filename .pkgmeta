@@ -21,4 +21,5 @@ ignore:
     - CHANGELOG.md
     - LICENSE
     - README.md
+    - assets
     - NexEnhance/Tools

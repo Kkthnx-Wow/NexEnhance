@@ -23,7 +23,7 @@ local EJ_GetInstanceInfo, EJ_GetEncounterInfo, GetDifficultyInfo = EJ_GetInstanc
 -- orig1/orig2: the chat frame's original OnHyperlinkEnter/Leave scripts, stashed
 -- per frame so our replacements can chain back to them (we hijack the script
 -- rather than hooksecurefunc, so it's on us to call the previous owner).
--- sectionInfo: encounter-journal section lookups are pricey; cache per id.
+-- sectionInfo: encounter-journal section lookups are pricey, cache per id.
 local orig1, orig2, sectionInfo = {}, {}, {}
 -- Link types we just hand straight to GameTooltip:SetHyperlink. battlepet and
 -- journal links don't round-trip through SetHyperlink cleanly, so they get the
@@ -114,7 +114,7 @@ local function HoverTipsActive()
 end
 
 local function HyperLink_OnEnter(self, link, ...)
-	-- SetScript replaces Blizzard's handler permanently — gate live toggles here.
+	-- SetScript replaces Blizzard's handler permanently - gate live toggles here.
 	if HoverTipsActive() then
 		local linkType = strmatch(link, "^([^:]+)")
 		if linkType then
@@ -151,7 +151,7 @@ function Tooltip:SetupHoverTips()
 	end
 	Tooltip._hoverTipsSetup = true
 
-	for i = 1, NUM_CHAT_WINDOWS do
+	for i = 1, C.Client.maxChatWindows do
 		local frame = _G["ChatFrame" .. i]
 		if frame then
 			orig1[frame] = frame:GetScript("OnHyperlinkEnter")

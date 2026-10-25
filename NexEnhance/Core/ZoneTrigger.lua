@@ -13,7 +13,7 @@ local GetBestMapForUnit = C_Map and C_Map.GetBestMapForUnit
 
 --- Create a zone gate. `zoneSet` is `{ [mapID] = true, ... }`.
 --- `onEnter` / `onLeave` run when crossing the boundary (not on first Enable
---- unless already in-zone — Enable calls Sync immediately).
+--- unless already in-zone - Enable calls Sync immediately).
 --- Returns `{ Enable(), Disable(), IsActive(), Sync() }`.
 function ns:CreateZoneTrigger(zoneSet, onEnter, onLeave)
 	local active = false
@@ -88,8 +88,8 @@ function ns:CreateZoneTrigger(zoneSet, onEnter, onLeave)
 end
 
 --- Predicate-gated registration (Delve walk-in, scenario flags, etc.).
---- `opts.debounce` — seconds to wait after boundary events (APIs like
---- `IsPartyWalkIn` lag on `PLAYER_ENTERING_WORLD`). `opts.events` — extra
+--- `opts.debounce` - seconds to wait after boundary events (APIs like
+--- `IsPartyWalkIn` lag on `PLAYER_ENTERING_WORLD`). `opts.events` - extra
 --- event names that should trigger a sync.
 function ns:CreateStateTrigger(predicate, onEnter, onLeave, opts)
 	opts = opts or {}

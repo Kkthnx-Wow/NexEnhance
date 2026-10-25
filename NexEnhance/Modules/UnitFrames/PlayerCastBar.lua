@@ -2,14 +2,14 @@
 	NexEnhance - Player Cast Bar
 	-------------------------------------------------------------------------
 	Cosmetic overlay on Blizzard's player cast bar: icon above the bar, cast
-	time below. We never touch cast state — only mirror Icon texture and
+	time below. We never touch cast state - only mirror Icon texture and
 	CastTimeText into our own frame anchored to the bar.
 
-	PlayerCastingBarFrame is Edit Mode managed; we treat it read-only and back
+	PlayerCastingBarFrame is Edit Mode managed, we treat it read-only and back
 	off while OverlayPlayerCastingBarFrame replaces it (talents, crafting, etc.).
 
 	Secret-safe: pass icon/time straight to SetTexture/SetText after issecretvalue.
-	Event-driven driver frame; zero cost between casts. Optional latency SafeZone
+	Event-driven driver frame, zero cost between casts. Optional latency SafeZone
 	(red fill = lag / cast duration).
 
 	Default OFF. Unit Frames group.
@@ -53,14 +53,14 @@ ns:RegisterDefaults({
 local PlayerCastBar = ns:NewModule("PlayerCastBar", "playerCastBar", { group = "unitframes", title = L["Player Cast Bar"], order = 20 })
 
 local active = false
-local overlay -- visual mirror (icon + time); hidden when idle
-local driver -- invisible OnUpdate host; shown only while a cast is on screen
+local overlay -- visual mirror (icon + time), hidden when idle
+local driver -- invisible OnUpdate host, shown only while a cast is on screen
 local eventHandles = {}
 local eventsRegistered = false
 local suppressionHooked = false
 local overlayReplacing = false
 local elapsed = 0
--- Weak keys: one latency holder per cast bar (Player + Overlay); child frame only.
+-- Weak keys: one latency holder per cast bar (Player + Overlay), child frame only.
 local safeZoneByBar = setmetatable({}, { __mode = "k" })
 
 local function GetBar()
@@ -71,9 +71,9 @@ local function GetOverlayBar()
 	return _G["OverlayPlayerCastingBarFrame"]
 end
 
--- Frame:IsShown() / ShouldShowCastBar can return Secret booleans in combat —
--- never branch on the raw return; F.BooleanIsTrue yields nil when unreadable.
--- Defined above IsCastActive — local function helpers are nil if called before
+-- Frame:IsShown() / ShouldShowCastBar can return Secret booleans in combat -
+-- never branch on the raw return, F.BooleanIsTrue yields nil when unreadable.
+-- Defined above IsCastActive - local function helpers are nil if called before
 -- their declaration (same footgun as UIScale's DumpState).
 local function FrameIsShown(frame)
 	if not frame then
@@ -88,7 +88,7 @@ local function CastBarShouldShow(bar)
 		return true
 	end
 	local should = F.BooleanIsTrue(bar:ShouldShowCastBar())
-	-- Unreadable → treat as "don't mirror" (fail closed) rather than crash.
+	-- Unreadable -> treat as "don't mirror" (fail closed) rather than crash.
 	return should == true
 end
 
@@ -96,7 +96,7 @@ local function IsCastActive(bar)
 	if not bar then
 		return false
 	end
-	-- casting/channeling can be Secret in combat; truthiness tests would error.
+	-- casting/channeling can be Secret in combat, truthiness tests would error.
 	if F.IsSecret(bar.casting) or F.IsSecret(bar.channeling) or F.IsSecret(bar.reverseChanneling) then
 		return FrameIsShown(bar)
 	end
@@ -137,7 +137,7 @@ local function GetActiveCastBar()
 end
 
 -- True when a (possibly Secret) value is present, WITHOUT inspecting it.
--- issecretvalue() never errors; plain truthiness is only tested once we know
+-- issecretvalue() never errors, plain truthiness is only tested once we know
 -- the value is not Secret (branching on a Secret boolean would error).
 local function IsPresent(value)
 	if F.IsSecret(value) then
@@ -172,7 +172,7 @@ local function LayoutSafeZoneHolder(holder, bar)
 	holder:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -SAFEZONE_INSET_X, SAFEZONE_INSET_Y)
 end
 
--- Child frame on the cast bar for latency (SafeZone) — display only, no cast state.
+-- Child frame on the cast bar for latency (SafeZone) - display only, no cast state.
 local function EnsureSafeZoneHolder(bar)
 	local holder = safeZoneByBar[bar]
 	if holder then
@@ -273,7 +273,7 @@ end
 
 -- Blizzard routes player casts through OverlayPlayerCastingBarFrame while talents,
 -- specs, crafting, and similar UI are open. PlayerCastingBarFrame is suppressed
--- (showCastbar = false) for that window — mirroring it would fight secure UI.
+-- (showCastbar = false) for that window - mirroring it would fight secure UI.
 local function ShouldMirrorPlayerBar(bar)
 	if not bar then
 		return false
@@ -323,7 +323,7 @@ local function HookCastBarSuppression()
 end
 
 -- Cast duration in ms for latency ratio. Prefer Blizzard's cached maxValue
--- (written in secure OnEvent); fall back to UnitCastingInfo when readable.
+-- (written in secure OnEvent), fall back to UnitCastingInfo when readable.
 local function GetCastDurationMs(bar)
 	local maxValue = bar.maxValue
 	if F.NotSecret(maxValue) and maxValue and maxValue > 0 then
@@ -541,7 +541,7 @@ local function WakeDriver()
 		driver = CreateFrame("Frame", nil, _G["UIParent"])
 		driver:Hide()
 	end
-	-- Reattach after Deactivate clears the script; Hide() alone already stops ticks.
+	-- Reattach after Deactivate clears the script, Hide() alone already stops ticks.
 	driver:SetScript("OnUpdate", OnUpdate)
 	elapsed = UPDATE_INTERVAL -- evaluate on the very next frame
 	if not FrameIsShown(driver) then

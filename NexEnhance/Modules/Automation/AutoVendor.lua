@@ -15,7 +15,7 @@
 	Bagforge compatibility: Bagforge has its own Vendor module. If that addon is
 	loaded and its matching vendor option is enabled, NexEnhance skips the same
 	action at runtime instead of racing it. We do not mutate this addon's saved
-	settings; turning Bagforge's option off hands control back here immediately.
+	settings, turning Bagforge's option off hands control back here immediately.
 --]]
 
 -- luacheck: globals LE_GAME_ERR_GUILD_NOT_ENOUGH_MONEY LE_GAME_ERR_VENDOR_DOESNT_BUY
@@ -52,7 +52,7 @@ local POOR_QUALITY = Enum.ItemQuality.Poor -- 0
 local GUILD_NOT_ENOUGH = LE_GAME_ERR_GUILD_NOT_ENOUGH_MONEY
 local VENDOR_DOESNT_BUY = LE_GAME_ERR_VENDOR_DOESNT_BUY
 
--- Grey-looking items that double as a currency or are otherwise worth keeping;
+-- Grey-looking items that double as a currency or are otherwise worth keeping.
 -- Pet-trash item IDs protected from the junk sweep when keepPetTrash is on.
 local petTrashCurrencies = {
 	[3300] = true,
@@ -145,7 +145,7 @@ local function StartSelling()
 				if not sellCache[key] and (isPoorJunk or isCustomJunk) and not IsPetTrash(itemID) then
 					sellCache[key] = true
 					C_Container_UseContainerItem(bag, slot)
-					-- One item per tick; the server credits the gold for us.
+					-- One item per tick, the server credits the gold for us.
 					C_Timer_After(0.15, StartSelling)
 					return
 				end
@@ -171,7 +171,7 @@ end
 
 local function ReportGuildRepair()
 	if isBankEmpty then
-		-- Guild bank could not cover it; fall back to personal funds.
+		-- Guild bank could not cover it, fall back to personal funds.
 		AutoVendor:Repair(true)
 	else
 		F.Print(format(L["Repaired equipment using guild funds for %s"], F.FormatMoney(repairAllCost)))
@@ -199,7 +199,7 @@ function AutoVendor:Repair(override)
 	end
 
 	-- GetGuildBankWithdrawMoney() returns -1 for ranks with unlimited
-	-- withdrawal (e.g. guild master); treat that as "can always cover it".
+	-- withdrawal (e.g. guild master), treat that as "can always cover it".
 	local guildWithdraw = GetGuildBankWithdrawMoney()
 	local guildCanCover = guildWithdraw == -1 or (guildWithdraw and guildWithdraw >= repairAllCost)
 	if (not override) and db.useGuildFunds and IsInGuild() and CanGuildBankRepair() and guildCanCover then

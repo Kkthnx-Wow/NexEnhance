@@ -24,17 +24,13 @@ local PlaySound = PlaySound
 local SOUNDKIT = SOUNDKIT
 
 local INSTALL_SOUND = (SOUNDKIT and SOUNDKIT.UI_LEGENDARY_LOOT_TOAST) or 63971
-local NUM_CHAT_WINDOWS = NUM_CHAT_WINDOWS
+local NUM_CHAT_WINDOWS = C.Client.maxChatWindows
 local GetChatWindowInfo = GetChatWindowInfo
 local FCF_OpenNewWindow = FCF_OpenNewWindow
 local FCF_SetWindowName = FCF_SetWindowName
 local FCF_SetLocked = FCF_SetLocked
 local FCF_DockFrame = FCF_DockFrame
 local FCF_SelectDockFrame = FCF_SelectDockFrame
-local ChatFrame_RemoveAllMessageGroups = ChatFrame_RemoveAllMessageGroups
-local ChatFrame_RemoveChannel = ChatFrame_RemoveChannel
-local ChatFrame_AddMessageGroup = ChatFrame_AddMessageGroup
-local ChatFrame_AddChannel = ChatFrame_AddChannel
 local ChangeChatColor = ChangeChatColor
 
 local BACKDROP = C.Backdrops.window
@@ -43,7 +39,7 @@ local FRAME_W, FRAME_H = 640, 460
 -- Dress-up player scene (Blizzard_DressUpFrame).
 local DRESS_UP_SCENE_ID = 596
 
--- Player emote sequence: Wave (67) → Dance (69, loops). Same IDs as AFKCam.
+-- Player emote sequence: Wave (67) -> Dance (69, loops). Same IDs as AFKCam.
 local INSTALL_ANIMS = {
 	{ id = 67, duration = 2.3 },
 	{ id = 69 },
@@ -189,7 +185,7 @@ end
 
 local function AddMessageGroups(frame, groups)
 	for i = 1, #groups do
-		ChatFrame_AddMessageGroup(frame, groups[i])
+		frame:AddMessageGroup(groups[i])
 	end
 end
 
@@ -206,11 +202,11 @@ local function ApplyChatLayout()
 	FCF_SetWindowName(ChatFrame1, L["General"])
 	ChatFrame1:Show()
 
-	ChatFrame_RemoveAllMessageGroups(ChatFrame1)
-	ChatFrame_RemoveChannel(ChatFrame1, TRADE)
-	ChatFrame_RemoveChannel(ChatFrame1, GENERAL)
+	ChatFrame1:RemoveAllMessageGroups()
+	ChatFrame1:RemoveChannel(TRADE)
+	ChatFrame1:RemoveChannel(GENERAL)
 	for i = 1, #GENERAL_REMOVE_CHANNELS do
-		ChatFrame_RemoveChannel(ChatFrame1, GENERAL_REMOVE_CHANNELS[i])
+		ChatFrame1:RemoveChannel(GENERAL_REMOVE_CHANNELS[i])
 	end
 	AddMessageGroups(ChatFrame1, GENERAL_MESSAGE_GROUPS)
 
@@ -222,21 +218,21 @@ local function ApplyChatLayout()
 	local whispers = OpenChatWindow(L["Whispers"])
 	FCF_SetLocked(whispers, true)
 	FCF_DockFrame(whispers)
-	ChatFrame_RemoveAllMessageGroups(whispers)
+	whispers:RemoveAllMessageGroups()
 	AddMessageGroups(whispers, WHISPER_MESSAGE_GROUPS)
 
 	local trade = OpenChatWindow(L["Trade"])
 	FCF_SetLocked(trade, true)
 	FCF_DockFrame(trade)
-	ChatFrame_RemoveAllMessageGroups(trade)
-	ChatFrame_AddChannel(trade, TRADE)
-	ChatFrame_AddChannel(trade, GENERAL)
-	ChatFrame_AddChannel(trade, "Services")
+	trade:RemoveAllMessageGroups()
+	trade:AddChannel(TRADE)
+	trade:AddChannel(GENERAL)
+	trade:AddChannel("Services")
 
 	local loot = OpenChatWindow(L["Loot"])
 	FCF_SetLocked(loot, true)
 	FCF_DockFrame(loot)
-	ChatFrame_RemoveAllMessageGroups(loot)
+	loot:RemoveAllMessageGroups()
 	AddMessageGroups(loot, LOOT_MESSAGE_GROUPS)
 
 	DEFAULT_CHAT_FRAME:SetUserPlaced(true)
@@ -303,7 +299,7 @@ local function BuildSummaryText()
 	for i = 1, #APPLY_ORDER do
 		local labelKey = SUMMARY_KEYS[APPLY_ORDER[i]]
 		if labelKey then
-			lines[#lines + 1] = format("|c%s•|r |cffe6e6e6%s|r", brand, L[labelKey])
+			lines[#lines + 1] = format("|c%s-|r |cffe6e6e6%s|r", brand, L[labelKey])
 		end
 	end
 	lines[#lines + 1] = ""
@@ -598,7 +594,7 @@ end
 
 function Install:OnEnable()
 	-- Prefix is already Nex (brand) + Enhance (gold). Body stays white so the
-	-- name colours read; version is muted gold like TOC "Enhance".
+	-- name colours read, version is muted gold like TOC "Enhance".
 	F.Print(format(
 		"|cffffffff%s|r  |cffaaaaaa/nex|r  |c%sv%s|r",
 		L["Loaded."],

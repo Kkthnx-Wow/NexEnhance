@@ -2,7 +2,7 @@
 	NexEnhance - Widgets
 	-------------------------------------------------------------------------
 	Reusable, data-provider backed scroll widgets built on Blizzard's modern
-	ScrollBox/ScrollUtil system — list/grid helpers without pulling in another
+	ScrollBox/ScrollUtil system - list/grid helpers without pulling in another
 	framework or taking over our namespace.
 
 	Usage (configure first, add data last - data triggers initialisation):
@@ -308,7 +308,7 @@ function F.CreateEntryBoxSkin(frame)
 end
 
 --- Create a styled, single-line edit box. `width`/`height` default to 150x22.
---- Pass `entryBox` truthy to skin it with Blizzard's gray entry-box three-slice;
+--- Pass `entryBox` truthy to skin it with Blizzard's gray entry-box three-slice.
 --- otherwise it uses our flat recessed backdrop. Either way the border/texture
 --- brightens while focused. The returned frame gains :SetCallback(fn) where
 --- fn(self, text) fires when the player presses Enter. Escape clears focus.
@@ -438,7 +438,7 @@ local function editBoxRow_OnEscapePressed(self)
 	self:ClearFocus()
 end
 
--- Blizzard anchors control labels at LEFT (indent + 37); mirror that so our row
+-- Blizzard anchors control labels at LEFT (indent + 37), mirror that so our row
 -- lines up with the surrounding checkboxes/dropdowns. (See SettingsListElementMixin.)
 local SETTINGS_LABEL_INDENT = 37
 

@@ -67,7 +67,7 @@ function LootFrameModule:UI_SCALE_CHANGED()
 	Apply()
 end
 
--- The loot UI can be load-on-demand; apply once it actually exists.
+-- The loot UI can be load-on-demand, apply once it actually exists.
 function LootFrameModule:ADDON_LOADED(addon)
 	if addon == "Blizzard_Loot" or _G.LootFrame then
 		Apply()

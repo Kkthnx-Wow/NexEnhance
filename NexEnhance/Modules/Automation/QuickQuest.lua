@@ -9,12 +9,12 @@
 	Alt-click an NPC's name (quest or gossip) to toggle a per-character ignore
 	for that NPC, so chatty/utility NPCs are left alone.
 
-	All actions mirror what a player click would do — taint-safe.
+	All actions mirror what a player click would do - taint-safe.
 --]]
 
 -- luacheck: globals QuestInfoRewardsFrame QuestInfoItem_OnClick QuestFrame QuestNpcNameFrame GossipFrame GossipFrameCloseButton InteractiveWormholes
 -- The Lua Language Server ships outdated quest API signatures (e.g. SelectActiveQuest
--- as 0-arg, non-optional questIDs); silence those false positives here.
+-- as 0-arg, non-optional questIDs), silence those false positives here.
 ---@diagnostic disable: param-type-mismatch, redundant-parameter
 local _, ns = ...
 local F, L = ns.F, ns.L
@@ -68,7 +68,7 @@ ns:RegisterDefaults({
 		acceptWeekly = true, -- auto-accept weekly quests
 		protectTurnIns = true, -- skip turn-ins that consume gold/currency/reagents/account-bound items
 		overrideKey = OVERRIDE_SHIFT, -- which modifier pauses (or, with requireOverride, enables) automation
-		requireOverride = false, -- false: holding the key pauses; true: holding the key is required to run
+		requireOverride = false, -- false: holding the key pauses, true: holding the key is required to run
 		blockInInstances = false, -- skip single-option gossip in raids/blacklisted instances
 		autoSkipGossip = false, -- auto-click lone red "<Skip ...>" gossip (skip ahead / skip conversation)
 		ignoreNPC = {}, -- [npcID] = true (ignore) / false (force-allow a built-in)
@@ -82,7 +82,7 @@ local function db()
 end
 
 -- ---------------------------------------------------------------------------
--- Override key: by default holding the chosen modifier PAUSES automation; with
+-- Override key: by default holding the chosen modifier PAUSES automation, with
 -- requireOverride set, automation only runs WHILE the modifier is held.
 -- ---------------------------------------------------------------------------
 local function IsOverrideKeyDown()
@@ -149,7 +149,7 @@ local choiceQueue
 local pendingSkipConfirm
 
 -- Events are collected at load but only registered while the module is enabled
--- (see SetEventsActive). Quick Quest defaults off — no point waking on quest events otherwise.
+-- (see SetEventsActive). Quick Quest defaults off - no point waking on quest events otherwise.
 local registeredEvents = {}
 
 local function Register(event, func)
@@ -257,7 +257,7 @@ local function UpdateIgnoreList()
 
 	for npcID, value in pairs(db().ignoreNPC) do
 		if value and ignoreQuestNPC[npcID] then
-			db().ignoreNPC[npcID] = nil -- redundant override; drop it
+			db().ignoreNPC[npcID] = nil -- redundant override, drop it
 		else
 			ignoreList[npcID] = value
 		end
@@ -357,7 +357,7 @@ local function IsItemAccountBound(itemID)
 	return false
 end
 
--- Reads the QUEST_PROGRESS frame; only meaningful while that stage is shown.
+-- Reads the QUEST_PROGRESS frame, only meaningful while that stage is shown.
 local function QuestTurnInCostsMoney()
 	if not GetQuestMoneyToGet then
 		return false
@@ -397,7 +397,7 @@ end
 -- Quest / gossip automation
 -- ---------------------------------------------------------------------------
 -- Pick at most one quest per NPC interaction. Blizzard only handles one
--- Select*Quest transition at a time; firing several in a single GOSSIP_SHOW tick
+-- Select*Quest transition at a time, firing several in a single GOSSIP_SHOW tick
 -- leaves the gossip list open with nothing accepted. After each accept or
 -- turn-in, ScheduleGossipContinue retries the next quest on the same NPC.
 local gossipContinueScheduled
@@ -410,7 +410,7 @@ local function AvailableAcceptAllowed(npcID, questID, frequency, isTrivial, isGo
 		return false, "blocklist"
 	end
 	-- Do not gate explicit NPC offers on the minimap "account completed" tracker.
-	-- Map-pin accept filter — server may reject other accept modes.
+	-- Map-pin accept filter - server may reject other accept modes.
 	-- lists a quest on GOSSIP_SHOW or QUEST_GREETING, accept it when other rules pass.
 	if not FrequencyAllowed(frequency) then
 		return false, "frequency-filter"
@@ -449,7 +449,7 @@ local function ProcessGreetingQuests()
 			local isTrivial, frequency, _, _, questID = GetAvailableQuestInfo(index)
 			local questLevel = GetAvailableLevel and GetAvailableLevel(index)
 			if questID and (not questLevel or questLevel == 0) then
-				-- Legacy greeting list — wait until level/trivial flags are cached.
+				-- Legacy greeting list - wait until level/trivial flags are cached.
 				if WaitForQuestData(questID, ProcessGreetingQuests) then
 					Dbg("greeting: waiting for quest data %s", tostring(questID))
 					return true
@@ -534,7 +534,7 @@ local function ProcessGossipQuests()
 					C_GossipInfo_SelectAvailableQuest(questInfo.questID)
 					return true
 				elseif QuickQuest.debug then
-					Dbg("gossip: skip available %s (%s) lvl=%s — %s", tostring(questID), questInfo.title or "?", tostring(questInfo.questLevel), reason)
+					Dbg("gossip: skip available %s (%s) lvl=%s - %s", tostring(questID), questInfo.title or "?", tostring(questInfo.questLevel), reason)
 				end
 			end
 		end
@@ -622,7 +622,7 @@ local autoSelectFirstOptionList = {
 }
 
 -- Utility gossip options (non-quest): auto-select by gossipOptionID when present.
--- Costly turn-in quest IDs; override key bypasses via Automating().
+-- Costly turn-in quest IDs, override key bypasses via Automating().
 local utilityGossipOptions = {
 	[123878] = true, -- Nerub-ar Palace speed
 	[122627] = true, -- Vaskarn skip to vendor
@@ -731,7 +731,7 @@ local function TrySelectMiniGameSkipGossip(gossipInfoTable)
 end
 
 -- Quest gossip that lets rogues/druids skip an invisibility tutorial mini-chain.
--- Option text ends with "[Requires a Stealth Class.]" (quest DB string; shown on
+-- Option text ends with "[Requires a Stealth Class.]" (quest DB string, shown on
 -- the gossip line in red). Auto-select when exactly one such option is offered.
 local STEALTH_CLASS_SKIP = {
 	ROGUE = true,
@@ -814,7 +814,7 @@ local function HasUnsafeGossipOption(options)
 end
 
 Register("GOSSIP_SHOW", function()
-	-- Reset any pending skip-confirm from a prior window; re-armed below if we skip.
+	-- Reset any pending skip-confirm from a prior window, re-armed below if we skip.
 	pendingSkipConfirm = nil
 
 	if Automating() then
@@ -938,7 +938,7 @@ local skipConfirmNPCs = {
 }
 
 -- GOSSIP_CONFIRM payload is (gossipID, text, cost). Blizzard's StaticPopup OnAccept
--- confirms with C_GossipInfo.SelectOption(gossipID, "", true); we mirror that.
+-- confirms with C_GossipInfo.SelectOption(gossipID, "", true), we mirror that.
 Register("GOSSIP_CONFIRM", function(gossipID, _, cost)
 	-- Known per-NPC teleport/skip confirmations: always auto-accept.
 	if skipConfirmNPCs[GetNPCID()] then
@@ -949,7 +949,7 @@ Register("GOSSIP_CONFIRM", function(gossipID, _, cost)
 
 	-- Story-skip follow-up: when we just auto-selected a lone "<Skip ...>" option,
 	-- accept its confirmation so the skip actually goes through. Never auto-accept a
-	-- confirmation that costs money — leave those to the player (cost is nil/0 for
+	-- confirmation that costs money - leave those to the player (cost is nil/0 for
 	-- free story skips). GOSSIP_CONFIRM cost has no SecretReturns in Resources.
 	if pendingSkipConfirm and (not cost or cost == 0) then
 		pendingSkipConfirm = nil
@@ -986,21 +986,21 @@ local function TryAcceptQuestDetail()
 		RemoveAutoQuestPopUp(questID)
 	elseif not C_QuestLog_IsQuestTrivial(questID) or C_Minimap_IsTrackingHiddenQuests() then
 		if ignoreList[GetNPCID()] then
-			Dbg("QUEST_DETAIL: skip %d — npc ignored", questID)
+			Dbg("QUEST_DETAIL: skip %d - npc ignored", questID)
 			return
 		end
 		if blockQuestID[questID] then
-			Dbg("QUEST_DETAIL: skip %d — blocklist", questID)
+			Dbg("QUEST_DETAIL: skip %d - blocklist", questID)
 			return
 		end
 		if not DetailFrequencyAllowed() then
-			Dbg("QUEST_DETAIL: skip %d — frequency filter", questID)
+			Dbg("QUEST_DETAIL: skip %d - frequency filter", questID)
 			return
 		end
 		Dbg("QUEST_DETAIL: AcceptQuest %d", questID)
 		AcceptQuest()
 	elseif QuickQuest.debug then
-		Dbg("QUEST_DETAIL: skip %d — trivial (track trivial off)", questID)
+		Dbg("QUEST_DETAIL: skip %d - trivial (track trivial off)", questID)
 	end
 end
 
@@ -1201,13 +1201,13 @@ local function AttemptAutoComplete()
 	end
 
 	-- Don't stomp map/quest UI while the player is already in those frames.
-	-- GOSSIP_CLOSED sometimes fires before GOSSIP_SHOW — debounce handles that.
+	-- GOSSIP_CLOSED sometimes fires before GOSSIP_SHOW - debounce handles that.
 	local WorldMapFrame = _G["WorldMapFrame"]
 	if (WorldMapFrame and WorldMapFrame:IsShown()) or (QuestFrame and QuestFrame:IsShown()) then
 		return
 	end
 
-	-- Auto-quest popups taint while dead/in combat; retry once it lifts.
+	-- Auto-quest popups taint while dead/in combat, retry once it lifts.
 	if UnitIsDeadOrGhost("player") or InCombatLockdown() then
 		ns:AfterCombatCallback(function()
 			if Automating() then
@@ -1322,14 +1322,14 @@ function QuickQuest:OnInitialize()
 	end
 end
 
--- OnEnable only fires for modules enabled at login; combined with the live
+-- OnEnable only fires for modules enabled at login, combined with the live
 -- toggle below this keeps the quest events bound exactly while the feature is on.
 function QuickQuest:OnEnable()
 	SetEventsActive(EventsShouldRun())
 end
 
 function QuickQuest:OnDisable()
-	-- Keep events if /nex quickquest debug is on — AutomatingWhy still gates work.
+	-- Keep events if /nex quickquest debug is on - AutomatingWhy still gates work.
 	SetEventsActive(EventsShouldRun())
 end
 
@@ -1351,14 +1351,14 @@ function QuickQuest:ToggleDebug()
 end
 
 function QuickQuest:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests; hold the override key to pause. Alt-click an NPC name to ignore it."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Quick Quest"], L["Automatically accept and turn in quests, hold the override key to pause. Alt-click an NPC name to ignore it."])
 	local _, regularInit = builder:Checkbox(category, self, "acceptRegular", L["Accept Regular Quests"], L["Automatically accept regular (one-time) quests."])
 	local _, dailyInit = builder:Checkbox(category, self, "acceptDaily", L["Accept Daily Quests"], L["Automatically accept daily quests."])
 	local _, weeklyInit = builder:Checkbox(category, self, "acceptWeekly", L["Accept Weekly Quests"], L["Automatically accept weekly quests."])
 	local _, protectInit = builder:Checkbox(category, self, "protectTurnIns", L["Protect Costly Turn-Ins"], L["Skip turn-ins that would consume gold, currency, crafting reagents, or account-bound items."])
 	local _, requireInit = builder:Checkbox(category, self, "requireOverride", L["Require Override Key"], L["Only automate while the override key is held, instead of using it to pause."])
 	local _, blockInit = builder:Checkbox(category, self, "blockInInstances", L["Block in Raids & Instances"], L["Skip single-option gossip auto-selection while in raids and certain instances."])
-	local _, skipInit = builder:Checkbox(category, self, "autoSkipGossip", L["Auto-Skip Story Gossip"], L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts; off by default so you never miss dialogue you want to read.'])
+	local _, skipInit = builder:Checkbox(category, self, "autoSkipGossip", L["Auto-Skip Story Gossip"], L['Automatically click red "<Skip ...>" gossip options (skip ahead in a campaign, skip a conversation) when exactly one is offered. Handy on alts, off by default so you never miss dialogue you want to read.'])
 
 	local _, keyInit = builder:Dropdown(category, self, "overrideKey", L["Override Key"], L["The modifier that pauses (or, with Require Override Key, enables) automation."], {
 		{ value = OVERRIDE_SHIFT, label = L["SHIFT"] },

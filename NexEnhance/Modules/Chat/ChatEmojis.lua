@@ -2,17 +2,17 @@
 	NexEnhance - Chat Emojis
 	-------------------------------------------------------------------------
 	Replaces :shortcode: tokens and classic ASCII emoticons with inline
-	textures from Media/Emojis (Unicode-style names, spaces → underscores).
+	textures from Media/Emojis (Unicode-style names, spaces -> underscores).
 	Chat log lines embed a hidden nexmoji hyperlink so Chat Copy can recover
-	the original text; optional speech bubbles get textures only (no links).
+	the original text, optional speech bubbles get textures only (no links).
 
-	ChatFrame_AddMessageEventFilter only — hyperlink spans are left alone; plain
+	ChatFrame_AddMessageEventFilter only - hyperlink spans are left alone, plain
 	text gets scanned. Bubbles use C_ChatBubbles on a throttled poll.
 
 	Optional autocomplete: type : in chat for Blizzard's AutoComplete dropdown
-	(Tab / Enter / click). Literals are longest-match first; :token: aliases map to
-	the same textures as Slack-style shortcodes (:smile:, :heart:, …). Source follows
-	AutoComplete_Update(text, cursor) — shortcode parsed from text before the cursor.
+	(Tab / Enter / click). Literals are longest-match first, :token: aliases map to
+	the same textures as Slack-style shortcodes (:smile:, :heart:, ...). Source follows
+	AutoComplete_Update(text, cursor) - shortcode parsed from text before the cursor.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -31,7 +31,7 @@ local ipairs = ipairs
 local pairs = pairs
 local CreateFrame = CreateFrame
 local GetCVarBool = GetCVarBool
-local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
+local ChatFrame_AddMessageEventFilter = ChatFrameUtil.AddMessageEventFilter
 local C_ChatBubbles_GetAllChatBubbles = C_ChatBubbles and C_ChatBubbles.GetAllChatBubbles
 
 LibStub("LibChatAnims")
@@ -48,17 +48,16 @@ local ChatEmojis = ns:NewModule("ChatEmojis", "chatEmojis", { group = "chat", ti
 
 local cfg
 local entries = {} -- sorted { literal, pattern, textures } built once from DEFINITIONS
-local emoticonHintChars = {} -- byte -> true; cheap precheck before ~110-pattern scan
+local emoticonHintChars = {} -- byte -> true, cheap precheck before ~110-pattern scan
 local listReady = false
 local autocompleteCatalog = {} -- sorted { token, label } for :name: picker
 local autocompleteReady = false
 local hookedEditBoxes = {}
 local matchScratch = {}
 
-local AC_PRIORITY = (Enum and Enum.AutoCompletePriority and Enum.AutoCompletePriority.Other)
-	or LE_AUTOCOMPLETE_PRIORITY_OTHER
+local AC_PRIORITY = Enum.AutoCompletePriority.Other
 
--- Blizzard AutoComplete_Update uses UTF-8 cursor for name sources; we slice with
+-- Blizzard AutoComplete_Update uses UTF-8 cursor for name sources, we slice with
 -- byte-based strsub/strlen, so stay on GetCursorPosition (byte index). Mixing
 -- GetUTF8CursorPosition with strsub breaks shortcodes after multibyte text.
 local function GetEditBoxCursor(editBox)
@@ -81,17 +80,17 @@ end
 
 local EMOJI_PX = 16
 local BUBBLE_EMOJI_PX = 12
--- Blizzard AutoCompleteButtonTemplate is 14px tall — 16px icons clip and look smooshed.
+-- Blizzard AutoCompleteButtonTemplate is 14px tall - 16px icons clip and look smooshed.
 local AC_EMOJI_PX = 14
 local AC_EMOJI_YOFFSET = 1
 local AC_ROW_HEIGHT = 20
 local AC_TOKEN_COLOR = "|cffd0d0d0"
--- Blizzard caps bubble width around 300px; String inset is 16px per side.
+-- Blizzard caps bubble width around 300px, String inset is 16px per side.
 local BUBBLE_MAX_TEXT_WIDTH = 268
 local NEXMOJI_SCHEME = "nexmoji:"
 local NEXMOJI_LINK_PAD = "|cFFffffff|r|h"
 
--- { literal, texKey } — literal is the raw emoticon text; we escape to a Lua pattern at build.
+-- { literal, texKey } - literal is the raw emoticon text, we escape to a Lua pattern at build.
 -- Longest literals win via sort in BuildReplacementList.
 local DEFINITIONS = {
 	-- :shortcode: (Slack / CLDR style)
@@ -151,7 +150,7 @@ local DEFINITIONS = {
 	{ ":lock:", "Warlock" },
 	{ ":warrior:", "Warrior" },
 	{ ":warr:", "Warrior" },
-	-- ASCII — happy / affectionate
+	-- ASCII - happy / affectionate
 	{ ":-)", "Slightly_Smiling_Face" },
 	{ ":)", "Slightly_Smiling_Face" },
 	{ "=:)", "Slightly_Smiling_Face" },
@@ -184,7 +183,7 @@ local DEFINITIONS = {
 	{ "<3", "Red_Heart" },
 	{ "♥", "Red_Heart" },
 	{ "</3", "Broken_Heart" },
-	-- ASCII — sad / angry
+	-- ASCII - sad / angry
 	{ ":-(", "Slightly_Frowning_Face" },
 	{ ":(", "Slightly_Frowning_Face" },
 	{ "=-(", "Slightly_Frowning_Face" },
@@ -201,7 +200,7 @@ local DEFINITIONS = {
 	{ ":@", "Face_with_Symbols_on_Mouth" },
 	{ "=-@", "Face_with_Symbols_on_Mouth" },
 	{ "=@", "Face_with_Symbols_on_Mouth" },
-	-- ASCII — shocked / neutral
+	-- ASCII - shocked / neutral
 	{ ":-O", "Face_with_Open_Mouth" },
 	{ ":O", "Face_with_Open_Mouth" },
 	{ ":-o", "Face_with_Open_Mouth" },
@@ -211,7 +210,7 @@ local DEFINITIONS = {
 	{ "O_o", "Confused_Face" },
 }
 
--- Same event set as Chat Channels (URL filter); omit loot — no emoticons there.
+-- Same event set as Chat Channels (URL filter), omit loot - no emoticons there.
 local MESSAGE_EVENTS = {
 	"CHAT_MSG_CHANNEL",
 	"CHAT_MSG_COMMUNITIES_CHANNEL",
@@ -239,7 +238,7 @@ local MESSAGE_EVENTS = {
 }
 
 -- ---------------------------------------------------------------------------
--- Token encoding (hex — safe for gsub callbacks and chat hyperlinks)
+-- Token encoding (hex - safe for gsub callbacks and chat hyperlinks)
 -- ---------------------------------------------------------------------------
 local function EncodeToken(text)
 	return (gsub(text, ".", function(c)
@@ -275,7 +274,7 @@ end
 
 local function SegmentMightHaveEmoticon(segment)
 	-- Incident (ChatEmojis, Jul 2026): scanning every ':' (timestamps, Player: msg) +
-	-- broken :* regex froze the client — only enter the pattern loop when a known byte appears.
+	-- broken :* regex froze the client - only enter the pattern loop when a known byte appears.
 	for i = 1, #segment do
 		if emoticonHintChars[strsub(segment, i, i)] then
 			return true
@@ -315,7 +314,7 @@ local function BuildReplacementList()
 end
 
 -- ---------------------------------------------------------------------------
--- Autocomplete catalog (:name: tokens only; one entry per texture)
+-- Autocomplete catalog (:name: tokens only, one entry per texture)
 -- ---------------------------------------------------------------------------
 local function FormatAutocompleteLabel(path, token)
 	local icon = F.ChatTexture(path, AC_EMOJI_PX, AC_EMOJI_PX, 0, AC_EMOJI_YOFFSET)
@@ -330,7 +329,7 @@ local function InstallAutocompleteLayoutHook()
 	end
 	acLayoutHooked = true
 
-	-- Blizzard sizes rows at 14px; our emoji rows need headroom for 14px icons + GameFontNormal.
+	-- Blizzard sizes rows at 14px, our emoji rows need headroom for 14px icons + GameFontNormal.
 	hooksecurefunc("AutoComplete_UpdateResults", function(box, results)
 		if not ChatEmojis:IsEnabled() or not (cfg and cfg.autocomplete) then
 			return
@@ -422,7 +421,7 @@ local function GetEmojiAutoCompleteMatches(text, maxResults, cursorPosition)
 	return matchScratch
 end
 
--- Forward declarations — CompleteEmojiToken calls ClearEmojiAutocomplete on complete.
+-- Forward declarations - CompleteEmojiToken calls ClearEmojiAutocomplete on complete.
 local ClearEmojiAutocomplete, ActivateEmojiAutocomplete, CompleteEmojiToken
 
 ClearEmojiAutocomplete = function(editBox)
@@ -472,7 +471,7 @@ CompleteEmojiToken = function(editBox, _, nameInfo)
 	local newText = newBeginning .. strsub(text, cursorPosition + 1)
 	local newCursor = strlen(newBeginning)
 
-	-- SetText fires OnTextChanged before the cursor moves; ignore it so we do not
+	-- SetText fires OnTextChanged before the cursor moves, ignore it so we do not
 	-- re-open autocomplete on the stale partial token (e.g. :poo while inserting :poop:).
 	editBox.ignoreTextChange = true
 	editBox:SetText(newText)
@@ -499,7 +498,7 @@ local function OnEditBoxTextChanged(editBox, userInput)
 	local beginning = strsub(text, 1, cursorPosition)
 	local shortCode = GetIncompleteShortcode(beginning)
 
-	-- Blizzard skips autocomplete on programmatic SetText; still react to paste or
+	-- Blizzard skips autocomplete on programmatic SetText, still react to paste or
 	-- clearing a prior emoji dropdown when the incomplete token is removed.
 	if not userInput and not shortCode and not editBox.__nexEmojiACActive then
 		return
@@ -528,7 +527,7 @@ local function InstallEditBoxAutocomplete()
 	BuildAutocompleteCatalog()
 	InstallAutocompleteLayoutHook()
 
-	for i = 1, NUM_CHAT_WINDOWS do
+	for i = 1, C.Client.maxChatWindows do
 		local editBox = _G["ChatFrame" .. i .. "EditBox"]
 		if editBox then
 			SetupEditBoxAutocomplete(editBox)
@@ -565,7 +564,7 @@ local function ReplaceInSegment(segment, useLinks, textureKey)
 		local literal = entry.literal
 		local pat = entry.pattern
 		local tex = entry[textureKey]
-		-- Plain search first — avoids catastrophic backtracking on patterns like :*
+		-- Plain search first - avoids catastrophic backtracking on patterns like :*
 		if tex and strfind(segment, literal, 1, true) then
 			segment = gsub(segment, "([%s%p]-)(" .. pat .. ")([%s%p]*)", function(prefix, matched, suffix)
 				local mid = tex
@@ -658,7 +657,7 @@ local function ReflowBubbleString(str)
 end
 
 -- ---------------------------------------------------------------------------
--- Speech bubbles (optional; off by default)
+-- Speech bubbles (optional, off by default)
 -- ---------------------------------------------------------------------------
 local bubbleWorker
 local bubblePollElapsed = 0
@@ -717,7 +716,7 @@ local function ApplyEmojisToBubble(chatBubble)
 		return
 	end
 
-	-- Already showing our texture string — skip. Don't key off plain source text;
+	-- Already showing our texture string - skip. Don't key off plain source text.
 	-- recycled bubbles reset to :D :kappa: while __nexEmojiSrc still matches.
 	if chatBubble.__nexEmojiApplied == text then
 		return
@@ -758,7 +757,7 @@ local function CreateBubbleWorker()
 	bubbleWorker = CreateFrame("Frame")
 	bubbleWorker:Hide()
 
-	-- Hidden frames do not receive OnUpdate — Show() arms a one-shot poll, Hide() sleeps.
+	-- Hidden frames do not receive OnUpdate - Show() arms a one-shot poll, Hide() sleeps.
 	bubbleWorker:SetScript("OnUpdate", function(self, elapsed)
 		bubblePollElapsed = bubblePollElapsed + (elapsed or 0)
 		if bubblePollElapsed < 0.1 then

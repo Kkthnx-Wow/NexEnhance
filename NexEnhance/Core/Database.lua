@@ -1,7 +1,7 @@
 --[[
 	NexEnhance - Database
 	-------------------------------------------------------------------------
-	Lightweight saved-variable manager with profile support — no external DB library.
+	Lightweight saved-variable manager with profile support - no external DB library.
 
 	Layout of the `NexEnhanceDB` saved variable:
 	    {
@@ -35,72 +35,7 @@ function ns:RegisterDefaults(defaults, scope)
 	F.CopyDefaults(defaults, ns.defaults[scope])
 end
 
--- ---------------------------------------------------------------------------
--- Schema migration
---   Bump DB_SCHEMA_VERSION whenever the saved-variable *layout* changes (a key
---   is renamed/moved/restructured), and add a numbered step to `migrations`.
---   `migrations[v]` upgrades data from version (v-1) to v and runs once, in
---   order, only when older data is loaded. Unstamped data is treated as v1
---   (the baseline before versioning existed).
---
---   For simple per-module key renames inside a profile table, prefer
---   `F.InheritExistingValues(profile.moduleKey, { newKey = "oldKey" })` before
---   deleting the old key (see F.InheritExistingValues in Core/Functions.lua).
--- ---------------------------------------------------------------------------
-local DB_SCHEMA_VERSION = 4
-
-local migrations = {
-	-- The Battle.net toast and Quick Join button movers were re-defaulted to
-	-- the chat's top-left corner. Drop any stale saved positions so the new
-	-- anchor takes effect once; the user can still drag them afterwards.
-	[2] = function(root)
-		for _, profile in pairs(root.profiles) do
-			if type(profile.movers) == "table" then
-				profile.movers.bnToast = nil
-				profile.movers.quickJoinToast = nil
-			end
-		end
-	end,
-	-- The Loot Roll bar was re-defaulted to a larger width/height. Drop any
-	-- stale saved sizes so the new defaults take effect once; the sliders still
-	-- let the user resize afterwards.
-	[3] = function(root)
-		for _, profile in pairs(root.profiles) do
-			if type(profile.lootRoll) == "table" then
-				profile.lootRoll.width = nil
-				profile.lootRoll.height = nil
-			end
-		end
-	end,
-	-- Quest Navigation skin merged into Map Pin Navigation (UMPD-style).
-	[4] = function(root)
-		for _, profile in pairs(root.profiles) do
-			local old = profile.questNavigation
-			if type(old) == "table" then
-				profile.mapPinNavigation = profile.mapPinNavigation or {}
-				local new = profile.mapPinNavigation
-				if old.enable ~= nil and new.enable == nil then
-					new.enable = old.enable
-				end
-				if new.showEta == nil then
-					new.showEta = old.enable ~= false
-				end
-				profile.questNavigation = nil
-			end
-		end
-	end,
-}
-
-local function MigrateDatabase(root)
-	local version = root.schemaVersion or 1
-	for v = version + 1, DB_SCHEMA_VERSION do
-		local step = migrations[v]
-		if step then
-			step(root)
-		end
-	end
-	root.schemaVersion = DB_SCHEMA_VERSION
-end
+-- Schema / named migrations live in Core/Migration.lua (`ns:RunAllMigrations`).
 
 -- ---------------------------------------------------------------------------
 -- Profile management
@@ -151,7 +86,7 @@ local function DeepCopy(src)
 end
 
 --- Create `newName` as a deep copy of the *active* profile's stored settings.
---- Does not switch to it; callers typically follow with ns:SetProfile(newName).
+--- Does not switch to it, callers typically follow with ns:SetProfile(newName).
 function ns:CopyProfileInto(newName)
 	local root = _G.NexEnhanceDB
 	if root.profiles[newName] then
@@ -162,7 +97,7 @@ function ns:CopyProfileInto(newName)
 end
 
 --- Overwrite the active profile with a deep copy of another existing profile.
---- Source stays untouched; destination is the profile this character is using.
+--- Source stays untouched, destination is the profile this character is using.
 function ns:CopyProfileFrom(sourceName)
 	local root = _G.NexEnhanceDB
 	if sourceName == ns.profileName or type(root.profiles[sourceName]) ~= "table" then
@@ -213,7 +148,7 @@ end
 function ns:SetupDatabase()
 	F.RefreshPlayerContext()
 
-	-- Saved variables are nil on a brand-new install; create the skeleton.
+	-- Saved variables are nil on a brand-new install, create the skeleton.
 	local root = _G.NexEnhanceDB or {}
 	_G.NexEnhanceDB = root
 	root.profiles = root.profiles or {}
@@ -221,7 +156,7 @@ function ns:SetupDatabase()
 	root.global = F.CopyDefaults(ns.defaults.global, root.global)
 
 	-- Upgrade any older saved layout before modules read from it.
-	MigrateDatabase(root)
+	ns:RunAllMigrations(root)
 
 	_G.NexEnhanceCharDB = _G.NexEnhanceCharDB or {}
 

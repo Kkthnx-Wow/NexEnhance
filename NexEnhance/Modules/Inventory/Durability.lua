@@ -91,7 +91,7 @@ local function SortSlots(a, b)
 end
 
 -- Per-slot repair cost from C_TooltipInfo.GetInventoryItem (12.0.7: repairCost lives
--- on TooltipData itself; TooltipDataRules.FinalizeItemTooltip reads tooltipData.repairCost).
+-- on TooltipData itself, TooltipDataRules.FinalizeItemTooltip reads tooltipData.repairCost).
 local function GetSlotRepairCost(slot)
 	if not C_TooltipInfo_GetInventoryItem then
 		return nil
@@ -129,7 +129,7 @@ local function GetSlotRepairCost(slot)
 	return nil
 end
 
--- Total equipped repair bill; same API the merchant Repair All button uses.
+-- Total equipped repair bill, same API the merchant Repair All button uses.
 local function GetTotalRepairCost()
 	local total, canRepair = GetRepairAllCost()
 	if canRepair and total and total > 0 then
@@ -359,7 +359,7 @@ function Durability:UnregisterModuleEvents()
 	ns:UnregisterModuleEventHandles(eventHandles)
 end
 
--- Live disable must stop module-level Bootstrap listeners too — hiding the tab
+-- Live disable must stop module-level Bootstrap listeners too - hiding the tab
 -- alone left PLAYER_EQUIPMENT_CHANGED firing into Create() on every gear swap.
 function Durability:Stop()
 	self:UnregisterModuleEvents()

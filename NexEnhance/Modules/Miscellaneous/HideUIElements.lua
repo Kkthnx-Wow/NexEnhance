@@ -9,7 +9,7 @@
 	    next to the buffs (BuffFrame.CollapseAndExpandButton). Blizzard re-shows
 	    it from RefreshConsolidationFrameVisibility whenever buffs change, so we
 	    keep it hidden with an OnShow re-hide gated on the live toggle. Only the
-	    BuffFrame carries this button today; the DebuffFrame entry is guarded so
+	    BuffFrame carries this button today, the DebuffFrame entry is guarded so
 	    it simply no-ops if Blizzard never adds one.
 
 	  * Micro Menu & Bags: the bottom-right cluster. In current retail this is
@@ -23,7 +23,7 @@
 	    CombatFeedback_OnCombatEvent on UNIT_COMBAT). The text is a FontString,
 	    not a frame, so we post-hook the global CombatFeedback_OnCombatEvent and
 	    re-hide it for the player after Blizzard shows it. HEAL is the "healing"
-	    toggle; everything else (WOUND/BLOCK/IMMUNE/ENERGIZE/misses) is "damage".
+	    toggle, everything else (WOUND/BLOCK/IMMUNE/ENERGIZE/misses) is "damage".
 	    Only the PlayerFrame and PetFrame carry this in modern retail - the target
 	    frame has no combat feedback - so there is nothing to toggle there.
 
@@ -102,7 +102,7 @@ end
 -- ---------------------------------------------------------------------------
 local MICRO_FRAMES = { "MicroMenuContainer", "BagsBar" }
 
--- Edit Mode (or a layout pass) re-shows these; keep them hidden while the toggle
+-- Edit Mode (or a layout pass) re-shows these, keep them hidden while the toggle
 -- is on. Defer in combat: the bag buttons can be protected, so we never Hide()
 -- mid-lockdown and instead flush on PLAYER_REGEN_ENABLED.
 local function KeepMicroHidden(frame)
@@ -143,8 +143,8 @@ end
 -- Player portrait combat text (incoming damage / healing numbers)
 -- ---------------------------------------------------------------------------
 -- Post-hook of the global feedback driver. Blizzard's function ends by Show()ing
--- self.feedbackText; we hide it again for the player when the matching toggle is
--- on. HEAL is healing; every other event (damage, misses, blocks, energize) is
+-- self.feedbackText, we hide it again for the player when the matching toggle is
+-- on. HEAL is healing, every other event (damage, misses, blocks, energize) is
 -- treated as damage/combat text. Filtered to PlayerFrame so the pet keeps its own.
 local function OnCombatFeedback(self, event)
 	if self ~= _G.PlayerFrame then
@@ -427,7 +427,7 @@ function Module:OnSettingChanged(key)
 	elseif key == "microBags" then
 		ApplyMicroBags()
 	elseif key == "portraitDamage" or key == "portraitHealing" then
-		-- The hook reads the live flags; nothing to re-apply (numbers reappear
+		-- The hook reads the live flags, nothing to re-apply (numbers reappear
 		-- on the next combat event once a toggle is turned off).
 		InstallPortraitHook()
 	elseif key == "pvpBadge" then

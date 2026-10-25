@@ -2,7 +2,7 @@
 	NexEnhance - Auction Search History
 	-------------------------------------------------------------------------
 	Browser-style recent browse searches on the Auction House search box.
-	Shows the last few text queries when the box is focused; click one to
+	Shows the last few text queries when the box is focused, click one to
 	re-run. Text only (filters/level range are not stored).
 
 	Blizzard refs (Resources 12.0.7): C_AuctionHouse.SendBrowseQuery,
@@ -313,7 +313,7 @@ local function HookSearchBar(searchBar)
 	searchBar:HookScript("OnShow", function(self)
 		HookSearchBox(self)
 	end)
-	-- Search bar can hide while AH stays open; drop our UIParent dropdown with it.
+	-- Search bar can hide while AH stays open, drop our UIParent dropdown with it.
 	searchBar:HookScript("OnHide", function()
 		AuctionSearchHistory:HideDropdown()
 	end)
@@ -374,7 +374,7 @@ local function TryInstallFrameHooks()
 				end
 			end)
 		end)
-		-- Dropdown lives on UIParent, not the AH frame — must tear down when AH closes.
+		-- Dropdown lives on UIParent, not the AH frame - must tear down when AH closes.
 		ah:HookScript("OnHide", function()
 			AuctionSearchHistory:HideDropdown()
 		end)

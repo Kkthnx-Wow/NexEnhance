@@ -20,11 +20,11 @@
 	    replace SplashFrame's OnHide with a faithful copy that omits that single
 	    Update (mirrors Blizzard_FrameXML/SplashFrame.lua, SplashFrameMixin:OnHide).
 	  * Mythic+ keystone runs keep the tracker visible by default (you usually
-	    want your objectives there); flip "Hide in Mythic+" to override.
+	    want your objectives there), flip "Hide in Mythic+" to override.
 	  * Boss tokens alone are not enough to hide: MoP assault dailies and other
 	    open-world scenarios can put friendly escort NPCs on boss1..5 via
 	    INSTANCE_ENCOUNTER_ENGAGE_UNIT. We only collapse when a boss unit is
-	    hostile (UnitIsEnemy); encounter-in-progress is used only when hostility
+	    hostile (UnitIsEnemy), encounter-in-progress is used only when hostility
 	    is secret (Midnight instances).
 	  * We bow out entirely if a boss mod (BigWigs/DBM) or a third-party quest
 	    tracker is loaded, since those manage the tracker themselves.
@@ -53,7 +53,7 @@ local C_TalkingHead = C_TalkingHead
 local DIFFICULTY_KEYSTONE = 8
 
 -- Secure trigger: any boss/arena unit token exists (OR-ed). The state driver cannot
--- tell a raid boss from a friendly scenario companion — MoP Shado-Pan assault
+-- tell a raid boss from a friendly scenario companion - MoP Shado-Pan assault
 -- dailies fire INSTANCE_ENCOUNTER_ENGAGE_UNIT and populate boss1..5 with escort
 -- NPCs (see Blizzard_UnitFrame/Mainline/TargetFrame.lua). Collapse() filters that.
 local STATE_CONDITION = "[@arena1,exists][@arena2,exists][@arena3,exists][@arena4,exists][@arena5,exists]" .. "[@boss1,exists][@boss2,exists][@boss3,exists][@boss4,exists][@boss5,exists] hide;show"
@@ -93,7 +93,7 @@ end
 -- Boss frames use unit tokens boss1..boss5 after INSTANCE_ENCOUNTER_ENGAGE_UNIT.
 -- Only treat them as a "boss fight" when at least one is hostile. Scenario dailies
 -- (e.g. MoP Shado-Pan assaults) can populate boss slots with friendly escorts while
--- IsEncounterInProgress() is also true — so we never hide on encounter flag alone.
+-- IsEncounterInProgress() is also true - so we never hide on encounter flag alone.
 local function AnyHostileBossUnit()
 	for i = 1, 5 do
 		local unit = "boss" .. i
@@ -114,7 +114,7 @@ local function ShouldCollapseTracker()
 	return AnyHostileBossUnit()
 end
 
--- Combat blocked the reparent earlier; apply it now that we're out of combat.
+-- Combat blocked the reparent earlier, apply it now that we're out of combat.
 local function ApplyPending()
 	if InCombatLockdown() then
 		return
@@ -170,7 +170,7 @@ local function EnsureSplashGuard()
 	splash:SetScript("OnHide", SplashOnHide)
 end
 
--- Reparenting a frame with protected children can be blocked mid-combat; if so,
+-- Reparenting a frame with protected children can be blocked mid-combat, if so,
 -- remember what we wanted and finish once combat ends. Any insecure reparent
 -- taints the tracker, so this is also where we arm the splash taint guard.
 local function SetParentSafe(tracker, parent, action)
@@ -259,7 +259,7 @@ function AutoHideTracker:Setup()
 		return
 	end
 
-	-- Boss mods drive the tracker during encounters; don't fight them.
+	-- Boss mods drive the tracker during encounters, don't fight them.
 	if C_AddOns_IsAddOnLoaded("BigWigs") or C_AddOns_IsAddOnLoaded("DBM-Core") then
 		return
 	end
@@ -271,7 +271,7 @@ function AutoHideTracker:Setup()
 	self.setup = true
 
 	autoHider = CreateFrame("Frame", "NexEnhanceTrackerAutoHider", UIParent, "SecureHandlerStateTemplate")
-	-- Secure trigger (fires in combat); the heavy lifting is in OnHide/OnShow.
+	-- Secure trigger (fires in combat), the heavy lifting is in OnHide/OnShow.
 	autoHider:SetAttribute(
 		"_onstate-trackervis",
 		[[
@@ -292,7 +292,7 @@ function AutoHideTracker:OnEnable()
 	if not ns.db.autoHideTracker.enable then
 		return
 	end
-	-- One LOD wait for the session — re-enable must not stack callbacks.
+	-- One LOD wait for the session - re-enable must not stack callbacks.
 	if not self._lodRegistered then
 		self._lodRegistered = true
 		ns:RegisterAddOnLoadedCallback("Blizzard_ObjectiveTracker", function()
@@ -304,7 +304,7 @@ function AutoHideTracker:OnEnable()
 	end
 	if C_AddOns_IsAddOnLoaded("Blizzard_ObjectiveTracker") then
 		self:Setup()
-		-- Setup is one-shot; re-enable after OnDisable must re-register the driver.
+		-- Setup is one-shot, re-enable after OnDisable must re-register the driver.
 		self:UpdateDriver()
 	end
 end

@@ -5,16 +5,16 @@
 	Hides completely between GCDs.
 
 	Layout (cross-section, total frame = bar body + SHADOW_H):
-	┌──────────────────── barFrame ────────────────────────┐
-	│ ████████████ trough (dark bg) + fill (class colour)  │  ← bar body (db.height)
-	│───────────────────────────────────────────────────── │
-	│           shadow strip (SHADOW_H pixels)             │  ← dark, shows below bar
-	└──────────────────────────────────────────────────────┘
+	+---------------------- barFrame -----------------------+
+	| [######] trough (dark bg) + fill (class colour)      |  <- bar body (db.height)
+	|------------------------------------------------------|
+	|           shadow strip (SHADOW_H pixels)             |  <- dark, shows below bar
+	+------------------------------------------------------+
 
 	The shadow is simply the bottom SHADOW_H pixels of barFrame not covered
 	by the trough. Both trough and fill stop SHADOW_H pixels short of the
 	barFrame bottom edge using a positive Y offset on their BOTTOMRIGHT point.
-	This is guaranteed to render — no outside-frame clipping issues.
+	This is guaranteed to render - no outside-frame clipping issues.
 
 	Spark pattern (from ExpRep.lua):
 	  spark:SetPoint("CENTER", fill:GetStatusBarTexture(), "RIGHT", 0, 0)
@@ -77,8 +77,8 @@ local sparkTex
 -- ---------------------------------------------------------------------------
 -- Bar show / hide
 -- ---------------------------------------------------------------------------
--- IsZero() can be Secret in combat — never branch on the raw return.
--- nil (secret) → treat as non-zero so we don't wipe an active swipe mid-fight.
+-- IsZero() can be Secret in combat - never branch on the raw return.
+-- nil (secret) -> treat as non-zero so we don't wipe an active swipe mid-fight.
 local function DurationIsZero(durObj)
 	if not durObj then
 		return true
@@ -182,7 +182,7 @@ end
 -- ---------------------------------------------------------------------------
 -- The trough and fill cover only the TOP (db.height) pixels of barFrame.
 -- Their BOTTOMRIGHT stops SHADOW_H pixels above the barFrame's own bottom,
--- leaving SHADOW_H uncovered — that strip shows the shadow texture beneath.
+-- leaving SHADOW_H uncovered - that strip shows the shadow texture beneath.
 local function ApplyBodyAnchors(h)
 	if trough then
 		trough:ClearAllPoints()
@@ -230,7 +230,7 @@ local function BuildBar()
 	local cc = C.ClassColor
 	fillBar:SetStatusBarColor(cc[1], cc[2], cc[3], 0.90)
 
-	-- Spark: anchored to fill's right edge — auto-tracks as fill depletes.
+	-- Spark: anchored to fill's right edge - auto-tracks as fill depletes.
 	sparkTex = fillBar:CreateTexture(nil, "OVERLAY")
 	sparkTex:SetTexture(SPARK_TEX)
 	sparkTex:SetBlendMode("ADD")

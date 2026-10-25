@@ -7,8 +7,8 @@
 	to drop a map waypoint on the vendor.
 
 	Item->vendor lookup lives in our curated table. TooltipDataProcessor post-hook
-	for display; hooksecurefunc on HandleModifiedItemClick for Ctrl+Click waypoint.
-	Handlers early-out when disabled; zone names cached at file scope.
+	for display, hooksecurefunc on HandleModifiedItemClick for Ctrl+Click waypoint.
+	Handlers early-out when disabled, zone names cached at file scope.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -58,7 +58,7 @@ end
 --   noteOnly the NPC name/location already prints on the item, so only show the
 --            Ctrl-Click instruction (no extra location line)
 --   label    prefix label for an entry (used by multi-destination items)
---   entries  list of destinations; all are listed, the first drives the pin
+--   entries  list of destinations, all are listed, the first drives the pin
 -- ---------------------------------------------------------------------------
 local vendorData = {
 	-- The War Within: Midnight-era barter tokens
@@ -211,7 +211,7 @@ local function OnModifiedItemClick(itemLink)
 	if not db().enable or not IsControlKeyDown() or not itemLink then
 		return
 	end
-	-- Waypoints/world map can be restricted while in combat; defer to the player.
+	-- Waypoints/world map can be restricted while in combat, defer to the player.
 	if InCombatLockdown() then
 		return
 	end
@@ -227,7 +227,7 @@ local function OnModifiedItemClick(itemLink)
 end
 
 -- ---------------------------------------------------------------------------
--- Lifecycle (hooks install once; handlers gate on the live setting)
+-- Lifecycle (hooks install once, handlers gate on the live setting)
 -- ---------------------------------------------------------------------------
 local hooked = false
 

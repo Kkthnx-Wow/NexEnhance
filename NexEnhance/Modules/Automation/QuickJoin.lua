@@ -15,7 +15,7 @@
 	ADDON_ACTION_BLOCKED. Use Blizzard's listing Auto-accept when
 	C_LFGList.CanActiveEntryUseAutoAccept() shows it.
 
-	Blizzard_GroupFinder is load-on-demand — we don't touch LFGListFrame at file
+	Blizzard_GroupFinder is load-on-demand - we don't touch LFGListFrame at file
 	scope. Hooks install once the addon loads, and each hook re-checks the live
 	toggles (hooksecurefunc can't be removed, so disabling just makes them no-op).
 --]]
@@ -53,7 +53,7 @@ local REGION_FORMAT = "|cff%02x%02x%02x[%s]|r %s"
 ns:RegisterDefaults({
 	quickJoin = {
 		enable = false,
-		-- Legacy key from the removed addon auto-invite checkbox; kept so CopyDefaults
+		-- Legacy key from the removed addon auto-invite checkbox, kept so CopyDefaults
 		-- does not thrash old profiles. Blizzard's AutoAcceptButton is the only legal path.
 		autoAccept = false,
 		leaderScore = true,
@@ -101,7 +101,7 @@ local function ApplyToSelected()
 		searchPanel.SignUpButton:Click()
 	end
 
-	-- Hold Alt to review the sign-up note yourself; otherwise just send it.
+	-- Hold Alt to review the sign-up note yourself, otherwise just send it.
 	local dialog = _G["LFGListApplicationDialog"]
 	if not IsAltKeyDown() and dialog and dialog:IsShown() and dialog.SignUpButton:IsEnabled() then
 		dialog.SignUpButton:Click()
@@ -121,7 +121,7 @@ local function HidePendingPopup()
 		return
 	end
 
-	-- StaticPopup_Show passes a `which` string; LFGListInviteDialog_Show passes
+	-- StaticPopup_Show passes a `which` string, LFGListInviteDialog_Show passes
 	-- the dialog frame. Handle whichever showed up.
 	if type(popup) == "table" then
 		if popup.informational then
@@ -216,7 +216,7 @@ local function AddLeaderRegionTooltip(tooltip, resultID)
 	local realm = RealmCatalog:ParseLeaderRealm(info.leaderName)
 	local line = realm and format(L["Leader region: %s (%s)"], tag, realm) or format(L["Leader region: %s"], tag)
 	tooltip:AddLine(line, C.Colors.orange[1], C.Colors.orange[2], C.Colors.orange[3])
-	-- Blizzard's function already called Show(); relayout so the new line fits inside the frame.
+	-- Blizzard's function already called Show(), relayout so the new line fits inside the frame.
 	tooltip:Show()
 end
 
@@ -249,7 +249,7 @@ function QuickJoin:Setup()
 		local target = scrollBox.ScrollTarget
 		for i = 1, target:GetNumChildren() do
 			local child = select(i, target:GetChildren())
-			-- .Name is the search-entry template's title fontstring; it marks a
+			-- .Name is the search-entry template's title fontstring, it marks a
 			-- real result row (dividers/other children don't have it).
 			if child.Name and not child.nexHooked then
 				child:HookScript("OnDoubleClick", ApplyToSelected)

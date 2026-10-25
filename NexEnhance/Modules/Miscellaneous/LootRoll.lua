@@ -8,10 +8,10 @@
 
 	Blizzard drives group loot from UIParent's START_LOOT_ROLL handler
 	(Resources/Blizzard_UIParent/Mainline/UIParent.lua -> GroupLootContainer_AddRoll).
-	Unregistering that event on UIParent stops the default bars; we handle display.
-	AlertFrames only repositions the empty GroupLootContainer — no fight.
+	Unregistering that event on UIParent stops the default bars, we handle display.
+	AlertFrames only repositions the empty GroupLootContainer - no fight.
 
-	Loot roll quality / duration are not SecretReturns in Resources 12.0.7 —
+	Loot roll quality / duration are not SecretReturns in Resources 12.0.7 -
 	plain Lua is fine. Prefer C_Loot.GetLootRollDuration when present.
 --]]
 
@@ -34,7 +34,7 @@ local HandleModifiedItemClick = HandleModifiedItemClick
 
 local GetLootRollItemInfo = GetLootRollItemInfo
 local GetLootRollItemLink = GetLootRollItemLink
--- Prefer documented C_Loot API; fall back to the legacy global.
+-- Prefer documented C_Loot API, fall back to the legacy global.
 local GetLootRollTimeLeft = (C_Loot and C_Loot.GetLootRollDuration) or GetLootRollTimeLeft
 local RollOnLoot = RollOnLoot
 local GetItemInfo = C_Item.GetItemInfo
@@ -51,7 +51,7 @@ local barByRollID = {}
 local waitingRolls = {}
 local testBars = {}
 
---- Item level on roll bars; requests async item data when GetItemInfo is cold.
+--- Item level on roll bars, requests async item data when GetItemInfo is cold.
 local function ApplyBarItemLevel(bar, link)
 	if not (bar and link) then
 		return
@@ -147,7 +147,7 @@ local function ClickRoll(button)
 	if not bar then
 		return
 	end
-	-- Test bars have no real roll; clicking any button just dismisses them.
+	-- Test bars have no real roll, clicking any button just dismisses them.
 	if bar.isTest then
 		LootRoll:ClearTestBar(bar)
 	elseif bar.rollID then
@@ -227,7 +227,7 @@ local function StatusBar_OnUpdate(status, elapsed)
 	status.elapsed = 0
 
 	-- Test bars run a self-driven countdown since there's no real roll behind
-	-- them; real bars read the remaining time from the loot API.
+	-- them, real bars read the remaining time from the loot API.
 	if bar.isTest then
 		local timeLeft = (bar.testEnd or 0) - GetTime()
 		if timeLeft <= 0 then
@@ -261,7 +261,7 @@ local BORDER_INSET = 4
 local BACKGROUND_INSET = 2
 
 -- Tooltip-art border ON TOP of frame content (same trick as Minimap): child
--- frame at high level, border only — never hidden behind status-bar fill or icons.
+-- frame at high level, border only - never hidden behind status-bar fill or icons.
 local function AddTopBorder(frame)
 	local border = CreateFrame("Frame", nil, frame)
 	border:SetAllPoints()
@@ -743,7 +743,7 @@ end
 
 function LootRoll:RegisterOptions(category, builder)
 	builder:Checkbox(category, self, "enable", L["Enable Loot Roll"], L["Replace the default group loot roll bars with NexEnhance's own. Disable to restore Blizzard's frames without /reload."])
-	builder:Slider(category, self, "maxBars", L["Max Bars"], L["How many roll bars can show at once; extra rolls queue for a free slot."], 1, 10, 1)
+	builder:Slider(category, self, "maxBars", L["Max Bars"], L["How many roll bars can show at once, extra rolls queue for a free slot."], 1, 10, 1)
 	builder:Slider(category, self, "width", L["Width"], L["Width of each loot roll bar."], 200, 500, 4)
 	builder:Slider(category, self, "height", L["Height"], L["Height of each loot roll bar."], 24, 64, 2)
 end

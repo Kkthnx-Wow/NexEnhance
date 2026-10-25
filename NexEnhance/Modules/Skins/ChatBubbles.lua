@@ -4,9 +4,9 @@
 	Replaces the default chat-bubble art with the game's tooltip border and
 	dark fill, matching the chat edit box, tinted per channel.
 
-	Bubbles are created on demand and recycled — we poll C_ChatBubbles on a
+	Bubbles are created on demand and recycled - we poll C_ChatBubbles on a
 	throttled OnUpdate (chat events arm the worker) and skin anything new.
-	Purely cosmetic; no taint.
+	Purely cosmetic, no taint.
 
 	Recycled bubbles often keep the previous channel's FontString colour
 	(party blue on instance chat is the classic). We record recent messages
@@ -33,7 +33,7 @@ ns:RegisterDefaults({
 
 local ChatBubbles = ns:NewModule("ChatBubbles", "chatBubbles", { group = "skins", title = L["Chat Bubbles"], order = 30 })
 
--- Blizzard CVars that gate which bubble types appear; used to start the poll worker.
+-- Blizzard CVars that gate which bubble types appear, used to start the poll worker.
 local BUBBLE_EVENT_CVARS = {
 	CHAT_MSG_SAY = "chatBubbles",
 	CHAT_MSG_YELL = "chatBubbles",
@@ -63,7 +63,7 @@ local function ShouldPollForEvent(event)
 	if GetCVarBool(cvar) then
 		return true
 	end
-	-- Instance chat bubbles follow the party toggle on most clients; also honour raid.
+	-- Instance chat bubbles follow the party toggle on most clients, also honour raid.
 	if cvar == "chatBubblesParty" and event:find("INSTANCE", 1, true) then
 		return GetCVarBool("chatBubblesRaid")
 	end

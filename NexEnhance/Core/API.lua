@@ -168,7 +168,7 @@ F.StripTextures = stripTextures
 
 -- ---------------------------------------------------------------------------
 -- Backdrop / border skin system
---   Child frame one level below parent; tooltip border + optional dark fill.
+--   Child frame one level below parent, tooltip border + optional dark fill.
 --   its parent with a flat fill and a 1px border. `:SetInside()` pins it to the
 --   parent's edges. Used by the tooltip and other skin modules.
 -- ---------------------------------------------------------------------------
@@ -224,7 +224,7 @@ F.SetBorderColor = setBorderColor
 --   Applies the game's classic tooltip fill (UI-Tooltip-Background) and border
 --   (UI-Tooltip-Border) to a frame the proper way: a BackdropTemplate child one
 --   level below the parent, pinned to its edges (optionally expanded by
---   `outset`). The border is a tintable nine-patch; the fill is a tiled texture.
+--   `outset`). The border is a tintable nine-patch, the fill is a tiled texture.
 --   These are stock game assets referenced by path, so nothing is bundled.
 --
 --   opts.outset      : px the backdrop expands beyond the frame edges (default 0)
@@ -257,7 +257,7 @@ function F.CreateTooltipBackdrop(frame, opts)
 	local level = opts.frameLevel or (frame:GetFrameLevel() - 1)
 	bg:SetFrameLevel(level > 0 and level or 0)
 
-	-- Tooltip border art is a 16px nine-patch; the fill inset is a quarter of the
+	-- Tooltip border art is a 16px nine-patch, the fill inset is a quarter of the
 	-- edge so the background sits just inside the border lip.
 	local edgeSize = opts.edgeSize or 16
 	local inset = edgeSize / 4
@@ -287,7 +287,7 @@ end
 --   Creates a flat texture on `frame` that fades between two alpha stops of the
 --   same colour along the given axis ("H" horizontal, "V" vertical) via the
 --   modern Texture:SetGradient(orientation, minColour, maxColour) API (the old
---   SetGradientAlpha was removed in 9.0). Optional width/height size the texture;
+--   SetGradientAlpha was removed in 9.0). Optional width/height size the texture.
 --   otherwise anchor the returned texture yourself. Reusable gradient art helper
 --   (chat backgrounds, info bars, divider lines).
 -- ---------------------------------------------------------------------------
@@ -315,7 +315,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Tutorial glow border (raw textures)
 --   Blizzard's CalloutGlow atlases split horizontal and vertical art across two
---   files; the vertical atlases often fail GetAtlasInfo in-game, so the "glow"
+--   files, the vertical atlases often fail GetAtlasInfo in-game, so the "glow"
 --   kit above no-ops. This helper uses the raw texture paths directly (the same
 --   approach KeyUI and Blizzard's old GlowBorderTemplate used) and always draws
 --   all eight pieces.
@@ -325,7 +325,7 @@ end
 --
 --   opts.outset : pixels the glow extends beyond the frame (default 8)
 --   opts.blend  : texture blend mode (default "ADD" - emits light like a real
---                 glow; pass "BLEND" for a flat, background-independent halo)
+--                 glow, pass "BLEND" for a flat, background-independent halo)
 -- ---------------------------------------------------------------------------
 local GLOW_TEX_H = "Interface/TutorialFrame/UIFrameTutorialGlow"
 local GLOW_TEX_V = "Interface/TutorialFrame/UIFrameTutorialGlowVertical"
@@ -338,7 +338,7 @@ function F.CreateGlowBorder(frame, opts)
 	opts = opts or {}
 	local out = opts.outset or 8
 	local blend = opts.blend or "ADD"
-	local color = opts.color -- optional {r, g, b}; tints the glow halo
+	local color = opts.color -- optional {r, g, b}, tints the glow halo
 
 	local topLeft = frame:CreateTexture(nil, "BORDER")
 	topLeft:SetTexture(GLOW_TEX_H)
@@ -391,7 +391,7 @@ function F.CreateGlowBorder(frame, opts)
 	for _, piece in next, { topLeft, topRight, bottomLeft, bottomRight, top, bottom, left, right } do
 		piece:SetBlendMode(blend)
 		if color then
-			-- The glow art is gold; SetVertexColor only *multiplies*, so tinting a
+			-- The glow art is gold, SetVertexColor only *multiplies*, so tinting a
 			-- yellow texture blue yields mud (its blue channel is ~0). Desaturate to
 			-- greyscale first so the vertex colour actually takes.
 			piece:SetDesaturated(true)
@@ -407,7 +407,7 @@ end
 -- "New!" feature badge
 --   Blizzard's animated, glowing "New!" label (NewFeatureLabelTemplate) - the
 --   same flair the default UI slaps on the Adventure Guide / Wardrobe tabs.
---   Anchor the returned frame next to whatever you want to call out; the caller
+--   Anchor the returned frame next to whatever you want to call out, the caller
 --   owns show/hide and persistence. Falls back to a plain brand-blue "New!"
 --   text if the template ever goes missing on a given client.
 -- ---------------------------------------------------------------------------

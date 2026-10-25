@@ -47,7 +47,7 @@ local IsVeteranTrialAccount = IsVeteranTrialAccount
 local IsWatchingHonorAsXP = IsWatchingHonorAsXP
 local IsAltKeyDown = IsAltKeyDown
 local IsInGroup = IsInGroup
--- C_ChatInfo.SendChatMessage is the live API; the global is a deprecated shim.
+-- C_ChatInfo.SendChatMessage is the live API, the global is a deprecated shim.
 local SendChatMessage = C_ChatInfo.SendChatMessage
 local UnitHonor = UnitHonor
 local UnitHonorMax = UnitHonorMax
@@ -214,7 +214,7 @@ end
 
 local function SetBarValues(statusbar, minValue, maxValue, value)
 	-- XP / honor / rep / azerite / housing reads are plain in Resources 12.0.7
-	-- (no SecretReturns). Clamp only — no speculative issecretvalue branch.
+	-- (no SecretReturns). Clamp only - no speculative issecretvalue branch.
 	if maxValue <= minValue then
 		maxValue = minValue + 1
 	end
@@ -573,7 +573,7 @@ local function RequestHousingFavor()
 end
 
 -- Neighborhood Endeavors. RequestNeighborhoodInitiativeInfo primes the client
--- cache; the reply lands via NEIGHBORHOOD_INITIATIVE_UPDATED and we simply re-read
+-- cache, the reply lands via NEIGHBORHOOD_INITIATIVE_UPDATED and we simply re-read
 -- on the next tooltip hover. GetEndeavorProgress mirrors the dashboard's Endeavors
 -- tab: currentProgress against the final milestone's required contribution.
 local function RequestEndeavorInfo()
@@ -608,7 +608,7 @@ local function BuildHousingState()
 
 	local guid = C_Housing_GetTrackedHouseGuid()
 	-- Need a tracked house and cached favor data that belongs to it. The data
-	-- is seeded by RequestHousingFavor + HOUSE_LEVEL_FAVOR_UPDATED; until it
+	-- is seeded by RequestHousingFavor + HOUSE_LEVEL_FAVOR_UPDATED, until it
 	-- arrives we simply report unavailable (the event triggers a rebuild).
 	if not guid or not housingData or housingData.houseGUID ~= guid then
 		housingState.available = nil
@@ -916,13 +916,13 @@ local function UpdateBar(_, _, unit)
 end
 
 -- UPDATE_FACTION and PLAYER_EQUIPMENT_CHANGED arrive in bursts (a rep turn-in
--- nudges every faction; a gear swap fires per slot). UpdateBar rebuilds all four
+-- nudges every faction, a gear swap fires per slot). UpdateBar rebuilds all four
 -- states every time, so coalesce the storm into a single end-of-frame rebuild.
 local QueueBarUpdate = F.Debounce(0, UpdateBar)
 
 -- Most events just coalesce into a rebuild. HOUSE_LEVEL_FAVOR_UPDATED carries the
 -- favor payload we must cache first (it only arrives after a GetCurrentHouseLevelFavor
--- request); a tracked-house change invalidates the cache and asks for fresh data;
+-- request), a tracked-house change invalidates the cache and asks for fresh data.
 -- and entering the world primes the first request.
 local function OnBarEvent(_, event, arg1)
 	if event == "HOUSE_LEVEL_FAVOR_UPDATED" then
@@ -1047,7 +1047,7 @@ local function BuildBar()
 	return f
 end
 
--- Replace Blizzard's status tracker. The frame is not protected; unregistering
+-- Replace Blizzard's status tracker. The frame is not protected, unregistering
 -- and hiding it avoids duplicate bars without tainting secure gameplay frames.
 local function HideBlizzard()
 	local mgr = _G.StatusTrackingBarManager

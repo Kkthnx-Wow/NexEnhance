@@ -133,7 +133,7 @@ local repColor = { 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1 }
 -- ---------------------------------------------------------------------------
 -- Friends list (WoW + Battle.net)
 -- ---------------------------------------------------------------------------
--- Level template uses %d — swap to %s so we can inject a coloured level string.
+-- Level template uses %d - swap to %s so we can inject a coloured level string.
 local levelTemplate
 local function GetLevelTemplate()
 	if not levelTemplate then
@@ -150,7 +150,7 @@ end
 -- Enumerate a ScrollBox's live row frames without the O(n^2) repeated
 -- `select(i, ScrollTarget:GetChildren())` pattern (each select re-walks the
 -- whole child list). Modern ScrollBoxes expose GetFrames(), which returns the
--- active-frame array directly with no allocation; fall back to the legacy
+-- active-frame array directly with no allocation, fall back to the legacy
 -- enumeration (into a reused scratch table) only if that API is missing.
 local enumScratch = {}
 local function GetRowFrames(scrollBox)
@@ -354,7 +354,7 @@ function SocialColors:HookWho()
 end
 
 function SocialColors:HookGuild()
-	-- Legacy guild roster only; the modern Communities UI lacks these.
+	-- Legacy guild roster only, the modern Communities UI lacks these.
 	if _G["GuildRoster_SetView"] then
 		hooksecurefunc("GuildRoster_SetView", SetGuildView)
 	end
@@ -411,7 +411,7 @@ function SocialColors:OnDisable()
 end
 
 function SocialColors:OnSettingChanged(key)
-	-- ApplyModuleSetting owns enable lifecycle; hooks already gate via IsActive().
+	-- ApplyModuleSetting owns enable lifecycle, hooks already gate via IsActive().
 	if key == "enable" then
 		return
 	end

@@ -10,13 +10,13 @@
 	Notes:
 	  - GUILD_INVITE_REQUEST hands us (inviter, guildName) as plain strings. In
 	    12.0 those can be secret values inside restricted instances, so every
-	    name read is gated through the shared F secret API; if the inviter name
+	    name read is gated through the shared F secret API, if the inviter name
 	    is secret we fail open (leave Blizzard's popup) rather than risk wrongly
 	    declining a friend.
 	  - The guild roster is name-keyed and rebuilt lazily (only when marked
 	    dirty, and only at invite time) so a busy GUILD_ROSTER_UPDATE never
 	    triggers a full rescan.
-	  - Toggles live in the profile DB; running statistics are account-wide and
+	  - Toggles live in the profile DB, running statistics are account-wide and
 	    stored in the global DB.
 	  - Blizzard's own "Block Guild Invites" (SetAutoDeclineGuildInvites) drops
 	    invites server-side before GUILD_INVITE_REQUEST ever fires, so the two
@@ -28,7 +28,7 @@
 	    StaticPopup. We hide that frame and, because Blizzard may show it after
 	    our handler runs, sweep once more next frame so it never lingers.
 
-	Events stay registered while the module is on; the enable flag is read live
+	Events stay registered while the module is on, the enable flag is read live
 	so the toggle applies without a reload.
 --]]
 
@@ -57,7 +57,7 @@ local UNKNOWN = UNKNOWN
 local C_BattleNet_GetFriendAccountInfo = C_BattleNet and C_BattleNet.GetFriendAccountInfo
 local C_FriendList_GetNumFriends = C_FriendList and C_FriendList.GetNumFriends
 local C_FriendList_GetFriendInfoByIndex = C_FriendList and C_FriendList.GetFriendInfoByIndex
--- GuildRoster() was folded into C_GuildInfo on retail; fall back to the old
+-- GuildRoster() was folded into C_GuildInfo on retail, fall back to the old
 -- global where the namespace function is unavailable (Classic).
 local RequestGuildRoster = (C_GuildInfo and C_GuildInfo.GuildRoster) or _G["GuildRoster"]
 local SOUND_DECLINE = SOUNDKIT and SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON
@@ -247,7 +247,7 @@ function GuildInviteFilter:GUILD_INVITE_REQUEST(inviter, guildName)
 		return
 	end
 
-	-- A secret inviter name (restricted instance) can't be evaluated; fail open.
+	-- A secret inviter name (restricted instance) can't be evaluated, fail open.
 	local target = NormalizeName(inviter)
 	if not target then
 		return

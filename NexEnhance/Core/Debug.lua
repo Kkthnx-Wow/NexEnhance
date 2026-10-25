@@ -3,7 +3,7 @@
 	-------------------------------------------------------------------------
 	Central diagnostics for modules and core code. Register a scope per feature,
 	log with expectations, dump state to chat, and export a copy-paste report
-	for bug reports / AI-assisted triage (paste the chat block — then go play the
+	for bug reports / AI-assisted triage (paste the chat block - then go play the
 	game, you've earned it).
 
 	Module pattern (at load or OnInitialize):
@@ -48,11 +48,11 @@ local sort = table.sort
 local math_max = math.max
 local tconcat = table.concat
 
--- Scratch for export dump capture (reused; not retained across calls).
+-- Scratch for export dump capture (reused, not retained across calls).
 local dumpCapture = {}
 local scopeSortScratch = {}
 
--- Publish the API table before RegisterDefaults — Debug.lua used to sit before
+-- Publish the API table before RegisterDefaults - Debug.lua used to sit before
 -- Database.lua in the TOC, so ns:RegisterDefaults was nil and the whole file
 -- aborted before this assignment (every BindModule call then saw ns.Debug nil).
 local Debug = {}
@@ -175,7 +175,7 @@ local function CollectDumpLines(def)
 	return dumpCapture
 end
 
---- Append to the ring buffer; print to chat when the scope (or recordAll) is on.
+--- Append to the ring buffer, print to chat when the scope (or recordAll) is on.
 function Debug.Log(scope, level, msg, ...)
 	local key = ScopeKey(scope)
 	level = level or "info"
@@ -207,7 +207,7 @@ function Debug.Log(scope, level, msg, ...)
 	F.Print(F.Colorize(format("[%s][%s] %s", scope, level:upper(), text), color))
 end
 
---- Assert-style check; logs FAIL and returns false when `condition` is falsy.
+--- Assert-style check, logs FAIL and returns false when `condition` is falsy.
 function Debug.Expect(scope, condition, msg, ...)
 	if condition then
 		if IsScopeEnabled(ScopeKey(scope)) then
@@ -314,11 +314,11 @@ function Debug.ListScopes()
 		if def.module and def.module.IsEnabled then
 			modState = format(" | module:%s", def.module:IsEnabled() and L["Enabled"] or L["Disabled"])
 		end
-		F.Print(format("  %s (%s) — %s%s", def.title, key, state, modState))
+		F.Print(format("  %s (%s) - %s%s", def.title, key, state, modState))
 	end
 end
 
--- `lines` nil → print to chat; otherwise append plain-text lines for export.
+-- `lines` nil -> print to chat, otherwise append plain-text lines for export.
 local function RunExpectations(def, lines)
 	if not def or not def.expectations or #def.expectations == 0 then
 		return 0, 0
@@ -343,13 +343,13 @@ local function RunExpectations(def, lines)
 		if lines then
 			local line = format("  [%s] %s", status, exp.name or ("#" .. i))
 			if status == "FAIL" and detail and detail ~= "" then
-				line = line .. " — " .. detail
+				line = line .. " - " .. detail
 			end
 			lines[#lines + 1] = line
 		elseif status == "PASS" then
 			F.Print(F.Colorize(format("  [PASS] %s", exp.name or ("#" .. i)), "green"))
 		else
-			F.Print(F.Colorize(format("  [FAIL] %s%s", exp.name or ("#" .. i), detail and detail ~= "" and (" — " .. detail) or ""), "red"))
+			F.Print(F.Colorize(format("  [FAIL] %s%s", exp.name or ("#" .. i), detail and detail ~= "" and (" - " .. detail) or ""), "red"))
 		end
 	end
 	return passed, failed

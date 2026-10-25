@@ -36,7 +36,7 @@ local mountCache = {}
 
 local function GetMountInfoBySpell(spell)
 	if mountCache[spell] == nil then
-		-- Count the key once (negative result); a later positive overwrite reuses it.
+		-- Count the key once (negative result), a later positive overwrite reuses it.
 		F.CacheSet(mountCache, spell, false)
 		local index = C_MountJournal.GetMountFromSpell(spell)
 		if index then

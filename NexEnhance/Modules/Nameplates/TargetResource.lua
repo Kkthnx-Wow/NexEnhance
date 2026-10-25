@@ -5,7 +5,7 @@
 	arcane charges, essence) under the *current target's* nameplate.
 
 	Blizzard already owns the bar (`NamePlateDriverFrame:GetClassNameplateBar`)
-	and keeps it updated — we only reparent it after SetupClassNameplateBars
+	and keeps it updated - we only reparent it after SetupClassNameplateBars
 	sticks it on the personal plate. No UnitPower reads, no custom points,
 	no Secret arithmetic. Off by default.
 --]]
@@ -37,7 +37,7 @@ local hookInstalled = false
 local eventHandles = {}
 local applyScheduled = false
 -- Guard: RestoreBlizzardPlacement calls SetupClassNameplateBars, which re-enters
--- our post-hook — without this we'd recurse forever on target clear.
+-- our post-hook - without this we'd recurse forever on target clear.
 local restoring = false
 local InstallHook -- forward: ApplyPlacement / OnEnable call before definition
 
@@ -77,7 +77,7 @@ function Module:ApplyPlacement(driver)
 		return
 	end
 
-	-- NamePlateDriverFrame can lag first login; keep trying until the hook sticks.
+	-- NamePlateDriverFrame can lag first login, keep trying until the hook sticks.
 	if not hookInstalled then
 		InstallHook()
 	end
@@ -113,7 +113,7 @@ function Module:ApplyPlacement(driver)
 		offsetY = bar.paddingOverride or -4
 	end
 
-	-- Blizzard just parented this to the player plate; steal it for the target.
+	-- Blizzard just parented this to the player plate, steal it for the target.
 	bar:SetParent(plate)
 	bar:ClearAllPoints()
 	bar:SetPoint("TOP", health, "BOTTOM", 0, offsetY)
@@ -138,7 +138,7 @@ local function ScheduleApply()
 end
 
 -- ---------------------------------------------------------------------------
--- Hook — Blizzard always wins first; we re-apply after.
+-- Hook - Blizzard always wins first, we re-apply after.
 -- Incident: SetupClassNameplateBars runs on every plate add/remove/target
 -- change and hard-codes the personal plate. Post-hook is the only durable fix.
 -- ---------------------------------------------------------------------------

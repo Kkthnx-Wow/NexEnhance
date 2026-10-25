@@ -39,7 +39,7 @@ local function EnsureDispatchFrame()
 end
 
 --- Subscribe to cooldown refresh events.
---- `eventFilter` — nil (both), EVENT_SPELL, or EVENT_BAG.
+--- `eventFilter` - nil (both), EVENT_SPELL, or EVENT_BAG.
 --- Returns an id for `UnregisterCooldownDispatchCallback`.
 function ns:RegisterCooldownDispatchCallback(fn, eventFilter)
 	if type(fn) ~= "function" then

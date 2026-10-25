@@ -22,7 +22,7 @@ local C_PlayerChoice_SendPlayerChoiceResponse = C_PlayerChoice and C_PlayerChoic
 local C_PlayerChoice_OnUIClosed = C_PlayerChoice and C_PlayerChoice.OnUIClosed
 local ITEM_QUALITY_COLORS = ITEM_QUALITY_COLORS
 
--- WALK_IN_DATA_UPDATE is the event that tells us walk-in (Delve) status is ready;
+-- WALK_IN_DATA_UPDATE is the event that tells us walk-in (Delve) status is ready.
 -- it isn't valid on every client flavour, so probe it once.
 local HAS_WALK_IN_EVENT = C_EventUtils and C_EventUtils.IsEventValid and C_EventUtils.IsEventValid("WALK_IN_DATA_UPDATE")
 
@@ -41,7 +41,7 @@ local function db()
 	return ns.db.delvesAutomation
 end
 
--- Delves are "walk-in" instances; IsPartyWalkIn is the signal Blizzard's own
+-- Delves are "walk-in" instances, IsPartyWalkIn is the signal Blizzard's own
 -- InstanceDifficulty UI uses and it survives relogging inside the delve.
 local function IsInDelve()
 	return C_PartyInfo_IsPartyWalkIn and C_PartyInfo_IsPartyWalkIn() or false
@@ -76,7 +76,7 @@ local function OnPlayerChoice()
 
 	if db().printToChat then
 		local link = format("|Hspell:%d:0|h[%s]|h", option.spellID, option.header or "")
-		-- Enum.PlayerChoiceRarity is item-quality minus one; shift it back.
+		-- Enum.PlayerChoiceRarity is item-quality minus one, shift it back.
 		local color = ITEM_QUALITY_COLORS and ITEM_QUALITY_COLORS[(option.rarity or 0) + 1]
 		if color and color.hex then
 			link = color.hex .. link .. "|r"

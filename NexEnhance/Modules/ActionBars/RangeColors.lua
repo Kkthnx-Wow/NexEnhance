@@ -9,9 +9,9 @@
 	  * Range flips via ACTION_RANGE_CHECK_UPDATE / ActionButton_UpdateRangeIndicator
 	  * Discover buttons through ActionBarButtonEventsFrame (+ hook RegisterFrame)
 
-	IsUsableAction / IsActionInRange / C_Spell.IsSpellUsable are SecretArguments
-	only (Resources 12.0.7) — returns are plain booleans; no IsSecret gate.
-	Hooks install once; an `active` flag lets the feature toggle live.
+	C_ActionBar.IsUsableAction / IsActionInRange / C_Spell.IsSpellUsable are SecretArguments
+	only (Resources 12.0.7) - returns are plain booleans, no IsSecret gate.
+	Hooks install once, an `active` flag lets the feature toggle live.
 --]]
 
 local _, ns = ...
@@ -23,8 +23,8 @@ local pairs = pairs
 local strbyte = string.byte
 local hooksecurefunc = hooksecurefunc
 
-local IsUsableAction = IsUsableAction
-local IsActionInRange = IsActionInRange
+local IsUsableAction = C_ActionBar.IsUsableAction
+local IsActionInRange = C_ActionBar.IsActionInRange
 local GetActionInfo = GetActionInfo
 local GetMacroInfo = GetMacroInfo
 local GetMacroSpell = GetMacroSpell
@@ -35,7 +35,7 @@ local C_Spell_IsSpellUsable = C_Spell and C_Spell.IsSpellUsable
 
 -- ---------------------------------------------------------------------------
 -- Defaults & module
---   Colours are stored as "AARRGGBB" hex (the Color swatch format); converted
+--   Colours are stored as "AARRGGBB" hex (the Color swatch format), converted
 --   to a 0-1 quad once whenever the profile changes (RebuildColors).
 -- ---------------------------------------------------------------------------
 ns:RegisterDefaults({
@@ -58,7 +58,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Runtime state
 -- ---------------------------------------------------------------------------
--- Resolved colours per state. `normal` is plain white; optional `desaturate`
+-- Resolved colours per state. `normal` is plain white, optional `desaturate`
 -- greys the icon when out of range. Unusable keeps Blizzard's own desaturation.
 local colors = {
 	normal = { 1, 1, 1, 1, desaturate = false },
@@ -280,7 +280,7 @@ local function InstallHooks()
 
 	local eventsFrame = _G["ActionBarButtonEventsFrame"]
 	if not (eventsFrame and eventsFrame.ForEachFrame) then
-		return -- API not present (e.g. very old client); try again on next enable
+		return -- API not present (e.g. very old client), try again on next enable
 	end
 	hooksInstalled = true
 

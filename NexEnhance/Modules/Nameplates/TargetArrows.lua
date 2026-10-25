@@ -9,7 +9,7 @@
 	  * nameplateUseClassColorForFriendlyPlayerUnitNames
 
 	Arrows attach only to attackable targets (same rule as NameplateEnhancer).
-	Event-driven on PLAYER_TARGET_CHANGED; refreshes when the target nameplate
+	Event-driven on PLAYER_TARGET_CHANGED, refreshes when the target nameplate
 	spawns later via NAME_PLATE_UNIT_ADDED. No OnUpdate.
 --]]
 
@@ -27,8 +27,8 @@ local rad = math.rad
 local InCombatLockdown = InCombatLockdown
 local CanAccess = F.CanAccessValue
 
--- UI-HUD-Minimap-Arrow-Corpse points down at rotation 0; side arrows are rotated inward.
--- Azerite-PointingArrow also points down at rotation 0 — no rotation needed for Top style.
+-- UI-HUD-Minimap-Arrow-Corpse points down at rotation 0, side arrows are rotated inward.
+-- Azerite-PointingArrow also points down at rotation 0 - no rotation needed for Top style.
 local STYLE_HORIZONTAL, STYLE_TOP = 1, 2
 local STYLES = {
 	[STYLE_HORIZONTAL] = {
@@ -401,7 +401,7 @@ function Module:RegisterOptions(category, builder)
 		{ value = STYLE_HORIZONTAL, label = L["Horizontal"] },
 		{ value = STYLE_TOP, label = L["Top (Azerite Arrow)"] },
 	}
-	local _, style = builder:Dropdown(category, self, "style", L["Arrow Style"], L["Horizontal places arrows on both sides of the health bar; Top places a single Azerite arrow above the nameplate."], styleChoices)
+	local _, style = builder:Dropdown(category, self, "style", L["Arrow Style"], L["Horizontal places arrows on both sides of the health bar, Top places a single Azerite arrow above the nameplate."], styleChoices)
 	builder:DependsOn(style, arrows)
 
 	local _, color = builder:Color(category, self, "color", L["Arrow Color"], L["Tint color for the target arrow textures."])

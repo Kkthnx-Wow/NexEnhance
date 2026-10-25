@@ -4,7 +4,7 @@
 	Lets you blow through movies and cinematics quickly: Space/Enter/Escape
 	instantly confirm the "skip?" dialog instead of needing a second click.
 
-	HookScript on the movie frames — non-secure, no taint.
+	HookScript on the movie frames - non-secure, no taint.
 --]]
 
 -- luacheck: globals CinematicFrameCloseDialog CinematicFrameCloseDialogConfirmButton CinematicFrame MovieFrame
@@ -71,7 +71,7 @@ local function InstallHooks()
 	end
 	hooksInstalled = true
 
-	-- Both are core frames present at login; hook unconditionally and resolve
+	-- Both are core frames present at login, hook unconditionally and resolve
 	-- the dialog widgets on demand (see GetSkipParts).
 	if MovieFrame then
 		MovieFrame:HookScript("OnKeyDown", skipOnKeyDown)

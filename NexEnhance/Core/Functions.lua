@@ -12,7 +12,7 @@ local C, F = ns.C, ns.F
 -- Localised globals (hot-path friendly).
 local select, type, tostring = select, type, tostring
 local pairs, ipairs = pairs, ipairs
-local floor = math.floor
+local floor, ceil, abs = math.floor, math.ceil, math.abs
 local format = string.format
 local gsub = string.gsub
 local strfind = string.find
@@ -47,7 +47,7 @@ function F.RefreshPlayerContext()
 	if C.Player.name and C.Player.realm then
 		C.Player.key = C.Player.name .. " - " .. C.Player.realm
 	end
-	-- UnitLevel: SecretArguments only (Resources 12.0.7) — plain assign.
+	-- UnitLevel: SecretArguments only (Resources 12.0.7) - plain assign.
 	C.Player.level = UnitLevel("player")
 end
 
@@ -146,7 +146,7 @@ function F.Colorize(text, color)
 end
 
 --- Inline |T| markup for sidebar icons. Uses C.TexCoord (normalized) converted to
---- pixel texels on the 64x64 source — |T| escapes do not accept 0–1 floats.
+--- pixel texels on the 64x64 source - |T| escapes do not accept 0-1 floats.
 function F.SidebarIconMarkup(iconPath, size)
 	if not iconPath then
 		return ""
@@ -186,6 +186,71 @@ function F.Round(value, places)
 		return floor(value * mult + 0.5) / mult
 	end
 	return floor(value + 0.5)
+end
+
+-- ---------------------------------------------------------------------------
+-- Pixel-perfect sizing (uses C.Mult from UIScale)
+-- ---------------------------------------------------------------------------
+-- Incident (UIScale, Jul 2026): rounding perfect scale to 2 decimals softens
+-- 1px borders. Keep full Mult precision, snap layout through these helpers.
+
+local _pixelSnapDisabled = setmetatable({}, { __mode = "k" })
+
+--- Snap toward zero onto the physical-pixel grid (C.Mult).
+function F.Scale(x)
+	if not x or x == 0 then
+		return 0
+	end
+	local m = C.Mult or 1
+	if m == 1 then
+		return x
+	end
+	local pixels = x / m
+	pixels = x > 0 and floor(pixels) or ceil(pixels)
+	return pixels * m
+end
+
+--- Round to nearest physical pixel and scrub float dust.
+function F.Snap(x)
+	if not x or x == 0 then
+		return 0
+	end
+	local m = C.Mult or 1
+	local result = floor(x / m + 0.5) * m
+	local rounded = floor(result + 0.5)
+	if abs(result - rounded) < 0.001 then
+		result = rounded
+	end
+	return result
+end
+
+--- Kill engine texel snap blur on textures / status-bar fills (secret-safe).
+function F.DisablePixelSnap(obj)
+	if not obj or _pixelSnapDisabled[obj] then
+		return
+	end
+	-- F.IsSecret* land after SecretValues.lua loads, runtime-only.
+	if F.IsSecret and (F.IsSecret(obj) or (F.IsSecretTable and F.IsSecretTable(obj))) then
+		return
+	end
+	if obj.IsForbidden and obj:IsForbidden() then
+		return
+	end
+
+	local target = obj
+	if not obj.SetSnapToPixelGrid and obj.GetStatusBarTexture then
+		target = obj:GetStatusBarTexture()
+		if type(target) ~= "table" or not target.SetSnapToPixelGrid then
+			_pixelSnapDisabled[obj] = true
+			return
+		end
+	end
+
+	if target.SetSnapToPixelGrid then
+		target:SetSnapToPixelGrid(false)
+		target:SetTexelSnappingBias(0)
+	end
+	_pixelSnapDisabled[obj] = true
 end
 
 --- Format a copper amount into a "Xg Ys Zc" string using Blizzard's icons.
@@ -239,7 +304,7 @@ function F.CopyDefaults(defaults, target)
 end
 
 --- Drop saved keys that match defaults so SavedVariables stay sparse.
---- Only walks keys present in `defaults`; extra profile keys (movers, etc.) are kept.
+--- Only walks keys present in `defaults`, extra profile keys (movers, etc.) are kept.
 function F.CompactDefaults(defaults, target)
 	if type(defaults) ~= "table" or type(target) ~= "table" then
 		return
@@ -262,7 +327,7 @@ function F.CompactDefaults(defaults, target)
 end
 
 --- Copy values from prior sibling keys when a new setting is absent (schema
---- upgrades). `inheritMap` is `{ newKey = "oldKey" }`; only runs when
+--- upgrades). `inheritMap` is `{ newKey = "oldKey" }`, only runs when
 --- `target[newKey]` is nil and the old key still holds a value.
 function F.InheritExistingValues(target, inheritMap)
 	if type(target) ~= "table" or type(inheritMap) ~= "table" then
@@ -312,8 +377,8 @@ end
 --- BAG_UPDATE where many events fire in quick succession.
 ---
 --- We capture up to 4 positional args in fixed upvalue slots instead of building
---- a `{ ... }` table on every call — avoids GC on suppressed invocations.
---- 4 slots covers virtually every WoW event payload (most have 0-2 args);
+--- a `{ ... }` table on every call - avoids GC on suppressed invocations.
+--- 4 slots covers virtually every WoW event payload (most have 0-2 args).
 --- callers that truly need 5+ args should use a different approach.
 function F.Debounce(delay, func)
 	local scheduled = false
@@ -328,6 +393,31 @@ function F.Debounce(delay, func)
 			func(a1, a2, a3, a4)
 		end)
 	end
+end
+
+-- ---------------------------------------------------------------------------
+-- Weak-key frame side tables
+--   Prefer these over writing `frame.nexFoo` on Blizzard/secure widgets.
+--   Keys are frames, when nothing else holds the frame, the entry can GC.
+--   Incident (ActionBars, Jul 2026): equip-glow / hook flags lived on secure
+--   action buttons - weak stores keep addon state off the Blizzard object.
+-- ---------------------------------------------------------------------------
+
+--- Create an empty weak-key table (`__mode = "k"`).
+--- Use with `F.FrameData(store, frame)` or assign `store[frame] = value` directly.
+function F.WeakFrameData()
+	return setmetatable({}, { __mode = "k" })
+end
+
+--- Get-or-create a plain data table for `frame` inside a WeakFrameData store.
+--- Returns `store[frame]` (never nil while `frame` is a valid table key).
+function F.FrameData(store, frame)
+	local data = store[frame]
+	if not data then
+		data = {}
+		store[frame] = data
+	end
+	return data
 end
 
 -- ---------------------------------------------------------------------------
@@ -487,7 +577,7 @@ function F.CreatePool(creator, onRemoved, onAcquired)
 
 	--- Release a single active object back into the pool.
 	--- O(1): uses a reverse-index (`obj._poolIdx`) to find the slot, then
-	--- swaps with the last element and pops — no linear scan needed.
+	--- swaps with the last element and pops - no linear scan needed.
 	function pool:Release(obj)
 		local idx = obj._poolIdx
 		if not idx then
@@ -521,7 +611,7 @@ function F.CreatePool(creator, onRemoved, onAcquired)
 		return ipairs(self.active)
 	end
 
-	--- The live active array (do not modify; use Release/ReleaseAll).
+	--- The live active array (do not modify, use Release/ReleaseAll).
 	function pool:GetActiveObjects()
 		return self.active
 	end
@@ -539,7 +629,7 @@ end
 function F.Noop() end
 
 --- Protected call that reports (rather than swallows) failures. Use only at
---- trust boundaries (third-party callbacks, user input); not in hot loops.
+--- trust boundaries (third-party callbacks, user input), not in hot loops.
 function F.SafeCall(func, ...)
 	local ok, errOrResult = pcall(func, ...)
 	if not ok then
@@ -549,152 +639,8 @@ function F.SafeCall(func, ...)
 	return errOrResult
 end
 
--- ---------------------------------------------------------------------------
--- Secret values (Patch 12.0)
---   Identity/health APIs can return "secret" values that tainted code may not
---   boolean-test or compare. Gate any such read with these helpers first.
--- ---------------------------------------------------------------------------
--- Shared secret guards — callers never boolean-test / compare / index a secret
--- directly. Safe even when the underlying primitive is absent on older clients.
-do
-	local issecretvalue = _G["issecretvalue"]
-	local issecrettable = _G["issecrettable"]
-	local canaccessvalue = _G["canaccessvalue"]
-	local C_Secrets = _G["C_Secrets"]
-	local ShouldUnitIdentityBeSecret = C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret
-
-	--- True when `value` is a secret value (always safe to call).
-	function F.IsSecret(value)
-		return issecretvalue and issecretvalue(value)
-	end
-
-	--- True when `value` is a normal (non-secret) value.
-	function F.NotSecret(value)
-		return not F.IsSecret(value)
-	end
-
-	--- True when a unit's identity is currently hidden (instances / restricted).
-	--- pcall'd because the API can be absent or throw on some unit tokens.
-	function F.IsSecretUnit(unit)
-		if not (unit and ShouldUnitIdentityBeSecret) then
-			return false
-		end
-		local ok, value = pcall(ShouldUnitIdentityBeSecret, unit)
-		return ok and value
-	end
-
-	--- True when a unit's identity is readable.
-	function F.NotSecretUnit(unit)
-		return not F.IsSecretUnit(unit)
-	end
-
-	--- True when `object` is a secret table (its fields may not be indexed).
-	function F.IsSecretTable(object)
-		return issecrettable and issecrettable(object)
-	end
-
-	--- True when `object` is a normal (non-secret) table.
-	function F.NotSecretTable(object)
-		return not F.IsSecretTable(object)
-	end
-
-	--- True when tainted code may actually read `value` (some secrets are still
-	--- accessible). Defaults to true where the primitive is unavailable.
-	function F.CanAccessValue(value)
-		return not canaccessvalue or canaccessvalue(value)
-	end
-
-	--- True when tainted code may NOT read `value`.
-	function F.CanNotAccessValue(value)
-		return not F.CanAccessValue(value)
-	end
-
-	--- Compare two unit tokens without secret arithmetic errors. Returns false when
-	--- comparison is blocked (`C_Secrets.CanCompareUnitTokens`) or the result is secret.
-	function F.SafeUnitIsUnit(a, b)
-		if not (a and b and UnitIsUnit) then
-			return false
-		end
-		if C_Secrets and C_Secrets.CanCompareUnitTokens then
-			local ok, can = pcall(C_Secrets.CanCompareUnitTokens, a, b)
-			if ok and not can then
-				return false
-			end
-		end
-		local ok, result = pcall(UnitIsUnit, a, b)
-		if not ok or F.IsSecret(result) then
-			return false
-		end
-		return result and true or false
-	end
-
-	--- True when a widget/frame currently holds any secret values (aspects).
-	function F.HasSecretValues(object)
-		return object and object.HasSecretValues and object:HasSecretValues()
-	end
-
-	--- True when a widget/frame holds no secret values.
-	function F.NoSecretValues(object)
-		return not F.HasSecretValues(object)
-	end
-
-	local C_CurveUtil = _G["C_CurveUtil"]
-	local EvaluateColorFromBoolean = C_CurveUtil and C_CurveUtil.EvaluateColorFromBoolean
-
-	--- Read a boolean when safe; returns `true`/`false`, or `nil` when secret/unknown.
-	function F.BooleanIsTrue(value)
-		if F.NotSecret(value) then
-			return value and true or false
-		end
-		return nil
-	end
-
-	--- Pick RGB for false vs true without comparing a secret boolean in Lua.
-	function F.EvaluateColorFromBoolean(bool, r0, g0, b0, r1, g1, b1)
-		if F.NotSecret(bool) then
-			if bool then
-				return r1, g1, b1
-			end
-			return r0, g0, b0
-		end
-		if EvaluateColorFromBoolean then
-			return EvaluateColorFromBoolean(bool, r0, g0, b0, r1, g1, b1)
-		end
-		return r0, g0, b0
-	end
-
-	--- Secret-safe frame show: uses SetShown when readable, SetAlphaFromBoolean when secret.
-	function F.SetShownFromBoolean(frame, bool, shownAlpha)
-		if not frame then
-			return
-		end
-		shownAlpha = shownAlpha or 1
-		if F.NotSecret(bool) then
-			if bool then
-				frame:SetAlpha(shownAlpha)
-				frame:Show()
-			else
-				frame:Hide()
-			end
-			return
-		end
-		if frame.SetAlphaFromBoolean then
-			frame:SetAlphaFromBoolean(bool, shownAlpha, 0)
-		end
-		if frame.SetShownFromBoolean then
-			frame:SetShownFromBoolean(bool)
-		end
-	end
-
-	--- Hide a cooldown swipe when a DurationObject is zero (permanent aura).
-	--- `durObj:IsZero()` may be Secret; `SetAlphaFromBoolean` routes it safely.
-	function F.MaskCooldownSwipeFromDurationObject(cooldown, durObj)
-		if not (cooldown and durObj and durObj.IsZero and cooldown.SetAlphaFromBoolean) then
-			return
-		end
-		cooldown:SetAlphaFromBoolean(durObj:IsZero(), 0, 1)
-	end
-end
+-- Secret values (IsSecret, SafeUnitIsUnit, BooleanIsTrue, ...) live in
+-- Core/SecretValues.lua (loaded immediately after this file).
 
 -- ---------------------------------------------------------------------------
 -- Unit / display helpers (used by tooltip and skin modules)
@@ -735,7 +681,7 @@ do
 		[3] = 5, -- friendly green
 	}
 
-	-- Saturated UnitSelectionColor references (wiki); fallback when type is secret.
+	-- Saturated UnitSelectionColor references (wiki), fallback when type is secret.
 	local SELECTION_RGB_REFS = {
 		{ 2, 1.0, 0.0, 0.0 }, -- hostile
 		{ 3, 1.0, 0.5, 0.0 }, -- unfriendly orange
@@ -756,7 +702,7 @@ do
 		return bestIdx
 	end
 
-	-- FACTION_ORANGE_COLOR is very brown; on desaturated HUD health atlases it reads
+	-- FACTION_ORANGE_COLOR is very brown, on desaturated HUD health atlases it reads
 	-- almost like hostile red. Nudge unfriendly toward nameplate orange (1, 0.5, 0).
 	local UNFRIENDLY_ORANGE_BOOST = { r = 1.0, g = 0.52, b = 0.0 }
 	local UNFRIENDLY_ORANGE_BLEND = 0.7
@@ -849,10 +795,10 @@ do
 			factionIdx = reaction
 		end
 
-		-- Neutral/yellow mobs turn bright red (1,0,0) on nameplates when pulled;
+		-- Neutral/yellow mobs turn bright red (1,0,0) on nameplates when pulled.
 		-- CompactUnitFrame considerSelectionInCombatAsHostile. Use darker hostile
 		-- red so nameplate + target frame stay on our palette.
-		-- Threat list can still be secret (UnitThreatSituation); friend flag is plain.
+		-- Threat list can still be secret (UnitThreatSituation), friend flag is plain.
 		if CompactUnitFrame_IsOnThreatListWithPlayer and UnitIsFriend then
 			local onThreat = CompactUnitFrame_IsOnThreatListWithPlayer(unit)
 			if F.NotSecret(onThreat) and onThreat and not UnitIsFriend("player", unit) then
@@ -879,8 +825,8 @@ do
 	end
 
 	--- Resolve a unit's display colour: class colour for players, reaction colour
-	--- for NPCs, white otherwise. UnitIsPlayer / classFilename are SecretArguments-only;
-	--- className (1st UnitClass return) is ConditionalSecret — we use the 2nd.
+	--- for NPCs, white otherwise. UnitIsPlayer / classFilename are SecretArguments-only.
+	--- className (1st UnitClass return) is ConditionalSecret - we use the 2nd.
 	function F.UnitColor(unit)
 		local r, g, b = 1, 1, 1
 		if not unit then
@@ -988,8 +934,8 @@ local function GetNumberAbbrevOptions()
 	return numberAbbrevOptions
 end
 
---- Abbreviate large numbers ("1.2m", "356.1k"); leaves small numbers as-is.
---- Honours the General > Number Format preference; negatives keep their sign.
+--- Abbreviate large numbers ("1.2m", "356.1k"), leaves small numbers as-is.
+--- Honours the General > Number Format preference, negatives keep their sign.
 function F.ShortValue(value)
 	local style = (ns.db and ns.db.numberFormat and ns.db.numberFormat.style) or 1
 	local opt = GetNumberAbbrevOptions()[style]
@@ -1035,7 +981,7 @@ function F.CreatePlainFS(parent, size, text, layer)
 	local sz = size or 12
 	local font = C.Media.Fonts.normal
 
-	-- Shadow beneath main string — explicit sublevels; sibling order alone is not
+	-- Shadow beneath main string - explicit sublevels, sibling order alone is not
 	-- reliable on StatusBar and other layered parents (e.g. cast bar latency text).
 	local shadow = parent:CreateFontString(nil, lyr)
 	shadow:SetDrawLayer(lyr, -1)
@@ -1133,7 +1079,7 @@ end
 --   noise, not ours. See Modules/Miscellaneous/HideHelpTips.lua.
 -- ---------------------------------------------------------------------------
 
--- Texts NexEnhance raises on purpose; populated as tips are shown.
+-- Texts NexEnhance raises on purpose, populated as tips are shown.
 ns.OwnHelpTips = ns.OwnHelpTips or {}
 
 --- Mark a one-shot HelpTip acknowledged. Wired as the HelpTip `callbackArg`, so
@@ -1238,7 +1184,7 @@ function F.SafeRefreshTooltipData(tooltip, opts)
 		if opts.itemOnly then
 			return false
 		end
-		-- GetUnit() returns a unit token string — not a secret-tagged API return.
+		-- GetUnit() returns a unit token string - not a secret-tagged API return.
 		local unit = tooltip.GetUnit and tooltip:GetUnit()
 		if unit and F.IsSecretUnit(unit) then
 			return false
@@ -1338,7 +1284,7 @@ do
 		end
 
 		-- Hyperlink mode needs an actual hyperlink. LootFrame can briefly expose a
-		-- slot before GetLootSlotLink is ready; don't feed nil to C_TooltipInfo and
+		-- slot before GetLootSlotLink is ready, don't feed nil to C_TooltipInfo and
 		-- make Blizzard yell at us in hieroglyphics.
 		if not link and type(arg1) ~= "string" and type(arg1) ~= "number" then
 			return
@@ -1378,7 +1324,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Item bind label (BoE / BoA / WuE)
---   Prefers the structured bag-tooltip binding line; falls back to the static
+--   Prefers the structured bag-tooltip binding line, falls back to the static
 --   bindType from C_Item.GetItemInfo. Returns nil when bound or not applicable.
 -- ---------------------------------------------------------------------------
 do

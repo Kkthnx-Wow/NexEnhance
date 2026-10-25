@@ -9,7 +9,7 @@
 	No PlayerModels, no per-frame table allocs, no secret combat APIs.
 
 	Ideas studied from Frogski (pooled dots / dormant) and CursorTrail
-	(mouselook + cinematic hide) — original NexEnhance implementation.
+	(mouselook + cinematic hide) - original NexEnhance implementation.
 --]]
 
 local _, ns = ...
@@ -114,7 +114,7 @@ end
 
 local function ResolveColor(ageFrac)
 	if cfg.colorMode == COLOR_RAINBOW then
-		-- ageFrac 0 = newest; hue drifts along the trail + slow time shift.
+		-- ageFrac 0 = newest, hue drifts along the trail + slow time shift.
 		local h = ((1 - ageFrac) * 0.85 + rainbowHue) % 1
 		local i = floor(h * 6) % 6
 		local f = h * 6 - floor(h * 6)
@@ -221,7 +221,7 @@ local function Emit(x, y, now)
 		count = count + 1
 	end
 
-	-- Position once at emit — paint never SetPoints (unless offset settings change).
+	-- Position once at emit - paint never SetPoints (unless offset settings change).
 	local tex = pool[head]
 	if tex then
 		tex:ClearAllPoints()
@@ -263,7 +263,7 @@ local function Paint(now)
 		rainbowHue = (now * 0.15) % 1
 	end
 
-	-- Walk from newest → oldest in ring order.
+	-- Walk from newest -> oldest in ring order.
 	for i = 0, count - 1 do
 		local idx = head - i
 		if idx < 1 then
@@ -278,7 +278,7 @@ local function Paint(now)
 		if age >= life then
 			tex:Hide()
 		else
-			local frac = age / life -- 0 new → 1 dead
+			local frac = age / life -- 0 new -> 1 dead
 			local a = baseAlpha * (1 - frac)
 			local size = baseSize
 			if cfg.shrink then
@@ -312,7 +312,7 @@ local function Paint(now)
 end
 
 -- ---------------------------------------------------------------------------
--- OnUpdate — dormant when idle + trail gone
+-- OnUpdate - dormant when idle + trail gone
 -- Only one of (watch / paint) runs at a time.
 -- ---------------------------------------------------------------------------
 local watchFrame
@@ -388,7 +388,7 @@ local function OnUpdate()
 	local now = GetTime()
 	local dt = now - lastTick
 	if lastTick > 0 and dt > HITCH_SECONDS then
-		-- Load screen / alt-tab hitch — drop stale samples once.
+		-- Load screen / alt-tab hitch - drop stale samples once.
 		ClearTrail()
 	end
 	lastTick = now
@@ -597,7 +597,7 @@ function Module:OnSettingChanged(key)
 		return
 	end
 	self:Apply()
-	-- Offset-only tweaks don't need a wake; other keys may want a fresh paint pass.
+	-- Offset-only tweaks don't need a wake, other keys may want a fresh paint pass.
 	if key ~= "offsetX" and key ~= "offsetY" and dormant then
 		self:WakeUpdate()
 	end
@@ -609,7 +609,7 @@ function Module:RegisterOptions(category, builder)
 		self,
 		"enable",
 		L["Enable Cursor Trail"],
-		L["Show a soft glowing trail that follows your mouse cursor. Lightweight pooled dots; sleeps when idle."]
+		L["Show a soft glowing trail that follows your mouse cursor. Lightweight pooled dots, sleeps when idle."]
 	)
 
 	local _, combatInit = builder:Checkbox(

@@ -10,8 +10,10 @@
 	    rebuilt on every refresh, so styling allocates nothing.
 	  * A shared (non-anonymous) hook handler is reused for every hotkey to
 	    avoid one closure per button.
-	  * Each hotkey's SetText is hooked at most once (guarded by a flag) so
-	    repeated refreshes never stack secure hooks.
+	  * Each hotkey's SetText is hooked at most once (guarded via weak-key
+	    hotkeyData) so repeated refreshes never stack secure hooks.
+	  * Button chrome (mask, slot art, equip glow) and mouseover hook flags live
+	    in F.WeakFrameData stores - not as fields on secure Blizzard buttons.
 	  * hooksecurefunc is used instead of overriding SetText, keeping the path
 	    taint-free.
 --]]
@@ -28,11 +30,17 @@ local hooksecurefunc = hooksecurefunc
 local InCombatLockdown = InCombatLockdown
 local UnitExists = UnitExists
 local C_Timer = C_Timer
+
+-- Addon state for Blizzard buttons - weak keys so we don't write nex* fields
+-- onto secure action-button objects (Ellesmere EFD idea, NexEnhance helpers).
+local buttonData = F.WeakFrameData()
+local hotkeyData = F.WeakFrameData()
+local mouseoverData = F.WeakFrameData()
 -- NOTE: UIFrameFadeIn / UIFrameFadeOut are intentionally NOT used here.
 -- In Midnight 12.0, action bar frames (MultiBarLeft, etc.) are
 -- EditModeActionBarMixin instances whose Show() method is overridden to
 -- ShowOverride(). UIFrameFade() always calls frame:Show() after setting
--- alpha, which triggers ShowOverride() → UpdateVisibility() → HideBase()
+-- alpha, which triggers ShowOverride() -> UpdateVisibility() -> HideBase()
 -- (the saved, protected C-level Hide). Calling a protected function from
 -- addon-tainted code produces ADDON_ACTION_BLOCKED, and that taint then
 -- spreads to Blizzard's own ActionButton_UpdateCooldown in the same tick,
@@ -119,13 +127,13 @@ local replaces = {
 local hotkeyCache = {}
 
 function ActionBars:UpdateHotKey(hotkey)
-	-- hooksecurefunc stays forever — gate when Action Bars is off.
+	-- hooksecurefunc stays forever - gate when Action Bars is off.
 	if not self:IsEnabled() or not hotkey then
 		return
 	end
 
 	local text = hotkey:GetText()
-	-- Binding text is not a secret-tagged API; FontString:GetText is only secret
+	-- Binding text is not a secret-tagged API, FontString:GetText is only secret
 	-- after secret paint into that string (we don't do that here).
 	if not text or text == "" then
 		return
@@ -174,8 +182,11 @@ local function StyleActionButton(button, config)
 	local name = button.Name
 	local slotbg = button.SlotBackground
 
+	-- Alpha only - never SetShown on overlays that sit on secure action
+	-- buttons. button:SetShown is protected, FontString SetShown has also
+	-- been blamed in combat style passes. SetAlpha is cosmetic and safe.
 	if name then
-		name:SetShown(config.showName)
+		name:SetAlpha(config.showName and 1 or 0)
 		if config.showName then
 			name:SetFont(FONT_NORMAL, config.nameSize, "OUTLINE")
 		end
@@ -189,7 +200,7 @@ local function StyleActionButton(button, config)
 	end
 
 	if count then
-		count:SetShown(config.showCount)
+		count:SetAlpha(config.showCount and 1 or 0)
 		if config.showCount then
 			count:SetFont(FONT_NUMBER, config.countSize, "OUTLINE")
 		end
@@ -198,7 +209,7 @@ local function StyleActionButton(button, config)
 	end
 
 	if hotkey then
-		hotkey:SetShown(config.showHotkey)
+		hotkey:SetAlpha(config.showHotkey and 1 or 0)
 		if config.showHotkey then
 			hotkey:SetFont(FONT_NORMAL, config.hotkeySize, "OUTLINE")
 		end
@@ -209,8 +220,9 @@ local function StyleActionButton(button, config)
 		ActionBars:UpdateHotKey(hotkey)
 
 		-- Hook once per hotkey so refreshes never stack secure hooks.
-		if not hotkey.nexHotkeyHooked then
-			hotkey.nexHotkeyHooked = true
+		local hk = F.FrameData(hotkeyData, hotkey)
+		if not hk.setTextHooked then
+			hk.setTextHooked = true
 			hooksecurefunc(hotkey, "SetText", OnHotKeySetText)
 		end
 	end
@@ -274,11 +286,12 @@ local function NormalizeButtonIcon(button)
 	-- texcoord crop, so the rounded gold frame fully contains the art. The mask
 	-- is sized larger than the icon (Blizzard's 64/45 ratio) and centered, so the
 	-- icon fills the frame instead of shrinking inside the mask's feathered edge.
-	if not button.nexIconMask then
+	local bd = F.FrameData(buttonData, button)
+	if not bd.iconMask then
 		local mask = button:CreateMaskTexture(nil, "ARTWORK")
 		mask:SetAtlas(HUD_ICON_MASK)
 		icon:AddMaskTexture(mask)
-		button.nexIconMask = mask
+		bd.iconMask = mask
 	end
 	local w, h = button:GetSize()
 	if not w or w == 0 then
@@ -287,13 +300,13 @@ local function NormalizeButtonIcon(button)
 	if not h or h == 0 then
 		h = 45
 	end
-	button.nexIconMask:ClearAllPoints()
-	button.nexIconMask:SetPoint("CENTER", button, "CENTER", 0, 0)
-	button.nexIconMask:SetSize(w * MASK_SIZE_RATIO, h * MASK_SIZE_RATIO)
-	button.nexIconMask:Show()
+	bd.iconMask:ClearAllPoints()
+	bd.iconMask:SetPoint("CENTER", button, "CENTER", 0, 0)
+	bd.iconMask:SetSize(w * MASK_SIZE_RATIO, h * MASK_SIZE_RATIO)
+	bd.iconMask:Show()
 end
 
--- The Extra Action button hovers with an additive blue glow; the regular bars use
+-- The Extra Action button hovers with an additive blue glow, the regular bars use
 -- this same atlas at full strength with no additive blend. Match the bars so a
 -- skinned special button hovers like the rest of the action bar.
 local function NormalizeButtonHighlight(button)
@@ -333,28 +346,30 @@ local function ApplyHudButtonArt(button)
 	button:SetPushedAtlas(HUD_ICON_FRAME_DOWN)
 	SizeArtTexture(button:GetPushedTexture(), button)
 
-	if not button.nexSlotArt then
+	local bd = F.FrameData(buttonData, button)
+	if not bd.slotArt then
 		local slot = button:CreateTexture(nil, "BACKGROUND")
 		slot:SetAtlas(HUD_ICON_FRAME_SLOT)
 		slot:SetAllPoints(button)
-		button.nexSlotArt = slot
+		bd.slotArt = slot
 	end
-	button.nexSlotArt:Show()
+	bd.slotArt:Show()
 end
 
 local function RemoveHudButtonArt(button)
 	if not button then
 		return
 	end
-	if button.nexSlotArt then
-		button.nexSlotArt:Hide()
+	local bd = buttonData[button]
+	if bd and bd.slotArt then
+		bd.slotArt:Hide()
 	end
-	if button.nexIconMask then
+	if bd and bd.iconMask then
 		local icon = button.icon or button.Icon
 		if icon then
-			icon:RemoveMaskTexture(button.nexIconMask)
+			icon:RemoveMaskTexture(bd.iconMask)
 		end
-		button.nexIconMask:Hide()
+		bd.iconMask:Hide()
 	end
 end
 
@@ -412,7 +427,7 @@ function ActionBars:StyleZoneAbilityArt()
 	end
 
 	local enabled = ns.db.actionbars.skinExtraButtons
-	-- The frame-level Style is the surrounding decoration; the actual spell
+	-- The frame-level Style is the surrounding decoration, the actual spell
 	-- buttons live in a pooled container and get the HUD art instead.
 	SetStyleRegionHidden(frame.Style, enabled)
 
@@ -438,13 +453,14 @@ end
 --   -> self.Border, colour 0,1,0,0.5). We draw our own copy of that same border art
 --   (UI-HUD-ActionBar-IconFrame-Border, the atlas the gold frame uses) at full green
 --   so it matches our skin and reads clearly. Post-hooking the shared mixin keeps us
---   on the correct, taint-free path and covers every action button at once; the
+--   on the correct, taint-free path and covers every action button at once, the
 --   handler runs only when an action changes (event-driven), and the work is trivial.
 -- ---------------------------------------------------------------------------
 local EQUIP_BORDER_ATLAS = "UI-HUD-ActionBar-IconFrame-Border"
 
 local function GetEquipGlow(button)
-	local glow = button.nexEquipGlow
+	local bd = F.FrameData(buttonData, button)
+	local glow = bd.equipGlow
 	if not glow then
 		-- Creating child textures on secure action buttons is blocked in combat.
 		if InCombatLockdown() then
@@ -464,14 +480,14 @@ local function GetEquipGlow(button)
 		local size = h + 4
 		glow:SetSize(size + 1, size)
 		glow:Hide()
-		button.nexEquipGlow = glow
+		bd.equipGlow = glow
 	end
 	return glow
 end
 
 -- Post-hook for ActionBarActionButtonMixin:Update (and our refresh pass). Blizzard
 -- sets Border show/hide in the same Update() immediately before this hook runs.
--- Do NOT call C_ActionBar.IsEquippedAction here — SecretArguments
+-- Do NOT call C_ActionBar.IsEquippedAction here - SecretArguments
 -- AllowedWhenUntainted means tainted addon code can get a secret boolean and we
 -- would early-return with a stale glow still visible.
 local function ApplyEquipGlow(button)
@@ -486,7 +502,7 @@ local function ApplyEquipGlow(button)
 	end
 
 	local borderVisible = border:IsShown()
-	-- Equip border isn't fed combat secrets; IsShown aspect secrecy only follows
+	-- Equip border isn't fed combat secrets, IsShown aspect secrecy only follows
 	-- secret paint. Resources don't tag an equip-state return here.
 	if ns.db.actionbars.equipGlow and borderVisible then
 		border:Hide()
@@ -497,8 +513,9 @@ local function ApplyEquipGlow(button)
 		return
 	end
 
-	if button.nexEquipGlow then
-		button.nexEquipGlow:Hide()
+	local bd = buttonData[button]
+	if bd and bd.equipGlow then
+		bd.equipGlow:Hide()
 	end
 	if borderVisible then
 		border:SetVertexColor(0, 1.0, 0, 0.5)
@@ -671,10 +688,14 @@ local function RequestVisibilityRefresh()
 end
 
 local function HookFrameMouseover(frame, isButton)
-	if not frame or frame.nexMouseoverHooked then
+	if not frame then
 		return
 	end
-	frame.nexMouseoverHooked = true
+	local md = F.FrameData(mouseoverData, frame)
+	if md.hooked then
+		return
+	end
+	md.hooked = true
 
 	-- Hook script handlers in-place securely. Do NOT use SetScript here because
 	-- replacing the script of a secure action button taints it and blocks Blizzard's
@@ -697,10 +718,14 @@ end
 
 local function HookSpellFlyout()
 	local flyout = _G.SpellFlyout
-	if not flyout or flyout.nexMouseoverHooked then
+	if not flyout then
 		return
 	end
-	flyout.nexMouseoverHooked = true
+	local md = F.FrameData(mouseoverData, flyout)
+	if md.hooked then
+		return
+	end
+	md.hooked = true
 
 	flyout:HookScript("OnEnter", function()
 		ActionBars:UpdateMouseoverVisibility()
@@ -731,7 +756,7 @@ end
 
 -- Built once: prefix + count for every default action-button family. `equip`
 -- marks the families that use ActionBarActionButtonMixin (the ones that can hold
--- an equipped item); stance/pet buttons have no equipped-item border.
+-- an equipped item), stance/pet buttons have no equipped-item border.
 local actionButtonSets = {
 	{ prefix = "ActionButton", count = 12, equip = true },
 	{ prefix = "MultiBarBottomLeftButton", count = 12, equip = true },
@@ -745,6 +770,12 @@ local actionButtonSets = {
 	{ prefix = "PetActionButton", count = 10 },
 }
 
+-- Never call ActionBarActionButtonMixin:Update() from addon code.
+-- Incident (ActionBars, Jul 2026): button:Update() under NexEnhance taint runs
+-- Blizzard's UpdatePressAndHoldAction (SetAttribute), UpdateShownButtons
+-- (SetShown), and ActionButton_ApplyCooldown (secret SetCooldown) - the
+-- MultiBarBottomLeft ADDON_ACTION_BLOCKED + secret SetCooldown spam. Equip glow
+-- already post-hooks Update, here we only restyle chrome + re-run that hook.
 local function RefreshEquippedGlowOnButtons()
 	if InCombatLockdown() then
 		pendingStyling = true
@@ -754,8 +785,8 @@ local function RefreshEquippedGlowOnButtons()
 		if set.equip then
 			for i = 1, set.count do
 				local button = _G[set.prefix .. i]
-				if button and button.Update then
-					button:Update()
+				if button then
+					ApplyEquipGlow(button)
 				end
 			end
 		end
@@ -767,7 +798,6 @@ function ActionBars:RefreshActionBarStyling()
 		return
 	end
 
-	-- SetShown / ClearAllPoints on action-button overlays are protected in combat.
 	if InCombatLockdown() then
 		pendingStyling = true
 		return
@@ -781,9 +811,8 @@ function ActionBars:RefreshActionBarStyling()
 			local button = _G[prefix .. i]
 			if button then
 				StyleActionButton(button, config)
-				if set.equip and button.Update then
-					-- Update() runs Blizzard's equip border logic, then our post-hook.
-					button:Update()
+				if set.equip then
+					ApplyEquipGlow(button)
 				end
 			end
 		end

@@ -5,10 +5,10 @@
 	and (optionally) while you cast/channel.
 
 	Midnight: GCD uses C_Spell.GetSpellCooldownDuration(61304) +
-	SetCooldownFromDurationObject — no GetTime() arithmetic. Cast uses
+	SetCooldownFromDurationObject - no GetTime() arithmetic. Cast uses
 	UnitCastingDuration / UnitChannelDuration the same way.
 
-	Art: Media/Cursor/CursorRing.tga — soft white donut (class-tinted). Used as
+	Art: Media/Cursor/CursorRing.tga - soft white donut (class-tinted). Used as
 	both chrome and Cooldown swipe so progress stays circular, not a square fill.
 	Cursor tracking OnUpdate only while visible.
 --]]
@@ -67,8 +67,8 @@ local function db()
 	return ns.db.cursorRing
 end
 
--- IsZero() can be Secret in combat — never branch on the raw return.
--- nil (secret) → treat as non-zero so we don't wipe an active swipe mid-fight.
+-- IsZero() can be Secret in combat - never branch on the raw return.
+-- nil (secret) -> treat as non-zero so we don't wipe an active swipe mid-fight.
 local function DurationIsZero(durObj)
 	if not durObj then
 		return true
@@ -244,7 +244,7 @@ local function RefreshCast()
 		return
 	end
 
-	-- Prefer active cast, then channel. DurationObjects — no ms arithmetic.
+	-- Prefer active cast, then channel. DurationObjects - no ms arithmetic.
 	if UnitCastingDuration then
 		local castDur = UnitCastingDuration("player")
 		if castDur and not DurationIsZero(castDur) then
@@ -335,7 +335,7 @@ local function StyleCooldown(cd, alpha, inset)
 
 	local cc = C.ClassColor
 	local r, g, b, a = cc[1], cc[2], cc[3], alpha or 0.90
-	-- Same donut as chrome — swipe reveals the ring, never a square fill.
+	-- Same donut as chrome - swipe reveals the ring, never a square fill.
 	cd:SetSwipeTexture(RingTexture(), r, g, b, a)
 	cd:SetSwipeColor(r, g, b, a)
 end

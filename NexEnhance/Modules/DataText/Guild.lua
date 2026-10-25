@@ -24,7 +24,9 @@ local GetZoneText = GetZoneText
 local InCombatLockdown = InCombatLockdown
 local IsInGuild = IsInGuild
 local IsShiftKeyDown = IsShiftKeyDown
-local MouseIsOver = MouseIsOver
+local function MouseIsOver(region)
+	return region and region:IsMouseOver()
+end
 local UnitInParty = UnitInParty
 local UnitInRaid = UnitInRaid
 

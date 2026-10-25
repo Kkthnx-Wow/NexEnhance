@@ -9,14 +9,14 @@
 	  1. Register an invisible anchor frame with Edit Mode (F.CreateMover) - that
 	     anchor is what the user drags and what persists in the profile.
 	  2. Opt the container out of the position manager
-	     (ignoreFramePositionManager — Blizzard you're sneaky; same opt-out Alert
+	     (ignoreFramePositionManager - Blizzard you're sneaky, same opt-out Alert
 	     Frames uses for GroupLootContainer) so it stops fighting us.
 	  3. Pin the container to the anchor and re-pin it via a taint-safe
 	     hooksecurefunc on SetPoint. Belt-and-braces against anything else
 	     repositioning it.
 
 	Incident (WidgetMovers, Jun 2026): SetPoint hook compared arg1 (point string)
-	to our anchor frame instead of arg2 (relativeTo). Infinite Glue loop → C stack
+	to our anchor frame instead of arg2 (relativeTo). Infinite Glue loop -> C stack
 	overflow when UI scale / layout ran. This is why we don't code at 3am.
 
 	Anchor positions use F.CreateMover so they live in our profile like any other

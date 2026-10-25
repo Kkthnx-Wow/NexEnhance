@@ -2,7 +2,7 @@
 	NexEnhance - Auto Role
 	-------------------------------------------------------------------------
 	Keeps your party/raid role in sync with your active specialization and
-	optionally answers role polls without the popup — aligned with Blizzard's
+	optionally answers role polls without the popup - aligned with Blizzard's
 	RolePollPopup flow (UnitGetAvailableRoles, GetSpecializationRoleEnum,
 	UnitSetRoleEnum) rather than legacy string roles.
 

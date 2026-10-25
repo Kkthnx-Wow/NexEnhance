@@ -2,10 +2,10 @@
 	NexEnhance - Chat Channels
 	-------------------------------------------------------------------------
 	Shortens channel tags ([Party] -> [P], [Party Leader] -> [PL]), optional
-	timestamps, clickable URLs. Abbrev/timestamp hook AddMessage; URLs use the
+	timestamps, clickable URLs. Abbrev/timestamp hook AddMessage, URLs use the
 	12.0 message filter so we don't fight the secure chat path.
 
-	LibChatAnims is required when we touch AddMessage — without it, talent
+	LibChatAnims is required when we touch AddMessage - without it, talent
 	changes can hard-block.
 --]]
 
@@ -19,7 +19,7 @@ local strmatch, strfind = string.match, string.find
 local strupper = string.upper
 local type, date = type, date
 local hooksecurefunc = hooksecurefunc
-local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
+local ChatFrame_AddMessageEventFilter = ChatFrameUtil.AddMessageEventFilter
 
 LibStub("LibChatAnims")
 
@@ -37,7 +37,7 @@ local ChatChannels = ns:NewModule("ChatChannels", "chatChannels", { group = "cha
 
 local cfg
 
--- ChatFrame2/3 are combat log and voice — leave those alone.
+-- ChatFrame2/3 are combat log and voice - leave those alone.
 local IGNORE_CHAT_IDS = {
 	[2] = true,
 	[3] = true,
@@ -88,7 +88,7 @@ local groupAbbr = {
 	MONSTER_PARTY = "P",
 }
 
--- Blizzard puts PARTY in the |Hchannel:| link even for [Party Leader] — map bracket
+-- Blizzard puts PARTY in the |Hchannel:| link even for [Party Leader] - map bracket
 -- text from CHAT_*_GET so PL/IL/RL survive localization.
 local FORMAT_ABBR = {
 	{ "PARTY", "CHAT_PARTY_GET", "P" },

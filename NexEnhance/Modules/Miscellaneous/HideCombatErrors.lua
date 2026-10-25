@@ -6,7 +6,7 @@
 	on Blizzard's UIErrorsFrame for the duration of combat.
 
 	Same trick as Blizzard's /uierrorsoff slash command. Only UI_ERROR_MESSAGE
-	is muted — yellow UI_INFO_MESSAGE and SYSMSG still flow. AddMessage /
+	is muted - yellow UI_INFO_MESSAGE and SYSMSG still flow. AddMessage /
 	AddExternalErrorMessage from addons are unaffected. Restores the event on
 	combat end and when the option is turned off.
 --]]
@@ -91,7 +91,7 @@ local function UnregisterModuleEvents()
 end
 
 -- Incident (HideCombatErrors, Jun 2026): shared OnCombatRegen(event) never received
--- the event name — module RegisterEvent passes payload only, so event was always
+-- the event name - module RegisterEvent passes payload only, so event was always
 -- nil and suppress never toggled correctly. Split per-event methods instead.
 function HideCombatErrors:PLAYER_REGEN_DISABLED()
 	if not active then

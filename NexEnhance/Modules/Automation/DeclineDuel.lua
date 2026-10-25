@@ -4,7 +4,7 @@
 	Automatically declines duel and pet-battle PvP duel requests, hiding the
 	Blizzard popup and printing who was declined.
 
-	Both handlers register on first enable and gate at fire time by the toggles —
+	Both handlers register on first enable and gate at fire time by the toggles -
 	no reload needed to apply changes.
 --]]
 

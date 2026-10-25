@@ -2,6 +2,42 @@
 
 ---
 
+## [1.6.2] - 2026-10-24
+
+Patch 12.1.5 compatibility pass, plus a few load order bugs found along the way.
+
+### Patch 12.1.5
+
+- Interface version bumped to 120105.
+- **Chat:** LibChatAnims no longer replaces the tab alert flash on 12.1.5. Blizzard
+  moved tab alert state into `ChatFrameUtil`, so the old override broke the dock
+  overflow pulse and tab fading.
+- **Hide Help Tips:** skips tips that are already closing (12.1.5 clears their
+  `info` early and `Acknowledge` indexed it).
+- **Hide DPS Role Icon:** reads of the role icon are secret safe now that Blizzard
+  writes it through a secure delegate.
+- Moved every remaining call off the deprecation shims Blizzard marks for
+  removal: `IsPlayerSpell`, `GetWeaponEnchantInfo`, `IsUsableAction`,
+  `IsActionInRange`, `HasExtraActionBar`, `DoEmote`, `LoadAddOn`,
+  `NUM_CHAT_WINDOWS` and the `ChatFrame_` / `ChatEdit_` globals.
+- **Already Known:** housing decor ownership reads the 12.0.5 catalog totals
+  directly and no longer needs the compat bridge.
+- **Queue Timer:** tolerates `GetBattlefieldPortExpiration` going missing.
+
+### Fixed
+
+- **Install:** chat window setup used `ChatFrame_AddChannel`, which no longer
+  exists. It now calls the frame methods.
+- **Settings:** the per option revert icon and section reset button never
+  refreshed after a change, because the refresh hook was declared after its first
+  use.
+- **Core:** the combat defer hook called its helper before it was defined and
+  would have thrown the first time it ran.
+- **German locale:** a quoting slip in the section reset text broke the locale
+  file at load.
+
+---
+
 ## [1.6.0] — 2026-07-09
 
 ### Added
@@ -30,9 +66,40 @@
 - **Unit Frames — Unit Frame Text:** optional **White Name and Level** for HUD
   frames (player, target, focus, boss, pet, ToT, standard party portraits; compact
   raid/party unchanged).
+- **Core:** `F.WeakFrameData` / `F.FrameData` — weak-key side tables for addon state
+  on Blizzard frames (prefer over writing fields onto secure widgets).
+- **Core:** `F.Scale` / `F.Snap` / `F.DisablePixelSnap` — physical-pixel layout helpers
+  driven by `C.Mult` (Ellesmere / KkthnxUI-style; no global texture metatable hooks).
+- **Core — Migration:** `Core/Migration.lua` — ordered schema steps plus named
+  `ns:RegisterMigration({ id, scope, body })` (pcall, per-scope `_migrations` flags;
+  scopes: root / global / profile / char). Built-in schema v2–v4 moved here;
+  TargetFrameLayout reputation→enable migrate is a named profile migration.
+- **Core — SecretValues:** Midnight `F.IsSecret` / `SafeUnitIsUnit` / boolean widget
+  helpers live in `Core/SecretValues.lua` (split from Functions.lua).
+- **Tooltip — Status Bar:** identity + health-bar paint/style moved to
+  `TooltipStatusBar.lua` (loaded after Tooltip core).
 
 ### Fixed
 
+- **General — UI Scale:** Auto (Pixel-Perfect) keeps full float precision
+  (`clamp(768 / height, 0.4, 1.15)`) instead of `Round(..., 2)` — fixes soft 1px
+  borders (e.g. 1440p `0.5333…` no longer truncates to `0.53`). Migrates truncated
+  AutoScale leftovers; refreshes on `DISPLAY_SIZE_CHANGED` / `PLAYER_ENTERING_WORLD`;
+  still `UIParent:SetScale` only (never writes `uiScale` CVar).
+
+- **Auras — Buff Reminder:** combat aura checks use `C_Secrets.ShouldSpellAuraBeSecret`
+  for live reads; snapshot on `ENCOUNTER_START` (before aura lockdown) and skip the
+  redundant `PLAYER_REGEN_DISABLED` snap within 1s; no helpful-aura index walk in combat.
+- **Action Bars — Extra Quest Button:** guard secret `GetItemCooldown` start/duration
+  before DurationObject / `SetCooldown` paint.
+- **Nameplates — Reaction Colors:** debounce `PLAYER_REGEN_DISABLED` plate refresh
+  (was a synchronous full visible-plate pass on every pull — raid event storm).
+- **Nameplates — Reaction Colors:** batch `UNIT_FACTION` / threat / connection plate
+  refreshes into an end-of-frame dirty-unit flush (raid event storms).
+- **Unit Frames — Level Colours:** debounce refresh; also refresh on target/focus change.
+- **Action Bars:** equip glow, icon mask, slot art, and mouseover/hotkey hook flags
+  use `F.WeakFrameData` side tables instead of writing `nex*` fields onto secure
+  Blizzard buttons.
 - **Skins — Missing Stats:** scroll clamp no longer reads `GetVerticalScrollRange`
   (`SecretReturnsForAspect(ScrollRange)` — PaperDoll contamination marks the aspect).
   Range is computed from our `SetSize` heights; `GetTop`/`GetBottom` fall back to the
@@ -84,6 +151,14 @@
 - **Tooltip:** `ResolveTipIdentity` never keeps a secret `GetUnit()` token (same
   `UnitRealmRelationship` footgun on unit tips); falls through to clean raid/party /
   `UnitTokenFromGUID` tokens.
+- **Tooltip — Status Bar:** keep the unit-frame health atlas (desaturate + tint like
+  ClassColors HUD bars). Read watch GUID from the bar's `SetAttribute("guid")`, match
+  `target`/`focus`/`mouseover` for NPC reaction. Fixes undyed grey without ditching
+  the atlas for classic `UI-StatusBar`.
+- **Action Bars:** never call `button:Update()` from equip-glow / style refresh —
+  that was tainting Blizzard `SetAttribute` / `SetShown` / `SetCooldown` (and cascading
+  to `MultiBarBottomLeft:SetFrameStrata` on show-grid). Hotkey/name/count use
+  `SetAlpha` instead of `SetShown`.
 - **Skins — Missing Stats:** hook handlers + `PLAYER_REGEN_ENABLED` gate/teardown on disable.
 - **Core — Settings:** modules no longer double-call `OnEnable`/`OnDisable` from
   `OnSettingChanged("enable")` (`ApplyModuleSetting` already owns lifecycle) —

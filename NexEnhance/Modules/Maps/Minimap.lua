@@ -4,7 +4,7 @@
 	Minimap cleanup behind the module toggle:
 	  - Square the minimap and frame it with the game's tooltip border.
 	  - Kill the cluster chrome outright (ring, zoom buttons, compass, clock,
-	    zone-text bar) since we replace it; the tracking button stays alive but
+	    zone-text bar) since we replace it, the tracking button stays alive but
 	    invisible so right-click still opens its menu.
 	  - Re-home the landing-page button, indicator (mail), instance difficulty,
 	    calendar, streaming and queue-status regions to tidy minimap corners.
@@ -13,7 +13,7 @@
 	    calendar invites.
 	  - Easy Volume (Ctrl + wheel) and a middle-click shortcut menu (unchanged).
 
-	No custom mover — Blizzard Edit Mode already moves the minimap cluster.
+	No custom mover - Blizzard Edit Mode already moves the minimap cluster.
 
 	Retail only.
 --]]
@@ -402,7 +402,7 @@ end
 local pulseFrame, pulseAnim
 
 local function CreatePulse()
-	-- Needs the border to overlay; bail if either the border or pulse is off.
+	-- Needs the border to overlay, bail if either the border or pulse is off.
 	if pulseAnim or not ns.db.minimap.mailPulse or not borderFrame then
 		return
 	end
@@ -410,7 +410,7 @@ local function CreatePulse()
 	pulseFrame = CreateFrame("Frame", nil, Minimap)
 	pulseFrame:SetAllPoints(borderFrame)
 	pulseFrame:SetFrameLevel(borderFrame:GetFrameLevel() + 1)
-	-- Same tooltip border; UpdatePulse tints it yellow while active.
+	-- Same tooltip border, UpdatePulse tints it yellow while active.
 	F.CreateTooltipBackdrop(pulseFrame, {
 		edgeSize = MINIMAP_BORDER_SIZE,
 		outset = 3,
@@ -471,7 +471,7 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Masked textures (12.0 HUD atlases, housing minimap overlay) reject SetTexCoord.
--- Strip mask textures first, then crop; swallow any remaining engine errors.
+-- Strip mask textures first, then crop, swallow any remaining engine errors.
 -- ---------------------------------------------------------------------------
 local function SafeSetTexCoord(texture, ...)
 	if not (texture and texture.SetTexCoord) then
@@ -513,14 +513,14 @@ local function Declutter()
 
 		-- Hidden chrome still counts as a ResizeLayout child (IsShown), and
 		-- Tracking at alpha 0 does too. Ignore them so Layout() does not reserve
-		-- header space or re-measure dead frames — that pass is what makes the
+		-- header space or re-measure dead frames - that pass is what makes the
 		-- cluster briefly jump before our footprint hook snaps it back.
 		if MinimapCluster.MarkIgnoreInLayout then
 			MinimapCluster:MarkIgnoreInLayout(MinimapCluster.BorderTop, MinimapCluster.ZoneTextButton, MinimapCluster.Tracking, MinimapCluster.IndicatorFrame)
 		end
 
 		-- Tracking is the one piece we keep alive (invisible) so right-click can
-		-- still open its menu; everything else is gone.
+		-- still open its menu, everything else is gone.
 		local tracking = MinimapCluster.Tracking
 		if tracking then
 			tracking:SetAlpha(0)
@@ -528,7 +528,7 @@ local function Declutter()
 		end
 	end
 
-	-- Housing overlay is built for the round mask — pin inside the square map
+	-- Housing overlay is built for the round mask - pin inside the square map
 	-- and crop texcoords to match.
 	local overlay = _G.MinimapBackdrop and _G.MinimapBackdrop.StaticOverlayTexture
 	if overlay then
@@ -544,8 +544,8 @@ end
 --   The cluster reserves vertical space for the header we removed, so its Edit
 --   Mode selection box floats above the square map. Blizzard's ResizeLayoutFrame
 --   also re-runs on mail/crafting updates (MinimapCluster:Layout), bootstraps
---   with SetSize(1,1), and measures shown children — including invisible tracking
---   and our repinned IndicatorFrame — before settling. Re-applying our footprint
+--   with SetSize(1,1), and measures shown children - including invisible tracking
+--   and our repinned IndicatorFrame - before settling. Re-applying our footprint
 --   synchronously on every intermediate SetSize caused a visible jump-then-snap.
 --   We defer one correction to the end of the frame and ignore Layout's 1x1 bootstrap.
 -- ---------------------------------------------------------------------------
@@ -573,7 +573,7 @@ local function ApplyClusterFootprint()
 end
 
 local function ScheduleClusterFootprint()
-	-- hooksecurefunc can't uninstall — gate so Layout/SetSize stay idle when off.
+	-- hooksecurefunc can't uninstall - gate so Layout/SetSize stay idle when off.
 	if not Module:IsEnabled() then
 		return
 	end
@@ -670,7 +670,7 @@ local function UpdateCalendarDate()
 end
 
 -- Garrison / covenant / warband landing page button -> bottom-left. Left-click
--- remains Blizzard's default; right-click offers the summary switch menu.
+-- remains Blizzard's default, right-click offers the summary switch menu.
 local LANDING_PAGE_ATLAS = "ShipMissionIcon-Combat-Mission"
 
 local function ToggleLandingPage(garrisonType)
@@ -687,7 +687,7 @@ local LANDING_PAGE_SIZE = 26
 
 local function SkinLandingPageButton(button)
 	-- Blizzard re-applies the icon + size on RefreshButton / UpdateIcon /
-	-- SetLandingPageIconFromAtlases, all of which we hook; guard against the
+	-- SetLandingPageIconFromAtlases, all of which we hook, guard against the
 	-- re-entrancy our own SetSize/SetAtlas could trigger.
 	if button.__nexSkinning then
 		return
@@ -794,7 +794,7 @@ end
 
 local function ReskinRegions()
 	-- Expansion / garrison landing-page button -> bottom-left. Leave it under
-	-- Blizzard's parent and only reposition + skin it; Blizzard
+	-- Blizzard's parent and only reposition + skin it, Blizzard
 	-- still controls when it is shown (via UpdateIcon).
 	local garrMinimapButton = _G.ExpansionLandingPageMinimapButton
 	if garrMinimapButton then
@@ -845,14 +845,14 @@ local function ReskinRegions()
 		if not calendarText then
 			calendarText = gameTime:CreateFontString(nil, "OVERLAY")
 			calendarText:SetFont(C.Media.Fonts.normal, 12, "")
-			calendarText:SetPoint("CENTER", gameTime, "CENTER", 0, -4)
+			calendarText:SetPoint("CENTER", gameTime, "CENTER", 0, -3)
 			calendarText:SetTextColor(0, 0, 0)
 			calendarText:SetShadowOffset(0, 0)
 			calendarText:SetAlpha(0.9)
 		end
 		UpdateCalendarDate()
 
-		-- Blizzard re-textures the button when the date ticks over; re-apply both.
+		-- Blizzard re-textures the button when the date ticks over, re-apply both.
 		if _G.GameTimeFrame_SetDate then
 			hooksecurefunc("GameTimeFrame_SetDate", function()
 				ApplyCalendarSkin()
@@ -991,7 +991,7 @@ local function ReskinQueueStatus()
 	icon:SetAtlas("RaidFrame-Icon-LFR")
 	icon:Hide()
 
-	-- Visibility follows the eye; spin play/pause follows its animation so we
+	-- Visibility follows the eye, spin play/pause follows its animation so we
 	-- only rotate while actually searching for a group.
 	if _G.QueueStatusFrame then
 		hooksecurefunc(_G.QueueStatusFrame, "Update", function()
@@ -1119,7 +1119,7 @@ local function BinIgnored(name)
 			return true
 		end
 	end
-	-- Numbered map pins (HandyNotes_MidnightPin19, …) — not LDB minimap buttons.
+	-- Numbered map pins (HandyNotes_MidnightPin19, ...) - not LDB minimap buttons.
 	if not strfind(strupper(name), "BUTTON") and strmatch(name, "Pin%d+$") then
 		return true
 	end
@@ -1246,8 +1246,8 @@ local function ParkBinButtons()
 			if button:HasScript("OnDragStop") then
 				button:SetScript("OnDragStop", nil)
 			end
-			-- Close the tray after a left-click; right-click is often a config/menu
-			-- that hides the ldb icon — restore visibility while it stays in our tray.
+			-- Close the tray after a left-click, right-click is often a config/menu
+			-- that hides the ldb icon - restore visibility while it stays in our tray.
 			if button:HasScript("OnClick") then
 				button:HookScript("OnClick", function(self, clickButton)
 					if clickButton == "LeftButton" then
@@ -1521,7 +1521,7 @@ end
 --   Mirror the minimap options onto Blizzard's native Minimap Edit Mode dialog.
 --   The minimap keeps its built-in mover, so we attach to the system (via
 --   LibEditMode's AddSystemSettings) rather than registering our own frame.
---   Both paths read/write the same profile keys; like the Settings panel, most
+--   Both paths read/write the same profile keys, like the Settings panel, most
 --   take effect on reload.
 -- ---------------------------------------------------------------------------
 local editMode
@@ -1642,7 +1642,7 @@ function Module:OnEnable()
 			minimapClicker:SetPropagateMouseMotion(true)
 		end
 	end
-	-- Re-bind every OnEnable — OnDisable clears scripts / hides the clicker.
+	-- Re-bind every OnEnable - OnDisable clears scripts / hides the clicker.
 	minimapClicker:EnableMouse(true)
 	minimapClicker:EnableMouseWheel(true)
 	minimapClicker:Show()
@@ -1712,7 +1712,7 @@ function Module:OnEnable()
 end
 
 function Module:OnDisable()
-	-- Square mask / GetMinimapShape / border art need /reload to fully restore —
+	-- Square mask / GetMinimapShape / border art need /reload to fully restore -
 	-- we only stop live work (events, pulse, clicker, callbacks) here.
 	ns:UnregisterCallback("SettingChanged.timeText.enable", RefreshIndicatorPosition)
 	ns:UnregisterCallback("SettingChanged.minimap.buttonBinPosition", RefreshButtonBinPosition)

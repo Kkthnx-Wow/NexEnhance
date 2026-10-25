@@ -84,7 +84,7 @@ local function OnPawnBorderColor(tooltip, r, g, b, a)
 	end
 
 	if ShouldOverrideBorder() then
-		-- Pawn's green upgrade tint — NexEnhance quality border owns item frames.
+		-- Pawn's green upgrade tint - NexEnhance quality border owns item frames.
 		if r == 0 and g == 1 and b == 0 then
 			return
 		end
@@ -123,7 +123,7 @@ function Tooltip:RefreshPawnIntegration()
 		PawnToggleTooltipIcons()
 	end
 	if GameTooltip and GameTooltip:IsShown() then
-		-- Item tooltips only — unit rebuild taints GameTooltip_UnitColor (12.0 secret).
+		-- Item tooltips only - unit rebuild taints GameTooltip_UnitColor (12.0 secret).
 		F.SafeRefreshTooltipData(GameTooltip, { itemOnly = true })
 	end
 end

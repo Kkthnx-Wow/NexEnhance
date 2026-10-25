@@ -6,7 +6,7 @@
 	button, and recolours quest progress and timer bars to a single calm
 	colour (class colour by default, brand colour otherwise).
 
-	Lives in Blizzard_ObjectiveTracker — style on load or wait for
+	Lives in Blizzard_ObjectiveTracker - style on load or wait for
 	ADDON_LOADED via the central dispatcher. Cosmetic hooksecurefunc only;
 	no taint on the secure tracker frames.
 --]]
@@ -182,7 +182,7 @@ end
 
 function ObjectiveTracker:OnDisable()
 	ns:UnregisterModuleEventHandles(eventHandles)
-	-- hooksecurefunc cannot be removed; ReskinBar gates on IsEnabled().
+	-- hooksecurefunc cannot be removed, ReskinBar gates on IsEnabled().
 end
 
 -- Live re-tint when the class-colour toggle flips.

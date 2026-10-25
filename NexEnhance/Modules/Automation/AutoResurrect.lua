@@ -6,7 +6,7 @@
 
 	Item-cast resurrects (encounter "Failure Detection Pylon", "Brazier of
 	Awakening") are ignored so you can still make the strategic call on those.
-	We also skip accepting while you're in combat — bad time for a battle-rez.
+	We also skip accepting while you're in combat - bad time for a battle-rez.
 
 	The event registers on enable and unregisters on disable so dispatch stays
 	cheap while the module is off.
@@ -17,7 +17,7 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local AcceptResurrect = AcceptResurrect
-local DoEmote = DoEmote
+local PerformEmote = C_ChatInfo.PerformEmote
 local StaticPopup_Hide = StaticPopup_Hide
 local UnitAffectingCombat = UnitAffectingCombat
 local UnitIsDeadOrGhost = UnitIsDeadOrGhost
@@ -84,7 +84,7 @@ function AutoResurrect:RESURRECT_REQUEST(name)
 		return
 	end
 
-	-- Only accept while safe; taking a rez mid-fight can pull aggro or waste it.
+	-- Only accept while safe, taking a rez mid-fight can pull aggro or waste it.
 	if UnitAffectingCombat("player") then
 		return
 	end
@@ -93,13 +93,13 @@ function AutoResurrect:RESURRECT_REQUEST(name)
 	StaticPopup_Hide("RESURRECT_NO_TIMER")
 
 	-- Optional friendly thank-you once we're actually back on our feet.
-	-- Guard: battle-rez can bring a player back mid-combat. DoEmote is not
+	-- Guard: battle-rez can bring a player back mid-combat. PerformEmote is not
 	-- itself restricted, but sending an emote at a target name that is a
-	-- secret value can taint. Also skip if still fighting — contextually wrong.
+	-- secret value can taint. Also skip if still fighting - contextually wrong.
 	if ns.db.autoResurrect.thankYou and F.NotSecret(name) and name then
 		C_Timer_After(3, function()
 			if not UnitIsDeadOrGhost("player") and not UnitAffectingCombat("player") then
-				DoEmote("thank", name)
+				PerformEmote("thank", name)
 			end
 		end)
 	end

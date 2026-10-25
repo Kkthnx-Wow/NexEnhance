@@ -129,7 +129,7 @@ local function EnsureOverlay()
 		AttachOverlay()
 		return
 	end
-	-- SetPassThroughButtons is protected; create early before combat.
+	-- SetPassThroughButtons is protected, create early before combat.
 	overlay = CreateFrame("Button", nil, UIParent)
 	overlay:RegisterForClicks("RightButtonUp")
 	overlay:SetPassThroughButtons("LeftButton")

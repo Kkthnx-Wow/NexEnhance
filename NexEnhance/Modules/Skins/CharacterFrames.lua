@@ -6,7 +6,7 @@
 	and swaps in a class dressing-room background when on the gear tab.
 
 	Uses F.StripTextures from Core/API.lua. Inspect lives in load-on-demand
-	Blizzard_InspectUI — style on load or wait for ADDON_LOADED. Layout hooks
+	Blizzard_InspectUI - style on load or wait for ADDON_LOADED. Layout hooks
 	defer to Apply*Layout helpers that respect Blizzard panel constants.
 	Resizing guarded by InCombatLockdown() (secure frames).
 --]]
@@ -59,7 +59,7 @@ local function ShouldStyle()
 	return CharacterFrames:IsEnabled() and ns.db.characterFrames.enable
 end
 
--- Pawn sits under PaperDollFrame; CharacterStatsPane is a sibling on top and
+-- Pawn sits under PaperDollFrame, CharacterStatsPane is a sibling on top and
 -- blocks clicks. Frame *level* only orders siblings under the same parent, so
 -- raising level inside PaperDollFrame cannot beat the stats pane. Lifting
 -- *strata* on the button keeps Pawn's normal parent/show-hide behavior.
@@ -108,7 +108,7 @@ local function InstallPawnButtonFix()
 	end
 	-- issecurevariable() returns false when Pawn has set this global from a
 	-- tainted execution path. Hooking a tainted global propagates that taint
-	-- into NexEnhance and blocks secure code. Skip the hook in that case —
+	-- into NexEnhance and blocks secure code. Skip the hook in that case -
 	-- the cosmetic button reposition is less important than staying taint-free.
 	if not issecurevariable("PawnUI_InventoryPawnButton_Move") then
 		return
@@ -132,7 +132,7 @@ local function RefreshPawnButtons()
 	end
 end
 
--- Only touch equipment slots (name contains "Slot"); skip InspectTalents etc.
+-- Only touch equipment slots (name contains "Slot"), skip InspectTalents etc.
 local function StyleItemSlots(...)
 	for i = 1, select("#", ...) do
 		local slot = select(i, ...)
@@ -249,7 +249,7 @@ function CharacterFrames:ApplyCharacterLayout()
 	local subframe = CharacterFrame.activeSubframe
 
 	if subframe == "PaperDollFrame" then
-		-- Only widen when the stats sidebar is expanded; collapsed gear keeps
+		-- Only widen when the stats sidebar is expanded, collapsed gear keeps
 		-- Blizzard's UpdateSize() width (338) and static inset (332).
 		if CharacterFrame.Expanded then
 			CharacterFrame:SetSize(CHAR_PAPERDOLL_WIDTH, CHAR_PAPERDOLL_HEIGHT)
@@ -593,5 +593,5 @@ function CharacterFrames:OnSettingChanged(key)
 end
 
 function CharacterFrames:RegisterOptions(category, builder)
-	builder:Checkbox(category, self, "enable", L["Enable Character Frames"], L["Restyle and resize the Character and Inspect frames. Layout toggles live; stripped slot art needs /reload to fully undo."])
+	builder:Checkbox(category, self, "enable", L["Enable Character Frames"], L["Restyle and resize the Character and Inspect frames. Layout toggles live, stripped slot art needs /reload to fully undo."])
 end

@@ -6,17 +6,21 @@
 	matching pixel multiplier (C.Mult) that the backdrop/border system uses
 	to draw crisp 1px borders at any resolution.
 
-	Computed in OnInitialize so C.Mult is correct before
-	any module builds a backdrop, and re-applied on UI_SCALE_CHANGED.
+	Ideal scale = clamp(768 / physicalScreenHeight, 0.4, 1.15) - full float,
+	no 2-decimal Round. Mult = perfect / scale.
+
+	Computed in OnInitialize so C.Mult is correct before any module builds a
+	backdrop, and re-applied on UI_SCALE_CHANGED / DISPLAY_SIZE_CHANGED /
+	PLAYER_ENTERING_WORLD.
 
 	Important: apply only via UIParent:SetScale during ADDON_LOADED / out of combat.
-	Do not write the uiScale CVar or defer apply to C_Timer.After(0) on login —
+	Do not write the uiScale CVar or defer apply to C_Timer.After(0) on login -
 	both run after Blizzard_CombatLog initializes and break the chat dock tabs.
 	(Blizzard, fix the load order on your end. We tried.)
 
 	While enabled we force useUiScale=0 so Blizzard's Graphics slider does not
-	stack on top — two scale systems = UI the size of a postage stamp. We do not
-	hide or remove their menu row; we just turn theirs off while we're driving.
+	stack on top - two scale systems = UI the size of a postage stamp. We do not
+	hide or remove their menu row, we just turn theirs off while we're driving.
 
 	Settings live in the active profile:
 	  * enable    - apply our scale to UIParent (off = only compute C.Mult)
@@ -27,7 +31,7 @@
 local _, ns = ...
 local C, L, F = ns.C, ns.L, ns.F
 
-local min, max = math.min, math.max
+local min, max, abs, floor = math.min, math.max, math.abs, math.floor
 local format = string.format
 local pcall = pcall
 local GetCVar = GetCVar
@@ -49,18 +53,19 @@ local UIScale = ns:NewModule("UIScale", "uiScale", { group = "general", title = 
 
 local MIN_SCALE, MAX_SCALE = 0.40, 1.15
 
--- Physical screen height (refreshed on UI_SCALE_CHANGED); 768 is the pixel
--- baseline Blizzard's UI is authored against.
+-- Physical screen height (refreshed on resolution / scale events), 768 is the
+-- pixel baseline Blizzard's UI is authored against.
 local screenHeight = select(2, GetPhysicalScreenSize())
 
-local Round = F.Round
+-- Re-entrancy guard: SetScale can fire UI_SCALE_CHANGED mid-apply.
+local isScaling = false
 
 local function SetCVarSafe(name, value)
 	pcall(SetCVar, name, value)
 end
 
 -- NexEnhance scales via UIParent:SetScale. Blizzard's "Use UI Scale" uses the
--- useUiScale + uiScale CVars — if both run, scale stacks or fights. We only
+-- useUiScale + uiScale CVars - if both run, scale stacks or fights. We only
 -- flip useUiScale off (never uiScale) and restore the user's choice when disabled.
 -- Incident (UIScale, Jun 2026): writing uiScale + next-frame apply broke chat dock.
 function UIScale:SyncBlizzardUiScale(cfg)
@@ -80,13 +85,36 @@ function UIScale:SyncBlizzardUiScale(cfg)
 	end
 end
 
+-- Exact perfect - no Round(..., 2). Incident (UIScale, Jul 2026): 768/1440~0.5333
+-- became 0.53 and soft 1px borders (a bug we have hit before).
+local function GetPerfectScale()
+	return max(MIN_SCALE, min(MAX_SCALE, 768 / screenHeight))
+end
+
 local function GetBestScale()
-	return Round(max(MIN_SCALE, min(MAX_SCALE, 768 / screenHeight)), 2)
+	return GetPerfectScale()
+end
+
+-- Old AutoScale wrote Round(perfect, 2). Swap leftovers back when Auto is on.
+local function MigrateTruncatedAutoScale(cfg)
+	if not cfg.autoScale then
+		return
+	end
+	local perfect = GetPerfectScale()
+	local stored = cfg.scale
+	if type(stored) ~= "number" then
+		return
+	end
+	local truncated = floor(perfect * 100 + 0.5) / 100
+	if abs(stored - truncated) < 0.0001 and abs(stored - perfect) > 0.0001 then
+		cfg.scale = perfect
+	end
 end
 
 local function GetDisplayScale(cfg)
 	if not cfg.enable then
-		return Round(UIParent:GetScale(), 2)
+		-- Slider display only, Mult uses the full UIParent float below.
+		return F.Round(UIParent:GetScale(), 2)
 	end
 	if cfg.autoScale then
 		return GetBestScale()
@@ -116,19 +144,26 @@ end
 
 function UIScale:Refresh(pixelOnly)
 	local cfg = ns.db.uiScale
+	MigrateTruncatedAutoScale(cfg)
 
 	local scale
 	if cfg.enable then
 		scale = cfg.autoScale and GetBestScale() or cfg.scale
+		if cfg.autoScale then
+			cfg.scale = scale
+		end
 	else
 		scale = UIParent:GetScale()
 	end
 
-	C.Mult = (768 / screenHeight) / scale
+	-- Mult always uses live screen height + chosen scale (exact floats).
+	C.Mult = (768 / screenHeight) / (scale ~= 0 and scale or 1)
 
 	if cfg.enable and not pixelOnly and not InCombatLockdown() then
 		self:SyncBlizzardUiScale(cfg)
+		isScaling = true
 		UIParent:SetScale(scale)
+		isScaling = false
 		-- Chat (and anything else) can re-anchor without a /reload.
 		ns:TriggerCallback("UIScaleApplied", scale)
 	end
@@ -137,23 +172,38 @@ function UIScale:Refresh(pixelOnly)
 end
 
 local function ApplyScale()
+	-- Always refresh Mult immediately (even in combat). Only SetScale waits.
 	UIScale:Refresh(true)
 	UIScale:Refresh()
 
-	-- Combat lockdown blocks SetScale; we'll catch up on regen. Not ideal, but
-	-- better than ADDON_ACTION_BLOCKED spam.
+	-- Combat lockdown blocks SetScale, we'll catch up on regen.
 	if ns.db.uiScale.enable and InCombatLockdown() then
 		UIScale.pending = true
 	end
 end
 
-function UIScale:UI_SCALE_CHANGED()
+local function RefreshScreenSizeAndApply()
+	if isScaling then
+		return
+	end
 	screenHeight = select(2, GetPhysicalScreenSize())
 	local cfg = ns.db and ns.db.uiScale
 	if cfg and cfg.enable and GetCVar("useUiScale") == "1" then
-		self:SyncBlizzardUiScale(cfg)
+		UIScale:SyncBlizzardUiScale(cfg)
 	end
 	ApplyScale()
+end
+
+function UIScale:UI_SCALE_CHANGED()
+	RefreshScreenSizeAndApply()
+end
+
+function UIScale:DISPLAY_SIZE_CHANGED()
+	RefreshScreenSizeAndApply()
+end
+
+function UIScale:PLAYER_ENTERING_WORLD()
+	RefreshScreenSizeAndApply()
 end
 
 function UIScale:PLAYER_REGEN_ENABLED()
@@ -168,11 +218,15 @@ function UIScale:ForceApply()
 end
 
 function UIScale:OnInitialize()
-	self.manualScale = ns.db.uiScale.scale
+	local cfg = ns.db.uiScale
+	MigrateTruncatedAutoScale(cfg)
+	self.manualScale = cfg.scale
 	ApplyScale()
-	-- Scale must stay live before PLAYER_LOGIN; register resolution/combat defer listeners
-	-- here even when uiScale.enable is off (C.Mult still tracks UIParent).
+	-- Scale must stay live before PLAYER_LOGIN, register resolution/combat defer
+	-- listeners here even when uiScale.enable is off (C.Mult still tracks UIParent).
 	self:RegisterEvent("UI_SCALE_CHANGED")
+	self:RegisterEvent("DISPLAY_SIZE_CHANGED")
+	self:RegisterEvent("PLAYER_ENTERING_WORLD")
 	self:RegisterEvent("PLAYER_REGEN_ENABLED")
 
 	ns.Debug.BindModule(self, "uiscale", {
@@ -187,8 +241,8 @@ function UIScale:OnInitialize()
 			{
 				name = "useUiScale off when NexEnhance scale enabled",
 				test = function()
-					local cfg = ns.db and ns.db.uiScale
-					if not cfg or not cfg.enable then
+					local db = ns.db and ns.db.uiScale
+					if not db or not db.enable then
 						return true
 					end
 					return GetCVar("useUiScale") == "0"
@@ -197,12 +251,26 @@ function UIScale:OnInitialize()
 					return format("useUiScale=%s", GetCVar("useUiScale") or "?")
 				end,
 			},
+			{
+				name = "AutoScale stores exact perfect (not 2dp trunc)",
+				test = function()
+					local db = ns.db and ns.db.uiScale
+					if not db or not db.enable or not db.autoScale then
+						return true
+					end
+					local perfect = GetPerfectScale()
+					return abs((db.scale or 0) - perfect) < 0.0001
+				end,
+				detail = function()
+					return format("scale=%.6f perfect=%.6f", ns.db.uiScale.scale or 0, GetPerfectScale())
+				end,
+			},
 		},
 		dump = function()
-			local cfg = ns.db.uiScale
+			local db = ns.db.uiScale
 			local sh = select(2, GetPhysicalScreenSize())
-			F.Print(format("  cfg.enable=%s autoScale=%s scale=%.2f manualScale=%s", tostring(cfg.enable), tostring(cfg.autoScale), cfg.scale or 0, tostring(UIScale.manualScale)))
-			F.Print(format("  screenH=%s bestScale=%.2f UIParent=%.2f C.Mult=%.4f pending=%s", tostring(sh), GetBestScale(), UIParent:GetScale(), C.Mult or 0, tostring(UIScale.pending)))
+			F.Print(format("  cfg.enable=%s autoScale=%s scale=%.6f manualScale=%s", tostring(db.enable), tostring(db.autoScale), db.scale or 0, tostring(UIScale.manualScale)))
+			F.Print(format("  screenH=%s bestScale=%.6f UIParent=%.6f C.Mult=%.6f pending=%s", tostring(sh), GetBestScale(), UIParent:GetScale(), C.Mult or 0, tostring(UIScale.pending)))
 			F.Print(format("  combat=%s lockdown=%s savedUseUiScale=%s", tostring(UnitAffectingCombat("player")), tostring(InCombatLockdown()), tostring(UIScale.savedUseUiScale)))
 
 			local cf1 = _G.ChatFrame1
@@ -237,7 +305,7 @@ function UIScale:OnSettingChanged(key)
 end
 
 function UIScale:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable UI Scale"], L["Let NexEnhance set the UIParent scale (reload-safe; ignores changes made in combat). While enabled, Blizzard's Graphics > Use UI Scale is turned off so the two systems do not stack."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable UI Scale"], L["Let NexEnhance set the UIParent scale (reload-safe, ignores changes made in combat). While enabled, Blizzard's Graphics > Use UI Scale is turned off so the two systems do not stack."])
 	local _, autoScaleInit = builder:Checkbox(category, self, "autoScale", L["Auto (Pixel-Perfect)"], L["Automatically pick the scale that maps 1 UI pixel to 1 screen pixel for your resolution."])
 	local scaleSetting, scaleInit = builder:Slider(category, self, "scale", L["Scale"], L["Current UI scale. Auto (Pixel-Perfect) updates this to the calculated value for your resolution."], MIN_SCALE, MAX_SCALE, 0.01)
 

@@ -16,7 +16,8 @@ local _G = _G
 local strmatch, format, tonumber, select = string.match, string.format, tonumber, select
 local hooksecurefunc = hooksecurefunc
 local UnitName = UnitName
-local IsPlayerSpell = IsPlayerSpell
+local C_SpellBook_IsSpellKnown = C_SpellBook.IsSpellKnown
+local PLAYER_SPELLBANK = Enum.SpellBookSpellBank.Player
 local C_Item_GetItemCount = C_Item.GetItemCount
 local C_Item_GetItemInfo = C_Item.GetItemInfo
 local C_UnitAuras_GetAuraDataByIndex = C_UnitAuras.GetAuraDataByIndex
@@ -73,7 +74,7 @@ function Tooltip:AddLineForID(id, linkType, noadd)
 	-- Hovering a mount spell you already know in chat: flag it "Already Learned"
 	-- so you don't relink/relearn it. Only on hover tips (real mount tooltips
 	-- already say this) and only when the spell actually maps to a mount.
-	if self.__isHoverTip and linkType == types.spell and IsPlayerSpell(id) and C_MountJournal_GetMountFromSpell and C_MountJournal_GetMountFromSpell(id) then
+	if self.__isHoverTip and linkType == types.spell and C_SpellBook_IsSpellKnown(id, PLAYER_SPELLBANK) and C_MountJournal_GetMountFromSpell and C_MountJournal_GetMountFromSpell(id) then
 		self:AddLine(LEARNT_STRING)
 	end
 
@@ -144,9 +145,9 @@ function Tooltip:SetupTooltipID()
 			Tooltip.AddLineForID(tip, id, types.spell)
 		end
 		-- Incident (TooltipID, Jul 2026): nameplate aura tips can hand us a *secret*
-		-- sourceUnit. GetUnitName(unit, true) → UnitRealmRelationship, and that API
-		-- is SecretArguments AllowedWhenUntainted — tainted code may not pass a
-		-- secret unit. Skip "From:" when the token itself is secret; otherwise use
+		-- sourceUnit. GetUnitName(unit, true) -> UnitRealmRelationship, and that API
+		-- is SecretArguments AllowedWhenUntainted - tainted code may not pass a
+		-- secret unit. Skip "From:" when the token itself is secret, otherwise use
 		-- UnitName (AllowedWhenTainted) and never ask for the realm suffix path.
 		if not caster or F.IsSecret(caster) then
 			return

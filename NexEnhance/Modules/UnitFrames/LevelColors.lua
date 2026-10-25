@@ -33,7 +33,7 @@
 	    write any fields onto them. Hooks are installed exactly once via a
 	    module-level flag over the known frames (all exist, hidden, from login).
 	  * UnitEffectiveLevel / UnitClassification / UnitIs*BattlePet* are
-	    SecretArguments only (Resources 12.0.7) — returns are plain values.
+	    SecretArguments only (Resources 12.0.7) - returns are plain values.
 
 	Default ON. Lives under Unit Frames.
 --]]
@@ -54,11 +54,11 @@ local UnitBattlePetLevel = UnitBattlePetLevel
 
 -- Follow Blizzard's own palette/idiom for the text we add: gold NORMAL_FONT_COLOR
 -- for the rare/elite/boss markers and RED_FONT_COLOR for an unknown level. These
--- are ColorMixin globals; WrapTextInColorCode() is Blizzard's standard helper.
+-- are ColorMixin globals, WrapTextInColorCode() is Blizzard's standard helper.
 local BOSS_STRING = _G["BOSS"] or "Boss"
 local MARKER_COLOR = NORMAL_FONT_COLOR or CreateColor(1, 0.82, 0)
 local UNKNOWN_COLOR = RED_FONT_COLOR or CreateColor(1, 0.1, 0.1)
--- Prefer the classic creature scale; fall back to the quest difficulty scale
+-- Prefer the classic creature scale, fall back to the quest difficulty scale
 -- (same red->grey-vs-player palette, confirmed present) so a missing global can
 -- never hard-error on the call.
 local GetCreatureDifficultyColor = GetCreatureDifficultyColor or GetQuestDifficultyColor
@@ -79,13 +79,19 @@ local LevelColors = ns:NewModule("LevelColors", "levelColors", { group = "unitfr
 local eventHandles = {}
 local eventsRegistered = false
 
+local scheduleRefresh = F.Debounce(0, function()
+	if ns.db.levelColors.enable then
+		LevelColors:RefreshLevels()
+	end
+end)
+
 local function WhiteNameLevelEnabled()
 	local uft = ns.db.unitFrameText
 	return uft and uft.enable and uft.whiteNameLevel
 end
 
 -- Mirrors GetRelativeDifficultyColor's yellow "difficult" bucket (level within ~4 below
--- to ~2 above player). White mode replaces only that default — not red/orange/green/grey.
+-- to ~2 above player). White mode replaces only that default - not red/orange/green/grey.
 local function IsDefaultYellowDifficultyBand(creatureLevel)
 	local playerLevel = UnitEffectiveLevel("player")
 	if not playerLevel or not creatureLevel then
@@ -282,8 +288,12 @@ local function Refresh()
 	ForEachFrame(ApplyLevel)
 end
 
+function LevelColors:RefreshLevels()
+	Refresh()
+end
+
 -- ---------------------------------------------------------------------------
--- Hooks (installed once over the known frames; no fields written onto them).
+-- Hooks (installed once over the known frames, no fields written onto them).
 -- ---------------------------------------------------------------------------
 local function HookFrame(frame)
 	if type(frame.CheckLevel) ~= "function" then
@@ -309,7 +319,7 @@ end
 -- ---------------------------------------------------------------------------
 local function RestoreBlizzardLevel()
 	-- Our always-show mode hides the skull and rewrites LevelText. CheckLevel
-	-- puts Blizzard's display back — call it when toggling off live.
+	-- puts Blizzard's display back - call it when toggling off live.
 	ForEachFrame(function(f)
 		if type(f.CheckLevel) == "function" then
 			f:CheckLevel()
@@ -318,7 +328,7 @@ local function RestoreBlizzardLevel()
 end
 
 function LevelColors:RefreshEvent()
-	Refresh()
+	scheduleRefresh()
 end
 
 function LevelColors:RegisterModuleEvents()
@@ -327,6 +337,8 @@ function LevelColors:RegisterModuleEvents()
 	end
 	eventsRegistered = true
 	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshEvent")
+	self:TrackEvent(eventHandles, "PLAYER_TARGET_CHANGED", "RefreshEvent")
+	self:TrackEvent(eventHandles, "PLAYER_FOCUS_CHANGED", "RefreshEvent")
 	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED", "RefreshEvent")
 	self:TrackEvent(eventHandles, "INSTANCE_ENCOUNTER_ENGAGE_UNIT", "RefreshEvent")
 end

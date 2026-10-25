@@ -35,7 +35,7 @@ local JunkIcon = ns:NewModule("JunkIcon", "junkIcon", { group = "inventory", tit
 local scratchLocation = ItemLocation and ItemLocation.CreateEmpty and ItemLocation:CreateEmpty()
 
 -- Runs after Blizzard's own UpdateJunkItem. Blizzard hides the icon unless a
--- merchant is open; we re-show it for Poor-quality, sellable items regardless.
+-- merchant is open, we re-show it for Poor-quality, sellable items regardless.
 local function ForceJunkIcon(button, quality, noValue)
 	local icon = button.JunkIcon
 	if not icon or icon:IsShown() then

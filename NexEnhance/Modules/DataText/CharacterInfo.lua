@@ -4,10 +4,10 @@
 	A wealth tooltip on Blizzard's CharacterMicroButton: session gold gain/loss,
 	per-character / per-realm gold (stored account-wide), faction & server
 	totals, Warband bank gold, and backpack-tracked currencies. The button keeps
-	its native click (opens the character pane); we only add the hover tooltip.
+	its native click (opens the character pane), we only add the hover tooltip.
 
 	GetMoney() and currency quantities have no SecretReturns in Resources 12.0.7
-	— store and compare as plain numbers.
+	- store and compare as plain numbers.
 --]]
 
 ---@diagnostic disable: undefined-field, undefined-global
@@ -23,7 +23,9 @@ local GameTooltip = GameTooltip
 local GameTooltip_SetTitle = GameTooltip_SetTitle
 local MicroButtonTooltipText = MicroButtonTooltipText
 local GetMoney = GetMoney
-local MouseIsOver = MouseIsOver
+local function MouseIsOver(region)
+	return region and region:IsMouseOver()
+end
 local BreakUpLargeNumbers = BreakUpLargeNumbers
 
 local C_CurrencyInfo = C_CurrencyInfo
@@ -268,7 +270,7 @@ function CharacterInfo:BuildTooltip(button)
 		GameTooltip:AddDoubleLine(L["Warband"], F.FormatMoney(warbandGold), LBL.r, LBL.g, LBL.b, 1, 1, 1)
 	end
 
-	-- WoW Token current market price (requested on a ticker; cached value here).
+	-- WoW Token current market price (requested on a ticker, cached value here).
 	-- Kept in its own section so it reads as a market rate, not part of totals.
 	if C_WowTokenPublic and C_WowTokenPublic.GetCurrentMarketPrice then
 		RequestTokenPrice()

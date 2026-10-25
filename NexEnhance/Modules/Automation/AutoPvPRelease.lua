@@ -8,7 +8,7 @@
 	actually fighting (or getting farmed again).
 
 	We check for self-resurrection (Soulstones, Reincarnate, etc.) so we don't
-	steal a strategic self-rez. PvP zones only — no accidental release mid-raid.
+	steal a strategic self-rez. PvP zones only - no accidental release mid-raid.
 --]]
 
 ---@diagnostic disable: undefined-field

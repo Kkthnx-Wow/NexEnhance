@@ -3,11 +3,11 @@
 	-------------------------------------------------------------------------
 	Formats the numbers shown on cooldown swipes (action buttons, auras, items,
 	etc.). Uses Blizzard's native SetCountdownFormatter API introduced in
-	Midnight so the client does all per-frame rendering — we run zero OnUpdate
+	Midnight so the client does all per-frame rendering - we run zero OnUpdate
 	timers of our own.
 
 	Architecture
-	  * Hook the shared Cooldown metatable once; every current and future
+	  * Hook the shared Cooldown metatable once, every current and future
 	    cooldown frame is covered with a handful of hooks.
 	  * Each cooldown is tagged on first sighting so heavy init work (font,
 	    formatter, size-changed hook, min-duration) only runs once per frame,
@@ -79,7 +79,7 @@ local Cooldowns = ns:NewModule("Cooldowns", "cooldowns", { group = "actionbars",
 -- ---------------------------------------------------------------------------
 local MINUTE, HOUR, DAY, WEEK = 60, 3600, 86400, 604800
 
--- m/h/d/w suffix; coloured styles tint the suffix with the brand colour.
+-- m/h/d/w suffix, coloured styles tint the suffix with the brand colour.
 local function UnitFormat(colored, suffix)
 	if colored then
 		return "%d" .. UNIT .. suffix .. R
@@ -134,7 +134,7 @@ local formatter = C_StringUtil.CreateNumericRuleFormatter()
 -- Weak keys: when a cooldown frame is collected, drop it from the set too.
 local hookedCooldowns = setmetatable({}, { __mode = "k" })
 
--- Width of a default action-button cooldown; the scale baseline. Re-read in
+-- Width of a default action-button cooldown, the scale baseline. Re-read in
 -- InstallHooks once the template frame is available.
 local SCALE_BASE = 36
 
@@ -142,7 +142,7 @@ local function GetStyle()
 	return ns.db.cooldowns.style or 1
 end
 
--- 12.0.7 SetFont rejects "NONE"; omit flags or pass "" instead.
+-- 12.0.7 SetFont rejects "NONE", omit flags or pass "" instead.
 local function NormalizeFontFlags(flags)
 	if not flags or flags == "NONE" or flags == "None" then
 		return ""
@@ -229,7 +229,7 @@ local function ApplyMinDuration(cooldown)
 	end
 end
 
--- HookScript passes (self, width, height); one shared handler, no per-frame
+-- HookScript passes (self, width, height), one shared handler, no per-frame
 -- closure.
 local function OnCooldownSizeChanged(cooldown)
 	ApplyFont(cooldown)
@@ -237,7 +237,7 @@ end
 
 -- Hook handler shared by all cooldown methods. hooksecurefunc passes the
 -- cooldown as the first argument (extra args like start/duration are secret
--- values in Midnight — we intentionally ignore them here).
+-- values in Midnight - we intentionally ignore them here).
 --
 -- `noCooldownCount` is the shared opt-out flag other cooldown addons use too:
 -- frames marked with it - e.g. percentage-display swipes - are left alone.
@@ -254,14 +254,14 @@ local function OnCooldownSet(cooldown, arg2)
 	if not Cooldowns:IsEnabled() then
 		return
 	end
-	-- SetCooldown passes (start, duration) numbers; only DurationObject hooks
+	-- SetCooldown passes (start, duration) numbers, only DurationObject hooks
 	-- carry a maskable object in arg2 (SetCooldownFromDurationObject, etc.).
 	local argType = type(arg2)
 	if (argType == "table" or argType == "userdata") and arg2.IsZero then
 		F.MaskCooldownSwipeFromDurationObject(cooldown, arg2)
 	end
 	if hookedCooldowns[cooldown] then
-		-- Blizzard may reset the countdown FontString each tick; keep our size.
+		-- Blizzard may reset the countdown FontString each tick, keep our size.
 		ApplyFont(cooldown)
 		return
 	end
@@ -273,7 +273,7 @@ local function OnCooldownSet(cooldown, arg2)
 	ApplyMinDuration(cooldown)
 	cooldown:HookScript("OnSizeChanged", OnCooldownSizeChanged)
 	if ns.db.cooldowns.scaleText then
-		-- Cooldown width is often 0 on the first SetCooldown; re-measure next frame.
+		-- Cooldown width is often 0 on the first SetCooldown, re-measure next frame.
 		C_Timer.After(0, function()
 			if cooldown and hookedCooldowns[cooldown] then
 				ApplyFont(cooldown)
@@ -341,7 +341,7 @@ function Cooldowns:RegisterOptions(category, builder)
 		{ value = "THICKOUTLINE", label = L["Thick Outline"] },
 		{ value = "MONOCHROME", label = L["Monochrome"] },
 	})
-	builder:Slider(category, self, "mmssThreshold", L["Minutes Format Threshold"], L["Below this many seconds the countdown shows raw seconds; at or above it switches to mm:ss."], 60, 300, 5)
+	builder:Slider(category, self, "mmssThreshold", L["Minutes Format Threshold"], L["Below this many seconds the countdown shows raw seconds, at or above it switches to mm:ss."], 60, 300, 5)
 	builder:Slider(category, self, "minDuration", L["Minimum Cooldown Duration"], L["Hide countdown text for cooldowns shorter than this many seconds. Keeps 1.5s GCDs and other short cooldowns quiet."], 0, 10, 0.5)
 	builder:Checkbox(category, self, "scaleText", L["Scale Cooldown Text"], L["Grow or shrink countdown numbers with the button size. Turn off for a fixed font size on every cooldown."])
 	builder:Slider(category, self, "minScale", L["Minimum Text Scale"], L["Hide the countdown text once its scale drops below this fraction of a normal button (needs Scale Cooldown Text)."], 0, 1, 0.05)
@@ -355,7 +355,7 @@ function Cooldowns:InstallHooks()
 		return
 	end
 
-	-- All cooldown frames share one metatable; hooking it covers them all.
+	-- All cooldown frames share one metatable, hooking it covers them all.
 	local template = ActionButton1Cooldown
 	if not template then
 		return

@@ -15,7 +15,7 @@
 	  * BoP / soulbound rolls raise CONFIRM_LOOT_ROLL / CONFIRM_DISENCHANT_ROLL,
 	    answered with ConfirmLootRoll(rollID, rollType).
 
-	Midnight: GetLootRollItemInfo quality is not SecretReturns in Resources 12.0.7 —
+	Midnight: GetLootRollItemInfo quality is not SecretReturns in Resources 12.0.7 -
 	rarity gating uses plain comparisons. Leave the roll alone when quality is nil.
 --]]
 
@@ -114,7 +114,7 @@ function AutoGreed:START_LOOT_ROLL(rollID)
 end
 
 -- Both confirm events share the same shape (rollID, rollType). We only answer
--- prompts for rolls we started; anything else is the player's decision.
+-- prompts for rolls we started, anything else is the player's decision.
 function AutoGreed:ConfirmRoll(rollID, rollType)
 	local cfg = ns.db.autoGreed
 	if not cfg.enable or not cfg.autoConfirm then
@@ -183,7 +183,7 @@ function AutoGreed:RegisterOptions(category, builder)
 	local _, maxLevelInit = builder:Checkbox(category, self, "maxLevelOnly", L["Max Level Only"], L["Only auto-roll while at the expansion's max level."])
 	local _, deInit = builder:Checkbox(category, self, "preferDisenchant", L["Prefer Disenchant"], L["Disenchant instead of Greed whenever you are able to."])
 	local _, raresInit = builder:Checkbox(category, self, "includeRares", L["Include Rares"], L["Also auto-roll on Rare (blue) items, not just Uncommon (green)."])
-	local _, bopInit = builder:Checkbox(category, self, "skipBoP", L["Skip Bind on Pickup"], L["Never auto-roll on Bind-on-Pickup items; leave those for you to decide."])
+	local _, bopInit = builder:Checkbox(category, self, "skipBoP", L["Skip Bind on Pickup"], L["Never auto-roll on Bind-on-Pickup items, leave those for you to decide."])
 	local _, confirmInit = builder:Checkbox(category, self, "autoConfirm", L["Auto-Confirm"], L["Automatically confirm the bind/soulbound popup for rolls this module made."])
 
 	builder:DependsOn(maxLevelInit, enableInit)

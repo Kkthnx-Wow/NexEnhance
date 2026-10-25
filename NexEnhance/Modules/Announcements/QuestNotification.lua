@@ -11,7 +11,7 @@
 	string parsing, fires for every quest regardless of tracking.
 --]]
 
--- The Lua Language Server types quest IDs as optional; silence those false positives.
+-- The Lua Language Server types quest IDs as optional, silence those false positives.
 ---@diagnostic disable: param-type-mismatch, need-check-nil
 local _, ns = ...
 local F, L = ns.F, ns.L
@@ -23,7 +23,7 @@ local C_Timer = C_Timer
 local PlaySound, GetQuestLink = PlaySound, GetQuestLink
 local GetQuestProgressBarPercent = GetQuestProgressBarPercent
 local C_PartyInfo = C_PartyInfo
--- C_ChatInfo.SendChatMessage is the live API; the global SendChatMessage is now
+-- C_ChatInfo.SendChatMessage is the live API, the global SendChatMessage is now
 -- a deprecated shim that forwards to it (Blizzard_DeprecatedChatInfo).
 local SendChatMessage = C_ChatInfo.SendChatMessage
 local C_QuestLog_GetInfo = C_QuestLog.GetInfo
@@ -51,7 +51,7 @@ end
 
 -- Map-popup world quests: C_QuestLog.IsWorldQuest, tag worldQuestType, or
 -- QuestClassification.WorldQuest (see QuestUtils IsQuestWorldQuest_Internal).
--- Do NOT use IsQuestTask + timer — that catches weeklies, zone events, and campaign tasks.
+-- Do NOT use IsQuestTask + timer - that catches weeklies, zone events, and campaign tasks.
 local function IsWorldQuestLike(questID)
 	if not questID then
 		return false
@@ -79,7 +79,7 @@ local function IsWorldQuestLike(questID)
 	return false
 end
 
--- Profession world quests (crafting orders) stay silent — too noisy even when WQ
+-- Profession world quests (crafting orders) stay silent - too noisy even when WQ
 -- announcements are enabled.
 local function IsProfessionWorldQuest(questID)
 	local tagInfo = C_QuestLog_GetQuestTagInfo(questID)
@@ -241,7 +241,7 @@ local function completeBatchText(questIDs)
 	return format("%s %s", prefix, table.concat(parts, ", "))
 end
 
--- Progress cache (declared before completion queue — QueueQuestComplete clears it).
+-- Progress cache (declared before completion queue - QueueQuestComplete clears it).
 local objectiveProgress = {}
 
 local function clearQuestProgress(questID)
@@ -372,7 +372,7 @@ local function ScanQuestProgress(questID, announce)
 			local key = questID * 100 + index
 			if o.type == "progressbar" then
 				-- Percent-style objective ("73% complete"). The count fields read 0
-				-- here; the real value lives behind GetQuestProgressBarPercent.
+				-- here, the real value lives behind GetQuestProgressBarPercent.
 				local pct = GetQuestProgressBarPercent and GetQuestProgressBarPercent(questID)
 				if pct and pct > 0 then
 					local step = floor(pct / 20) -- one chime per 20%, not per point
@@ -483,7 +483,7 @@ local function FindQuestTurnedIn(_, questID)
 	if not questID then
 		return
 	end
-	-- World quests complete via QUEST_TURNED_IN; regular quests via the log scan.
+	-- World quests complete via QUEST_TURNED_IN, regular quests via the log scan.
 	if IsWorldQuestLike(questID) then
 		QueueQuestComplete(questID)
 	else

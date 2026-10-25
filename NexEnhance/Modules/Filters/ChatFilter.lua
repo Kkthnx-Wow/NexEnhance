@@ -29,7 +29,7 @@ local wipe = wipe
 local GetTime, Ambiguate = GetTime, Ambiguate
 local IsGuildMember = IsGuildMember
 local C_PartyInfo_IsGUIDInGroup = C_PartyInfo and C_PartyInfo.IsGUIDInGroup
-local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
+local ChatFrame_AddMessageEventFilter = ChatFrameUtil.AddMessageEventFilter
 local C_FriendList_IsFriend = C_FriendList.IsFriend
 local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet.GetGameAccountInfoByGUID
 local C_Item_GetItemInfo = C_Item.GetItemInfo
@@ -58,7 +58,7 @@ ns:RegisterDefaults({
 
 local ChatFilter = ns:NewModule("ChatFilter", "chatFilter", { group = "filters", title = L["Chat Filter"], order = 10 })
 
--- Predefined spam keywords (stored lowercase; matching is case-insensitive). A line
+-- Predefined spam keywords (stored lowercase, matching is case-insensitive). A line
 -- must hit `matches` of these before it is hidden (default 3). Curated from
 -- current Midnight services/trade boosting spam: WTS carries, M+, raid bundles,
 -- gold-only payment lines, commercial site links, and copy-paste booking CTAs.
@@ -413,7 +413,7 @@ local function ItemGemText(link)
 			if socket and socketWatchList[socket] then
 				if socket == "PRIMORDIAL" then
 					socket = "META"
-				end -- texture missing; reuse meta
+				end -- texture missing, reuse meta
 				socketParts[#socketParts + 1] = GetSocketTexture(socket, count)
 			end
 		end
@@ -491,7 +491,7 @@ local ITEMLEVEL_EVENTS = {
 	"CHAT_MSG_INSTANCE_CHAT_LEADER",
 }
 
--- Filters are installed once; each behaviour is gated live by its cfg flag so
+-- Filters are installed once, each behaviour is gated live by its cfg flag so
 -- the individual toggles apply without a reload (ChatFrame message filters
 -- cannot be cleanly toggled per-flag, so we gate inside the callbacks instead).
 function ChatFilter:Install()
@@ -585,7 +585,7 @@ function ChatFilter:OnSettingChanged()
 end
 
 function ChatFilter:RegisterOptions(category, builder)
-	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat Filter"], L["Filter chat spam and decorate item links (installs on enable; individual toggles below apply live)."])
+	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Chat Filter"], L["Filter chat spam and decorate item links (installs on enable, individual toggles below apply live)."])
 	local _, spamInit = builder:Checkbox(category, self, "spamFilter", L["Spam Filter"], L["Hide messages matching blacklisted keywords or repeated near-identical spam."])
 	local _, matchesInit = builder:Slider(category, self, "matches", L["Match Threshold"], L["How many blacklisted keywords a message must contain before it is hidden."], 1, 6, 1)
 	local _, strangerInit = builder:Checkbox(category, self, "blockStranger", L["Block Strangers"], L["Hide whispers from anyone who is not a friend, guild member or group member."])

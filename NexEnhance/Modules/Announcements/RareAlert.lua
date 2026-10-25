@@ -4,9 +4,9 @@
 	Announces nearby rares and world events when their vignette hits the minimap:
 	centre-screen banner, optional sound, optional map link in chat.
 
-	Event-driven — VIGNETTE_MINIMAP_UPDATED only when useful (skipped in
+	Event-driven - VIGNETTE_MINIMAP_UPDATED only when useful (skipped in
 	warfront/scenario zones). Toggles live without reload. Handler is
-	cheapest-filter-first; de-dupe is bounded via F.CacheSet. Each vignette
+	cheapest-filter-first, de-dupe is bounded via F.CacheSet. Each vignette
 	GUID is processed once so ordinary vignettes don't re-query every tick.
 
 	Detection filters:
@@ -16,7 +16,7 @@
 
 	Right-click shares the rare plus a map-pin link. Custom pin text gets dropped
 	by the server, so the broadcast uses the default map-pin hyperlink. Group
-	when grouped, General when solo; short cooldown on repeat shares.
+	when grouped, General when solo, short cooldown on repeat shares.
 --]]
 
 local _, ns = ...
@@ -267,7 +267,7 @@ local function AtlasIcon(atlas)
 end
 
 -- Treasure/container and lore-object vignettes also carry "Vignette" in their
--- atlas name. RareScanner buckets NPC/event atlases explicitly; we use the same
+-- atlas name. RareScanner buckets NPC/event atlases explicitly, we use the same
 -- allowlist plus a VignetteKill/VignetteEvent fallback for new patches.
 local RARE_NPC_ATLASES = {
 	VignetteKill = true,
@@ -331,7 +331,7 @@ local function SetTrackedWaypoint(mapID, x, y, name)
 		return true
 	end
 
-	-- Blizzard pins refuse some maps (instances, etc.); skip instead of erroring.
+	-- Blizzard pins refuse some maps (instances, etc.), skip instead of erroring.
 	if C_Map and C_Map.SetUserWaypoint and UiMapPoint and UiMapPoint.CreateFromCoordinates then
 		if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then
 			return false
@@ -348,7 +348,7 @@ local function SetTrackedWaypoint(mapID, x, y, name)
 end
 
 -- Pick the chat channel to broadcast to. Group members benefit most, so prefer
--- the active group channel; fall back to General chat when solo.
+-- the active group channel, fall back to General chat when solo.
 local function GetAnnounceChannel()
 	if IsInGroup(LE_PARTY_CATEGORY_INSTANCE) then
 		return "INSTANCE_CHAT"
@@ -365,7 +365,7 @@ local function GetAnnounceChannel()
 end
 
 -- Plumber-style: skip sharing if another player already posted this map pin.
--- Must not match our own "Rare Alert To Chat" lines (NexEnhance: … [name (x, y)]).
+-- Must not match our own "Rare Alert To Chat" lines (NexEnhance: ... [name (x, y)]).
 local function ChatAlreadyAnnouncedRare(mapID, x, y)
 	local pool = ChatFrame1 and ChatFrame1.fontStringPool
 	if not pool or not pool.EnumerateActive then
@@ -423,7 +423,7 @@ local function AnnounceRare(f)
 	local link = format("|cffffff00|Hworldmap:%d:%.0f:%.0f|h[%s]|h|r", mapID, x * 10000, y * 10000, MAP_PIN_HYPERLINK)
 	local msg = format("%s %s", name, link)
 
-	-- C_ChatInfo.SendChatMessage is the live API; the global SendChatMessage is a
+	-- C_ChatInfo.SendChatMessage is the live API, the global SendChatMessage is a
 	-- deprecated shim that just forwards to it (Blizzard_DeprecatedChatInfo).
 	C_ChatInfo.SendChatMessage(msg, channel, nil, target)
 	lastAnnounceAt = now
@@ -443,7 +443,7 @@ local function Popup_Hide()
 		GameTooltip:Hide()
 	end
 	-- The popup holds a secure child, so hiding it is a protected action in
-	-- combat; defer the actual Hide to PLAYER_REGEN_ENABLED.
+	-- combat, defer the actual Hide to PLAYER_REGEN_ENABLED.
 	if InCombatLockdown() then
 		popup.pendingHide = true
 		return
@@ -461,18 +461,18 @@ local function Popup_FlushPending()
 end
 
 -- Insecure post-hook for the secure overlay's click: the protected /targetexact
--- macro (if any) has already run; here we just drop the waypoint and dismiss.
+-- macro (if any) has already run, here we just drop the waypoint and dismiss.
 -- PostClick is safe on a secure button (unlike SetScript("OnClick"), which taints it).
 --
 -- Incident (RareAlert, Jul 2026): Cast On Key Down leaves ActionButtonUseKeyDown=1.
 -- SecureActionButton_OnClick then only runs the macro on mouse-*down*, but we only
--- registered AnyUp — so left-click did waypoint/dismiss while /targetexact never
+-- registered AnyUp - so left-click did waypoint/dismiss while /targetexact never
 -- fired (and users saw "You can't do that right now."). RareScanner registers
--- AnyUp+AnyDown; Plumber pins useOnKeyDown=false. We do both, and only handle
+-- AnyUp+AnyDown, Plumber pins useOnKeyDown=false. We do both, and only handle
 -- PostClick on mouse-up so dual registration doesn't double-track / double-hide.
--- Do NOT SetCVar in PreClick — fights ActionKeyDown and is blocked in combat.
+-- Do NOT SetCVar in PreClick - fights ActionKeyDown and is blocked in combat.
 local function Popup_PostClick(self, button, down)
-	-- useOnKeyDown is forced false on the overlay; action + this hook belong on up.
+	-- useOnKeyDown is forced false on the overlay, action + this hook belong on up.
 	if down then
 		return
 	end
@@ -483,7 +483,7 @@ local function Popup_PostClick(self, button, down)
 			F.Print(format(L["Tracking %s."], F.Colorize(f.rareName or UNKNOWN, "green")))
 		end
 	elseif button == "RightButton" then
-		-- Right-click shares in chat; popup stays up so you can track or share again after cooldown.
+		-- Right-click shares in chat, popup stays up so you can track or share again after cooldown.
 		-- Never broadcast a preview/Edit Mode sample.
 		if not (f.testing or f.shownForEdit) then
 			AnnounceRare(f)
@@ -496,7 +496,7 @@ local function Popup_PostClick(self, button, down)
 end
 
 -- Rebuild the secure click macro for the rare currently shown. macrotext is a
--- protected attribute, so this only works out of combat; in combat we leave the
+-- protected attribute, so this only works out of combat, in combat we leave the
 -- previous macro in place (targeting just won't update until you drop combat).
 local function Popup_UpdateMacro(f, targetName)
 	if not f.secure or InCombatLockdown() then
@@ -517,7 +517,7 @@ end
 
 -- Find a usable unit token for a GUID by checking the units we can actually
 -- reach (target/mouseover/nameplates). Used to grab a 2D portrait when the rare
--- happens to be on screen; otherwise we fall back to the vignette icon. GUID
+-- happens to be on screen, otherwise we fall back to the vignette icon. GUID
 -- reads can be secret in instances, so every compare is guarded.
 local function GetUnitForGUID(guid)
 	if not guid then
@@ -643,7 +643,7 @@ local function BuildPopup()
 	f.coords:SetTextColor(0.7, 0.7, 0.7)
 
 	-- Secure overlay: a SecureActionButtonTemplate covering the banner. Left-click
-	-- runs the protected /targetexact macro (set out of combat via Popup_UpdateMacro);
+	-- runs the protected /targetexact macro (set out of combat via Popup_UpdateMacro).
 	-- the waypoint + dismiss happen in the safe PostClick post-hook. The button is
 	-- created once and never individually shown/hidden, so its visibility simply
 	-- follows the parent and we never touch a protected frame during combat.
@@ -756,7 +756,7 @@ local function Popup_ShowPreview()
 	if mapID and C_Map and C_Map.GetPlayerMapPosition then
 		local pos = C_Map.GetPlayerMapPosition(mapID, "player")
 		if pos then
-			-- GetPlayerMapPosition: SecretArguments only — plain GetXY.
+			-- GetPlayerMapPosition: SecretArguments only - plain GetXY.
 			local px, py = pos:GetXY()
 			if px and py then
 				x, y = px, py
@@ -904,7 +904,7 @@ local function OnVignette(_, vignetteGUID)
 	local info = C_VignetteInfo.GetVignetteInfo(vignetteGUID)
 	if not info then
 		return
-	end -- transient; leave uncached so it can resolve later
+	end -- transient, leave uncached so it can resolve later
 
 	-- Mark processed exactly once (bounded). Ordinary vignettes stop here and
 	-- never re-query GetVignetteInfo on subsequent minimap ticks.
@@ -940,7 +940,7 @@ local function OnVignette(_, vignetteGUID)
 	local cfg = db()
 	local icon = AtlasIcon(info.atlasName)
 
-	-- info.name can be a secret value inside instances on 12.0; never run a
+	-- info.name can be a secret value inside instances on 12.0, never run a
 	-- string op (format/concat) on it. Fall back to UNKNOWN when guarded.
 	local rawName = info.name
 	local name = (rawName and F.NotSecret(rawName)) and rawName or UNKNOWN
@@ -949,7 +949,7 @@ local function OnVignette(_, vignetteGUID)
 	UIErrorsFrame:AddMessage(format("%s%s %s%s", C.InfoColor, L["Rare Found"], icon, name))
 
 	-- Resolve the rare's position once (shared by the chat link and the popup).
-	-- GetVignettePosition: SecretArguments only — plain GetXY.
+	-- GetVignettePosition: SecretArguments only - plain GetXY.
 	local mapID, x, y
 	if cfg.printToChat or cfg.showPopup then
 		mapID = C_Map_GetBestMapForUnit and C_Map_GetBestMapForUnit("player")
@@ -1028,7 +1028,7 @@ local function Setup()
 	RebuildIgnored()
 	-- Build the popup now so its Edit Mode mover is registered up front (it can
 	-- then be positioned via /nex rare without waiting for a real rare). Skip if
-	-- we're in combat - the secure child can't be configured then; it'll build
+	-- we're in combat - the secure child can't be configured then, it'll build
 	-- lazily on the next out-of-combat rare or /nex rare.
 	if db().showPopup and not InCombatLockdown() then
 		BuildPopup()

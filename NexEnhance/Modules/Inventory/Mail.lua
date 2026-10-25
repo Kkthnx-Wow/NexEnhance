@@ -38,7 +38,7 @@ local DELETE = _G.DELETE
 local ERR_MAIL_DELETE_ITEM_ERROR = _G.ERR_MAIL_DELETE_ITEM_ERROR
 local ERR_INV_FULL = _G.ERR_INV_FULL
 -- Blizzard_MailFrame loads at login (DefaultState: enabled), so these globals
--- exist; fall back to current live values just in case the constants move.
+-- exist, fall back to current live values just in case the constants move.
 local MAX_RECEIVE = _G.ATTACHMENTS_MAX_RECEIVE or 16
 local PER_PAGE = _G.INBOXITEMS_TO_DISPLAY or 7
 local OPEN_ALL_MAIL_MIN_DELAY = 0.15

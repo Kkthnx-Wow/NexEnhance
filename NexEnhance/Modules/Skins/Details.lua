@@ -8,7 +8,7 @@
 
 	Details! is optional third-party. Style on enable if loaded, else wait for
 	ADDON_LOADED. New windows caught via DETAILS_INSTANCE_OPEN (no OnUpdate).
-	SetBarSettings / SetBarTextSettings skipped — Details bar texture/font want
+	SetBarSettings / SetBarTextSettings skipped - Details bar texture/font want
 	SharedMedia *names* and we don't register a statusbar/font for it.
 --]]
 
@@ -89,7 +89,7 @@ local function SetupInstance(instance)
 	if instance.HideMainIcon then
 		instance:HideMainIcon(false)
 	end
-	-- Drops Details' own backdrop; upstream notes this can block resizing - set
+	-- Drops Details' own backdrop, upstream notes this can block resizing - set
 	-- back to "Details Ground" if that ever becomes an issue.
 	if instance.SetBackdropTexture then
 		instance:SetBackdropTexture("None")

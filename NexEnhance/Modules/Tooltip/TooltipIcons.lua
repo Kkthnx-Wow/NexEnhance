@@ -19,7 +19,7 @@ local C_MountJournal_GetMountInfoByID = C_MountJournal and C_MountJournal.GetMou
 local C_Item_GetItemIconByID = C_Item.GetItemIconByID
 local C_Spell_GetSpellTexture = C_Spell.GetSpellTexture
 -- |T texcoord tail: full 64x64 texture, cropped 5..59 on both axes to shave the
--- ugly default icon border. Looks like keyboard mashing; it isn't. Reused for
+-- ugly default icon border. Looks like keyboard mashing, it isn't. Reused for
 -- every inline icon rewrite below so they all crop identically.
 local newString = "0:0:64:64:5:59:5:59"
 
@@ -100,7 +100,7 @@ function Tooltip:ReskinTooltipIcons()
 		end
 	end
 
-	-- These tooltip setters may be absent on some clients; guard each hook so a
+	-- These tooltip setters may be absent on some clients, guard each hook so a
 	-- missing method degrades quietly instead of erroring during setup.
 	if GameTooltip.SetUnitAura then
 		hooksecurefunc(GameTooltip, "SetUnitAura", function(tip)

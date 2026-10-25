@@ -5,8 +5,8 @@
 	Warband bank when you open the bank frame. 
 
 	When you open the bank, surplus gold above your target goes into the Warband
-	bank; if you're below target, we pull from Warband (only when "Allow Withdraw"
-	is checked — off by default so alts can't drain shared savings).
+	bank, if you're below target, we pull from Warband (only when "Allow Withdraw"
+	is checked - off by default so alts can't drain shared savings).
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -148,7 +148,7 @@ end
 
 function AutoWarbandGold:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Auto Warband Gold"], L["Automatically sync gold with your Account/Warband bank when opening the Bank Frame."])
-	local _, targetInit = builder:Slider(category, self, "targetGold", L["Target Gold"], L["The amount of gold to keep on your character. Gold above this amount is deposited; if below, gold is withdrawn (if allowed)."], 100, 1000000, 100, "%d")
+	local _, targetInit = builder:Slider(category, self, "targetGold", L["Target Gold"], L["The amount of gold to keep on your character. Gold above this amount is deposited, if below, gold is withdrawn (if allowed)."], 100, 1000000, 100, "%d")
 	local _, allowInit = builder:Checkbox(category, self, "allowWithdraw", L["Allow Withdraw"], L["Allow withdrawing gold from the Warband bank if your character has less than the target amount."])
 
 	builder:DependsOn(targetInit, enableInit)

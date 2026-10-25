@@ -75,7 +75,7 @@ function SerializeTable(tbl)
 end
 
 -- ---------------------------------------------------------------------------
--- Base64 codec (no bit library dependency; plain arithmetic)
+-- Base64 codec (no bit library dependency, plain arithmetic)
 -- ---------------------------------------------------------------------------
 local B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 local B64_LOOKUP = {}
@@ -197,7 +197,7 @@ local function ParseLegacyImport(text)
 	end
 
 	-- Sandbox: run with an empty environment so the chunk can only build and
-	-- return a table; any attempt to call a global errors out under pcall.
+	-- return a table, any attempt to call a global errors out under pcall.
 	if setfenv then
 		setfenv(chunk, {})
 	end

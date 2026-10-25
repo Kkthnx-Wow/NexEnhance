@@ -181,7 +181,7 @@ function ChatCopy:OnEnable()
 	copyButton = CreateCopyButton(_G["ChatFrame1"])
 
 	-- Follow the active tab. FCFDock_SelectWindow(dock, chatFrame) is called for
-	-- every tab change; restrict to the General dock so a second dock can't steal
+	-- every tab change, restrict to the General dock so a second dock can't steal
 	-- the button.
 	if _G["FCFDock_SelectWindow"] then
 		hooksecurefunc("FCFDock_SelectWindow", function(dock, chatFrame)

@@ -8,7 +8,7 @@
 local _, ns = ...
 local L = ns.L
 
-local ChatFrame_AddMessageEventFilter = ChatFrame_AddMessageEventFilter
+local ChatFrame_AddMessageEventFilter = ChatFrameUtil.AddMessageEventFilter
 
 ns:RegisterDefaults({
 	systemChatFilter = {
@@ -71,11 +71,11 @@ function SystemChatFilter:OnDisable()
 	if not installed then
 		return
 	end
-	-- Blizzard provides no remove API; filter stays registered but no-ops when disabled.
+	-- Blizzard provides no remove API, filter stays registered but no-ops when disabled.
 end
 
 function SystemChatFilter:OnSettingChanged()
-	-- Filter callback reads ns.db live; nothing to reinstall.
+	-- Filter callback reads ns.db live, nothing to reinstall.
 end
 
 function SystemChatFilter:RegisterOptions(category, builder)

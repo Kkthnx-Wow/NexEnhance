@@ -113,7 +113,7 @@ local function MapDrag_OnMouseDown(_, button)
 		return
 	end
 	local wmf = _G.WorldMapFrame
-	-- Only the windowed map is positioned by our anchor; the maximized map is
+	-- Only the windowed map is positioned by our anchor, the maximized map is
 	-- centred by Blizzard, so leave it alone (otherwise mouse-up would re-anchor
 	-- it to the small-map slot and it would jump around).
 	if not cfg.smallMap or wmf:IsMaximized() then
@@ -455,7 +455,7 @@ function WorldMap:Setup()
 		BuildCoords()
 	end
 
-	-- Small-map hooks are installed once; each is gated by cfg.smallMap so the
+	-- Small-map hooks are installed once, each is gated by cfg.smallMap so the
 	-- option toggles live on the next open / maximize change.
 	hooksecurefunc(wmf, "Maximize", SetLargeWorldMap)
 	hooksecurefunc(wmf, "Minimize", SetSmallWorldMap)

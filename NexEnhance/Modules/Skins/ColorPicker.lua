@@ -9,12 +9,12 @@
 	  * R / G / B input boxes (0-255) that drive the colour wheel and update
 	    live as the wheel/value/alpha is dragged (two-way sync).
 	  * A row of class-colour swatches (canonical CLASS_SORT_ORDER) - click one
-	    to snap the picker to that class colour; hover for its name.
+	    to snap the picker to that class colour, hover for its name.
 	  * The native Hex box is reskinned to match and slotted in as the aligned
-	    4th row of the column (R / G / B / #); Blizzard already keeps its text
+	    4th row of the column (R / G / B / #), Blizzard already keeps its text
 	    synced with the wheel, so we only restyle and reposition it.
 
-	The modern frame already has a DragBar — we don't add our own movable header.
+	The modern frame already has a DragBar - we don't add our own movable header.
 	Built with F.CreateEditBox / F.CreateFS / F.CreateBackdrop. Defensive checks
 	on Content / ColorPicker / swatch so a future layout change degrades quietly.
 --]]
@@ -164,7 +164,7 @@ local function AnchorRow(box, picker, index)
 	box:SetPoint("TOPLEFT", picker.nexSwatch, "BOTTOMLEFT", 0, -((index - 1) * BOX_STRIDE) - BOX_TOP_GAP)
 end
 
--- A right-justified label sitting just left of `box`; labels line up because the
+-- A right-justified label sitting just left of `box`, labels line up because the
 -- boxes share a left edge.
 local function AddRowLabel(box, text, r, g, b)
 	local label = F.CreateFS(box, 13, text, "OVERLAY")
@@ -279,7 +279,7 @@ local function Enhance()
 
 	local content = picker.Content
 	if not (content and content.ColorPicker and content.ColorSwatchCurrent) then
-		return -- unexpected layout; leave Blizzard's frame untouched
+		return -- unexpected layout, leave Blizzard's frame untouched
 	end
 	picker.nexEnhanced = true
 
@@ -322,7 +322,7 @@ local function TryEnhance()
 end
 
 function ColorPicker:ADDON_LOADED(addon)
-	-- Blizzard_ColorPicker can be a separate (load-on-demand) addon; enhance as
+	-- Blizzard_ColorPicker can be a separate (load-on-demand) addon, enhance as
 	-- soon as the frame exists. Enhance() self-guards, so extra fires are cheap.
 	if addon == "Blizzard_ColorPicker" or (_G["ColorPickerFrame"] and _G["ColorPickerFrame"].Content) then
 		TryEnhance()
@@ -339,7 +339,7 @@ function ColorPicker:OnEnable()
 end
 
 function ColorPicker:OnSettingChanged(key, value)
-	-- The enhancement only adds widgets; it can't be cleanly torn down live, so
+	-- The enhancement only adds widgets, it can't be cleanly torn down live, so
 	-- enabling applies immediately and disabling takes effect on the next reload.
 	if key == "enable" and value then
 		if not TryEnhance() then

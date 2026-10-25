@@ -35,7 +35,6 @@ local C_TransmogCollection_GetItemInfo = C_TransmogCollection and C_TransmogColl
 local C_TransmogCollection_PlayerHasTransmogItemModifiedAppearance = C_TransmogCollection and C_TransmogCollection.PlayerHasTransmogItemModifiedAppearance
 local C_HousingCatalog = _G.C_HousingCatalog
 local C_HousingCatalog_GetCatalogEntryInfoByItem = C_HousingCatalog and C_HousingCatalog.GetCatalogEntryInfoByItem
-local C_HousingCatalog_GetCatalogEntryInfo = C_HousingCatalog and C_HousingCatalog.GetCatalogEntryInfo
 local C_HousingCatalog_GetDecorTotalOwnedCount = C_HousingCatalog and C_HousingCatalog.GetDecorTotalOwnedCount
 local C_HousingCatalog_RequestHousingMarketInfoRefresh = C_HousingCatalog and C_HousingCatalog.RequestHousingMarketInfoRefresh
 local C_HousingCatalog_SearchCatalogCategories = C_HousingCatalog and C_HousingCatalog.SearchCatalogCategories
@@ -49,17 +48,9 @@ local COLLECTED = _G.COLLECTED
 local ITEM_SPELL_KNOWN = _G.ITEM_SPELL_KNOWN
 
 local COLOR = { r = 0.1, g = 1, b = 0.1 }
-local HOUSING_WARMUP_SEARCH_OPTIONS = { withOwnedEntriesOnly = true, includeFeaturedCategory = false }
-
--- Housing catalog "owned stack" subtypes (a record you actually own).
-local OWNED_MODIFIED_STACK, OWNED_UNMODIFIED_STACK
-do
-	local sub = Enum and Enum.HousingCatalogEntrySubtype
-	if sub then
-		OWNED_MODIFIED_STACK = sub.OwnedModifiedStack
-		OWNED_UNMODIFIED_STACK = sub.OwnedUnmodifiedStack
-	end
-end
+-- 12.0.5 renamed withOwnedEntriesOnly to withStoredEntriesOnly, the old key is
+-- only honoured while the deprecation bridge is loaded.
+local HOUSING_WARMUP_SEARCH_OPTIONS = { withStoredEntriesOnly = true, includeFeaturedCategory = false }
 
 -- Item classes whose "known" state is worth checking via a tooltip scan.
 local knowables = {
@@ -116,54 +107,19 @@ local function IsCosmeticCollected(link)
 end
 
 -- True when a housing catalog entry represents something the player owns:
--- stored copies (totalNumStored), placed copies (totalNumPlaced), unredeemed
--- copies (remainingRedeemable), or an "owned stack" subtype. Falls back to
--- deprecated quantity/numPlaced when Blizzard's compat bridge isn't loaded.
-local function OwnedCount(info, primaryField, legacyField)
-	local v = info[primaryField]
-	if v == nil then
-		v = info[legacyField]
-	end
-	-- HousingCatalogEntryInfo quantity fields: no ConditionalSecret.
-	return v and v > 0
-end
-
+-- stored copies (totalNumStored, summed across dye variants), placed copies
+-- (totalNumPlaced) or unredeemed copies (remainingRedeemable). Since 12.0.5 an
+-- entry is one record, not one stack per variant, so the totals are the whole
+-- story and no per-stack re-query is needed. The count fields carry no secrets.
 local function EntryInfoOwned(info)
 	if not info then
 		return false
 	end
-	if OwnedCount(info, "totalNumStored", "quantity") or OwnedCount(info, "totalNumPlaced", "numPlaced") or (info.remainingRedeemable and info.remainingRedeemable > 0) then
-		return true
-	end
-
-	local entryID = info.entryID
-	if entryID and (entryID.entrySubtype == OWNED_MODIFIED_STACK or entryID.entrySubtype == OWNED_UNMODIFIED_STACK) then
-		return true
-	end
-
-	return false
-end
-
--- Reused so the owned-stack re-query below doesn't allocate per item/subtype.
-local entryQuery = {}
-
-local function QueryOwnedEntryInfo(entryType, recordID, subtype)
-	if not subtype then
-		return false
-	end
-
-	entryQuery.entryType = entryType
-	entryQuery.entrySubtype = subtype
-	entryQuery.recordID = recordID
-	entryQuery.subtypeIdentifier = 0
-	return EntryInfoOwned(C_HousingCatalog_GetCatalogEntryInfo(entryQuery))
+	return (info.totalNumStored or 0) > 0 or (info.totalNumPlaced or 0) > 0 or (info.remainingRedeemable or 0) > 0
 end
 
 -- Housing decor items have a collection state separate from recipes/toys and
--- transmog, so ask the Midnight housing catalog. The by-item lookup frequently
--- returns the *Unowned* catalog entry (zero counts) even for decor you own, so
--- when that happens re-query the owned stacks (subtypeIdentifier 0) directly to
--- confirm ownership. Mirrors CaerdonWardrobe's HousingMixin. Returns:
+-- transmog, so ask the Midnight housing catalog. Returns:
 --   true / false - resolved as a housing entry and (un)owned
 --   nil          - not a housing catalog item, fall back to other checks.
 local function IsDecorCollected(link)
@@ -176,21 +132,7 @@ local function IsDecorCollected(link)
 		return
 	end
 
-	if EntryInfoOwned(info) then
-		return true
-	end
-
-	local entryID = info.entryID
-	if entryID and C_HousingCatalog_GetCatalogEntryInfo then
-		local entryType, recordID = entryID.entryType, entryID.recordID
-		if entryType and recordID then
-			if QueryOwnedEntryInfo(entryType, recordID, OWNED_UNMODIFIED_STACK) or QueryOwnedEntryInfo(entryType, recordID, OWNED_MODIFIED_STACK) then
-				return true
-			end
-		end
-	end
-
-	return false
+	return EntryInfoOwned(info)
 end
 
 local function IsAlreadyKnown(link, index)
@@ -238,7 +180,7 @@ local function IsAlreadyKnown(link, index)
 			return
 		end
 
-		-- Cosmetics / transmog: ask the appearance collection directly; only
+		-- Cosmetics / transmog: ask the appearance collection directly, only
 		-- fall back to the tooltip scan if the source can't be resolved.
 		if C_Item_IsCosmeticItem(link) then
 			local collected = IsCosmeticCollected(link)
@@ -399,7 +341,7 @@ function AlreadyKnown:WarmHousingData()
 		return
 	end
 
-	-- Blizzard lazy-loads owned decor counts; opening the catalog does this too.
+	-- Blizzard lazy-loads owned decor counts, opening the catalog does this too.
 	if C_AddOns and C_AddOns.LoadAddOn then
 		pcall(C_AddOns.LoadAddOn, "Blizzard_HousingEventHandler")
 	elseif _G.LoadAddOn then
@@ -525,7 +467,7 @@ function AlreadyKnown:OnEnable()
 		hooksecurefunc("MerchantFrame_UpdateBuybackInfo", UpdateBuybackInfo)
 	end
 
-	-- The AH and Guild Bank are load-on-demand; hook now if present, else wait.
+	-- The AH and Guild Bank are load-on-demand, hook now if present, else wait.
 	if C_AddOns.IsAddOnLoaded("Blizzard_AuctionHouseUI") then
 		self:HookAuctionHouse()
 	end

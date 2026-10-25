@@ -4,7 +4,7 @@
 	Sends a random, friendly farewell to the group when a dungeon or Mythic+
 	keystone finishes, after a short human-feeling delay.
 
-	Events stay registered while the module is on; enable flag reads live.
+	Events stay registered while the module is on, enable flag reads live.
 	Opt-in by default since it speaks on your behalf.
 --]]
 
@@ -19,7 +19,7 @@ local GetTime = GetTime
 local IsInGroup = IsInGroup
 local IsInRaid = IsInRaid
 local IsPartyLFG = IsPartyLFG
--- C_ChatInfo.SendChatMessage is the live API; the global is a deprecated shim.
+-- C_ChatInfo.SendChatMessage is the live API, the global is a deprecated shim.
 local SendChatMessage = C_ChatInfo.SendChatMessage
 local math_random = math.random
 
@@ -47,7 +47,7 @@ local function GetGroupChannel()
 		return nil
 	end
 
-	-- LFD/LFR groups: use INSTANCE_CHAT so everyone queued can see it; walk-in
+	-- LFD/LFR groups: use INSTANCE_CHAT so everyone queued can see it, walk-in
 	-- (manually formed) groups fall through to party/raid.
 	if IsPartyLFG() and not (C_PartyInfo_IsPartyWalkIn and C_PartyInfo_IsPartyWalkIn()) then
 		return "INSTANCE_CHAT"

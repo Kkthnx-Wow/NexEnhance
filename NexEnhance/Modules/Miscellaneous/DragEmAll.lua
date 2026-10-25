@@ -65,7 +65,7 @@ local frames = {
 	-- Bags: draggable but intentionally NOT persisted. Blizzard's
 	-- UpdateContainerFrameAnchors re-pins them on the next bag open/update, so
 	-- they snap back to the default spot rather than saving a position. The
-	-- combined window covers the default layout; ContainerFrame1-6 cover the
+	-- combined window covers the default layout, ContainerFrame1-6 cover the
 	-- separate-bag layout (dragging the first/root bag moves the whole cluster).
 	["ContainerFrameCombinedBags"] = false,
 	["ContainerFrame1"] = false,
@@ -76,7 +76,7 @@ local frames = {
 	["ContainerFrame6"] = false,
 }
 
--- Frames provided by load-on-demand addons; hooked when that addon loads.
+-- Frames provided by load-on-demand addons, hooked when that addon loads.
 local lodFrames = {
 	Blizzard_AchievementUI = { ["AchievementFrame"] = false, ["AchievementFrameHeader"] = true, ["AchievementFrameCategoriesContainer"] = "AchievementFrame", ["AchievementFrame.searchResults"] = false },
 	Blizzard_AdventureMap = { ["AdventureMapQuestChoiceDialog"] = false },

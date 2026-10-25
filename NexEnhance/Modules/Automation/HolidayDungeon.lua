@@ -3,12 +3,12 @@
 	-------------------------------------------------------------------------
 	When you open the Dungeon Finder for the first time each login, nudge you
 	toward the active holiday or Timewalking random queue if it is not already
-	selected. We never call LFDQueueFrame_SetType from addon code — that taints
+	selected. We never call LFDQueueFrame_SetType from addon code - that taints
 	LFG session globals and can block protected queue actions (AcceptProposal).
 
-	LFDQueueFrame_SetType from addon code — that taints LFG session globals.
+	LFDQueueFrame_SetType from addon code - that taints LFG session globals.
 
-	Blizzard_GroupFinder is load-on-demand; hook installs once and reads the
+	Blizzard_GroupFinder is load-on-demand, hook installs once and reads the
 	live enable toggle.
 --]]
 
@@ -29,7 +29,7 @@ local LFG_TYPE_RANDOM_TIMEWALKER_DUNGEON = _G.LFG_TYPE_RANDOM_TIMEWALKER_DUNGEON
 
 -- Random LFG dungeon IDs for events where GetLFGRandomDungeonInfo's isTimeWalker
 -- can be false (e.g. Turbulent Timeways). Verify new IDs in-game when an expansion
--- joins the rotation: /run for i=1,GetNumRandomDungeons() do local id=GetLFGRandomDungeonInfo(i); print(i,id,GetLFGRandomDungeonInfo(i)) end
+-- joins the rotation: /run for i=1,GetNumRandomDungeons() do local id=GetLFGRandomDungeonInfo(i), print(i,id,GetLFGRandomDungeonInfo(i)) end
 local SPECIAL_RANDOM_DUNGEONS = {
 	[288] = true, -- Love is in the Air: The Crown Chemical Co.
 	[286] = true, -- Midsummer: The Frost Lord Ahune
@@ -67,7 +67,7 @@ local function IsEventRandomDungeon(id, isHoliday, isTimeWalker, name)
 	if isHoliday or isTimeWalker or SPECIAL_RANDOM_DUNGEONS[id] then
 		return true
 	end
-	-- Turbulent Timeways can clear isTimeWalker; match the localized queue label.
+	-- Turbulent Timeways can clear isTimeWalker, match the localized queue label.
 	local label = LFG_TYPE_RANDOM_TIMEWALKER_DUNGEON
 	return label and name and name:find(label, 1, true) ~= nil
 end
@@ -147,7 +147,7 @@ function HolidayDungeon:ScheduleNudge()
 
 	self.nudgePending = true
 
-	-- LFG_UPDATE_RANDOM_INFO usually follows LFD OnShow; fall back if it already fired.
+	-- LFG_UPDATE_RANDOM_INFO usually follows LFD OnShow, fall back if it already fired.
 	if C_Timer_After then
 		C_Timer_After(0.5, function()
 			if HolidayDungeon.nudgePending then

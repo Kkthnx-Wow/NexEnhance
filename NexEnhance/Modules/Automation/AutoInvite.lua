@@ -5,8 +5,8 @@
 	friends, character friends and guild members), and tidies up the invite
 	popups once the roster updates.
 
-	Both events stay registered while the module is on; trusted-source toggles
-	read live — no reload needed.
+	Both events stay registered while the module is on, trusted-source toggles
+	read live - no reload needed.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -19,7 +19,7 @@ local IsGuildMember = IsGuildMember
 local StaticPopup_Hide = StaticPopup_Hide
 local StaticPopupSpecial_Hide = StaticPopupSpecial_Hide
 -- PARTY_INVITE_REQUEST hands us a player (character) GUID, so resolve it with
--- GetGameAccountInfoByGUID; GetAccountInfoByGUID expects a Battle.net account GUID.
+-- GetGameAccountInfoByGUID, GetAccountInfoByGUID expects a Battle.net account GUID.
 local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet and C_BattleNet.GetGameAccountInfoByGUID
 local C_FriendList_IsFriend = C_FriendList and C_FriendList.IsFriend
 

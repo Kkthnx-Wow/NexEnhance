@@ -31,7 +31,7 @@ local cache, weapon = {}, {}
 -- Reused across artifact-relic scans so we don't allocate a split table per
 -- weapon. Multiple-assignment from select() nils the unused slots for us.
 local relicScratch = {}
--- The inspect cache is keyed by GUID; cap it so a long session of mousing over
+-- The inspect cache is keyed by GUID, cap it so a long session of mousing over
 -- many players (cities, raids) can't grow it without bound.
 local cacheCount, CACHE_MAX = 0, 200
 local currentUNIT, currentGUID, tipShownGUID
@@ -58,7 +58,7 @@ local function GetUnitItemLevel(unit)
 	end
 
 	local class = select(2, UnitClass(unit))
-	-- classFilename (2nd return): no ConditionalSecret — only className is tagged.
+	-- classFilename (2nd return): no ConditionalSecret - only className is tagged.
 
 	local boa, total, haveWeapon, twohand = 0, 0, 0, 0
 	local ilvl
@@ -212,7 +212,7 @@ updater:SetScript("OnUpdate", function(self, elapsed)
 	end
 end)
 
--- Called from Tooltip.lua OnGameTooltipHide — stop inspect work when the tip closes.
+-- Called from Tooltip.lua OnGameTooltipHide - stop inspect work when the tip closes.
 function Tooltip:ClearItemLevelInspectState()
 	currentUNIT, currentGUID, tipShownGUID = nil, nil, nil
 	updater.elapsed = frequency

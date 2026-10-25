@@ -106,7 +106,7 @@ local function ResolveReagents(itemID)
 end
 
 local function FormatQuantity(have, need)
-	-- GetItemCount / currency quantity: SecretArguments only — plain format.
+	-- GetItemCount / currency quantity: SecretArguments only - plain format.
 	if have == nil or need == nil then
 		return nil
 	end

@@ -15,7 +15,7 @@
 	  * flatten the chat tab textures
 	  * a clean edit box border, docked to the top, tinted by active channel
 
-	Chat frames are not protected — taint-safe.
+	Chat frames are not protected - taint-safe.
 --]]
 
 -- luacheck: globals ChatTypeInfo Menu CURRENT_CHAT_FRAME_ID
@@ -43,11 +43,8 @@ local GetNormalizedRealmName = GetNormalizedRealmName
 local Ambiguate, GetTime, PlaySound = Ambiguate, GetTime, PlaySound
 local FlashClientIcon = FlashClientIcon
 local C_Timer_After = C_Timer.After
-local ChatFrame_SendTell = ChatFrame_SendTell
 local ChatFrameUtil = _G.ChatFrameUtil
-local ChatEdit_ParseText = ChatEdit_ParseText
 local UIErrorsFrame = UIErrorsFrame
-local ChatEdit_UpdateHeader = ChatEdit_UpdateHeader
 local UnitIsGroupLeader, UnitIsGroupAssistant = UnitIsGroupLeader, UnitIsGroupAssistant
 local hooksecurefunc = hooksecurefunc
 
@@ -64,7 +61,7 @@ ns:RegisterDefaults({
 		hideScrollBar = true,
 		tabChannelSwitch = true,
 		quickScroll = true,
-		scrollDownInterval = 0, -- seconds after scroll-up before ScrollToBottom; 0 = off
+		scrollDownInterval = 0, -- seconds after scroll-up before ScrollToBottom, 0 = off
 		stickyWhisper = true,
 		whisperSound = false,
 		flashClientIcon = false,
@@ -364,16 +361,12 @@ local function SendTellToTarget(editBox)
 	local chatFrame = editBox.chatFrame
 	if ChatFrameUtil and ChatFrameUtil.SendTell then
 		ChatFrameUtil.SendTell(name, chatFrame)
-	elseif ChatFrame_SendTell then
-		ChatFrame_SendTell(name, chatFrame)
 	end
 end
 
 local function ParseEditBoxText(editBox)
 	if editBox.ParseText then
 		editBox:ParseText(0)
-	elseif ChatEdit_ParseText then
-		ChatEdit_ParseText(editBox, 0)
 	end
 end
 
@@ -477,7 +470,7 @@ function Chat:SetupEditBox(frame)
 	if cfg.editBoxBorder then
 		-- Strip the default border art (Left/Mid/Right + focus glow) and give
 		-- the box a proper Blizzard tooltip-style border instead. Pass 2 to keep
-		-- region index 2 — the blinking text cursor is a texture region, and
+		-- region index 2 - the blinking text cursor is a texture region, and
 		-- clearing every region (the default) leaves the caret invisible while
 		-- typing. Pass 2 to StripTextures to keep it.
 		F.StripTextures(editBox, 2)
@@ -486,7 +479,7 @@ function Chat:SetupEditBox(frame)
 		bg:SetPoint("TOPLEFT", editBox, "TOPLEFT", 0, 0)
 		bg:SetPoint("BOTTOMRIGHT", editBox, "BOTTOMRIGHT", 12, 0)
 		bg:SetFrameLevel(max(0, editBox:GetFrameLevel() - 1))
-		-- Tooltip border + dark fill; ColorEditBox tints the border per channel.
+		-- Tooltip border + dark fill, ColorEditBox tints the border per channel.
 		F.CreateTooltipBackdrop(bg, { edgeSize = 12 })
 		editBox.nexBackdrop = bg.nexBackdrop
 	end
@@ -496,7 +489,7 @@ function Chat:SetupEditBox(frame)
 		-- few paths (notably selecting the Combat Log tab, which loads/sets up
 		-- Blizzard_CombatLog and re-anchors the box after any tab hook would
 		-- have run). Post-hooking SetPoint re-applies our anchor no matter who
-		-- moves it; the re-entrancy guard stops our own SetPoint from looping.
+		-- moves it, the re-entrancy guard stops our own SetPoint from looping.
 		hooksecurefunc(editBox, "SetPoint", function(self)
 			if self.__nexAnchoring or not cfg or not cfg.editBoxTop then
 				return
@@ -534,8 +527,7 @@ function Chat:SetupEditBox(frame)
 	if cfg.colorEditBox and editBox.UpdateHeader then
 		-- Blizzard refreshes the active channel through the edit box's own
 		-- UpdateHeader in most paths, so hooking it per-box is far more reliable
-		-- than the global ChatEdit_UpdateHeader wrapper (which many internal
-		-- paths skip).
+		-- than a global wrapper (which many internal paths skip).
 		hooksecurefunc(editBox, "UpdateHeader", ColorEditBox)
 		ColorEditBox(editBox)
 	end
@@ -567,11 +559,11 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Colour the edit box border by the active channel. When we've reskinned the
--- box we tint the clean backdrop border; otherwise we tint Blizzard's own art.
+-- box we tint the clean backdrop border, otherwise we tint Blizzard's own art.
 -- ---------------------------------------------------------------------------
 -- Resolve the channel colour for the edit box's current chat type. The base
 -- ChatTypeInfo["CHANNEL"] entry carries no r/g/b, so for channels we look up
--- the numbered "CHANNEL<id>" entry; returns nil when no real colour is known.
+-- the numbered "CHANNEL<id>" entry, returns nil when no real colour is known.
 local function GetEditBoxColor(editBox)
 	local chatType = editBox:GetAttribute("chatType")
 	if not chatType then
@@ -779,7 +771,7 @@ local cycles = {
 
 local function SwitchToChannel(editbox, chatType)
 	editbox:SetAttribute("chatType", chatType)
-	ChatEdit_UpdateHeader(editbox)
+	editbox:UpdateHeader()
 	ColorEditBox(editbox)
 end
 
@@ -953,7 +945,7 @@ local function CanInviteBNGameAccount(gameAccountInfo, accountInfo)
 	end
 	-- Incident (Chat BN invite, Jul 2026): CanCooperateWithGameAccount is same-faction
 	-- only and blocked valid cross-faction BN whisper invites. Prefer Blizzard's friend
-	-- restriction helper when available; otherwise allow any online WoW realm character.
+	-- restriction helper when available, otherwise allow any online WoW realm character.
 	if CanGroupWithAccount and accountInfo and accountInfo.bnetAccountID then
 		return CanGroupWithAccount(accountInfo.bnetAccountID)
 	end
@@ -1083,7 +1075,7 @@ function Chat:OnInitialize()
 			F.Print(format("  enable=%s editBoxTop=%s background=%s", tostring(c and c.enable), tostring(c and c.editBoxTop), tostring(c and c.background)))
 			local dock = _G.GeneralDockManager
 			F.Print(format("  dock primary=%s selected=%s", dock and dock.primary and dock.primary:GetName() or "nil", dock and dock.selected and dock.selected:GetName() or "nil"))
-			for i = 1, min(NUM_CHAT_WINDOWS or 10, 10) do
+			for i = 1, min(C.Client.maxChatWindows, 10) do
 				local f = _G["ChatFrame" .. i]
 				if f and f.editBox then
 					local p, rel = f.editBox:GetPoint(1)
@@ -1094,7 +1086,7 @@ function Chat:OnInitialize()
 	})
 end
 
--- Whisper handlers are anonymous wrappers — store the same refs for UnregisterEvent.
+-- Whisper handlers are anonymous wrappers - store the same refs for UnregisterEvent.
 local function OnWhisperEvent(event, ...)
 	if not Chat:IsEnabled() then
 		return
@@ -1114,12 +1106,12 @@ function Chat:OnEnable()
 	ns:UnregisterCallback("UIScaleApplied", "OnUIScaleApplied", self)
 	ns:RegisterCallback("UIScaleApplied", "OnUIScaleApplied", self)
 
-	for i = 1, NUM_CHAT_WINDOWS do
+	for i = 1, C.Client.maxChatWindows do
 		self:SetupChat(_G["ChatFrame" .. i])
 	end
 
 	-- Handle temporary (whisper/combat-log popout) windows as they open.
-	-- hooksecurefunc can't uninstall — gate with IsEnabled() inside SetupChat callers.
+	-- hooksecurefunc can't uninstall - gate with IsEnabled() inside SetupChat callers.
 	if not self._tempWindowHooked then
 		self._tempWindowHooked = true
 		hooksecurefunc("FCF_OpenTemporaryWindow", function()
@@ -1137,7 +1129,7 @@ function Chat:OnEnable()
 
 	if cfg.tabChannelSwitch and _G["ChatEdit_CustomTabPressed"] and not self._tabSwitchHooked then
 		self._tabSwitchHooked = true
-		-- Blizzard calls this as ChatEdit_CustomTabPressed(editBox); our method
+		-- Blizzard calls this as ChatEdit_CustomTabPressed(editBox), our method
 		-- expects self = editBox (same as the old bare Chat.UpdateTabChannelSwitch hook).
 		hooksecurefunc("ChatEdit_CustomTabPressed", function(editBox)
 			if not Chat:IsEnabled() or not cfg or not cfg.tabChannelSwitch then
@@ -1178,7 +1170,7 @@ function Chat:OnEnable()
 end
 
 function Chat:OnDisable()
-	-- Sticky whisper is a ChatTypeInfo flag — restore Blizzard default (0).
+	-- Sticky whisper is a ChatTypeInfo flag - restore Blizzard default (0).
 	if ChatTypeInfo["WHISPER"] then
 		ChatTypeInfo["WHISPER"].sticky = 0
 	end
@@ -1215,12 +1207,12 @@ function Chat:RegisterOptions(category, builder)
 	local _, hideButtonsInit = builder:Checkbox(category, self, "hideButtons", L["Hide Side Buttons"], L["Hide the social/menu buttons beside the chat window."])
 	local _, hideScrollInit = builder:Checkbox(category, self, "hideScrollBar", L["Hide Scroll Bar"], L["Remove the scroll bar and jump-to-bottom button (reload to restore)."])
 	local _, tabSwitchInit = builder:Checkbox(category, self, "tabChannelSwitch", L["Tab Channel Switch"], L["Press Tab in an empty edit box to cycle chat channels."])
-	local _, scrollInit = builder:Checkbox(category, self, "quickScroll", L["Quick Scroll"], L["Shift + wheel jumps to top/bottom; Ctrl + wheel pages faster."])
+	local _, scrollInit = builder:Checkbox(category, self, "quickScroll", L["Quick Scroll"], L["Shift + wheel jumps to top/bottom, Ctrl + wheel pages faster."])
 	local _, scrollDownInit = builder:Slider(category, self, "scrollDownInterval", L["Scroll-Down Interval"], L["After scrolling up, return to the bottom after this many seconds (0 = off)."], 0, 120, 5, FormatScrollDownInterval)
 	local _, stickyInit = builder:Checkbox(category, self, "stickyWhisper", L["Sticky Whisper"], L["Keep the edit box in whisper mode after replying."])
 	local _, whisperSoundInit = builder:Checkbox(category, self, "whisperSound", L["Whisper Sound"], L["Play a sound when you receive a whisper."])
 	local _, flashInit = builder:Checkbox(category, self, "flashClientIcon", L["Flash Client Icon"], L["Flash the WoW taskbar icon when you receive a whisper."])
-	local _, shortcutsInit = builder:Checkbox(category, self, "editShortcuts", L["Edit Box Shortcuts"], L["Type /tt then space to whisper your target; /gr then space for the group channel prefix."])
+	local _, shortcutsInit = builder:Checkbox(category, self, "editShortcuts", L["Edit Box Shortcuts"], L["Type /tt then space to whisper your target, /gr then space for the group channel prefix."])
 	local _, repeatInit = builder:Checkbox(category, self, "combatRepeatBlock", L["Combat Repeat Block"], L["Hide the edit box if you paste the same character repeatedly during combat."])
 	local _, repeatCharsInit = builder:Slider(category, self, "combatRepeatChars", L["Repeat Character Count"], L["How many identical trailing characters trigger the combat repeat block."], 3, 20, 1)
 	local _, fontMenuInit = builder:Checkbox(category, self, "fontSizeMenu", L["Font Size Menu"], L["Add a font-size submenu to the chat tab right-click menu (reload to apply)."])

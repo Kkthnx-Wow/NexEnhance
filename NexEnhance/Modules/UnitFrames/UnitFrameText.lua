@@ -2,14 +2,14 @@
 	NexEnhance - Unit Frame Text
 	-------------------------------------------------------------------------
 	Optional white name + level on Blizzard Player / Target / Focus / Boss
-	frames — the gold GameFontNormalSmall default many UIs replace.
+	frames - the gold GameFontNormalSmall default many UIs replace.
 
 	Blizzard paths (12.0.7):
 	  * Player level: PlayerFrame_UpdateLevel() tints PlayerLevelText gold or
-	    green when effective ≠ real level.
+	    green when effective level differs from real level.
 	  * Target level: TargetFrameMixin:CheckLevel() on LevelText (gold for
 	    friendlies, difficulty tint for attackable).
-	  * Names: GameFontNormalSmall yellow from the font; UnitFrame_Update only
+	  * Names: GameFontNormalSmall yellow from the font, UnitFrame_Update only
 	    sets text, not vertex colour.
 
 	We post-hook those update paths and SetVertexColor(1,1,1) on name FontStrings.
@@ -18,7 +18,7 @@
 	is on (red / orange / green / grey unchanged).
 
 	Standard 5-man party portraits (PartyMemberFrame, not compact raid-style
-	party) also get white names — same GameFontNormalSmall gold default. Pet and
+	party) also get white names - same GameFontNormalSmall gold default. Pet and
 	target-of-target names too. Compact raid/party frames are left alone.
 
 	Default OFF. Lives under Unit Frames.
@@ -54,7 +54,7 @@ local eventsRegistered = false
 local hookedPartyFrame = false
 
 -- ---------------------------------------------------------------------------
--- Frame set (HUD + standard party portraits; not compact raid/party).
+-- Frame set (HUD + standard party portraits, not compact raid/party).
 -- ---------------------------------------------------------------------------
 local function ForEachBossFrame(callback)
 	local container = _G["BossTargetFrameContainer"]
@@ -146,7 +146,7 @@ local function ApplyWhiteName(frame)
 	WhitenNameFontString(frame.name)
 end
 
--- PartyMemberFrameTemplate only — compact frames carry groupType.
+-- PartyMemberFrameTemplate only - compact frames carry groupType.
 local function IsPartyMemberHudFrame(frame)
 	if not frame or frame.groupType then
 		return false
@@ -247,7 +247,7 @@ local function ApplyWhiteText(frame)
 		return
 	end
 
-	-- Pet, ToT, party portraits — name only (no level on these frames).
+	-- Pet, ToT, party portraits - name only (no level on these frames).
 	ApplyWhiteName(frame)
 end
 
@@ -268,9 +268,14 @@ local function RestoreBlizzardText()
 		if type(frame.CheckLevel) == "function" then
 			frame:CheckLevel()
 		end
-		if frame.unit and _G.UnitFrame_Update then
-			_G.UnitFrame_Update(frame)
-		end
+		-- Incident (UnitFrameText, Jul 2026): do NOT call UnitFrame_Update to restore.
+		-- It runs UnitFrameHealthBar_Update under our tainted execution, which stores
+		-- statusbar.currValue = UnitHealth() (a SecretReturns value) on PlayerFrame's
+		-- health bar. Blizzard's own UnitFrameHealthBar_OnUpdate then compares
+		-- currValue ~= self.currValue every frame ("secret value, tainted by NexEnhance")
+		-- until /reload, the immediate SetMinMaxValues/UpdateTextString also compares.
+		-- We only recolour name/level FontStrings, so RestoreNameFontString below (plus
+		-- PlayerFrame_UpdateLevel / CheckLevel above) is the complete, taint-free restore.
 		RestoreNameFontString(frame.name)
 	end)
 	RefreshPartyMembers()
@@ -283,7 +288,7 @@ local function RestoreBlizzardText()
 end
 
 -- ---------------------------------------------------------------------------
--- Hooks (once). Party pool frames store nexUnitFrameTextHooked — same pattern as HideDpsRole.
+-- Hooks (once). Party pool frames store nexUnitFrameTextHooked - same pattern as HideDpsRole.
 -- ---------------------------------------------------------------------------
 function UnitFrameText:InstallHooks()
 	if self.hooksInstalled then

@@ -21,7 +21,7 @@ local C_VignetteInfo = C_VignetteInfo
 local C_UIWidgetManager = C_UIWidgetManager
 local C_QuestLog = C_QuestLog
 
--- POI fields (names/descriptions) can be Secret in instanced content; guard every
+-- POI fields (names/descriptions) can be Secret in instanced content, guard every
 -- value before tostring so the scan never errors on a secret. See the Midnight
 -- Secret Values guide: tostring() on a secret value throws.
 local function SafeStr(v)
@@ -93,7 +93,7 @@ local function ScanPoiList(mapID, poiIDs, label)
 	return printed
 end
 
--- Y-offset for the sub-title header divider. Blizzard's default is -50; we push
+-- Y-offset for the sub-title header divider. Blizzard's default is -50, we push
 -- it down a few pixels so it reads as a clearer separator below the title.
 local NATIVE_DIVIDER_Y = -56
 
@@ -102,7 +102,7 @@ local function Brand(text)
 end
 
 local ShowUIPanel = ShowUIPanel
-local LoadAddOn = LoadAddOn
+local LoadAddOn = C_AddOns.LoadAddOn
 local InCombatLockdown = InCombatLockdown
 
 -- Settings / Edit Mode panels are protected in combat (OpenSettingsPanel taint).
@@ -142,7 +142,7 @@ local function OpenEditMode()
 end
 
 -- Key bindings live in Settings (Settings.KEYBINDINGS_CATEGORY_ID from
--- Blizzard_SettingsDefinitions_Frame/Keybindings.lua); no global /keybinds slash.
+-- Blizzard_SettingsDefinitions_Frame/Keybindings.lua), no global /keybinds slash.
 local function OpenKeyBindings()
 	RunOutOfCombat(function()
 		local catID = Settings and Settings.KEYBINDINGS_CATEGORY_ID
@@ -185,7 +185,6 @@ handlers.help = function(_)
 	F.Print("  /nex abandonquests -", L["Abandon every quest in your log"])
 	F.Print("  /nex bordertest    -", L["Preview the tooltip border"])
 	F.Print("  /nex changelog     -", L["Open the changelog"])
-	F.Print("  /nex credits       -", L["Open the credits panel"])
 	F.Print("  /nex profile       -", L["Open the profile import/export panel"])
 	F.Print("  /nex install       -", L["Open the setup screen"])
 	F.Print("  /nex version, ver  -", L["Print addon and WoW client version info"])
@@ -196,7 +195,7 @@ handlers.help = function(_)
 	F.Print("  /nex newreset      -", L["Reset new-update badges for testing"])
 end
 
--- Patch / TOC dump for bug reports — fuller than the one-liner in /nex debug env.
+-- Patch / TOC dump for bug reports - fuller than the one-liner in /nex debug env.
 handlers.version = function(_)
 	local GetBuildInfo = _G.GetBuildInfo
 	local patch, build, buildDate, tocVersion = GetBuildInfo()
@@ -229,12 +228,6 @@ end
 handlers.changelog = function(_)
 	if ns.OpenChangelog then
 		ns:OpenChangelog()
-	end
-end
-
-handlers.credits = function(_)
-	if ns.OpenCredits then
-		ns:OpenCredits()
 	end
 end
 
@@ -302,7 +295,7 @@ handlers.toggle = function(name)
 	local label = module.title or module.name
 	F.Print(label, "->", state)
 	-- Incident (Commands, Jul 2026): old path only called OnSettingChanged and
-	-- skipped OnEnable/OnDisable — modules stayed live after /nex toggle off.
+	-- skipped OnEnable/OnDisable - modules stayed live after /nex toggle off.
 	ApplyModuleSetting(module, "enable", settings.enable)
 end
 
@@ -316,7 +309,7 @@ handlers.plugins = function(_)
 	for i = 1, #list do
 		local plugin = list[i]
 		local state = plugin:IsEnabled() and F.Colorize(L["Enabled"], "green") or F.Colorize(L["Disabled"], "red")
-		F.Print(format("  %s v%s — %s (%s)", plugin.title or plugin.name, plugin.pluginVersion or "?", plugin.author or L["Unknown"], state))
+		F.Print(format("  %s v%s - %s (%s)", plugin.title or plugin.name, plugin.pluginVersion or "?", plugin.author or L["Unknown"], state))
 	end
 	F.Print(L["PLUGIN_OPEN_SETTINGS_HINT"])
 end
@@ -518,7 +511,7 @@ handlers.bordertest = function(_)
 		hdr:SetText(F.Colorize(col.label, "brand"))
 	end
 
-	-- Rows: outset 0 pins the border on the panel edge; positive outset frames
+	-- Rows: outset 0 pins the border on the panel edge, positive outset frames
 	-- the panel from just outside it. edgeSize controls the tooltip border scale.
 	local rows = {
 		{ label = "outset 0", outset = 0, edgeSize = 16 },
@@ -671,6 +664,10 @@ end
 
 local OptionBuilder = {}
 
+-- Assigned further down once the revert-row helpers exist. Declared up here so
+-- RegisterSetting closes over the local instead of a nil global.
+local onSettingVisualRefresh
+
 local function GetDefault(module, key)
 	local defaults = ns.defaults.profile[module.dbKey]
 	return defaults and defaults[key]
@@ -718,7 +715,7 @@ function OptionBuilder:Checkbox(category, module, key, name, tooltip)
 	return setting, MarkResettable(initializer)
 end
 
--- Infer how many decimals to show from `step` (0.05 → 2, 0.5 → 1, 1 → 0).
+-- Infer how many decimals to show from `step` (0.05 -> 2, 0.5 -> 1, 1 -> 0).
 -- Binary floats make 0.45 print as 0.45000001788139 without a formatter.
 local function SliderDecimalsFromStep(step)
 	if type(step) ~= "number" or step <= 0 or step >= 1 then
@@ -839,7 +836,7 @@ function OptionBuilder:Header(text)
 end
 
 -- Add a read-only, wrapped description paragraph (e.g. live statistics). Returns
--- the initializer so callers can later update initializer:GetData().text; the
+-- the initializer so callers can later update initializer:GetData().text, the
 -- description template re-reads that text every time the page is displayed, so a
 -- refreshed value shows the next time the user opens/returns to the page. Keep
 -- the line count stable, as the reserved row height is measured once up front.
@@ -858,7 +855,7 @@ end
 -- Make `child` depend on a parent toggle. `child` and `parent` are the
 -- *initializers* (the 2nd return value from the builder methods above). The
 -- child is automatically greyed out and disabled whenever the parent toggle is
--- off; Blizzard re-evaluates this when the parent's value changes. The parent
+-- off, Blizzard re-evaluates this when the parent's value changes. The parent
 -- should be a checkbox/toggle so its value reads as a boolean.
 -- ---------------------------------------------------------------------------
 -- Child rows (DependsOn / Indent) render with Blizzard's GameFontNormalSmall,
@@ -886,7 +883,7 @@ end
 --   Every NexEnhance setting registers with a default value (RegisterSetting),
 --   so any control row can be reset in place via setting:SetValueToDefault(),
 --   which fires the same value-changed callback as a normal edit (live-apply,
---   OnSettingChanged and the callback bus all run — no /reload).
+--   OnSettingChanged and the callback bus all run - no /reload).
 --
 --   We tag our control initializers (nexRevert) in the builder, then a single
 --   hook on the shared SettingsListElementMixin:Init attaches a small
@@ -897,7 +894,7 @@ end
 local REVERT_ATLAS = "transmog-icon-revert"
 local REVERT_SIZE = 15
 
--- Pooled settings rows are recycled; track live rows weakly so section reset can
+-- Pooled settings rows are recycled, track live rows weakly so section reset can
 -- hide per-option revert icons without waiting for a fresh hover.
 local revertRows = setmetatable({}, { __mode = "k" })
 
@@ -918,7 +915,7 @@ local function RowIsDirty(row)
 	if not setting then
 		return false
 	end
-	-- Colour swatches store hex strings; equality still holds for a plain compare.
+	-- Colour swatches store hex strings, equality still holds for a plain compare.
 	return setting:GetValue() ~= setting:GetDefaultValue()
 end
 
@@ -948,8 +945,7 @@ local function RefreshRevertRowsForSetting(setting)
 end
 
 -- Fired after every live setting change so revert icons + section headers stay in sync.
-local onSettingVisualRefresh
-
+-- (`onSettingVisualRefresh` is forward declared above RegisterSetting.)
 local function EnsureRevertButton(row)
 	local btn = row.nexRevertButton
 	if btn then
@@ -1108,12 +1104,12 @@ function OptionBuilder:Indent(child, parent)
 end
 
 -- Themed option groups, in display order. Modules declare a `group` key (see
--- ns:NewModule) and land in the matching subcategory; anything without a known
+-- ns:NewModule) and land in the matching subcategory, anything without a known
 -- group falls through to "misc".
 -- `icon` is an in-game texture path (with backslashes) or an atlas name. To use
 -- a custom/Wowhead icon, save the file under the addon (e.g. Media\Sections\) and
 -- point `icon` at that path - WoW can't download images at runtime. These are
--- placeholder in-game icons; swap them freely.
+-- placeholder in-game icons, swap them freely.
 local GROUP_ORDER = {
 	{ key = "general", title = L["General"], icon = [[Interface\ICONS\Trade_Engineering]], desc = L["DESC_GENERAL"] },
 	{ key = "actionbars", title = L["Action Bars"], icon = [[Interface\ICONS\Ability_Warrior_Charge]], desc = L["DESC_ACTIONBARS"] },
@@ -1137,7 +1133,7 @@ local GROUP_ORDER = {
 	{ key = "misc", title = L["Miscellaneous"], icon = [[Interface\ICONS\INV_Misc_QuestionMark]], desc = L["DESC_MISC"] },
 }
 
--- Sidebar labels are plain text; icons are drawn as Texture widgets (SetTexCoord)
+-- Sidebar labels are plain text, icons are drawn as Texture widgets (SetTexCoord)
 -- so every entry crops to the same square. Borders + notification dots anchor
 -- to that texture in InstallCategorySidebarBadges.
 local SIDEBAR_NEW_ATLAS = "UI-HUD-MicroMenu-Communities-Icon-Notification"
@@ -1244,7 +1240,7 @@ local function AcknowledgeNewVersion()
 	if not ns.global or ns.global.newSeen == ns.version then
 		return
 	end
-	-- Snapshot BEFORE stamping newSeen — GetNewModules() hides since-tagged
+	-- Snapshot BEFORE stamping newSeen - GetNewModules() hides since-tagged
 	-- modules once dismissed, so folding after the stamp left knownModules empty
 	-- for those modules (they'd reappear as "new" on the next version bump).
 	local list = GetNewModules()
@@ -1460,7 +1456,7 @@ local SECTION_ICON_SLOT = 22
 -- which is defined further down (keeps the local out of the global namespace).
 local UpdateSectionReset
 
--- Pooled section headers keyed by module dbKey (weak keys — frames are recycled).
+-- Pooled section headers keyed by module dbKey (weak keys - frames are recycled).
 local sectionHeadersByKey = {}
 
 local function UntrackSectionHeader(headerFrame)
@@ -1491,7 +1487,14 @@ local function RefreshSectionHeaders(dbKey)
 	if not bucket then
 		return
 	end
+	-- UpdateSectionReset re-tracks the header (clears then re-adds it in this very
+	-- bucket), and writing to a table mid-pairs is undefined, so walk a snapshot.
+	local frames = {}
 	for headerFrame in pairs(bucket) do
+		frames[#frames + 1] = headerFrame
+	end
+	for i = 1, #frames do
+		local headerFrame = frames[i]
 		UpdateSectionReset(headerFrame, dbKey, headerFrame.nexResetTitle)
 	end
 end
@@ -1592,7 +1595,7 @@ local function InstallSectionHeaderBadges()
 
 		UpdateSectionReset(headerFrame, data and data.nexResetKey, data and data.name)
 	end)
-	-- Section headers have no Release mixin; TrackSectionHeader untracks the
+	-- Section headers have no Release mixin, TrackSectionHeader untracks the
 	-- previous dbKey every time Init runs on a recycled frame.
 end
 
@@ -1625,8 +1628,8 @@ end
 ns.AddSectionHeader = AddSectionHeader
 
 -- ---------------------------------------------------------------------------
--- Escape menu (GameMenuFrame) — NexEnhance config shortcut
---   Blizzard rebuilds the menu on every show (InitButtons → Reset → AddButton).
+-- Escape menu (GameMenuFrame) - NexEnhance config shortcut
+--   Blizzard rebuilds the menu on every show (InitButtons -> Reset -> AddButton).
 --   Post-hook InitButtons and insert our entry after Options/Shop via layoutIndex.
 -- ---------------------------------------------------------------------------
 local HideUIPanel = HideUIPanel
@@ -1778,7 +1781,6 @@ local function CreateLandingFrame()
 		{ "/nex modules", L["List modules and their state"] },
 		{ "/nex plugins", L["List installed NexEnhance plugins"] },
 		{ "/nex toggle <module>", L["Toggle a module: /nex toggle <module>"] },
-		{ "/nex credits", L["Open the credits panel"] },
 		{ "/nex help", L["Show this help"] },
 	}
 
@@ -1818,7 +1820,7 @@ local function CreateLandingFrame()
 			row:SetPoint("RIGHT", listContent, "RIGHT", 0, 0)
 			row:SetJustifyH("LEFT")
 			row:SetWordWrap(true)
-			row:SetText("|cff888888• |r" .. (newModules[i].title or newModules[i].name))
+			row:SetText("|cff888888- |r" .. (newModules[i].title or newModules[i].name))
 			rowAnchor = row
 			totalH = totalH + (row:GetStringHeight() or 12) + (i == 1 and 0 or 5)
 		end
@@ -1925,7 +1927,7 @@ end
 
 -- The native SettingsList (used by every vertical-layout subcategory) is a single
 -- shared instance, so its header divider is shared across our pages AND Blizzard's.
--- We can't move it just for our subcategories at creation time; instead we hook the
+-- We can't move it just for our subcategories at creation time, instead we hook the
 -- per-page display and reposition the divider only while a NexEnhance category is
 -- shown, restoring Blizzard's default (-50) for everyone else.
 local function InstallHeaderDividerNudge(ourCategories)
@@ -1971,9 +1973,9 @@ local optionsCanvases = {}
 
 -- Public: register a custom canvas sub-page under the addon category. The
 -- `builder(canvas)` callback is invoked lazily the first time the settings panel
--- is shown; the canvas frame exposes canvas:SetDefaultsHandler(fn).
+-- is shown, the canvas frame exposes canvas:SetDefaultsHandler(fn).
 -- Optional `sidebarLabel` colours/icons the Settings sidebar entry (e.g. rainbow
--- |cff escapes); `name` stays plain for sorting and the in-page header.
+-- |cff escapes), `name` stays plain for sorting and the in-page header.
 function ns:RegisterOptionsCanvas(name, builder, sidebarLabel, opts)
 	optionsCanvases[#optionsCanvases + 1] = {
 		name = name,
@@ -2121,7 +2123,7 @@ local function BuildOptions()
 		end
 	end
 
-	-- Remaining canvas sub-pages (Credits, Profiles, …) trail the themed groups.
+	-- Remaining canvas sub-pages (Credits, Profiles, ...) trail the themed groups.
 	if Settings.RegisterCanvasLayoutSubcategory then
 		table.sort(deferredCanvases, function(a, b)
 			return a.name < b.name
@@ -2142,7 +2144,7 @@ local function BuildOptions()
 	end
 
 	-- Acknowledge the landing callout + section badges when the player opens a
-	-- NexEnhance *sub*-page — not the root landing canvas, so sidebar dots stay
+	-- NexEnhance *sub*-page - not the root landing canvas, so sidebar dots stay
 	-- visible while browsing the category list.
 	do
 		local panel = _G["SettingsPanel"]

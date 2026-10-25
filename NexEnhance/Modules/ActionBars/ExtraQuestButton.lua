@@ -8,7 +8,7 @@
 
 	Design notes:
 	  * The button is a SecureActionButtonTemplate driven by a state driver, so
-	    it is created and configured out of combat only; in-combat changes are
+	    it is created and configured out of combat only, in-combat changes are
 	    deferred to PLAYER_REGEN_ENABLED (SetAttribute/SetSize are protected).
 	  * It is anchored to a plain, always-shown anchor frame that carries the
 	    Edit Mode mover. The secure button is never re-pointed after creation,
@@ -34,7 +34,7 @@ local InCombatLockdown = InCombatLockdown
 local RegisterStateDriver = RegisterStateDriver
 local UnitCreatureID = UnitCreatureID
 local UnitGUID = UnitGUID
-local HasExtraActionBar = HasExtraActionBar
+local HasExtraActionBar = C_ActionBar.HasExtraActionBar
 local GetBindingKey, GetBindingText = GetBindingKey, GetBindingText
 local GetItemInfoFromHyperlink = GetItemInfoFromHyperlink
 local GetQuestLogSpecialItemInfo = GetQuestLogSpecialItemInfo
@@ -44,7 +44,7 @@ local TOOLTIP_UPDATE_TIME = TOOLTIP_UPDATE_TIME or 0.2
 
 local C_Item = C_Item
 local C_DurationUtil_CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
--- Pulled out of C_Item because it's the only member called from OnUpdate; the
+-- Pulled out of C_Item because it's the only member called from OnUpdate, the
 -- rest live in event-driven paths where a namespace lookup is noise.
 local IsItemInRange = C_Item.IsItemInRange
 local C_UnitAuras = C_UnitAuras
@@ -85,7 +85,7 @@ local bagCooldownDispatchId
 
 -- ---------------------------------------------------------------------------
 -- Quest/item priority tables (questID and itemID keyed)
---   These tweak the auto-detection for quests the API reports inaccurately;
+--   These tweak the auto-detection for quests the API reports inaccurately.
 --   they are pure data, built once at file scope.
 -- ---------------------------------------------------------------------------
 
@@ -97,7 +97,7 @@ local blacklist = {
 	[191729] = true,
 }
 
--- Items that should be used on specific mobs (npcID = itemID); these win over
+-- Items that should be used on specific mobs (npcID = itemID), these win over
 -- distance-based quest matching when the player has the target selected.
 local targetItems = {
 	[9999] = 11804, -- Un'Goro Crater
@@ -152,7 +152,7 @@ local targetItems = {
 	[226580] = 219322, -- Azj-Kahet
 }
 
--- Quests without a defined map area (questID = bool/mapID/{mapID,...}); these
+-- Quests without a defined map area (questID = bool/mapID/{mapID,...}), these
 -- get low priority during collision.
 local inaccurateQuestAreas = {
 	[11731] = { 84, 87, 103 }, -- alliance capitals (missing Darnassus)
@@ -303,14 +303,14 @@ local completeShownItems = {
 	[177904] = true,
 }
 
--- Items that are shown after the quest is complete but should not be; a numeric
+-- Items that are shown after the quest is complete but should not be, a numeric
 -- Non-zero value = use this replacement item instead of the quest item.
 local noCompleteItems = {
 	[23680] = 60273, -- Northern Stranglethorn Vale
 }
 
 -- Same as inaccurateQuestAreas, but with a precise point. We approximate the
--- point distance without HereBeDragons; it is only used for priority ranking.
+-- point distance without HereBeDragons, it is only used for priority ranking.
 local accurateQuestAreas = {
 	[12484] = { 116, 0.1683, 0.4834 }, -- Grizzly Hills
 	[27389] = { 23, 0.3596, 0.4573 }, -- Eastern Plaguelands
@@ -648,23 +648,24 @@ local function Button_BagUpdateCooldown(self)
 	if not cd then
 		return
 	end
-	if C_DurationUtil_CreateDuration then
-		local start, duration = C_Item.GetItemCooldown(self.itemID)
-		if duration and duration > 0 and start then
+	local start, duration = C_Item.GetItemCooldown(self.itemID)
+	-- GetItemCooldown can return secret numbers mid-combat, never compare or feed
+	-- them into SetCooldown / DurationObject arithmetic.
+	if F.IsSecret(start) or F.IsSecret(duration) then
+		cd:Hide()
+		return
+	end
+	if duration and duration > 0 and start then
+		if C_DurationUtil_CreateDuration then
 			local durObj = C_DurationUtil_CreateDuration()
 			durObj:SetTimeFromStart(start, duration)
 			cd:SetCooldownFromDurationObject(durObj)
 			F.MaskCooldownSwipeFromDurationObject(cd, durObj)
-			cd:Show()
-			return
-		end
-	else
-		local start, duration = C_Item.GetItemCooldown(self.itemID)
-		if duration and duration > 0 then
+		else
 			cd:SetCooldown(start, duration)
-			cd:Show()
-			return
 		end
+		cd:Show()
+		return
 	end
 	cd:Hide()
 end
@@ -680,7 +681,7 @@ local function Button_UpdateCount(self)
 	end
 end
 
--- SetAttribute is protected in combat; defer to PLAYER_REGEN_ENABLED (the
+-- SetAttribute is protected in combat, defer to PLAYER_REGEN_ENABLED (the
 -- module owns that event and re-runs this once combat ends).
 local function Button_UpdateAttributes(self)
 	if InCombatLockdown() then
@@ -934,7 +935,7 @@ local function BuildButton()
 	local cooldown = CreateFrame("Cooldown", "$parentCooldown", button, "CooldownFrameTemplate")
 	cooldown:SetReverse(false)
 	-- The leading-edge highlight rides the swipe's outer radius, so it crosses the
-	-- gold border even when the swipe is inset; turn it off and let SizeCooldown
+	-- gold border even when the swipe is inset, turn it off and let SizeCooldown
 	-- keep the dark swipe inside the frame opening.
 	cooldown:SetDrawEdge(false)
 	cooldown:Hide()
@@ -980,7 +981,7 @@ local function ActivateSecure()
 		EQB.pendingActivate = true
 		return
 	end
-	RegisterStateDriver(button, "visible", "[extrabar][petbattle] hide; show")
+	RegisterStateDriver(button, "visible", "[extrabar][petbattle] hide, show")
 	button:SetAttribute("_onattributechanged", onAttributeChanged)
 	button:SetAttribute("type", "item")
 	Button_UpdateTarget(button)

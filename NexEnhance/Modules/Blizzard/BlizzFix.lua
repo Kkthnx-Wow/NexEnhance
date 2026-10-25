@@ -4,7 +4,7 @@
 	A grab-bag of small, always-on workarounds for default UI bugs. These have
 	no options - they just patch broken behaviour.
 
-	Mover-dependent taint fixes (Collections / Professions CreateMF) are omitted —
+	Mover-dependent taint fixes (Collections / Professions CreateMF) are omitted -
 	we use DragEmAll instead.
 --]]
 
@@ -20,7 +20,7 @@ local BlizzFix = ns:NewModule("BlizzFix", "blizzFix")
 
 -- ---------------------------------------------------------------------------
 -- Fix: AddonList tooltip errors on header/blank rows (GetID() < 1).
--- Wrapping the global AddonTooltip_Update tainted the mixin OnEnter path;
+-- Wrapping the global AddonTooltip_Update tainted the mixin OnEnter path.
 -- guard at the mixin call site instead.
 -- ---------------------------------------------------------------------------
 local function GuardAddonListTooltipMixin(mixin)
@@ -104,7 +104,7 @@ end
 function BlizzFix:OnEnable()
 	FixPetFrameClickArea()
 
-	-- LoadOnDemand UIs may already be present; otherwise wait for them.
+	-- LoadOnDemand UIs may already be present, otherwise wait for them.
 	local isLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
 	if isLoaded then
 		if isLoaded("Blizzard_AddOnList") then

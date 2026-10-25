@@ -7,10 +7,10 @@
 	per-character so the countdown survives a /reload mid-popup.
 
 	Blizzard (12.0.7) shows LFGDungeonReadyPopup / PVPReadyDialog via
-	StaticPopupSpecial_Show but does not render a countdown in FrameXML; PvP
+	StaticPopupSpecial_Show but does not render a countdown in FrameXML, PvP
 	expiration comes from GetBattlefieldPortExpiration. LFG still has no
-	expiration API — ~40s is measured client-side (same pattern as LFG
-	expiration API — ~40s is measured client-side (same as LFG ProposalTime).
+	expiration API - ~40s is measured client-side (same pattern as LFG
+	expiration API - ~40s is measured client-side (same as LFG ProposalTime).
 
 	Built on the NexEnhance module framework.
 --]]
@@ -28,7 +28,9 @@ local GetTime = GetTime
 local PlaySoundFile = PlaySoundFile
 local SecondsToTime = SecondsToTime
 local C_Timer_After = C_Timer.After
-local GetBattlefieldPortExpiration = GetBattlefieldPortExpiration
+-- Blizzard's own ready dialog stopped calling this, so don't assume it survives.
+-- Every caller already treats nil as "no timer".
+local GetBattlefieldPortExpiration = GetBattlefieldPortExpiration or function() end
 local GetBattlefieldStatus = GetBattlefieldStatus
 local GetLFGProposal = GetLFGProposal
 local GetMaxBattlefieldID = GetMaxBattlefieldID
@@ -36,7 +38,7 @@ local GetMaxBattlefieldID = GetMaxBattlefieldID
 -- Tunables.
 local WARNING_SOUND_ID = 567458 -- the "you're about to lose your queue" beep
 local WARNING_THRESHOLD = 6 -- seconds left when the beep + red kicks in
-local PVE_EXPIRE_BASE = 40 -- LFG pops give ~40s to accept; no API hands us this
+local PVE_EXPIRE_BASE = 40 -- LFG pops give ~40s to accept, no API hands us this
 local UPDATE_INTERVAL = 0.2 -- 5fps is plenty for a whole-second countdown
 
 ns:RegisterDefaults({
@@ -109,7 +111,7 @@ local function HideDefaultQueueTimers()
 	end
 
 	-- Legacy: older clients attached StatusBar children to LFGDungeonReadyPopup.
-	-- 12.0.7 FrameXML has no default LFG countdown bar; this is harmless if absent.
+	-- 12.0.7 FrameXML has no default LFG countdown bar, this is harmless if absent.
 	local popup = _G.LFGDungeonReadyPopup
 	if not popup then
 		return

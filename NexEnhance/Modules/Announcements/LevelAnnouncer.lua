@@ -7,9 +7,9 @@
 	Timing
 	  The start timestamp is written into NexEnhanceCharDB (per-character
 	  SavedVariables) using time() (Unix seconds) so it survives /reload and
-	  zone transitions. A zone change does NOT reset the clock; only leveling
+	  zone transitions. A zone change does NOT reset the clock, only leveling
 	  up or first-ever login for that character does. Offline time is counted
-	  honestly — if you log out mid-level the elapsed includes real-world time.
+	  honestly - if you log out mid-level the elapsed includes real-world time.
 
 	Max level
 	  When the player hits GetMaxPlayerLevel() a random line from the pool is
@@ -17,10 +17,10 @@
 
 	Channel routing
 	  LOCAL  : F.Print to chat (no SendChatMessage, always works)
-	  SAY    : /say — other players nearby can see it
+	  SAY    : /say - other players nearby can see it
 	  PARTY  : instance chat if in LFG, raid chat if in a raid, party otherwise;
 	            falls back to LOCAL when not grouped
-	  GUILD  : guild chat; falls back to LOCAL when not in a guild
+	  GUILD  : guild chat, falls back to LOCAL when not in a guild
 --]]
 
 local _, ns = ...
@@ -43,7 +43,7 @@ local C_ChatInfo = C_ChatInfo
 -- ---------------------------------------------------------------------------
 ns:RegisterDefaults({
 	levelAnnouncer = {
-		enable = false, -- opt-in only; nobody wants surprise chat spam
+		enable = false, -- opt-in only, nobody wants surprise chat spam
 		channel = "LOCAL",
 		announceMax = true,
 	},
@@ -51,24 +51,24 @@ ns:RegisterDefaults({
 
 local LevelAnnouncer = ns:NewModule("LevelAnnouncer", "levelAnnouncer", { group = "announcements", title = L["Level Announcer"], order = 30 })
 
--- Midnight cap; GetMaxPlayerLevel() is always queried at runtime, this is
+-- Midnight cap, GetMaxPlayerLevel() is always queried at runtime, this is
 -- only the fallback if the API isn't present.
 local MIDNIGHT_MAX_LEVEL = 90
 
 -- ---------------------------------------------------------------------------
 -- Max-level message pool
 --   Randomly chosen so repeated fresh alts don't see the same line. Written
---   as natural exclamations — these appear as chat messages in party/guild/say
+--   as natural exclamations - these appear as chat messages in party/guild/say
 --   (e.g. "[PlayerName]: Ding! Max level 90!") so they must read like something
 --   a real player would actually type, not a game tooltip talking to the player
---   in second person. %d is filled with the max level number; the elapsed time
+--   in second person. %d is filled with the max level number, the elapsed time
 --   string is appended separately.
 -- ---------------------------------------------------------------------------
 local MAX_LEVEL_MESSAGES = {
 	"Ding! Max level %d!",
 	"DING %d! Finally at max level!",
 	"Level %d! Max level reached!",
-	"Ding! Hit %d — the grind is done!",
+	"Ding! Hit %d - the grind is done!",
 	"DING! Level %d! Max level complete!",
 	"Level %d hit! Done leveling!",
 }
@@ -125,7 +125,7 @@ local function SendMessage(msg)
 end
 
 -- ---------------------------------------------------------------------------
--- Level tracking (ns.charDB — per-character SavedVariables)
+-- Level tracking (ns.charDB - per-character SavedVariables)
 --   { level = N, startTime = T }
 --   startTime is a time() Unix timestamp so it survives /reload and zone
 --   changes. PLAYER_ENTERING_WORLD only resets it when the stored level no
@@ -145,7 +145,7 @@ end
 -- ---------------------------------------------------------------------------
 
 --- Runs on every login and zone change. Initialises the clock for the
---- current level when no valid tracking data exists; leaves it alone on
+--- current level when no valid tracking data exists, leaves it alone on
 --- simple reloads or zone transitions so the elapsed time keeps accruing.
 function LevelAnnouncer:PLAYER_ENTERING_WORLD()
 	if not ns.db.levelAnnouncer.enable then
@@ -175,7 +175,7 @@ function LevelAnnouncer:PLAYER_LEVEL_UP(newLevel)
 	end
 
 	local tracker = GetTracker()
-	-- time() is a plain Lua function — it never returns a secret value.
+	-- time() is a plain Lua function - it never returns a secret value.
 	local elapsed = tracker.startTime and (time() - tracker.startTime) or 0
 	local durationStr = elapsed > 0 and FormatDuration(elapsed) or nil
 

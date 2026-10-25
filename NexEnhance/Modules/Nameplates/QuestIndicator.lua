@@ -5,7 +5,7 @@
 	quests, with optional objective progress ("3/7" or remaining).
 
 	  * Outside instances we read the unit tooltip (C_TooltipInfo.GetUnit) and
-	    walk its quest lines to find an INCOMPLETE objective; the icon greys for
+	    walk its quest lines to find an INCOMPLETE objective, the icon greys for
 	    a party member's quest when "Show Party Quests" is on.
 	  * Inside instances the tooltip is unreliable, so we fall back to the cheap
 	    C_QuestLog.UnitIsRelatedToActiveQuest check (icon only, no progress).
@@ -17,7 +17,7 @@
 	it is compared, so a secret value cleanly aborts the parse instead of erroring.
 
 	One widget is cached per nameplate UnitFrame and reused as the engine recycles
-	nameplates - no per-update frame churn. Event-driven; no polling OnUpdate.
+	nameplates - no per-update frame churn. Event-driven, no polling OnUpdate.
 --]]
 
 local _, ns = ...
@@ -44,7 +44,7 @@ local MODE_OFF, MODE_TARGET, MODE_HOVER, MODE_KEY = 1, 2, 3, 4
 local MOD_KEYS = { [1] = IsAltKeyDown, [2] = IsControlKeyDown, [3] = IsShiftKeyDown }
 
 -- The progress text uses the nameplate outline font's FILE at a user-chosen
--- size (captured once; the size is applied per-widget in the layout pass).
+-- size (captured once, the size is applied per-widget in the layout pass).
 local PROGRESS_FONT_FILE = select(1, SystemFont_Outline_Small:GetFont())
 
 ns:RegisterDefaults({
@@ -69,7 +69,7 @@ local Module = ns:NewModule("QuestIndicator", "questIndicator", {
 	since = "1.5.0",
 })
 
--- Live config snapshot, refreshed from the DB in Apply(); the hot paths read
+-- Live config snapshot, refreshed from the DB in Apply(), the hot paths read
 -- these locals rather than indexing ns.db every nameplate update.
 local cfg = {}
 local active = {} -- widget -> true (currently shown), for batch refreshes
@@ -146,7 +146,7 @@ local function Widget_UpdateProgressShown(self)
 	self.ProgressText:SetShown(show and true or false)
 end
 
--- Walk the unit tooltip for quest lines; gate secret fields with CanAccess first.
+-- Walk the unit tooltip for quest lines, gate secret fields with CanAccess first.
 local function Widget_UpdateQuest(self)
 	local unit = self.unit
 	if not unit then
@@ -246,7 +246,7 @@ local function Widget_Layout(self)
 end
 
 -- Hover detection is driven entirely by the unit-tooltip postcall (below), not
--- a mouse frame over the icon — a mouse-enabled child would swallow clicks meant
+-- a mouse frame over the icon - a mouse-enabled child would swallow clicks meant
 -- for targeting the nameplate. Mousing a nameplate (or the world unit) shows the
 -- unit tooltip, which is exactly the signal we hook.
 local function CreateWidget(parent)
@@ -287,7 +287,7 @@ local function AttachToNameplate(nameplate, unit)
 
 	widget.unit = unit
 	widget.isHover = false
-	-- Target check is identity-restricted in instances; SafeUnitIsUnit handles it.
+	-- Target check is identity-restricted in instances, SafeUnitIsUnit handles it.
 	local isTarget = false
 	if cfg.progressMode == MODE_TARGET then
 		isTarget = F.SafeUnitIsUnit("target", unit)
@@ -313,7 +313,7 @@ function Module:UpdateNameplateForUnit(unit)
 	if not unit then
 		return
 	end
-	-- UnitIsPlayer: SecretArguments only (Resources 12.0.7) — plain boolean.
+	-- UnitIsPlayer: SecretArguments only (Resources 12.0.7) - plain boolean.
 	local isPlayer = UnitIsPlayer(unit)
 	if isPlayer then
 		return
@@ -494,7 +494,7 @@ function Module:Apply()
 	end
 end
 
--- Register events exactly once (idempotent); handlers gate on `running`.
+-- Register events exactly once (idempotent), handlers gate on `running`.
 function Module:EnsureEvents()
 	if self.eventsRegistered then
 		return

@@ -2,9 +2,9 @@
 	NexEnhance - Best Quest Reward
 	-------------------------------------------------------------------------
 	When a quest offers multiple reward choices, marks the highest vendor-value
-	option with a small gold coin. Visual only — does not click or claim.
+	option with a small gold coin. Visual only - does not click or claim.
 
-	Quick Quest already auto-picks by sell price when automation is on; this
+	Quick Quest already auto-picks by sell price when automation is on, this
 	module is for when you want the hint without auto-turn-in.
 
 	Scoring mirrors QuickQuest (cashRewards overrides + GetItemInfo sell price)
@@ -91,7 +91,7 @@ local function HookRewardPanelHide()
 		return
 	end
 	rewardPanelHooked = true
-	-- hooksecurefunc stays forever — gate with IsEnabled() like other Blizzard hooks.
+	-- hooksecurefunc stays forever - gate with IsEnabled() like other Blizzard hooks.
 	panel:HookScript("OnHide", function()
 		if BestQuestReward:IsEnabled() then
 			HideCoin()
@@ -153,7 +153,7 @@ local function RefreshHighlight()
 	for index = 1, choices do
 		local value, needsPrime, itemID = ChoiceVendorValue(index)
 		if needsPrime then
-			-- Link not ready — retry once after the client caches the choice.
+			-- Link not ready - retry once after the client caches the choice.
 			C_Timer.After(0.25, function()
 				if BestQuestReward:IsEnabled() and _G.QuestFrame and _G.QuestFrame:IsShown() then
 					RefreshHighlight()
@@ -244,6 +244,6 @@ function BestQuestReward:RegisterOptions(category, builder)
 		self,
 		"enable",
 		L["Enable Best Quest Reward"],
-		L["Mark the highest vendor-value quest reward choice with a gold coin. Does not auto-pick — use Quick Quest for that."]
+		L["Mark the highest vendor-value quest reward choice with a gold coin. Does not auto-pick - use Quick Quest for that."]
 	)
 end

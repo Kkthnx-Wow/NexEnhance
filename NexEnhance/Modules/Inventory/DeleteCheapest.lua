@@ -14,7 +14,7 @@
 	skipped outright, and optional per-item-class filters let you protect whole
 	categories (quest items are protected by default).
 
-	Vendor sell price and bag stackCount have no SecretReturns in Resources 12.0.7 —
+	Vendor sell price and bag stackCount have no SecretReturns in Resources 12.0.7 -
 	multiply stack totals with plain Lua.
 --]]
 

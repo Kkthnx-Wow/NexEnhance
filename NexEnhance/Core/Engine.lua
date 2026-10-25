@@ -7,7 +7,7 @@
 
 	Design goals (see deep-research-report-part-1 / part-2):
 	  * One global only (`_G.NexEnhance`) - everything else lives on `ns`.
-	  * One event frame for the whole addon; modules subscribe through it
+	  * One event frame for the whole addon, modules subscribe through it
 	    instead of each creating their own frame and registering duplicates.
 	  * Clear lifecycle: OnInitialize (DB ready) -> OnEnable (world ready).
 --]]
@@ -65,8 +65,8 @@ function moduleMeta:RegisterEvent(event, handler)
 	assert(type(handler) == "function", ("NexEnhance: no handler for event '%s' on module '%s'"):format(event, self.name))
 
 	-- Bind `self` once at registration time so the dispatch path stays cheap.
-	-- Module handlers receive (self, ...payload) only — NOT the event name.
-	-- See .cursor/rules/nexenhance-conventions.mdc § "Module RegisterEvent".
+	-- Module handlers receive (self, ...payload) only - NOT the event name.
+	-- See .cursor/rules/nexenhance-conventions.mdc, "Module RegisterEvent" section.
 	-- Return the wrapper so callers can store it and pass it to ns:UnregisterEvent.
 	local wrapper = function(_, ...)
 		handler(self, ...)
@@ -126,7 +126,7 @@ function ns:NewModule(name, dbKey, opts)
 		module.title = opts.title
 		module.order = opts.order
 		-- Version this module first shipped in. When it matches the running
-		-- addon version, the landing page flags it with a glowing "New!" badge;
+		-- addon version, the landing page flags it with a glowing "New!" badge.
 		-- the tag goes inert automatically on later versions (auto-detection via
 		-- the account-wide knownModules record takes over from there).
 		module.since = opts.since
@@ -185,7 +185,7 @@ function ns:RegisterEvent(event, callback)
 		eventFrame:RegisterEvent(event)
 	end
 	-- Fill a tombstoned slot if one exists (so add/remove cycles don't grow the
-	-- array); this never shifts indices, so it's safe even mid-dispatch.
+	-- array), this never shifts indices, so it's safe even mid-dispatch.
 	for i = 1, #callbacks do
 		if not callbacks[i] then
 			callbacks[i] = callback
@@ -203,8 +203,11 @@ function ns:RegisterUnitEvent(event, callback, ...)
 		eventCallbacks[event] = callbacks
 		eventFrame:RegisterUnitEvent(event, ...)
 	end
-	-- Fill a tombstoned slot if one exists (mirrors RegisterEvent; prevents
+	-- Fill a tombstoned slot if one exists (mirrors RegisterEvent, prevents
 	-- add/remove cycles from growing the array unboundedly for unit events).
+	-- NOTE: Blizzard's unit filter is set only on first RegisterUnitEvent for
+	-- this event name - later subscribers cannot widen the token list. See
+	-- nexenhance-conventions.mdc "Unit-event caveat".
 	for i = 1, #callbacks do
 		if not callbacks[i] then
 			callbacks[i] = callback
@@ -239,7 +242,7 @@ function ns:UnregisterEvent(event, callback)
 	end
 
 	-- Compact when tombstones outnumber live slots (> half are dead). Rebuilding
-	-- the array is O(n) — same cost as we already paid above — and keeps the
+	-- the array is O(n) - same cost as we already paid above - and keeps the
 	-- dispatch loop short for high-churn events like UNIT_AURA.
 	local live, total = 0, #callbacks
 	for i = 1, total do
@@ -298,6 +301,10 @@ local function FlushCombatDeferred()
 	end
 end
 
+-- Forward declared: the bus is defined below the handlers it wires up, and the
+-- defer hook needs it first. Without this the call resolved to a nil global.
+local EnsureCombatBus
+
 local function EnsureCombatDeferHook()
 	EnsureCombatBus()
 end
@@ -325,7 +332,7 @@ local regenRetryPending = false
 
 local function OnPlayerRegenEnabled()
 	-- Blizzard sometimes fires regen before lockdown fully lifts. One immediate
-	-- attempt, then a next-frame (and one delayed) retry — otherwise
+	-- attempt, then a next-frame (and one delayed) retry - otherwise
 	-- AfterCombatCallback queues can stall until the next fight ends.
 	local function attempt()
 		if InCombatLockdown() then
@@ -356,7 +363,7 @@ local function OnPlayerRegenEnabled()
 	end)
 end
 
-local function EnsureCombatBus()
+function EnsureCombatBus()
 	if combatBusHooked then
 		return
 	end
@@ -402,8 +409,8 @@ function ns:UnregisterCombatLeaveCallback(id)
 end
 
 --- Wrap a hook callback so it no-ops when `module` is disabled (hooksecurefunc
---- cannot be removed; gate live toggles instead of requiring /reload).
---- Skin modules usually inline `module:IsEnabled()` at the hook top; this helper
+--- cannot be removed, gate live toggles instead of requiring /reload).
+--- Skin modules usually inline `module:IsEnabled()` at the hook top, this helper
 --- is optional sugar for the same pattern.
 function ns:GuardModuleHook(module, fn)
 	return function(...)
@@ -500,7 +507,7 @@ local function ScheduleLoadingComplete()
 end
 
 --- Run `callback` once after the loading screen finishes (and on /reload via
---- PLAYER_LOGIN fallback). Safe to call after completion — runs immediately.
+--- PLAYER_LOGIN fallback). Safe to call after completion - runs immediately.
 function ns:RegisterLoadingCompleteCallback(callback)
 	if type(callback) ~= "function" then
 		return

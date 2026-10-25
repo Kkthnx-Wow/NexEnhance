@@ -64,12 +64,12 @@ local BLANK_TEX = C.Media.Textures.blank
 local CLASS_COLOR = C.ClassColor
 local BRAND = C.Colors.brand
 local LOGO_TEX = C.Media.Textures.logo256
-local LOGOUT_SECONDS = 1800 -- 30 minutes from AFK flag; no server API for the real deadline
+local LOGOUT_SECONDS = 1800 -- 30 minutes from AFK flag, no server API for the real deadline
 local CAMERA_SPEED = 0.035
 local CAST_RECHECK_DELAY = 30
 local KEY_RECHECK_DELAY = 60
 
--- Cinematic letterbox layout (fixed sizes; anchored to screen edges).
+-- Cinematic letterbox layout (fixed sizes, anchored to screen edges).
 local TOP_FADE = { height = 72, padX = 20, fontSize = 16 }
 local BOTTOM_FADE = { height = 160, padX = 20, fontSize = 22, lineGap = 4 }
 local NAME_CARD = { crestSize = 120, insetX = 24, insetY = 18 }
@@ -83,7 +83,7 @@ local MODEL_LAYOUT = {
 	insetY = 0,
 }
 
--- Player model animations; small nudges within the bottom-left holder.
+-- Player model animations, small nudges within the bottom-left holder.
 local ANIMATIONS = {
 	wave = { id = 67, facing = 6, wait = 5, offsetX = 0, offsetY = 0, duration = 2.3 },
 	dance = { id = 69, facing = 6, wait = 30, offsetX = 0, offsetY = 0, duration = 300 },
@@ -778,7 +778,7 @@ local function OnChatEvent(self, event, arg1, arg2, arg3, arg4, arg5, arg6, arg7
 	if chatGroup == "BN_CONVERSATION" then
 		chatTarget = tostring(arg8)
 	elseif chatGroup == "WHISPER" or chatGroup == "BN_WHISPER" then
-		-- arg2 (sender) can be a Secret string in instances; only upper-case it
+		-- arg2 (sender) can be a Secret string in instances, only upper-case it
 		-- when it is safe to inspect (F.NotSecret guard).
 		if F.NotSecret(arg2) and sub(arg2, 1, 2) ~= "|K" then
 			chatTarget = arg2:upper()
@@ -1049,7 +1049,7 @@ function AFKCam:InstallHooks()
 	end
 	self.hooksInstalled = true
 	local frame = BuildFrame()
-	-- BuildFrame is one-shot; OnDisable tears events down — re-bind on re-enable.
+	-- BuildFrame is one-shot, OnDisable tears events down - re-bind on re-enable.
 	if frame then
 		frame:RegisterEvent("PLAYER_FLAGS_CHANGED")
 		frame:RegisterEvent("PLAYER_REGEN_DISABLED")

@@ -1,6 +1,6 @@
 --@curseforge-project-slug: libchatanims@
 -- Embedded from https://www.wowace.com/projects/libchatanims (Funkydude).
-local MAJOR, MINOR = "LibChatAnims", 6 -- Bump minor on changes
+local MAJOR, MINOR = "LibChatAnims", 7 -- Bump minor on changes
 local LCA = LibStub:NewLibrary(MAJOR, MINOR)
 if not LCA then
 	return
@@ -11,7 +11,16 @@ LCA.alerting = LCA.alerting or {} -- Chat tab alerting storage
 local anims = LCA.animations
 local alerting = LCA.alerting
 
+-- 12.1.5 moved the tab flashes to native FlashAnim groups and the alert state
+-- into ChatFrameUtil, which is exactly what this lib used to bolt on. Replacing
+-- FCF_StartAlertFlash there would bypass SetTabAlerting and the tab alpha / dock
+-- overflow refresh, so the override below only runs on the old UIFrameFlash code.
+local blizzardOwnsFlash = ChatFrameUtil and ChatFrameUtil.SetTabAlerting and true or false
+
 function LCA:IsAlerting(tab)
+	if blizzardOwnsFlash then
+		return ChatFrameUtil.IsTabAlerting(tab)
+	end
 	if alerting[tab] then
 		return true
 	end
@@ -27,6 +36,7 @@ end
 local issecretvalue = issecretvalue or function()
 	return false
 end
+if not blizzardOwnsFlash then
 FCF_StartAlertFlash = function(chatFrame)
 	if issecretvalue(chatFrame) then
 		return
@@ -127,6 +137,7 @@ FCF_StopAlertFlash = function(chatFrame)
 	else
 		chatTab:SetAlpha(noMouseAlpha)
 	end
+end
 end
 
 if WOW_PROJECT_ID == 1 then -- Retail only, dealing with a "secret" bug

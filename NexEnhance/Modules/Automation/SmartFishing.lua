@@ -134,7 +134,7 @@ local function ApplyOverrideBindings()
 		end
 	end
 
-	RegisterStateDriver(handler, "combat", "[combat] clear; nothing")
+	RegisterStateDriver(handler, "combat", "[combat] clear, nothing")
 end
 
 local function ApplyFishingCVars()

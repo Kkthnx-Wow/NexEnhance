@@ -32,11 +32,14 @@ do
 		interface = interface, -- e.g. 120005
 		locale = GetLocale(), -- e.g. "enUS"
 		isRetail = WOW_PROJECT_ID == WOW_PROJECT_MAINLINE,
+		-- NUM_CHAT_WINDOWS only exists while the deprecation shims load, this is
+		-- the constant Blizzard's own chat code reads.
+		maxChatWindows = Constants.ChatFrameConstants and Constants.ChatFrameConstants.MaxChatWindows or 10,
 	}
 end
 
 -- ---------------------------------------------------------------------------
--- Player information (constant for the session; name/realm never change while
+-- Player information (constant for the session, name/realm never change while
 -- logged in, and class/race only change across logins).
 -- ---------------------------------------------------------------------------
 do
@@ -101,7 +104,7 @@ C.Media = {
 		blank = "Interface\\Buttons\\WHITE8x8",
 		statusbar = "Interface\\TargetingFrame\\UI-StatusBar",
 		-- Branded logo, shipped at three power-of-two sizes. `logo` is the
-		-- high-res default; pick a size-specific path for small UI elements.
+		-- high-res default, pick a size-specific path for small UI elements.
 		logo = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo256",
 		logo64 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo64",
 		logo128 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo128",
@@ -114,7 +117,7 @@ C.Media = {
 		-- Soft filled glow for Cursor Trail dots (class/custom/rainbow tint).
 		cursorTrailDot = "Interface\\AddOns\\NexEnhance\\Media\\Cursor\\CursorTrailDot",
 	},
-	-- Chat emoji textures — Media/Emojis/*.tga (Unicode-style names, spaces → _).
+	-- Chat emoji textures - Media/Emojis/*.tga (Unicode-style names, spaces -> _).
 	Emojis = {
 		Angry_Face = "Interface\\AddOns\\NexEnhance\\Media\\Emojis\\Angry_Face",
 		Broken_Heart = "Interface\\AddOns\\NexEnhance\\Media\\Emojis\\Broken_Heart",

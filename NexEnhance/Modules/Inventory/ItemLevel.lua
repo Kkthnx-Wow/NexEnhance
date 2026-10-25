@@ -82,7 +82,7 @@ local inspectSlots = {
 	"SecondaryHand",
 }
 
--- Equipment slots that take a permanent enchant in current retail; used to flag
+-- Equipment slots that take a permanent enchant in current retail, used to flag
 -- an equipped item that is missing one. Indices match inspectSlots / inventory
 -- slot ids. Adjust if Blizzard changes which slots are enchantable.
 -- Midnight (11.x) reworked enchant slots: Wrist and Back/Cloak enchants were
@@ -338,7 +338,7 @@ function ItemLevel:UpdateSlotInfo(slotFrame, info, quality, link)
 		if gem then
 			icon:SetTexture(gem)
 			-- Resolve the gem's link for its hover tooltip. Socket order matches
-			-- the scan order; empty sockets / essences return nil (no tooltip).
+			-- the scan order, empty sockets / essences return nil (no tooltip).
 			bg.gemLink = link and C_Item_GetItemGem and select(2, C_Item_GetItemGem(link, gemStep)) or nil
 			if color then
 				bg:SetBackdropBorderColor(color.r, color.g, color.b)
@@ -436,7 +436,7 @@ function ItemLevel:INSPECT_READY(guid)
 		return
 	end
 	-- UnitGUID (and the event's guid) can be secret while inspecting in an
-	-- instance; comparing two secrets throws, so confirm both are readable first.
+	-- instance, comparing two secrets throws, so confirm both are readable first.
 	local inspectGUID = UnitGUID(InspectFrame.unit)
 	if F.NotSecret(inspectGUID) and F.NotSecret(guid) and inspectGUID == guid then
 		self:SetupSlots(InspectFrame, "Inspect", InspectFrame.unit)

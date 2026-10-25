@@ -6,7 +6,7 @@
 	## Dependencies: NexEnhance in their .toc.
 
 	Plugins reuse the same lifecycle, profile DB, settings builder, and event
-	dispatch as built-in modules — they appear under NexEnhance → Plugins in
+	dispatch as built-in modules - they appear under NexEnhance -> Plugins in
 	the settings panel (or a group the author chooses).
 
 	See Examples/NexEnhancePluginTemplate/ for a starter project.
@@ -129,10 +129,10 @@ end
 --- a built-in module: RegisterEvent, IsEnabled, etc.).
 ---
 --- Required fields:
----   id      — unique string, e.g. "MyName.MyFeature"
----   name    — internal name (used by /nex toggle)
----   title   — display name in settings
----   dbKey   — profile settings key (must not collide with a built-in module)
+---   id      - unique string, e.g. "MyName.MyFeature"
+---   name    - internal name (used by /nex toggle)
+---   title   - display name in settings
+---   dbKey   - profile settings key (must not collide with a built-in module)
 ---
 --- Recommended: version, author, notes, defaults = { enable = true }, addon
 --- Optional: group (default "plugins"), order, globalDefaults, website

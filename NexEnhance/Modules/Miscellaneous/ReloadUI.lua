@@ -28,7 +28,7 @@ function ReloadUI:OnEnable()
 	_G.SLASH_NEXRELOADUI2 = "/reloadui"
 	_G.SLASH_NEXRELOADUI3 = "//"
 	_G.SLASH_NEXRELOADUI4 = "/."
-	-- ReloadUI() is hardware-event restricted; the keypress that submits the
+	-- ReloadUI() is hardware-event restricted, the keypress that submits the
 	-- slash command is a valid hardware event, so a direct call is fine here.
 	---@diagnostic disable-next-line: undefined-field
 	_G.SlashCmdList["NEXRELOADUI"] = _G.ReloadUI

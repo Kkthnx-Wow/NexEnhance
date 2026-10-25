@@ -4,7 +4,7 @@
 	1. Copy this entire folder to Interface/AddOns/ under a new name.
 	2. Edit the .toc (Title, Author, Version) and keep ## Dependencies: NexEnhance.
 	3. Customize the RegisterPlugin block below.
-	4. /reload and open Esc → Options → NexEnhance → Plugin Manager.
+	4. /reload and open Esc -> Options -> NexEnhance -> Plugin Manager.
 --]]
 
 local addonName = ...

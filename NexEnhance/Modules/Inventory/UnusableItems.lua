@@ -6,7 +6,7 @@
 	required level - the same cue Blizzard uses on unusable equipment.
 
 	Class-restriction data from LibUnfit-1.0, embedded inline (no LibStub).
-	Resolved to the player's class once at login; per-itemID cache for repeats.
+	Resolved to the player's class once at login, per-itemID cache for repeats.
 	Class/level item data is never secret on 12.0.
 
 	Coverage follows our ItemLevel module: discover item buttons when Blizzard

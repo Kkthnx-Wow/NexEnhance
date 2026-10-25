@@ -3,7 +3,7 @@
 	-------------------------------------------------------------------------
 	Re-tints NPC/mob nameplate health bars with F.GetNpcReactionColor (same darker
 	reaction palette as target frame and tooltips). Player nameplates are left
-	alone — Blizzard class-color CVars handle those.
+	alone - Blizzard class-color CVars handle those.
 
 	Post-hooks CompactUnitFrame_UpdateHealthColor so we run after Blizzard sets
 	UnitSelectionColor (or combat-hostile bright red), then replace only NPC
@@ -15,9 +15,9 @@
 	fallback-map the bar RGB Blizzard just applied via F.GetNpcReactionColorFromRGB.
 
 	Blizzard references (12.0.7):
-	  * CompactUnitFrame_UpdateHealthColor — selection/threat/tap/dead paths
-	  * NamePlateUnitFrameMixin:UpdateThreatDisplay — displayThreatHealthBarColor
-	  * GetAggroHighlightThreatSituation — UnitThreatSituation("player", displayedUnit)
+	  * CompactUnitFrame_UpdateHealthColor - selection/threat/tap/dead paths
+	  * NamePlateUnitFrameMixin:UpdateThreatDisplay - displayThreatHealthBarColor
+	  * GetAggroHighlightThreatSituation - UnitThreatSituation("player", displayedUnit)
 	    on enemy nameplates (usePlayerForAggroHighlightThreat)
 --]]
 
@@ -26,6 +26,7 @@ local F, L = ns.F, ns.L
 
 local hooksecurefunc = hooksecurefunc
 local strfind = string.find
+local wipe = wipe
 
 local InCombatLockdown = InCombatLockdown
 local UnitIsPlayer = UnitIsPlayer
@@ -56,6 +57,8 @@ local Module = ns:NewModule("NameplateReactionColors", "nameplateReactionColors"
 local running = false
 local eventHandles = {}
 local unitAddedRefreshPending = {}
+local dirtyNameplateUnits = {}
+local dirtyPlateFlushPending = false
 
 local scheduleRegenRefresh = F.Debounce(0.1, function()
 	if running and ns.db.nameplateReactionColors.enable then
@@ -232,19 +235,49 @@ local function ScheduleRegenRefresh()
 end
 
 function Module:OnRegenEnabled()
+	-- Immediate pass so lingering combat threat tints clear, debounce catches
+	-- the follow-up storm when many plates settle at once.
 	self:RefreshVisibleNameplates()
 	ScheduleRegenRefresh()
 end
 
+-- Incident (ReactionColors, Jul 2026): PLAYER_REGEN_DISABLED used to call
+-- RefreshVisibleNameplates() synchronously - raid-wide plate repaint on pull.
+-- Same debounce as post-combat, plates re-tint on threat events anyway.
+function Module:OnRegenDisabled()
+	ScheduleRegenRefresh()
+end
+
 function Module:OnThreatOrFactionEvent(unit)
-	RefreshNameplateForUnit(unit)
+	-- Keep UNIT_FACTION / threat as global RegisterEvent: ClassColors shares the
+	-- engine frame and needs HUD tokens, RegisterUnitEvent would starve one of us
+	-- (first-subscriber wins). Filter + end-of-frame dirty flush instead.
+	if not running or not IsNameplateUnit(unit) then
+		return
+	end
+	dirtyNameplateUnits[unit] = true
+	if dirtyPlateFlushPending then
+		return
+	end
+	dirtyPlateFlushPending = true
+	C_Timer.After(0, function()
+		dirtyPlateFlushPending = false
+		if not running or not ns.db.nameplateReactionColors.enable then
+			wipe(dirtyNameplateUnits)
+			return
+		end
+		for u in pairs(dirtyNameplateUnits) do
+			dirtyNameplateUnits[u] = nil
+			RefreshNameplateForUnit(u)
+		end
+	end)
 end
 
 function Module:NAME_PLATE_UNIT_ADDED(unit)
 	if not running then
 		return
 	end
-	-- Plate frame may not be wired when the event fires; defer one frame.
+	-- Plate frame may not be wired when the event fires, defer one frame.
 	if unitAddedRefreshPending[unit] then
 		return
 	end
@@ -287,7 +320,7 @@ function Module:EnsureEvents()
 	end
 	self.eventsRegistered = true
 	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED", "OnRegenEnabled")
-	self:TrackEvent(eventHandles, "PLAYER_REGEN_DISABLED", "RefreshVisibleNameplates")
+	self:TrackEvent(eventHandles, "PLAYER_REGEN_DISABLED", "OnRegenDisabled")
 	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", "RefreshVisibleNameplates")
 	self:TrackEvent(eventHandles, "UNIT_THREAT_LIST_UPDATE", "OnThreatOrFactionEvent")
 	self:TrackEvent(eventHandles, "UNIT_THREAT_SITUATION_UPDATE", "OnThreatOrFactionEvent")
@@ -306,6 +339,8 @@ end
 
 function Module:OnDisable()
 	running = false
+	wipe(dirtyNameplateUnits)
+	dirtyPlateFlushPending = false
 	self:RefreshVisibleNameplates()
 	self:UnregisterModuleEvents()
 end

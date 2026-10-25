@@ -202,7 +202,7 @@ function MapReveal:OnEnable()
 end
 
 function MapReveal:OnDisable()
-	-- hooksecurefunc stays; hide revealed tiles so fog returns without /reload.
+	-- hooksecurefunc stays, hide revealed tiles so fog returns without /reload.
 	ApplyRevealState()
 end
 

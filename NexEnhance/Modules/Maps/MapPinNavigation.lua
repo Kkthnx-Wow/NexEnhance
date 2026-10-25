@@ -11,9 +11,9 @@
 	C_Navigation, C_SuperTrack, C_Map.SetUserWaypoint.
 
 	SuperTrackedFrame lives in load-on-demand Blizzard_QuestNavigation. Frame
-	method overrides gate on IsEnabled(); full visual revert needs /reload.
-	C_Navigation.GetDistance has no secret tags (Resources 12.0.7) — plain math.
-	ETA FontString copies DistanceText shadow (not CreatePlainFS) — Slug shadow
+	method overrides gate on IsEnabled(), full visual revert needs /reload.
+	C_Navigation.GetDistance has no secret tags (Resources 12.0.7) - plain math.
+	ETA FontString copies DistanceText shadow (not CreatePlainFS) - Slug shadow
 	regression on 12.0.7 if we used our plain-font helper here.
 --]]
 
@@ -83,8 +83,8 @@ local lastEtaLogKey
 local lastEtaState
 
 local ETA_SAMPLE_INTERVAL = 0.5
-local ETA_RETREAT_SPEED = -3 -- yd/s; hide when clearly moving away
-local ETA_APPROACH_SPEED = 0.5 -- yd/s; below this, hold ETA on smoothed speed
+local ETA_RETREAT_SPEED = -3 -- yd/s, hide when clearly moving away
+local ETA_APPROACH_SPEED = 0.5 -- yd/s, below this, hold ETA on smoothed speed
 
 local function db()
 	return ns.db.mapPinNavigation
@@ -221,7 +221,7 @@ local function UpdateEta(frame, elapsed)
 		return
 	end
 
-	-- Seed the first sample; `prev = lastDistance or distance` would always yield zero speed.
+	-- Seed the first sample, `prev = lastDistance or distance` would always yield zero speed.
 	if lastDistance == nil then
 		lastDistance = distance
 		lastUpdate = 0
@@ -644,7 +644,7 @@ function MapPinNavigation:RegisterOptions(category, builder)
 	builder:DependsOn(slashInit, enableInit)
 
 	local _, minInit = builder:Slider(category, self, "minDistance", L["Minimum Pin Distance"], L["Hide the arrow when closer than this (yards)."], 0, 500, 25)
-	local _, maxInit = builder:Slider(category, self, "maxDistance", L["Maximum Pin Distance"], L["Hide beyond this distance; 0 = unlimited."], 0, 10000, 100)
+	local _, maxInit = builder:Slider(category, self, "maxDistance", L["Maximum Pin Distance"], L["Hide beyond this distance, 0 = unlimited."], 0, 10000, 100)
 	local _, fadeInit = builder:Slider(category, self, "fadeDistance", L["Long-Range Fade Starts"], L["Beyond this distance the Long Range Alpha applies (yards)."], 0, 5000, 100)
 	local _, alphaShortInit = builder:Slider(category, self, "pinAlphaShort", L["Close Range Alpha"], L["Arrow opacity within fade distance (%)."], 0, 100, 5)
 	local _, alphaLongInit = builder:Slider(category, self, "pinAlphaLong", L["Long Range Alpha"], L["Arrow opacity beyond fade distance (%)."], 0, 100, 5)
@@ -730,7 +730,7 @@ function MapPinNavigation:OnInitialize()
 					SuperTrackTypeLabel()
 				))
 				F.Print(format(
-					"  unlimitedRange=%s (dist>%d uses long alpha %.0f%%; yours=%.0f%%)",
+					"  unlimitedRange=%s (dist>%d uses long alpha %.0f%%, yours=%.0f%%)",
 					unlimited and "YES" or (distNum and distNum <= fadeDist and "n/a (within fade distance)" or "no"),
 					fadeDist,
 					longAlpha * 100,

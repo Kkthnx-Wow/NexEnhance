@@ -7,7 +7,7 @@
 	Talking Head frame.
 
 	The anchor registers with Edit Mode (LibEditMode) so you can drag it.
-	Re-anchoring uses hooksecurefunc only — no taint.
+	Re-anchoring uses hooksecurefunc only - no taint.
 --]]
 
 -- luacheck: globals GroupLootContainer AchievementAlertSystem AchievementShield_SetPoints AchievementFrame_LoadUI AlertFrame_PauseOutAnimation AlertFrame_ShowNewAlert LootAlertSystem MoneyWonAlertSystem LOOT_SOURCE_TRADING_POST
@@ -48,11 +48,11 @@ local testAlertSession = false
 local alertShowSequence = 0
 
 -- Transparent padding in toast templates (achievement/loot art) reads as extra gap
--- when anchoring frame TOP/BOTTOM edges; trim pulls stacks visually tighter.
+-- when anchoring frame TOP/BOTTOM edges, trim pulls stacks visually tighter.
 local STACK_ART_TRIM = 6
 
--- /nex alerttest samples — mirrors real AlertFrame event paths (AlertFrames.lua).
--- Achievement IDs: Level 10 / 20; item 6948 = Hearthstone.
+-- /nex alerttest samples - mirrors real AlertFrame event paths (AlertFrames.lua).
+-- Achievement IDs: Level 10 / 20, item 6948 = Hearthstone.
 local TEST_ALERTS = {
 	{ kind = "achievement", id = 6 },
 	{ kind = "achievement", id = 7 },
@@ -61,7 +61,7 @@ local TEST_ALERTS = {
 	{ kind = "tradingPost", amount = 50 },
 }
 
--- Current stacking direction; synced before each anchor pass from the mover position.
+-- Current stacking direction, synced before each anchor pass from the mover position.
 local POSITION, ANCHOR_POINT = "TOP", "BOTTOM"
 local parentFrame
 
@@ -96,7 +96,7 @@ local function GetQueuedAlertsInStackOrder(pool)
 	wipe(scratchCollectOrder)
 	local collectIdx = 0
 	for alertFrame in pool:EnumerateActive() do
-		-- During pool release a frame can still be "active" while anchors are cleared;
+		-- During pool release a frame can still be "active" while anchors are cleared.
 		-- skip hidden frames so we never sort or reposition stale entries.
 		if alertFrame:IsShown() and not scratchSeen[alertFrame] then
 			scratchSeen[alertFrame] = true
@@ -196,7 +196,7 @@ local function SyncAnchorDirection(alertContainer)
 end
 
 -- Re-run the anchor chain with current POSITION/spacing. Blizzard's post-hook
--- UpdateAnchors pass can run before direction is synced; this fixes spacing.
+-- UpdateAnchors pass can run before direction is synced, this fixes spacing.
 local function RepositionAllAlerts(alertContainer)
 	alertContainer:CleanAnchorPriorities()
 	local relativeFrame = alertContainer.baseAnchorFrame or alertContainer
@@ -244,7 +244,7 @@ local function UpdateGroupLootContainer(self)
 end
 
 -- ---------------------------------------------------------------------------
--- Test preview (/nex alerttest) — Blizzard AchievementAlertSystem + frozen anims
+-- Test preview (/nex alerttest) - Blizzard AchievementAlertSystem + frozen anims
 -- ---------------------------------------------------------------------------
 local function StopTestAlertAnimations(frame)
 	if AlertFrame_PauseOutAnimation then
@@ -370,7 +370,7 @@ function AlertFrames:ToggleTest()
 		return
 	end
 
-	-- Same AddAlert paths as live events; hook freezes glow/intro before it paints white.
+	-- Same AddAlert paths as live events, hook freezes glow/intro before it paints white.
 	testAlertSession = true
 	for i = 1, #TEST_ALERTS do
 		QueueTestAlert(TEST_ALERTS[i])
@@ -502,7 +502,7 @@ end
 
 function AlertFrames:OnInitialize()
 	local cfg = db()
-	-- One-time: old builds defaulted stack spacing to 10 — huge gaps in-game.
+	-- One-time: old builds defaulted stack spacing to 10 - huge gaps in-game.
 	if not cfg._stackSpacingMigrated then
 		cfg._stackSpacingMigrated = true
 		if cfg.stackSpacing == nil or cfg.stackSpacing >= 8 then
@@ -522,7 +522,7 @@ end
 function AlertFrames:RegisterOptions(category, builder)
 	local _, enableInit = builder:Checkbox(category, self, "enable", L["Enable Alert Frames"], L["Move achievement/loot/reward alert popups to the top of the screen (reload to disable)."])
 	local _, headInit = builder:Checkbox(category, self, "hideTalkingHead", L["Hide Talking Head"], L["Suppress the Talking Head dialog frame (reload to re-enable it)."])
-	local _, spacingInit = builder:Slider(category, self, "stackSpacing", L["Stack Spacing"], L["Gap between stacked alerts. 0 = tight; negative overlaps art padding. Old default was 10."], -15, 10, 1)
+	local _, spacingInit = builder:Slider(category, self, "stackSpacing", L["Stack Spacing"], L["Gap between stacked alerts. 0 = tight, negative overlaps art padding. Old default was 10."], -15, 10, 1)
 
 	builder:DependsOn(headInit, enableInit)
 	builder:DependsOn(spacingInit, enableInit)

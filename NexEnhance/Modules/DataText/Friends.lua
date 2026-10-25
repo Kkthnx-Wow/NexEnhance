@@ -2,7 +2,7 @@
 	NexEnhance - DataText: Friends
 	-------------------------------------------------------------------------
 	Friends roster tooltip on Blizzard's QuickJoinToastButton (social button by
-	the chat frame). The button already shows the online count — we add no
+	the chat frame). The button already shows the online count - we add no
 	overlay text, only the hover tooltip. Native click/queue-toast untouched.
 
 	Battle.net entries group by client/game with lazy sub-headers, classic vs
@@ -26,7 +26,9 @@ local GetQuestDifficultyColor = GetQuestDifficultyColor
 local GetZoneText = GetZoneText
 local GetRealmName = GetRealmName
 local IsShiftKeyDown = IsShiftKeyDown
-local MouseIsOver = MouseIsOver
+local function MouseIsOver(region)
+	return region and region:IsMouseOver()
+end
 local BNGetNumFriends = BNGetNumFriends
 local BNet_GetValidatedCharacterName = BNet_GetValidatedCharacterName
 local UnitInParty = UnitInParty
@@ -73,7 +75,7 @@ local clientSorted = {} -- client tokens in display order
 local AFK_TAG = format(" |cffFFFFFF[|r|cffFF9900%s|r|cffFFFFFF]|r", _G.AFK or "AFK")
 local DND_TAG = format(" |cffFFFFFF[|r|cffFF3333%s|r|cffFFFFFF]|r", _G.DND or "DND")
 
--- Plain-text fragments from ERR_FRIEND_* for CHAT_MSG_SYSTEM roster invalidation (ElvUI pattern).
+-- Plain-text fragments from ERR_FRIEND_* for CHAT_MSG_SYSTEM roster invalidation.
 local friendOnline, friendOffline
 if _G.ERR_FRIEND_ONLINE_SS and _G.ERR_FRIEND_OFFLINE_S then
 	friendOnline = gsub(_G.ERR_FRIEND_ONLINE_SS, "|Hplayer:%%s|h%[%%s%]|h", "")
@@ -281,7 +283,7 @@ local function BuildBNetTable()
 	end
 
 	-- De-dup the same account showing up on a real game AND on the App/Mobile
-	-- client: the real game entry wins; App is preferred over Mobile otherwise.
+	-- client: the real game entry wins, App is preferred over Mobile otherwise.
 	local realByAccount = {}
 	local appByAccount = {}
 
@@ -299,7 +301,7 @@ local function BuildBNetTable()
 			end
 			local existing = appByAccount[id]
 			if existing then
-				-- Prefer App over Mobile (BSAp); otherwise keep what we have.
+				-- Prefer App over Mobile (BSAp), otherwise keep what we have.
 				if existing.client == "BSAp" and obj.client == "App" then
 					GroupRemove(existing)
 					appByAccount[id] = obj
@@ -357,7 +359,7 @@ function FriendsText:BuildTooltip(button)
 	if not cfg.enable then
 		return
 	end
-	-- A live queue toast is showing; leave Blizzard's own tooltip alone.
+	-- A live queue toast is showing, leave Blizzard's own tooltip alone.
 	if button.displayedToast then
 		return
 	end

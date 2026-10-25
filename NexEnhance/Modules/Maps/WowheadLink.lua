@@ -2,7 +2,7 @@
 	NexEnhance - Wowhead Links
 	-------------------------------------------------------------------------
 	Adds copyable Wowhead-link edit boxes to the world map (tracked/opened quest)
-	and the achievement frame. Hover to highlight; Ctrl+C copies when focused.
+	and the achievement frame. Hover to highlight, Ctrl+C copies when focused.
 
 	Wowhead subdomain follows client locale. Skips if Leatrix_Maps is loaded.
 --]]
@@ -23,7 +23,7 @@ local C_SuperTrack = C_SuperTrack
 
 local COPY_HINT = L["Press Ctrl-C to copy"]
 
--- PortraitFrame TitleContainer sits at frame level 510; WorldMap enables mouse on
+-- PortraitFrame TitleContainer sits at frame level 510, WorldMap enables mouse on
 -- it for title-bar dragging, so our link box must stack above or it never receives
 -- hover, tooltip, or copy input.
 local function RaiseAboveTitleBar(frame, borderFrame)
@@ -45,7 +45,7 @@ local function SetMapTitleShown(borderFrame, shown)
 	if titleText then
 		titleText:SetShown(shown)
 	end
-	-- Pre-Dragonflight global; harmless if absent.
+	-- Pre-Dragonflight global, harmless if absent.
 	if _G.WorldMapFrameTitleText then
 		_G.WorldMapFrameTitleText:SetShown(shown)
 	end
@@ -87,7 +87,7 @@ local function FormatLink(id, kind)
 	return urlIcon .. "https://" .. wowheadLoc .. "/" .. kind .. "=" .. id
 end
 
--- A read-only edit box that highlights its text on hover; Ctrl+C copies when focused.
+-- A read-only edit box that highlights its text on hover, Ctrl+C copies when focused.
 local function LinkEditBox_OnKeyDown(self, key)
 	if IsControlKeyDown() and key == "C" then
 		return
@@ -328,12 +328,12 @@ function WowheadLink:OnEnable()
 		return
 	end
 	self:Setup()
-	-- Setup is one-shot; Refresh re-shows boxes / hides map title on re-enable.
+	-- Setup is one-shot, Refresh re-shows boxes / hides map title on re-enable.
 	self:Refresh()
 end
 
 function WowheadLink:OnDisable()
-	-- hooksecurefunc / LOD callbacks stay; hide boxes and restore map title.
+	-- hooksecurefunc / LOD callbacks stay, hide boxes and restore map title.
 	self:Refresh()
 end
 

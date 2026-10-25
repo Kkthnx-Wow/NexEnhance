@@ -1,7 +1,7 @@
 --[[
 	NexEnhance - Pull Countdown
 	-------------------------------------------------------------------------
-	Group chat pull timer via /pc [seconds] (alias /jenkins). Chat-only — no
+	Group chat pull timer via /pc [seconds] (alias /jenkins). Chat-only - no
 	Blizzard DoCountdown / DBM sync in v1 (Midnight-safe, no combat APIs).
 
 	Second /pc while a countdown is running aborts it. Requires a group and
@@ -121,7 +121,7 @@ function PullCountdown:Start(seconds)
 		SendGroup(format(L["Pulling in %d.."], delay))
 	end
 
-	-- 1s ticks so "10" means ~10 seconds wall time (Kkthnx used 1.5s — we don't).
+	-- 1s ticks so "10" means ~10 seconds wall time (Kkthnx used 1.5s - we don't).
 	ticker = C_Timer.NewTicker(1, function()
 		if not remaining then
 			ResetTicker()
@@ -160,7 +160,7 @@ function PullCountdown:OnDisable()
 	ResetTicker()
 end
 
--- Register once at load — same pattern as /rl in ReloadUI.
+-- Register once at load - same pattern as /rl in ReloadUI.
 RegisterSlash()
 
 function PullCountdown:OnSettingChanged(key, value)

@@ -6,7 +6,7 @@
 
 	Blizzard_ChallengesUI is load-on-demand, so we hook the keystone frame's
 	OnShow when that addon loads (or immediately if already loaded). We bow out
-	if AngryKeystones is present. Enable toggle reads live — no reload needed.
+	if AngryKeystones is present. Enable toggle reads live - no reload needed.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -98,7 +98,7 @@ function AutoKeystone:OnEnable()
 	if not ns.db.autoKeystone.enable then
 		return
 	end
-	-- AngryKeystones already auto-slots keystones; don't fight it.
+	-- AngryKeystones already auto-slots keystones, don't fight it.
 	if C_AddOns_IsAddOnLoaded("AngryKeystones") then
 		return
 	end

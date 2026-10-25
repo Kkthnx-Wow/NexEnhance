@@ -13,7 +13,7 @@ local _, ns = ...
 
 ns.Transition = ns.Transition or {}
 
--- Example (12.0.7 — already handled in-module; do not duplicate here):
+-- Example (12.0.7 - already handled in-module, do not duplicate here):
 -- if C_PartyInfo and not C_PartyInfo.IsGUIDInGroup and IsGUIDInGroup then
 -- 	C_PartyInfo.IsGUIDInGroup = function(guid, category)
 -- 		return IsGUIDInGroup(guid, category)

@@ -14,8 +14,8 @@
 	    nudge) by their text, so our intentional tips are left alone.
 
 	Defaulted OFF and lives under General. hooksecurefunc can't be removed, so
-	the hook gates on an `active` flag for live toggling; tutorial CVars restore
-	when disabled. Tutorial UI only — no combat data.
+	the hook gates on an `active` flag for live toggling, tutorial CVars restore
+	when disabled. Tutorial UI only - no combat data.
 --]]
 
 local _, ns = ...
@@ -53,7 +53,7 @@ local function IsOwnTip(text)
 	return ns.OwnHelpTips ~= nil and ns.OwnHelpTips[text] == true
 end
 
--- Tutorial CVars we force off; restored to Blizzard's default ("1") on disable.
+-- Tutorial CVars we force off, restored to Blizzard's default ("1") on disable.
 local TUTORIAL_CVARS = { "showTutorials", "showNPETutorials" }
 
 local active = false
@@ -72,8 +72,11 @@ local function AcknowledgeAll()
 	end
 
 	for frame in pool:EnumerateActive() do
+		-- 12.1.5 wipes `info` the moment a tip starts closing (the frame can sit
+		-- in the active set until its deferred OnHide lands), and Acknowledge
+		-- indexes it, so a tip without info is already on its way out.
 		local info = frame.info
-		if not (info and IsOwnTip(info.text)) then
+		if info and not IsOwnTip(info.text) then
 			frame:Acknowledge()
 		end
 	end

@@ -10,7 +10,7 @@
 	for us (AchievementFrame_UpdateAndSelectCategory), so we don't snapshot category
 	collapse state.
 
-	Load-on-demand via the module event API; hooksecurefunc/HookScript only.
+	Load-on-demand via the module event API, hooksecurefunc/HookScript only.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -79,7 +79,7 @@ local function RememberLastState()
 	if not Module.enabled or goingBack or not curCategory then
 		return
 	end
-	-- The click + select hooks can both fire on one frame; only store once.
+	-- The click + select hooks can both fire on one frame, only store once.
 	local top = history[#history]
 	if top and top.time == GetTime() then
 		return
@@ -119,7 +119,7 @@ local function GoBack()
 	SetScroll("AchievementFrameCategories", entry.categoryScroll)
 	SetScroll("AchievementFrameAchievements", entry.achievementScroll)
 
-	-- We now sit on the restored view; sync the trackers so the *next* move
+	-- We now sit on the restored view, sync the trackers so the *next* move
 	-- records this spot rather than the one before it.
 	curCategory = entry.categoryID
 	curAchievement = entry.achievementID

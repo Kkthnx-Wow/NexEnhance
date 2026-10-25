@@ -65,7 +65,7 @@ ns:RegisterDefaults({
 		-- Pre-Midnight world events (Legion invasions, BfA faction assaults,
 		-- Dragonflight elemental storms / Grand Hunt / Community Feast) and the
 		-- legacy daily-quest checklist. Off by default now that the live content
-		-- is Midnight; flip on to keep tracking the old timers.
+		-- is Midnight, flip on to keep tracking the old timers.
 		showLegacy = false,
 	},
 })
@@ -95,7 +95,7 @@ local LOCKOUT_PREVIEW_MAX = 5
 local raidLockoutScratch = {}
 local dungeonLockoutScratch = {}
 
--- Forward-declared; defined with legacy invasion timer helpers below.
+-- Forward-declared, defined with legacy invasion timer helpers below.
 local ScanInvasionAnchors, GetInvasionTimers, CheckLegionInvasion, CheckBFAInvasion
 local invasionScanAt = 0
 
@@ -208,7 +208,7 @@ local STORM_POI_IDS = {
 }
 
 -- Void Assaults (Midnight 12.0.x current content). One zone is active per weekly
--- rotation (Eversong Woods <-> Zul'Aman); the meta-quest gates the weekly Spark
+-- rotation (Eversong Woods <-> Zul'Aman), the meta-quest gates the weekly Spark
 -- of Radiance. Quest IDs are from 12.0.5 datamining: IsQuestFlaggedCompleted
 -- returns false for an unknown ID and the on-quest check returns nil, so a stale
 -- ID fails safe (the line is simply omitted) rather than erroring or lying.
@@ -224,7 +224,7 @@ local VOID_ASSAULTS = {
 -- quests is finished, so its completed flag is the single source of truth for the
 -- weekly. The path quests below let us show progress for whichever path the
 -- player picked (e.g. "Midnight: Delves  1/3"). Prey / World Boss IDs aren't
--- needed for completion (the meta flag covers them); they only miss the optional
+-- needed for completion (the meta flag covers them), they only miss the optional
 -- progress line, which fails safe. Verify with:
 --   /run print(C_QuestLog.IsQuestFlaggedCompleted(93744))
 local WEEKLY_META_QUEST = 93744 -- Unity Against the Void
@@ -236,10 +236,10 @@ local WEEKLY_PATH_QUESTS = {
 
 local WORLD_BOSS_NAMES = {
 	"Lu'ashal",
-	"Lu’ashal",
+	"Lu'ashal",
 	"Thorm'belan",
 	"Thorm'Belan",
-	"Thorm’belan",
+	"Thorm'belan",
 	"Predaxas",
 	"Cragpine",
 }
@@ -274,7 +274,7 @@ local function FormatClock(hour, minute, pending)
 	local suffix = (hour < 12) and _G.TIMEMANAGER_AM or _G.TIMEMANAGER_PM
 	local h = (hour % 12 == 0) and 12 or (hour % 12)
 
-	-- A pending calendar invite flashes the whole readout red; otherwise the
+	-- A pending calendar invite flashes the whole readout red, otherwise the
 	-- class colour (when enabled) tints only the AM/PM unit, never the digits.
 	if pending then
 		return format("|cffff0000" .. _G.TIMEMANAGER_TICKER_12HOUR .. " %s|r", h, minute, suffix)
@@ -605,8 +605,8 @@ local function ProgressString(progress, total)
 	return str
 end
 
--- GetSavedInstanceInfo: since 10.0.5 return #2 is lockoutId; map InstanceID is #14.
--- Classify with EJ when api isRaid lies; render raids and dungeons in two passes
+-- GetSavedInstanceInfo: since 10.0.5 return #2 is lockoutId, map InstanceID is #14.
+-- Classify with EJ when api isRaid lies, render raids and dungeons in two passes
 -- because API index order is not grouped by instance type.
 local function ReadSavedInstance(index)
 	local name, _, reset, diff, locked, extended, _, isRaid, maxPlayers, diffName, numEncounters, progress, _, gameInstanceID =
@@ -761,7 +761,7 @@ end
 
 -- The weekly "Choose Your Path" meta (Unity Against the Void, Lady Liadrin).
 -- This is the headline Midnight weekly, so it always shows at max level as a
--- reminder (hidden on leveling alts). Green = done, red = not yet; an indented
+-- reminder (hidden on leveling alts). Green = done, red = not yet, an indented
 -- line shows the picked path's progress while it's in the quest log.
 local function AddWeeklyMeta()
 	if not C_QuestLog or not C_QuestLog.IsQuestFlaggedCompleted then
@@ -839,7 +839,7 @@ local function AddDelveLine(uiMapID, info, header, seen)
 	local dailyLeft = F.GetSecondsUntilDailyReset()
 	GameTooltip:AddDoubleLine(
 		format("%s - %s", mapInfo and mapInfo.name or L["Unknown"], info.name or L["Unknown"]),
-		dailyLeft and FormatTimer(dailyLeft) or "—",
+		dailyLeft and FormatTimer(dailyLeft) or "-",
 		1, 1, 1, 1, 1, 1
 	)
 	return header, true
@@ -967,7 +967,7 @@ local function AddVoidAssaults()
 end
 
 -- Current-content world events (Stormarion Assault, Abundance Harvest, Void
--- Incursions...). Blizzard exposes these through GetEventsForMap; we scan the
+-- Incursions...). Blizzard exposes these through GetEventsForMap, we scan the
 -- player's continent and merge duplicates by name (the same event can appear on
 -- multiple zone maps with different POI IDs). World bosses are omitted here
 -- because AddWorldBosses already tracks them. Ambient always-on POIs such as
@@ -980,7 +980,7 @@ local function ParseWidgetTextSeconds(text)
 		return
 	end
 	-- WoW pluralization tokens like "|4Min:Min;" can sit between the number and
-	-- its unit word (e.g. "Time Left: 2 |4Min:Min; 38 |4Sec:Sec;"). Match a number
+	-- its unit word (e.g. "Time Left: 2 |4Min:Min, 38 |4Sec:Sec;"). Match a number
 	-- followed by optional space / pipe / digit noise, then the unit, so this
 	-- handles both the escaped form and plain "5 Min 45 Sec".
 	local days = match(text, "(%d+)[%s|%d]*[Dd]ay")
@@ -1756,7 +1756,7 @@ function Clock:Create()
 	end
 
 	-- Parent and anchor to the minimap so the clock always rides with it (the
-	-- minimap itself is moved via Edit Mode); an absolute anchor would get left
+	-- minimap itself is moved via Edit Mode), an absolute anchor would get left
 	-- behind whenever the minimap is repositioned or its cluster is resized.
 	local minimap = _G["Minimap"]
 	clock = CreateFrame("Button", nil, minimap or UIParent)

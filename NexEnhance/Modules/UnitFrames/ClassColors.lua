@@ -12,7 +12,7 @@
 	Offline players: grey desaturated health (via GetUnitHealthColor), plus on
 	target/focus/toT/boss HUD frames a desaturated portrait and the standard
 	Disconnect-Icon overlay (party portraits already get this from Blizzard).
-	Compact raid/party frames (Edit Mode) are left to Blizzard — they already
+	Compact raid/party frames (Edit Mode) are left to Blizzard - they already
 	expose a "Class Colors" raid-profile option via CompactUnitFrame_UpdateHealthColor.
 
 	Why NPCs needed fixing: the default atlas health bar is GREEN for everyone
@@ -23,7 +23,7 @@
 
 	How it works (researched from BlizzardInterfaceCode):
 	  * Dragonflight+ HUD health bars (player, target, focus, boss, party, pet)
-	    set `lockColor = true` on load and keep `SetStatusBarColor(1,1,1)`; the
+	    set `lockColor = true` on load and keep `SetStatusBarColor(1,1,1)`, the
 	    green look is baked into the BarTexture atlas. We must NOT bail on
 	    lockColor. Instead use StatusBar:SetStatusBarDesaturated(true) then
 	    SetStatusBarColor(rgb) so the atlas greyscales and tints correctly.
@@ -39,7 +39,7 @@
 	SetStatusBarColor / SetStatusBarDesaturated accept tainted callers (12.0+).
 
 	Patch 12.0: UnitIsPlayer / UnitIsConnected / UnitTreatAsPlayerForDisplay /
-	UnitClass classFilename are SecretArguments only (Resources 12.0.7) — plain
+	UnitClass classFilename are SecretArguments only (Resources 12.0.7) - plain
 	booleans / tokens. Only UnitClass's first return (className) is ConditionalSecret;
 	we use the second return (classFilename) without a secret gate.
 --]]
@@ -181,7 +181,7 @@ end
 -- Offline players: party frames use PartyMemberFrameMixin:UpdateOnlineStatus
 -- (desaturated portrait + Disconnect-Icon overlay + grey full health bar).
 -- Target/focus HUD frames ship without that overlay, so we mirror the party look
--- when Class Colours is enabled. Health tint is handled above; this covers portrait.
+-- when Class Colours is enabled. Health tint is handled above, this covers portrait.
 local function GetHudPortrait(frame)
 	if not frame then
 		return nil, nil
@@ -253,7 +253,7 @@ local function UpdateDisconnectFromHealthBar(statusbar)
 end
 
 -- Atlas HUD bars use lockColor so Blizzard skips SetStatusBarColor in
--- UnitFrameHealthBar_Update; the visible green is the atlas at multiply 1,1,1.
+-- UnitFrameHealthBar_Update, the visible green is the atlas at multiply 1,1,1.
 local HUD_DEFAULT_COLOR = { r = 1, g = 1, b = 1 }
 
 local function ApplyHudHealthColor(statusbar, r, g, b, desaturated)
@@ -386,7 +386,7 @@ local function HookClassification(frame)
 	end)
 end
 
--- CheckFaction resets portrait vertex colour; re-apply offline desaturation + icon.
+-- CheckFaction resets portrait vertex colour, re-apply offline desaturation + icon.
 local function HookCheckFaction(frame)
 	if not frame or frame.nexDisconnectHooked then
 		return
@@ -402,7 +402,7 @@ end
 
 -- PartyMemberFrameMixin:UpdateArt() re-applies the HUD health atlas when a
 -- member enters/leaves a vehicle (ToPlayerArt / ToVehicleArt). Same pattern as
--- TargetFrameMixin:CheckClassification — hook after the atlas swap so our tint
+-- TargetFrameMixin:CheckClassification - hook after the atlas swap so our tint
 -- is not left on the wrong texture state.
 local function HookPartyUpdateArt()
 	local mixin = _G["PartyMemberFrameMixin"]

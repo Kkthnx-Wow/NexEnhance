@@ -14,7 +14,7 @@
 	  * The callback receives the unit's contextData (.name/.server/.unit and,
 	    for BNet friends, .accountInfo.gameAccountInfo).
 	  * GuildInvite is a deprecated shim now, so we call the live C_GuildInfo.Invite.
-	  * contextData.name / .server can be Secret inside instances on 12.0; the
+	  * contextData.name / .server can be Secret inside instances on 12.0, the
 	    name is resolved once (guarded) up front and the click handlers only ever
 	    see a plain string. If nothing is readable, our entries are simply omitted.
 
@@ -32,9 +32,7 @@ local GetGuildInfo = GetGuildInfo
 local UnitIsUnit = UnitIsUnit
 local C_FriendList = C_FriendList
 local C_GuildInfo = C_GuildInfo
-local ChatFrame_SendTell = ChatFrame_SendTell
-local ChatEdit_ChooseBoxForSend = ChatEdit_ChooseBoxForSend
-local ChatEdit_ActivateChat = ChatEdit_ActivateChat
+local ChatFrameUtil = ChatFrameUtil
 
 -- Blizzard global strings (client-localised). Read through _G with fallbacks.
 local ADD_FRIEND = _G["ADD_CHARACTER_FRIEND"] or _G["ADD_FRIEND"] or "Add Friend"
@@ -93,7 +91,7 @@ end
 
 -- Whispering or friending yourself is nonsense, so bail on your own frame. This
 -- also covers targeting yourself (fires MENU_UNIT_TARGET, not _SELF). The unit
--- token can be secret in instances; treat an unreadable result as "not us".
+-- token can be secret in instances, treat an unreadable result as "not us".
 local function IsSelf(data)
 	local unit = data and data.unit
 	if not (unit and F.NotSecret(unit)) then
@@ -105,7 +103,7 @@ end
 
 -- "Invite to <YourGuild>" when guilded, else a generic label. The guild name is
 -- bracketed and tinted with the guild-chat colour (live ChatTypeInfo so a custom
--- colour is honoured, default green otherwise); "Invite to" stays brand-coloured.
+-- colour is honoured, default green otherwise), "Invite to" stays brand-coloured.
 -- The name segment closes with |r and re-opens INFO so any trailing locale text
 -- (e.g. a closing quote) keeps the brand colour. Cheap to build on demand.
 local function GuildInviteText()
@@ -143,12 +141,12 @@ local function OnGuildInvite(name)
 end
 
 local function OnCopyName(name)
-	local editBox = ChatEdit_ChooseBoxForSend()
+	local editBox = ChatFrameUtil.ChooseBoxForSend()
 	if not editBox then
 		return
 	end
 	local hasText = editBox:GetText() ~= ""
-	ChatEdit_ActivateChat(editBox)
+	ChatFrameUtil.ActivateChat(editBox)
 	editBox:Insert(name)
 	if not hasText then
 		editBox:HighlightText()
@@ -156,9 +154,7 @@ local function OnCopyName(name)
 end
 
 local function OnWhisper(name)
-	if ChatFrame_SendTell then
-		ChatFrame_SendTell(name)
-	end
+	ChatFrameUtil.SendTell(name)
 end
 
 -- ---------------------------------------------------------------------------
@@ -238,7 +234,7 @@ function Module:OnEnable()
 end
 
 function Module:OnSettingChanged(key, value)
-	-- Installs on first enable; once installed the callbacks self-gate, so
+	-- Installs on first enable, once installed the callbacks self-gate, so
 	-- toggling off just stops adding entries on the next menu open.
 	if key == "enable" and value then
 		Setup()

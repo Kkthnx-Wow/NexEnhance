@@ -7,18 +7,18 @@
 	per-decimal rating percentages, equipped + overall item level, and a
 	cleaner stat font.
 
-	Extra stat rows hook in after Blizzard's live update — we don't replace
+	Extra stat rows hook in after Blizzard's live update - we don't replace
 	PAPERDOLL_STATCATEGORIES (that taints UnitStat comparisons in combat).
 	Blizzard already renders off-hand attack speed and the item-level tooltip,
 	so we don't duplicate those. Secret-guarded: if a value is secret we leave
 	Blizzard's readout alone.
 
-	The extra rows skip combat entirely — some PaperDoll APIs return secrets there
+	The extra rows skip combat entirely - some PaperDoll APIs return secrets there
 	and Blizzard's setters compare internally.
 
-	Scroll extent never uses GetVerticalScrollRange — that API is
+	Scroll extent never uses GetVerticalScrollRange - that API is
 	SecretReturnsForAspect(ScrollRange). Parenting CharacterStatsPane (PaperDoll
-	secret contamination) marks the aspect; comparing the secret range throws.
+	secret contamination) marks the aspect, comparing the secret range throws.
 	We clamp from our own SetSize heights instead (Incident Jul 2026).
 --]]
 
@@ -49,7 +49,7 @@ local C_Timer = C_Timer
 local Game13Font = _G.Game13Font
 
 -- Artifact "light gold" (#e6cc80). Used when Blizzard leaves the item-level
--- readout uncoloured (white); its own blue/purple quality tints are kept.
+-- readout uncoloured (white), its own blue/purple quality tints are kept.
 local ARTIFACT_R, ARTIFACT_G, ARTIFACT_B = 0.90, 0.80, 0.50
 
 ns:RegisterDefaults({
@@ -68,7 +68,7 @@ local scrollChild
 local scrollInstalled = false
 local extentPending = false
 local extentPendingCombat = false
--- Last plain content height — GetTop/GetBottom are SecretWhenAnchoringSecret.
+-- Last plain content height - GetTop/GetBottom are SecretWhenAnchoringSecret.
 local lastContentHeight = 1
 
 local INSET_PAD_LEFT = 3
@@ -78,7 +78,7 @@ local INSET_PAD_BOTTOM = 2
 
 local function GetPaneContentHeight(pane)
 	local paneTop = pane:GetTop()
-	-- SecretWhenAnchoringSecret: PaperDoll can mark the pane; keep last good height.
+	-- SecretWhenAnchoringSecret: PaperDoll can mark the pane, keep last good height.
 	if not paneTop or F.IsSecret(paneTop) then
 		return lastContentHeight
 	end
@@ -109,7 +109,7 @@ local function GetPaneContentHeight(pane)
 	return height
 end
 
--- Range from sizes we own — never GetVerticalScrollRange (ScrollRange aspect).
+-- Range from sizes we own - never GetVerticalScrollRange (ScrollRange aspect).
 -- GetHeight(true) = ignoreRect, the SetSize value, not the secret-anchored rect.
 local function GetOwnedScrollRange()
 	if not (scrollChild and scrollFrame) then
@@ -149,7 +149,7 @@ local function UpdateStatsScrollExtent()
 	if not range then
 		return
 	end
-	-- GetVerticalScroll is SecretReturnsForAspect(ScrollOffset); skip clamp if marked.
+	-- GetVerticalScroll is SecretReturnsForAspect(ScrollOffset), skip clamp if marked.
 	local scroll = scrollFrame:GetVerticalScroll()
 	if F.NotSecret(scroll) and scroll > range then
 		scrollFrame:SetVerticalScroll(range)
@@ -168,7 +168,7 @@ local function ScheduleStatsScrollExtent()
 end
 
 local function OnStatsScrollWheel(frame, delta)
-	-- SetVerticalScroll is protected; also skip when ScrollOffset/range are unreadable.
+	-- SetVerticalScroll is protected, also skip when ScrollOffset/range are unreadable.
 	if InCombatLockdown() then
 		return
 	end
@@ -214,7 +214,7 @@ local function InstallStatsScrollFrame()
 	end)
 
 	-- Plain ScrollFrame only: ScrollFrameTemplate's OnLoad auto-creates a
-	-- MinimalScrollBar in 12.0; we scroll via mouse wheel with no visible bar.
+	-- MinimalScrollBar in 12.0, we scroll via mouse wheel with no visible bar.
 	scrollFrame = CreateFrame("ScrollFrame", "NexEnhanceCharacterStatsScroll", scrollContainer)
 	scrollFrame:SetAllPoints()
 	scrollFrame:EnableMouseWheel(true)
@@ -224,7 +224,7 @@ local function InstallStatsScrollFrame()
 	scrollChild:SetSize(scrollContainer:GetWidth() or 200, 1)
 	scrollFrame:SetScrollChild(scrollChild)
 
-	-- Pane fills the scroll child; child height is set after layout.
+	-- Pane fills the scroll child, child height is set after layout.
 	pane:ClearAllPoints()
 	pane:SetParent(scrollChild)
 	pane:SetAllPoints(scrollChild)
@@ -399,7 +399,7 @@ local function EnhanceItemLevel(statFrame, unit)
 end
 
 -- ---------------------------------------------------------------------------
--- Rating percentages: Blizzard rounds to a whole number; show two decimals.
+-- Rating percentages: Blizzard rounds to a whole number, show two decimals.
 -- ---------------------------------------------------------------------------
 local function EnhancePercentage(statFrame, label, _, isPercentage)
 	if not MissingStats:IsEnabled() then
@@ -438,7 +438,7 @@ local function StyleStatFonts()
 	end
 end
 
--- Blizzard tints the item-level readout by quality (blue/purple/etc); when it
+-- Blizzard tints the item-level readout by quality (blue/purple/etc), when it
 -- has no tint the text is plain white. Repaint just the white case as artifact
 -- gold and leave Blizzard's coloured cases alone.
 local function ColorItemLevel()
@@ -488,7 +488,7 @@ function MissingStats:OnEnable()
 
 	EnsureStatsScrollFrame()
 
-	-- hooksecurefunc can't uninstall — handlers gate on IsEnabled().
+	-- hooksecurefunc can't uninstall - handlers gate on IsEnabled().
 	if not self._hooksInstalled then
 		self._hooksInstalled = true
 		if type(PaperDollFrame_SetItemLevel) == "function" then

@@ -3,7 +3,7 @@
 	-------------------------------------------------------------------------
 	Picks which abbreviation style F.ShortValue uses across the UI (datatexts,
 	tooltips, etc.). The actual formatting lives in Core/Functions.lua via the
-	12.0 AbbreviateNumbers API; this module just owns the saved preference and
+	12.0 AbbreviateNumbers API, this module just owns the saved preference and
 	its General-page option.
 
 	  * style = 1  Western      (1.2k / 3.4m / 5.6b / 7.8t)

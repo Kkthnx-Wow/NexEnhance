@@ -4,16 +4,16 @@
 	Player-style tweaks for the default Target frame (and the shared Target/
 	Focus/Boss reaction strip):
 
-	  * Neutral reaction strip — hide the coloured status strip under the name
+	  * Neutral reaction strip - hide the coloured status strip under the name
 	    on Target, Focus, and Boss frames so the dark chrome shows through,
 	    matching the player frame (which has no strip).
-	  * Name beside portrait — on Target only, re-anchor the name next to the
+	  * Name beside portrait - on Target only, re-anchor the name next to the
 	    portrait (mirroring the player-frame gap). Blizzard normally pins the
 	    name to the reaction strip (TargetFrame.xml).
 
 	Researched from Blizzard_UnitFrame/Mainline/TargetFrame.xml and
-	PlayerFrame.xml (12.0.7). hooksecurefunc on CheckFaction only; cosmetic
-	SetAlpha / SetPoint — no secure APIs, no health-bar reads.
+	PlayerFrame.xml (12.0.7). hooksecurefunc on CheckFaction only, cosmetic
+	SetAlpha / SetPoint - no secure APIs, no health-bar reads.
 
 	Default OFF. Lives under Unit Frames.
 --]]
@@ -31,8 +31,6 @@ ns:RegisterDefaults({
 		enable = false,
 	},
 })
-
-ns:RegisterDefaults({ targetFrameLayoutMigrated = false }, "global")
 
 local TargetFrameLayout = ns:NewModule("TargetFrameLayout", "targetFrameLayout", {
 	group = "unitframes",
@@ -126,7 +124,7 @@ local function RestoreReputationStrip(frame)
 	if not unit then
 		return
 	end
-	-- UnitSelectionColor: SecretArguments only in 12.0.7 — returns are plain.
+	-- UnitSelectionColor: SecretArguments only in 12.0.7 - returns are plain.
 	local r, g, b = UnitSelectionColor(unit)
 	if r then
 		strip:SetVertexColor(r, g, b)
@@ -226,20 +224,8 @@ function TargetFrameLayout:InstallHooks()
 	ForEachBossFrame(HookFaction)
 end
 
-function TargetFrameLayout:MigrateLegacySetting()
-	if ns.global.targetFrameLayoutMigrated then
-		return
-	end
-	ns.global.targetFrameLayoutMigrated = true
-	local legacy = ns.db.classColors and ns.db.classColors.colorReputation
-	if legacy then
-		ns.db.targetFrameLayout.enable = true
-	end
-end
-
-function TargetFrameLayout:OnInitialize()
-	self:MigrateLegacySetting()
-end
+-- Legacy ClassColors.colorReputation -> enable migration lives in Core/Migration.lua
+-- (id: target_frame_layout_from_classcolors_reputation).
 
 function TargetFrameLayout:RegisterModuleEvents()
 	if eventsRegistered then

@@ -8,7 +8,7 @@
 
 	Matches by spellID (locale-independent). UNIT_AURA on player only, plus one
 	post-combat sweep. Cancels via CancelUnitBuff high-to-low with reused scratch
-	tables. F.NotSecret on aura reads; never cancels in combat.
+	tables. F.NotSecret on aura reads, never cancels in combat.
 --]]
 
 ---@diagnostic disable: undefined-field
@@ -22,7 +22,7 @@ local CancelUnitBuff = CancelUnitBuff
 local GetBuffDataByIndex = C_UnitAuras and C_UnitAuras.GetBuffDataByIndex
 
 -- Cosmetic / costume / holiday transforms, keyed by spellID. Keying by ID keeps
--- this locale-independent; add new entries by pasting the spellID from Wowhead.
+-- this locale-independent, add new entries by pasting the spellID from Wowhead.
 local BAD_BUFFS = {
 	[58493] = true, -- Mohawked!
 	[44212] = true, -- Jack-o'-Lanterned!
@@ -70,7 +70,7 @@ function CancelBadBuffs:Sweep()
 	if not GetBuffDataByIndex or not CancelUnitBuff then
 		return
 	end
-	-- Cancelling auras is a protected action that fails in combat; defer to the
+	-- Cancelling auras is a protected action that fails in combat, defer to the
 	-- PLAYER_REGEN_ENABLED sweep instead.
 	if InCombatLockdown() then
 		return
@@ -87,7 +87,7 @@ function CancelBadBuffs:Sweep()
 		end
 
 		-- spellId is a plain number in the open world, but can be a secret value
-		-- inside instances in 12.0; never use a secret as a table key.
+		-- inside instances in 12.0, never use a secret as a table key.
 		local spellId = data.spellId
 		if spellId and F.NotSecret(spellId) and BAD_BUFFS[spellId] then
 			count = count + 1

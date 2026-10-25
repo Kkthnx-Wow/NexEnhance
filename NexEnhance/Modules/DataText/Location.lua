@@ -16,7 +16,9 @@ local unpack = unpack
 local format = string.format
 
 local CreateFrame = CreateFrame
-local MouseIsOver = MouseIsOver
+local function MouseIsOver(region)
+	return region and region:IsMouseOver()
+end
 local GetZoneText = GetZoneText
 local GetSubZoneText = GetSubZoneText
 local GetMinimapZoneText = GetMinimapZoneText
@@ -83,7 +85,7 @@ local function MouseoverOnUpdate(self, elapsed)
 	self:SetAlpha(MouseIsOver(_G["Minimap"]) and 1 or 0)
 end
 
--- The frame itself stays shown; in mouseover mode we run the poll and fade the
+-- The frame itself stays shown, in mouseover mode we run the poll and fade the
 -- text via alpha, in always-on mode we drop the OnUpdate entirely (the best
 -- throttle is not running a handler at all).
 local function ApplyVisibility()

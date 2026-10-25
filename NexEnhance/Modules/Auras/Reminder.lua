@@ -6,7 +6,7 @@
 	anchor is a real Edit Mode frame (via LibEditMode) - drag it in Edit Mode.
 
 	The per-class buff list below is intentionally small and stable (core raid
-	buffs); extend `ReminderBuffs` to taste. Each entry:
+	buffs), extend `ReminderBuffs` to taste. Each entry:
 	  spells      = { [spellID] = true, ... }  -- any of these present == OK
 	  texture     = optional icon override
 	  depend      = spellID that must be known
@@ -24,10 +24,15 @@ local C, F, L = ns.C, ns.F, ns.L
 local pairs, tinsert, next, select, wipe = pairs, table.insert, next, select, wipe
 local CreateFrame, UIParent = CreateFrame, UIParent
 local C_SpecializationInfo = _G.C_SpecializationInfo
-local GetSpecialization = (C_SpecializationInfo and C_SpecializationInfo.GetSpecialization) or GetSpecialization
+local GetSpecialization = C_SpecializationInfo.GetSpecialization
 local UnitIsDeadOrGhost, UnitInVehicle, InCombatLockdown = UnitIsDeadOrGhost, UnitInVehicle, InCombatLockdown
-local IsInInstance, IsPlayerSpell = IsInInstance, IsPlayerSpell
-local GetWeaponEnchantInfo = GetWeaponEnchantInfo
+local IsInInstance = IsInInstance
+-- IsPlayerSpell / GetWeaponEnchantInfo only exist behind Blizzard's deprecation
+-- shims, so go straight to the live APIs they forward to.
+local C_SpellBook_IsSpellKnown = C_SpellBook.IsSpellKnown
+local PLAYER_SPELLBANK = Enum.SpellBookSpellBank.Player
+local C_PaperDollInfo_GetTemporaryEnchantmentInfo = C_PaperDollInfo.GetTemporaryEnchantmentInfo
+local INVSLOT_MAINHAND, INVSLOT_OFFHAND = INVSLOT_MAINHAND, INVSLOT_OFFHAND
 local GetNumGroupMembers = GetNumGroupMembers
 local UnitClass = UnitClass
 local GetZonePVPInfo = C_PvP and C_PvP.GetZonePVPInfo
@@ -40,7 +45,9 @@ local C_Item_IsEquippedItem = C_Item.IsEquippedItem
 local C_Item_GetItemIconByID = C_Item.GetItemIconByID
 local C_Spell_GetSpellCooldownDuration = C_Spell and C_Spell.GetSpellCooldownDuration
 local C_DurationUtil_CreateDuration = C_DurationUtil and C_DurationUtil.CreateDuration
+local C_Secrets_ShouldSpellAuraBeSecret = C_Secrets and C_Secrets.ShouldSpellAuraBeSecret
 local C_Timer = C_Timer
+local GetTime = GetTime
 
 ns:RegisterDefaults({
 	reminder = {
@@ -202,10 +209,11 @@ local parentFrame
 local testFrames = {}
 local manualTest -- /nex reminder toggle (persists outside Edit Mode)
 local editPreview -- samples shown because Edit Mode is open
-local preview -- samples currently shown (manualTest or editPreview); pauses the live rescan
+local preview -- samples currently shown (manualTest or editPreview), pauses the live rescan
 local combatSnapshot = {} -- spell ids present on player at combat start (secret-safe fallback)
+local encounterSnapshotAt -- GetTime() of last ENCOUNTER_START snapshot (skip re-snap on REGEN_DISABLED)
 
--- Tooltip-style border (same art as minimap); edge tinted red for missing buffs.
+-- Tooltip-style border (same art as minimap), edge tinted red for missing buffs.
 local REMINDER_BORDER = {
 	edgeFile = "Interface\\AddOns\\NexEnhance\\Media\\Border\\NexBorder",
 	edgeSize = 12,
@@ -302,31 +310,60 @@ end
 -- ---------------------------------------------------------------------------
 -- Per-buff state evaluation (secret-guarded aura reads)
 -- ---------------------------------------------------------------------------
+
+-- C_Secrets.ShouldSpellAuraBeSecret: when true, GetPlayerAuraBySpellID fields
+-- are restricted mid-combat. Prefer live reads when the spell is safe, otherwise
+-- trust the pre-combat snapshot so we don't flash a false "Lack".
+local function AuraQueryIsSafe(spellId)
+	if not C_Secrets_ShouldSpellAuraBeSecret then
+		return true
+	end
+	local isAuraSecret = C_Secrets_ShouldSpellAuraBeSecret(spellId)
+	if F.IsSecret(isAuraSecret) then
+		return false
+	end
+	return not isAuraSecret
+end
+
 local function Reminder_PlayerEligible(cfg)
 	if cfg.depends then
 		for i = 1, #cfg.depends do
-			if IsPlayerSpell(cfg.depends[i]) then
+			if C_SpellBook_IsSpellKnown(cfg.depends[i], PLAYER_SPELLBANK) then
 				return true
 			end
 		end
 		return false
 	end
 	if cfg.depend then
-		return IsPlayerSpell(cfg.depend)
+		return C_SpellBook_IsSpellKnown(cfg.depend, PLAYER_SPELLBANK)
 	end
 	return true
 end
 
 local function PlayerHasConfiguredBuff(cfg)
+	local inCombat = InCombatLockdown()
 	for spellId in pairs(cfg.spells) do
 		if F.NotSecret(spellId) then
-			if C_UnitAuras_GetPlayerAuraBySpellID(spellId) then
+			-- Live lookup when OOC or when this spell's aura isn't secret-tagged.
+			if (not inCombat) or AuraQueryIsSafe(spellId) then
+				if C_UnitAuras_GetPlayerAuraBySpellID(spellId) then
+					return true
+				end
+			elseif combatSnapshot[spellId] then
+				-- Secret mid-combat: snapshot at pull is the only honest signal.
 				return true
 			end
-			if combatSnapshot[spellId] then
+			-- Readable API said nil, but we had it at pull - keep treating as
+			-- present so a brief secret window doesn't flash "Lack".
+			if inCombat and combatSnapshot[spellId] then
 				return true
 			end
 		end
+	end
+	-- Index walks allocate aura tables and hit secret spellIds in combat -
+	-- skip them while locked down, snapshot + GetPlayerAuraBySpellID cover it.
+	if inCombat then
+		return false
 	end
 	for i = 1, 40 do
 		local auraData = C_UnitAuras_GetBuffDataByIndex("player", i, "HELPFUL")
@@ -383,11 +420,29 @@ local function SnapshotCombatBuffs()
 		return
 	end
 	wipe(combatSnapshot)
+	-- Targeted lookups first (zero index walk for known reminder spell IDs).
 	for _, cfg in pairs(groups) do
 		if cfg.spells and not cfg.weaponIndex then
 			for spellId in pairs(cfg.spells) do
 				if F.NotSecret(spellId) and C_UnitAuras_GetPlayerAuraBySpellID(spellId) then
 					combatSnapshot[spellId] = true
+				end
+			end
+		end
+	end
+	-- Index pass catches auras GetPlayerAuraBySpellID may miss at the combat edge
+	-- (party member entered combat a tick before we did).
+	for i = 1, 40 do
+		local auraData = C_UnitAuras_GetBuffDataByIndex("player", i, "HELPFUL")
+		if not auraData then
+			break
+		end
+		local spellId = auraData.spellId
+		if F.NotSecret(spellId) and spellId then
+			for _, cfg in pairs(groups) do
+				if cfg.spells and cfg.spells[spellId] then
+					combatSnapshot[spellId] = true
+					break
 				end
 			end
 		end
@@ -444,15 +499,14 @@ local function Reminder_Update(cfg)
 	Reminder_HideFrame(frame)
 	if isEligible and isRightSpec and (isInCombat or isInInst or isInPVP) and not UnitInVehicle("player") and not UnitIsDeadOrGhost("player") then
 		if weaponIndex then
-			local hasMainHandEnchant, _, _, _, hasOffHandEnchant = GetWeaponEnchantInfo()
-			local enchant = (weaponIndex == 1) and hasMainHandEnchant or hasOffHandEnchant
-			local hasEnchant = F.BooleanIsTrue(enchant)
-			if hasEnchant == true then
+			-- Returns nothing when the slot has no temporary enchant.
+			local enchantInfo = C_PaperDollInfo_GetTemporaryEnchantmentInfo((weaponIndex == 1) and INVSLOT_MAINHAND or INVSLOT_OFFHAND)
+			if enchantInfo and (F.IsSecret(enchantInfo) or F.IsSecretTable(enchantInfo)) then
+				-- Secret: cannot tell if the enchant is present - avoid a false "Lack".
+				Reminder_HideFrame(frame)
 				return
 			end
-			if hasEnchant == nil then
-				-- Secret: cannot tell if the enchant is present — avoid a false "Lack".
-				Reminder_HideFrame(frame)
+			if enchantInfo then
 				return
 			end
 		elseif PlayerHasConfiguredBuff(cfg) then
@@ -555,7 +609,7 @@ local function Reminder_RunUpdate()
 	Reminder_UpdateAnchor()
 end
 
--- UNIT_AURA fires in bursts (e.g. a fresh set of raid buffs lands all at once);
+-- UNIT_AURA fires in bursts (e.g. a fresh set of raid buffs lands all at once).
 -- coalesce them into a single end-of-frame rescan instead of doing a full
 -- buff scan + visibility + reanchor pass per individual aura change.
 local function Reminder_OnEvent()
@@ -578,7 +632,7 @@ local function Reminder_BuildSamples()
 		end
 		wipe(testFrames)
 	end
-	-- Prefer the player's real reminder icons; fall back to placeholders for
+	-- Prefer the player's real reminder icons, fall back to placeholders for
 	-- classes/specs with nothing configured.
 	local textures = {}
 	if groups then
@@ -662,6 +716,8 @@ function Reminder:RegisterModuleEvents()
 	self:TrackEvent(eventHandles, "UNIT_ENTERED_VEHICLE", Reminder_OnEvent)
 	self:TrackEvent(eventHandles, "PLAYER_REGEN_ENABLED", "PLAYER_REGEN_ENABLED")
 	self:TrackEvent(eventHandles, "PLAYER_REGEN_DISABLED", "PLAYER_REGEN_DISABLED")
+	-- ENCOUNTER_START fires before InCombatLockdown / aura lockdown - cleaner snapshot.
+	self:TrackEvent(eventHandles, "ENCOUNTER_START", "ENCOUNTER_START")
 	self:TrackEvent(eventHandles, "ZONE_CHANGED_NEW_AREA", Reminder_OnEvent)
 	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD", Reminder_OnEvent)
 	self:TrackEvent(eventHandles, "WEAPON_ENCHANT_CHANGED", Reminder_OnEvent)
@@ -678,11 +734,25 @@ end
 
 function Reminder:PLAYER_REGEN_ENABLED()
 	wipe(combatSnapshot)
+	encounterSnapshotAt = nil
+	Reminder_OnEvent()
+end
+
+-- Incident (Reminder, Jul 2026): ENCOUNTER_START snaps before REGEN_DISABLED -
+-- aura APIs are freer then. Skip a redundant snap when REGEN_DISABLED follows
+-- within 1s so we don't overwrite a good cache with a locked-down one.
+function Reminder:ENCOUNTER_START()
+	SnapshotCombatBuffs()
+	encounterSnapshotAt = GetTime()
 	Reminder_OnEvent()
 end
 
 function Reminder:PLAYER_REGEN_DISABLED()
-	SnapshotCombatBuffs()
+	local now = GetTime()
+	if not encounterSnapshotAt or (now - encounterSnapshotAt) > 1 then
+		SnapshotCombatBuffs()
+	end
+	encounterSnapshotAt = nil
 	Reminder_OnEvent()
 end
 
@@ -709,6 +779,8 @@ end
 function Reminder:OnDisable()
 	self:UnregisterModuleEvents()
 	self.started = false
+	wipe(combatSnapshot)
+	encounterSnapshotAt = nil
 	if parentFrame then
 		parentFrame:Hide()
 	end

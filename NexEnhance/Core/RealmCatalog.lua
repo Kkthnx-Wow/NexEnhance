@@ -2,8 +2,8 @@
 	NexEnhance - Realm Catalog
 	-------------------------------------------------------------------------
 	Resolves a realm display name to Blizzard realm-list metadata (locale,
-	region, timezone). There is no in-game API for arbitrary realm→region
-	lookups; this table is generated from the same client realm list used on
+	region, timezone). There is no in-game API for arbitrary realm->region
+	lookups, this table is generated from the same client realm list used on
 	the login screen (see Tools/gen_realm_catalog.py).
 
 	Runtime context uses GetCurrentRegionName(), GetRealmName(), and

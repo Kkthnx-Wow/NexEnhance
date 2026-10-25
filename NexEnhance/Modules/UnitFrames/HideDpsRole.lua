@@ -2,7 +2,7 @@
 	NexEnhance - Hide DPS Role Icon
 	-------------------------------------------------------------------------
 	Hides the DPS (sword/DAMAGER) role icon from party and raid frames. Tank and
-	healer icons remain visible — they carry actionable information (where to
+	healer icons remain visible - they carry actionable information (where to
 	stand, who to keep alive). The DPS icon is noise: everyone who isn't a tank
 	or healer is already understood to be DPS.
 
@@ -20,6 +20,7 @@
 
 local _, ns = ...
 local L = ns.L
+local F = ns.F
 
 local Enum = Enum
 local UnitInVehicle = UnitInVehicle
@@ -53,24 +54,39 @@ local function SettingEnabled()
 end
 
 local function IsDamagerRole(unit)
+	if F.IsSecretUnit(unit) then
+		return false
+	end
 	if UnitGroupRolesAssignedEnum then
 		local roleEnum = UnitGroupRolesAssignedEnum(unit)
-		if roleEnum == Enum.LFGRole.Damage then
+		if F.NotSecret(roleEnum) and roleEnum == Enum.LFGRole.Damage then
 			return true
 		end
 	end
 	if UnitGroupRolesAssigned then
-		return UnitGroupRolesAssigned(unit) == "DAMAGER"
+		local role = UnitGroupRolesAssigned(unit)
+		return F.NotSecret(role) and role == "DAMAGER"
 	end
 	return false
 end
 
+-- Blizzard writes role icons through a secure delegate that stamps secret
+-- show/size/atlas values on the texture whenever the unit's identity is hidden.
+-- Boolean-testing or comparing those from addon code throws, so bail early.
+local function IconIsShown(icon)
+	if not icon or F.HasSecretValues(icon) then
+		return false
+	end
+	local shown = icon:IsShown()
+	return F.NotSecret(shown) and shown and true or false
+end
+
 local function IsDpsRoleIcon(icon)
-	if not icon or not icon:IsShown() then
+	if not IconIsShown(icon) then
 		return false
 	end
 	local atlas = icon.GetAtlas and icon:GetAtlas()
-	if atlas == DPS_ROLE_ATLAS then
+	if F.NotSecret(atlas) and atlas == DPS_ROLE_ATLAS then
 		return true
 	end
 	return false
@@ -81,7 +97,7 @@ local function HidePartyDpsRoleOnFrame(self)
 		return
 	end
 	local icon = self.PartyMemberOverlay and self.PartyMemberOverlay.RoleIcon
-	if not icon or not icon:IsShown() then
+	if not IconIsShown(icon) then
 		return
 	end
 	local unit = self.GetUnit and self:GetUnit()
@@ -132,23 +148,20 @@ local function OnCompactUnitFrame_UpdateRoleIcon(frame)
 	if not SettingEnabled() then
 		return
 	end
-	if not frame or not frame.roleIcon then
+	if not frame or not frame.roleIcon or not frame.unit then
 		return
 	end
-	if not frame.roleIcon:IsShown() then
-		return
-	end
-	if not frame.unit then
+	if not IconIsShown(frame.roleIcon) or F.IsSecretUnit(frame.unit) then
 		return
 	end
 
-	-- Leave vehicle icons alone — they're shown by the same code path.
+	-- Leave vehicle icons alone - they're shown by the same code path.
 	if UnitInVehicle and UnitHasVehicleUI and UnitInVehicle(frame.unit) and UnitHasVehicleUI(frame.unit) then
 		return
 	end
 
 	local role = UnitGroupRolesAssigned and UnitGroupRolesAssigned(frame.unit)
-	if role == "DAMAGER" or IsDamagerRole(frame.unit) then
+	if (F.NotSecret(role) and role == "DAMAGER") or IsDamagerRole(frame.unit) then
 		frame.roleIcon:Hide()
 		-- Restore Blizzard's expected hidden dimensions: width = 1, height stays.
 		local h = frame.roleIcon:GetHeight()
@@ -237,7 +250,7 @@ function HideDpsRole:OnEnable()
 	self:TrackEvent(eventHandles, "PLAYER_ENTERING_WORLD")
 	if SettingEnabled() then
 		RefreshAllFrames()
-		-- PartyFrame members are created on first show; catch late init.
+		-- PartyFrame members are created on first show, catch late init.
 		C_Timer.After(0.5, ApplyToAllPartyMembers)
 	end
 end

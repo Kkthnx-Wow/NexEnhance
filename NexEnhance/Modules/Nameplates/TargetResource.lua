@@ -15,7 +15,7 @@ local F, L = ns.F, ns.L
 
 local C_NamePlate = C_NamePlate
 local UnitExists = UnitExists
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local C_Timer_After = C_Timer.After
 
 ns:RegisterDefaults({

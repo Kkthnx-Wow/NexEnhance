@@ -31,7 +31,7 @@ local format, strfind, strupper, strlen = string.format, string.find, string.upp
 local gsub, pairs, pcall, select = string.gsub, pairs, pcall, select
 local C_Item_GetItemQualityByID = C_Item.GetItemQualityByID
 local unpack = unpack
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 local UnitExists = UnitExists
 local UnitIsPlayer, UnitName, UnitPVPName, UnitClass = UnitIsPlayer, UnitName, UnitPVPName, UnitClass
@@ -590,12 +590,12 @@ end
 function Tooltip:OnEnable()
 	cfg = ns.db.tooltip
 
-	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall then
-		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, Tooltip.OnTooltipSetUnit)
-		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, Tooltip.UpdateStatusBarColor)
-		TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, Tooltip.UpdateItemQualityBorder)
-		if TooltipDataProcessor.AddLinePreCall then
-			TooltipDataProcessor.AddLinePreCall(Enum.TooltipDataLineType.None, Tooltip.UpdateFactionLine)
+	if ns.TooltipDataProcessor and ns.TooltipDataProcessor.AddTooltipPostCall then
+		ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, Tooltip.OnTooltipSetUnit)
+		ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, Tooltip.UpdateStatusBarColor)
+		ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, Tooltip.UpdateItemQualityBorder)
+		if ns.TooltipDataProcessor.AddLinePreCall then
+			ns.TooltipDataProcessor.AddLinePreCall(Enum.TooltipDataLineType.None, Tooltip.UpdateFactionLine)
 		end
 	end
 

@@ -12,6 +12,7 @@
 -- luacheck: globals OpenAllMail InboxFrame ATTACHMENTS_MAX_RECEIVE INBOXITEMS_TO_DISPLAY
 ---@diagnostic disable: undefined-field, redundant-parameter
 local _, ns = ...
+local hooksecurefunc = ns.hooksecurefunc
 local F, L = ns.F, ns.L
 
 local _G = _G

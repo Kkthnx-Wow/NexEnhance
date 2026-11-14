@@ -17,6 +17,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
+local hooksecurefunc = ns.hooksecurefunc
 local F, L = ns.F, ns.L
 
 local _G = _G

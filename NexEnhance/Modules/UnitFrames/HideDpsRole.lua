@@ -27,7 +27,7 @@ local UnitInVehicle = UnitInVehicle
 local UnitHasVehicleUI = UnitHasVehicleUI
 local UnitGroupRolesAssigned = UnitGroupRolesAssigned
 local UnitGroupRolesAssignedEnum = UnitGroupRolesAssignedEnum
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local C_Timer = C_Timer
 
 local DPS_ROLE_ATLAS = "roleicon-tiny-dps"

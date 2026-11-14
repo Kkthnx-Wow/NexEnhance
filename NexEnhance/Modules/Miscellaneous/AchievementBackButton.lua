@@ -18,7 +18,7 @@ local _, ns = ...
 local L = ns.L
 
 local _G = _G
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local CreateFrame = CreateFrame
 local GetTime = GetTime
 local tinsert, tremove = table.insert, table.remove

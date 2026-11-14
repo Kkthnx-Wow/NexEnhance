@@ -16,7 +16,7 @@ if not Tooltip then
 end
 
 local select = select
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 local AuraUtil = AuraUtil
 local C_AddOns = C_AddOns

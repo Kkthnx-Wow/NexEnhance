@@ -58,7 +58,7 @@ local C_Timer = C_Timer
 local UIFrameFadeIn = UIFrameFadeIn
 local UIFrameFadeOut = UIFrameFadeOut
 local UIFrameFadeRemoveFrame = UIFrameFadeRemoveFrame
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 local C_Reputation_GetWatchedFactionData = C_Reputation and C_Reputation.GetWatchedFactionData
 local C_Reputation_IsFactionParagon = C_Reputation and C_Reputation.IsFactionParagon

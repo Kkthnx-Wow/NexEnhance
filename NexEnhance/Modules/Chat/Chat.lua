@@ -46,7 +46,7 @@ local C_Timer_After = C_Timer.After
 local ChatFrameUtil = _G.ChatFrameUtil
 local UIErrorsFrame = UIErrorsFrame
 local UnitIsGroupLeader, UnitIsGroupAssistant = UnitIsGroupLeader, UnitIsGroupAssistant
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 ns:RegisterDefaults({
 	chat = {

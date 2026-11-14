@@ -18,7 +18,7 @@ local gsub = string.gsub
 local strmatch, strfind = string.match, string.find
 local strupper = string.upper
 local type, date = type, date
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local ChatFrame_AddMessageEventFilter = ChatFrameUtil.AddMessageEventFilter
 
 LibStub("LibChatAnims")

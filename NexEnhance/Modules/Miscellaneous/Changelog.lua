@@ -43,6 +43,38 @@ local BACKDROP = C.Backdrops.window
 -- ---------------------------------------------------------------------------
 local CHANGELOG = {
 	{
+		version = "1.7.0",
+		date = "2026-11-14",
+		intro = "A performance profiler built into the addon, hook tracing, and a round of fixes found with them.",
+		sections = {
+			{ "Added", {
+				"Profiler: /nex perf times NexEnhance in the live client, per module, function and event handler. Nothing is wrapped until start, and stop restores every original.",
+				"Startup timing: /nex perf load lists what each module spends in OnInitialize and OnEnable.",
+				"Bench: /nex perf bench runs fixed workloads that modules offer. Item level, bind labels, chat emojis, the stats tooltip and the clock tooltip have one.",
+				"Hook tracing: X-PerfTrace in the TOC reports hooksecurefunc and tooltip callbacks by the file and line that registered them. Off by default.",
+				"Core: module:UnregisterEvent() now exists and also covers unit events.",
+				"Logo: a 512 pixel logo for large uses, and the logo set is exported as uncompressed textures.",
+			} },
+			{ "Performance", {
+				"Minimap clock: the tooltip rebuilt every second at about 6.3 ms. The world boss and delve scans are cached for 30 seconds, so a refresh is about 0.3 ms.",
+				"Tooltip health bar: a health tick went from 0.059 ms and 2.9 KB to 0.021 ms and about 60 bytes.",
+				"Item level: a 90 item bag sweep went from 4.5 ms to 0.01 ms, bind labels from 2.8 ms to 1.0 ms.",
+				"Character panel: equipped slot scans are cached by link, and gem icons are built on demand. The first open went from 16.6 ms to 6.3 ms.",
+				"Startup: Already Known warms the housing catalog two seconds after login instead of inside OnEnable (about 9 ms).",
+			} },
+			{ "Fixes", {
+				"Profiles: switching away from a profile compacts it, and importing an older export upgrades its renamed keys first.",
+				"Database: the character database exists before migrations run, and global defaults merge after them.",
+				"Cooldown dispatcher: unsubscribing frees the callback and the list is compacted.",
+				"Minimap, Chat Copy, Junk Icon, Color Picker, Details skin: hooks and event waits are installed once, toggling no longer stacks them.",
+				"Minimap: the queue status skin no longer leaks a frame and texture per toggle.",
+				"Character Frames: event subscriptions follow the enable state.",
+				"Aura Reminder: weapon enchant reminders work without C_PaperDollInfo.GetTemporaryEnchantmentInfo.",
+				"Realm catalog: removed placeholder time zone entries.",
+			} },
+		},
+	},
+	{
 		version = "1.6.2",
 		date = "2026-10-24",
 		intro = "Patch 12.1.5 compatibility pass, plus a few load order bugs found along the way.",

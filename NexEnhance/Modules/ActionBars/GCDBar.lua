@@ -29,6 +29,7 @@ local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
 
 local math_max = math.max
+local UIParent = UIParent
 
 local GCD_SPELL_ID = 61304
 local SHADOW_H = 6 -- pixels of shadow below the bar body
@@ -209,7 +210,7 @@ local function BuildBar()
 	local h = db.height or DEFAULTS.height
 
 	-- Total frame height = bar body + shadow strip.
-	barFrame = CreateFrame("Frame", "NexEnhanceGCDBar", ns.UIParent)
+	barFrame = CreateFrame("Frame", "NexEnhanceGCDBar", UIParent)
 	barFrame:SetSize(w, h + SHADOW_H)
 	barFrame:SetFrameStrata("LOW")
 	barFrame:EnableMouse(false)

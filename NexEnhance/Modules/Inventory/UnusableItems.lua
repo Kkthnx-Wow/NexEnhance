@@ -28,7 +28,7 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local select = select
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local UnitLevel = UnitLevel
 local UnitClassBase = UnitClassBase
 local SetItemButtonTextureVertexColor = SetItemButtonTextureVertexColor

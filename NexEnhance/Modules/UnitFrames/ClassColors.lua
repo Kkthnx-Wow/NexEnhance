@@ -55,7 +55,7 @@ local UnitIsPlayer = UnitIsPlayer
 local UnitIsConnected = UnitIsConnected
 local UnitTreatAsPlayerForDisplay = UnitTreatAsPlayerForDisplay
 local SetDesaturation = SetDesaturation
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local ipairs = ipairs
 
 local CLASS_COLORS = _G["CUSTOM_CLASS_COLORS"] or RAID_CLASS_COLORS

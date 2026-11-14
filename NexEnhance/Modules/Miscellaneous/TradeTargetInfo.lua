@@ -11,7 +11,7 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local _G = _G
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local UnitGUID = UnitGUID
 local IsGuildMember = IsGuildMember
 local C_BattleNet_GetGameAccountInfoByGUID = C_BattleNet.GetGameAccountInfoByGUID

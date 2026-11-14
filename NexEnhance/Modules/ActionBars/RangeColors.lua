@@ -21,7 +21,7 @@ local F, L = ns.F, ns.L
 local _G = _G
 local pairs = pairs
 local strbyte = string.byte
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 local IsUsableAction = C_ActionBar.IsUsableAction
 local IsActionInRange = C_ActionBar.IsActionInRange

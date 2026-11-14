@@ -7,6 +7,7 @@
 --]]
 
 local _, ns = ...
+local hooksecurefunc = ns.hooksecurefunc
 local F, C = ns.F, ns.C
 local Tooltip = ns:GetModule("Tooltip")
 if not Tooltip then

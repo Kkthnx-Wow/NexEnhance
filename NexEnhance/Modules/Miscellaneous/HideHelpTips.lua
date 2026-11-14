@@ -21,7 +21,7 @@
 local _, ns = ...
 local L = ns.L
 
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local pcall = pcall
 local C_Timer_After = C_Timer.After
 local SetCVar = SetCVar

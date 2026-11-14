@@ -45,7 +45,7 @@ local _G = _G
 local type = type
 local ipairs = ipairs
 local InCombatLockdown = InCombatLockdown
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 ns:RegisterDefaults({
 	hideUIElements = {

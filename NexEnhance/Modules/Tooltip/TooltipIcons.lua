@@ -14,7 +14,7 @@ end
 
 local _G = _G
 local gsub, strfind, unpack, select, next = string.gsub, string.find, unpack, select, next
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local C_MountJournal_GetMountInfoByID = C_MountJournal and C_MountJournal.GetMountInfoByID
 local C_Item_GetItemIconByID = C_Item.GetItemIconByID
 local C_Spell_GetSpellTexture = C_Spell.GetSpellTexture
@@ -86,9 +86,9 @@ function Tooltip:ReskinTooltipIcons()
 		[ShoppingTooltip2] = true,
 	}
 
-	if TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall then
+	if ns.TooltipDataProcessor and ns.TooltipDataProcessor.AddTooltipPostCall then
 		for tooltipType, getTex in next, GetTooltipTextureByType do
-			TooltipDataProcessor.AddTooltipPostCall(tooltipType, function(tip)
+			ns.TooltipDataProcessor.AddTooltipPostCall(tooltipType, function(tip)
 				if tooltips[tip] then
 					local data = tip:GetTooltipData()
 					local id = data and data.id

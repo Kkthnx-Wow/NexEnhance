@@ -37,7 +37,7 @@ local max = math.max
 local format = string.format
 local CreateFrame = CreateFrame
 local UIParent = UIParent
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local InCombatLockdown = InCombatLockdown
 
 ns:RegisterDefaults({

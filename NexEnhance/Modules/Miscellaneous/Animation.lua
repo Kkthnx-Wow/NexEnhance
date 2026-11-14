@@ -99,7 +99,7 @@ function Animation:CreateLogo()
 
 	local tex = frame:CreateTexture(nil, "ARTWORK")
 	tex:SetAllPoints()
-	tex:SetTexture(C.Media.Textures.logo)
+	tex:SetTexture(C.Media.Textures.logo512)
 
 	local anim = frame:CreateAnimationGroup()
 	local t1, t2, t3 = 0.5, 2.0, 0.2

@@ -18,7 +18,7 @@ local _, ns = ...
 local F, C, L = ns.F, ns.C, ns.L
 
 local select, type = select, type
-local CreateFrame, UIParent, hooksecurefunc = CreateFrame, UIParent, hooksecurefunc
+local CreateFrame, UIParent, hooksecurefunc = CreateFrame, UIParent, ns.hooksecurefunc
 local IsPlayerMoving, UIFrameFade = IsPlayerMoving, UIFrameFade
 local C_Map_GetBestMapForUnit = C_Map.GetBestMapForUnit
 local C_Map_GetPlayerMapPosition = C_Map.GetPlayerMapPosition

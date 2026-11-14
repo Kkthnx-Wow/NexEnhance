@@ -16,7 +16,7 @@ end
 local floor = math.floor
 local format = string.format
 local ipairs = ipairs
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 local GetItemSpell = C_Item.GetItemSpell
 local GetItemNameByID = C_Item.GetItemNameByID
@@ -25,7 +25,7 @@ local GetItemCount = C_Item.GetItemCount
 local GetItemInfoInstant = C_Item.GetItemInfoInstant
 local GetCurrencyInfo = C_CurrencyInfo.GetCurrencyInfo
 local GetRecipeSchematic = C_TradeSkillUI and C_TradeSkillUI.GetRecipeSchematic
-local TooltipDataProcessor = TooltipDataProcessor
+local TooltipDataProcessor = ns.TooltipDataProcessor
 
 local HEADER = L["Crafting Reagents"]
 local ICON_COORD = "0:0:64:64:5:59:5:59"

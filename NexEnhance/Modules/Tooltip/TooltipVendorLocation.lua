@@ -17,11 +17,11 @@ local L = ns.L
 
 -- Localised globals (handlers run on every item tooltip / modified click).
 local format = string.format
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local IsControlKeyDown = IsControlKeyDown
 local InCombatLockdown = InCombatLockdown
 local GetItemInfoFromHyperlink = GetItemInfoFromHyperlink
-local TooltipDataProcessor = TooltipDataProcessor
+local TooltipDataProcessor = ns.TooltipDataProcessor
 local UiMapPoint = UiMapPoint
 
 local C_Map_GetMapInfo = C_Map and C_Map.GetMapInfo

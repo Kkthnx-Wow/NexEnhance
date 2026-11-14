@@ -423,11 +423,11 @@ end
 -- ---------------------------------------------------------------------------
 local hoverHooked = false
 local function InstallHoverHook()
-	if hoverHooked or not TooltipDataProcessor then
+	if hoverHooked or not ns.TooltipDataProcessor then
 		return
 	end
 	hoverHooked = true
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip)
+	ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Unit, function(tooltip)
 		if not running or cfg.progressMode ~= MODE_HOVER or inInstance then
 			return
 		end

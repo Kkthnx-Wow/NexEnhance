@@ -15,7 +15,7 @@ if not Tooltip then
 end
 
 local ipairs = ipairs
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local C_AddOns = C_AddOns
 
 local PAWN_ADDON = "Pawn"

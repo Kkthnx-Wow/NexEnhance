@@ -25,7 +25,7 @@ local F, C, L = ns.F, ns.C, ns.L
 -- Localised globals.
 local C_StringUtil = C_StringUtil
 local CreateColor = CreateColor
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local getmetatable = getmetatable
 local SetCVar = SetCVar
 local GetCVar = GetCVar

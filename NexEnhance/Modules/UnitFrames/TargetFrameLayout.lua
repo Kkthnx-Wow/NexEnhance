@@ -23,7 +23,7 @@ local F, L = ns.F, ns.L
 
 local _G = _G
 local UnitSelectionColor = UnitSelectionColor
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local ipairs = ipairs
 
 ns:RegisterDefaults({

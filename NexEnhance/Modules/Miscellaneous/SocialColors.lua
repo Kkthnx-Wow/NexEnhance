@@ -20,7 +20,7 @@ local _G = _G
 local pairs, ipairs, select, wipe = pairs, ipairs, select, wipe
 local format = string.format
 local floor = math.floor
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 
 local GetAreaText = GetAreaText
 local GetGuildInfo = GetGuildInfo

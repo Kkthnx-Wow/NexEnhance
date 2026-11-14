@@ -24,7 +24,7 @@
 local _, ns = ...
 local F, L = ns.F, ns.L
 
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local strfind = string.find
 local wipe = wipe
 

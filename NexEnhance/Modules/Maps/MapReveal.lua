@@ -19,7 +19,7 @@ local gmatch, format, strmatch = string.gmatch, string.format, string.match
 local tinsert, twipe = table.insert, table.wipe
 local ceil, mod = math.ceil, mod
 
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local TexturePool_HideAndClearAnchors = TexturePool_HideAndClearAnchors
 local C_AddOns_IsAddOnLoaded = C_AddOns and C_AddOns.IsAddOnLoaded
 local C_Map_GetMapArtID = C_Map.GetMapArtID

@@ -14,7 +14,7 @@ end
 
 local _G = _G
 local strmatch, format, tonumber, select = string.match, string.format, tonumber, select
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local UnitName = UnitName
 local C_SpellBook_IsSpellKnown = C_SpellBook.IsSpellKnown
 local PLAYER_SPELLBANK = Enum.SpellBookSpellBank.Player
@@ -191,11 +191,11 @@ function Tooltip:SetupTooltipID()
 		end
 	end)
 
-	if not (TooltipDataProcessor and TooltipDataProcessor.AddTooltipPostCall) then
+	if not (ns.TooltipDataProcessor and ns.TooltipDataProcessor.AddTooltipPostCall) then
 		return
 	end
 
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, function(tip, data)
+	ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Spell, function(tip, data)
 		if tip:IsForbidden() then
 			return
 		end
@@ -220,8 +220,8 @@ function Tooltip:SetupTooltipID()
 			Tooltip.AddLineForID(tip, lineData.tooltipID, types.spell)
 		end
 	end
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Macro, UpdateActionTooltip)
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.PetAction, UpdateActionTooltip)
+	ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Macro, UpdateActionTooltip)
+	ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.PetAction, UpdateActionTooltip)
 
 	local function addItemID(tip, data)
 		if tip:IsForbidden() then
@@ -231,10 +231,10 @@ function Tooltip:SetupTooltipID()
 			Tooltip.AddLineForID(tip, data.id, types.item)
 		end
 	end
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, addItemID)
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Toy, addItemID)
+	ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Item, addItemID)
+	ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Toy, addItemID)
 
-	TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Currency, function(tip, data)
+	ns.TooltipDataProcessor.AddTooltipPostCall(Enum.TooltipDataType.Currency, function(tip, data)
 		if tip:IsForbidden() then
 			return
 		end

@@ -42,7 +42,7 @@ local _, ns = ...
 local F, L = ns.F, ns.L
 
 local _G = _G
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local ipairs = ipairs
 local format = string.format
 

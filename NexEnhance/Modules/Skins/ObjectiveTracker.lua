@@ -16,7 +16,7 @@ local C, L = ns.C, ns.L
 
 -- Localised globals.
 local _G = _G
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local C_AddOns = C_AddOns
 
 ns:RegisterDefaults({

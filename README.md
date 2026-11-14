@@ -45,6 +45,7 @@ Every release is built by GitHub Actions and uploaded to all three at once, so t
 - `/nex` opens the options panel
 - `/nex modules` lists every module and whether it's on
 - `/nex toggle <module>` flips one module
+- `/nex perf` runs the built-in performance profiler (`start`, `stop`, `report`, `bench`, `load`)
 - `/nex profile` opens profile import and export
 - `/nex editmode` and `/nex keybinds` jump to Blizzard's Edit Mode and key bindings
 - `/nex changelog` shows what changed

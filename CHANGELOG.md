@@ -2,6 +2,71 @@
 
 ---
 
+## [1.7.0] - 2026-11-14
+
+A performance profiler built into the addon, hook tracing, and a round of fixes found with them. Turning modules off and on no longer leaves hooks and subscriptions behind.
+
+### Added
+
+- **Profiler:** `/nex perf` times NexEnhance in the live client. Subcommands are
+  `start [seconds] [deep]`, `stop`, `report`, `reset`, `stack`, `bench`, `load`,
+  `mem [gc]`, `native` and `sources`. It reports self and total time, calls, peak
+  and allocation per module, function and event handler, and keeps the last run
+  in saved variables so it can be read after a reload. Nothing is wrapped until
+  `start`, and `stop` puts every original back.
+- **Startup timing:** `/nex perf load` lists what each module spends in
+  OnInitialize and OnEnable, and what the options build costs.
+- **Bench:** modules can offer fixed workloads through `PerfBench`, run with
+  `/nex perf bench`. Item level, bind labels, chat emojis, the stats tooltip and
+  the clock tooltip have one.
+- **Hook tracing:** `## X-PerfTrace: 1` in the TOC makes `hooksecurefunc` and
+  tooltip data callbacks report under the file and line that registered them.
+  It is off by default and changes nothing in normal play.
+- **Core:** `module:UnregisterEvent()` now exists and also covers unit events.
+- **Logo:** a 512 pixel logo for large uses such as the AFK camera, and the
+  whole logo set is exported as uncompressed textures so the bevelled edges stay
+  clean.
+
+### Performance
+
+Numbers are from the live client on 12.0.7.
+
+- **Minimap clock:** the tooltip rebuilt itself every second at about 6.3 ms and
+  210 KB. The world boss and delve scans are cached for 30 seconds now, so a
+  refresh costs about 0.3 ms.
+- **Tooltip health bar:** each health tick took 0.059 ms and about 2.9 KB. It
+  now reuses the last painted colour and unit for a second, 0.021 ms and about
+  60 bytes.
+- **Item level:** non gear links are remembered, so a 90 item bag sweep went from
+  4.5 ms to 0.01 ms. Bind labels are cached by link, 2.8 ms to 1.0 ms.
+- **Character panel:** equipped slot scans are cached by link, 3.8 ms the first
+  time and almost nothing after. Gem icons are built when a slot has that many
+  gems, not ten per slot up front, so the first open went from 16.6 ms and 1.3 MB
+  to 6.3 ms and 0.6 MB.
+- **Startup:** Already Known no longer warms the housing catalog inside OnEnable
+  (about 9 ms), it runs two seconds after login.
+
+### Fixed
+
+- **Profiles:** switching away from a profile now compacts it, so it stops
+  keeping a full copy of every default key in the saved file.
+- **Profiles:** importing an older export upgrades its renamed keys first.
+- **Database:** the character database exists before migrations run, and global
+  defaults merge after them, so first login migrations are no longer skipped.
+- **Cooldown dispatcher:** unsubscribing frees the callback and the list is
+  compacted, so toggling the GCD bar or cursor ring no longer adds a dead entry
+  for every cooldown event to walk.
+- **Minimap, Chat Copy, Junk Icon, Color Picker, Details skin:** hooks and
+  event waits are installed once. Each toggle used to stack another one.
+- **Minimap:** the queue status skin no longer leaks a frame and texture per
+  toggle, and the button tray stops scanning after the module is disabled.
+- **Character Frames:** event subscriptions follow the enable state.
+- **Aura Reminder:** weapon enchant reminders work on clients without
+  `C_PaperDollInfo.GetTemporaryEnchantmentInfo`.
+- **Realm catalog:** removed placeholder time zone entries.
+
+---
+
 ## [1.6.2] - 2026-10-24
 
 Patch 12.1.5 compatibility pass, plus a few load order bugs found along the way.

@@ -7,6 +7,7 @@
 
 -- luacheck: globals ChatFontNormal ScrollUtil
 local _, ns = ...
+local hooksecurefunc = ns.hooksecurefunc
 local F, C, L = ns.F, ns.C, ns.L
 
 local _G = _G
@@ -173,22 +174,40 @@ local function UpdateButtonOwner(chatFrame)
 	copyButton:SetFrameStrata("HIGH")
 end
 
+-- hooksecurefunc cannot be undone and OnEnable runs again on every settings
+-- toggle, so the hook (and the button) must be installed exactly once.
+local copyHookInstalled = false
+
 function ChatCopy:OnEnable()
 	if not ns.db.chatCopy.enable then
 		return
 	end
-	-- A single copy button on the primary chat window keeps things tidy.
-	copyButton = CreateCopyButton(_G["ChatFrame1"])
+	-- A single copy button on the primary chat window keeps things tidy. Reuse the
+	-- existing one: building a second would orphan the first, which stays parented
+	-- to ChatFrame1 for the rest of the session.
+	if copyButton then
+		copyButton:Show()
+	else
+		copyButton = CreateCopyButton(_G["ChatFrame1"])
+	end
 
 	-- Follow the active tab. FCFDock_SelectWindow(dock, chatFrame) is called for
 	-- every tab change, restrict to the General dock so a second dock can't steal
 	-- the button.
-	if _G["FCFDock_SelectWindow"] then
+	if not copyHookInstalled and _G["FCFDock_SelectWindow"] then
+		copyHookInstalled = true
 		hooksecurefunc("FCFDock_SelectWindow", function(dock, chatFrame)
 			if dock == _G["GENERAL_CHAT_DOCK"] then
 				UpdateButtonOwner(chatFrame)
 			end
 		end)
+	end
+end
+
+function ChatCopy:OnDisable()
+	-- The tab hook is permanent, but the button is ours to hide.
+	if copyButton then
+		copyButton:Hide()
 	end
 end
 

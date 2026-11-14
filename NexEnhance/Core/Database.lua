@@ -44,6 +44,12 @@ end
 --- Switch the active profile, rebuilding `ns.db` and notifying listeners.
 function ns:SetProfile(profileName)
 	local root = _G.NexEnhanceDB
+	-- PLAYER_LOGOUT only compacts the profile that is active at that moment, so
+	-- any profile switched away from kept a full copy of every default key in the
+	-- saved file forever. Compact the outgoing one as we leave it.
+	if ns.profileName and ns.profileName ~= profileName and type(root.profiles[ns.profileName]) == "table" then
+		F.CompactDefaults(ns.defaults.profile, root.profiles[ns.profileName])
+	end
 	root.profileKeys[C.Player.key] = profileName
 	root.profiles[profileName] = root.profiles[profileName] or {}
 
@@ -57,7 +63,7 @@ function ns:SetProfile(profileName)
 	end
 end
 
---- Return a sorted-by-insertion list of existing profile names.
+--- Return the existing profile names, sorted alphabetically.
 function ns:GetProfiles()
 	local list = {}
 	for name in pairs(_G.NexEnhanceDB.profiles) do
@@ -153,12 +159,19 @@ function ns:SetupDatabase()
 	_G.NexEnhanceDB = root
 	root.profiles = root.profiles or {}
 	root.profileKeys = root.profileKeys or {}
-	root.global = F.CopyDefaults(ns.defaults.global, root.global)
+	root.global = root.global or {}
+
+	-- The char DB has to exist before the migrations run: a char-scope migration
+	-- on a first login found `_G.NexEnhanceCharDB` nil and was skipped, and nothing
+	-- re-ran it for that character.
+	_G.NexEnhanceCharDB = _G.NexEnhanceCharDB or {}
 
 	-- Upgrade any older saved layout before modules read from it.
 	ns:RunAllMigrations(root)
 
-	_G.NexEnhanceCharDB = _G.NexEnhanceCharDB or {}
+	-- Merge global defaults *after* migrations, so a global-scope migration still
+	-- sees which keys the user actually saved. Profiles already work this way.
+	root.global = F.CopyDefaults(ns.defaults.global, root.global)
 
 	-- Resolve which profile this character uses (default to its own key).
 	local profileName = root.profileKeys[C.Player.key] or "Default"

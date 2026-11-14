@@ -265,6 +265,9 @@ StaticPopupDialogs["NEXENHANCE_PROFILE_IMPORT"] = {
 		if type(data) ~= "table" then
 			return
 		end
+		-- Upgrade the incoming layout (renamed/moved keys) before it replaces the
+		-- active profile; the exported string has no schema version of its own.
+		ns:UpgradeProfile(data)
 		_G.NexEnhanceDB.profiles[ns.profileName] = data
 		ReloadUI()
 	end,

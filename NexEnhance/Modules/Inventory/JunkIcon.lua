@@ -17,7 +17,7 @@
 local _, ns = ...
 local L, F = ns.L, ns.F
 
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local ItemLocation = ItemLocation
 local C_Item = C_Item
 local Enum = Enum
@@ -59,6 +59,12 @@ function JunkIcon:OnEnable()
 		return
 	end
 
+	-- hooksecurefunc cannot be undone, so install it once: OnEnable runs again on
+	-- every settings toggle and each extra hook would re-run the show logic.
+	if self._hooked then
+		return
+	end
+	self._hooked = true
 	hooksecurefunc(mixin, "UpdateJunkItem", ForceJunkIcon)
 end
 

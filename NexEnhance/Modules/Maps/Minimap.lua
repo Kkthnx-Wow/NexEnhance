@@ -44,7 +44,7 @@ local Minimap = Minimap
 local MinimapCluster = MinimapCluster
 local C_CVar = C_CVar
 local C_Timer = C_Timer
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local GetTime = GetTime
 local UnitClass = UnitClass
 local RAID_CLASS_COLORS = RAID_CLASS_COLORS
@@ -353,20 +353,44 @@ end
 
 -- Re-anchor a Blizzard region to one of our points and keep it there even when
 -- Blizzard's layout code tries to move it back (guarded against recursion).
+-- The post-hook is installed once per frame and reads the latest target from
+-- the frame, so re-enabling the module (which re-pins with a possibly different
+-- offset) updates the position instead of stacking another hook. Without that,
+-- every enable added a hook and N hooks re-anchored the frame on every SetPoint.
 local function Pin(frame, point, relPoint, x, y)
 	if not frame then
 		return
 	end
-	local locked
+
+	frame.__nexPin = frame.__nexPin or {}
+	local target = frame.__nexPin
+	target[1], target[2], target[3], target[4] = point, relPoint, x, y
+
+	if frame.__nexPinned then
+		if not frame.__nexPinLocked then
+			frame.__nexPinLocked = true
+			frame:ClearAllPoints()
+			frame:SetPoint(point, Minimap, relPoint, x, y)
+			frame.__nexPinLocked = false
+		end
+		return
+	end
+	frame.__nexPinned = true
+
 	local function apply()
-		if locked then
+		if frame.__nexPinLocked then
 			return
 		end
-		locked = true
+		local t = frame.__nexPin
+		if not t then
+			return
+		end
+		frame.__nexPinLocked = true
 		frame:ClearAllPoints()
-		frame:SetPoint(point, Minimap, relPoint, x, y)
-		locked = false
+		frame:SetPoint(t[1], Minimap, t[2], t[3], t[4])
+		frame.__nexPinLocked = false
 	end
+
 	apply()
 	hooksecurefunc(frame, "SetPoint", apply)
 end
@@ -633,6 +657,12 @@ local function ReskinDifficultyFlag(frame)
 		frame.Background:SetTexture(FLAG_TEX)
 	end
 	apply()
+	-- One hook per frame: ReskinRegions runs on every enable, and hooksecurefunc
+	-- cannot be removed, so an unguarded install stacked a new post-hook each time.
+	if frame.__nexFlagSkinned then
+		return
+	end
+	frame.__nexFlagSkinned = true
 	hooksecurefunc(frame.Background, "SetAtlas", apply)
 end
 
@@ -792,6 +822,11 @@ local function RefreshIndicatorPosition()
 	end
 end
 
+-- ReskinRegions runs from OnEnable, so every permanent hook inside it needs a
+-- one-shot guard - otherwise each module toggle stacks another handler for the
+-- rest of the session.
+local landingHooked, calendarDateHooked
+
 local function ReskinRegions()
 	-- Expansion / garrison landing-page button -> bottom-left. Leave it under
 	-- Blizzard's parent and only reposition + skin it, Blizzard
@@ -799,21 +834,24 @@ local function ReskinRegions()
 	local garrMinimapButton = _G.ExpansionLandingPageMinimapButton
 	if garrMinimapButton then
 		RefreshLandingPageButton(garrMinimapButton)
-		garrMinimapButton:HookScript("OnShow", RefreshLandingPageButton)
-		hooksecurefunc(garrMinimapButton, "UpdateIcon", RefreshLandingPageButton)
+		if not landingHooked then
+			landingHooked = true
+			garrMinimapButton:HookScript("OnShow", RefreshLandingPageButton)
+			hooksecurefunc(garrMinimapButton, "UpdateIcon", RefreshLandingPageButton)
 
-		garrMinimapButton:HookScript("OnMouseDown", function(self, button)
-			if button == "RightButton" then
-				ShowLandingPageMenu(self)
-			end
-		end)
-		garrMinimapButton:HookScript("OnEnter", function(self)
-			local tooltip = _G.GameTooltip
-			if tooltip and tooltip:IsOwned(self) then
-				tooltip:AddLine("\n" .. L["Right Click to switch Summaries"], LBL[1], LBL[2], LBL[3], true)
-				tooltip:Show()
-			end
-		end)
+			garrMinimapButton:HookScript("OnMouseDown", function(self, button)
+				if button == "RightButton" then
+					ShowLandingPageMenu(self)
+				end
+			end)
+			garrMinimapButton:HookScript("OnEnter", function(self)
+				local tooltip = _G.GameTooltip
+				if tooltip and tooltip:IsOwned(self) then
+					tooltip:AddLine("\n" .. L["Right Click to switch Summaries"], LBL[1], LBL[2], LBL[3], true)
+					tooltip:Show()
+				end
+			end)
+		end
 	end
 
 	RefreshIndicatorPosition()
@@ -853,7 +891,8 @@ local function ReskinRegions()
 		UpdateCalendarDate()
 
 		-- Blizzard re-textures the button when the date ticks over, re-apply both.
-		if _G.GameTimeFrame_SetDate then
+		if _G.GameTimeFrame_SetDate and not calendarDateHooked then
+			calendarDateHooked = true
 			hooksecurefunc("GameTimeFrame_SetDate", function()
 				ApplyCalendarSkin()
 				UpdateCalendarDate()
@@ -965,6 +1004,8 @@ local function SetMinimalQueueStatus(_, title)
 	end
 end
 
+local queueReskinned
+
 local function ReskinQueueStatus()
 	local button = _G.QueueStatusButton
 	if not button then
@@ -983,6 +1024,14 @@ local function ReskinQueueStatus()
 		_G.QueueStatusFrame:ClearAllPoints()
 		_G.QueueStatusFrame:SetPoint("TOPRIGHT", button, "TOPLEFT")
 	end
+
+	-- Everything below creates widgets and permanent hooks, so it runs once.
+	-- Re-running it on every enable leaked a queueDisplay frame and a texture per
+	-- toggle and stacked the QueueStatusEntry post-hooks.
+	if queueReskinned then
+		return
+	end
+	queueReskinned = true
 
 	-- Spinning dungeon icon over the eye.
 	local icon = Minimap:CreateTexture(nil, "ARTWORK")
@@ -1337,7 +1386,7 @@ SyncBinToggleVisibility = function()
 end
 
 ScheduleBinAddonScan = function()
-	if not binFrame or not ns.db.minimap.collectButtons then
+	if not binFrame or not ns.db.minimap.collectButtons or not Module:IsEnabled() then
 		return
 	end
 	if binAddonScanTimer then
@@ -1350,7 +1399,10 @@ ScheduleBinAddonScan = function()
 end
 
 ScanBinButtons = function(rescan)
-	if not ns.db.minimap.collectButtons or not binFrame then
+	-- Gate on the module, not just the setting: a scan chain queued before the
+	-- module was disabled would otherwise keep running and re-show the tray
+	-- toggle after OnDisable hid it.
+	if not ns.db.minimap.collectButtons or not binFrame or not Module:IsEnabled() then
 		return
 	end
 

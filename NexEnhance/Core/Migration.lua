@@ -160,6 +160,27 @@ function ns:RunAllMigrations(root)
 	RunNamedMigrations(root)
 end
 
+--- Apply every built-in schema step to a single profile table.
+--- Used by profile import: an export string carries no schema version, so a
+--- profile saved by an older build arrives with its old key layout while
+--- `root.schemaVersion` is already current - and so would never migrate it.
+function ns:UpgradeProfile(profile)
+	if type(profile) ~= "table" then
+		return
+	end
+	-- The steps walk `root.profiles`, so hand them a throwaway root.
+	local wrapper = { profiles = { [1] = profile } }
+	for v = 1, DB_SCHEMA_VERSION do
+		local step = schemaSteps[v]
+		if step then
+			local ok, err = pcall(step, wrapper)
+			if not ok and F and F.Print then
+				F.Print("Profile upgrade failed:", v, tostring(err))
+			end
+		end
+	end
+end
+
 -- ---------------------------------------------------------------------------
 -- Built-in schema steps (formerly inline in Database.lua)
 -- ---------------------------------------------------------------------------

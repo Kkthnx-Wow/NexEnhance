@@ -153,6 +153,10 @@ end
 function DetailsSkin:ADDON_LOADED(addon)
 	if addon == "Details" then
 		self:Style()
+		-- One-shot: Style() self-guards via self.styled, and staying registered
+		-- stacked another wrapper on every enable and settings toggle.
+		self._waitingForDetails = nil
+		self:UnregisterEvent("ADDON_LOADED")
 	end
 end
 
@@ -162,7 +166,8 @@ function DetailsSkin:OnEnable()
 	end
 	if C_AddOns.IsAddOnLoaded("Details") then
 		self:Style()
-	else
+	elseif not self._waitingForDetails then
+		self._waitingForDetails = true
 		self:RegisterEvent("ADDON_LOADED")
 	end
 end
@@ -175,7 +180,8 @@ function DetailsSkin:OnSettingChanged(key)
 	if ns.db.detailsSkin.enable then
 		if C_AddOns.IsAddOnLoaded("Details") then
 			self:Style()
-		else
+		elseif not self._waitingForDetails then
+			self._waitingForDetails = true
 			self:RegisterEvent("ADDON_LOADED")
 		end
 		SetBordersShown(true)

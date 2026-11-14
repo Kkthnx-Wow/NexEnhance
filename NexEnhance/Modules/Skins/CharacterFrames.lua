@@ -17,7 +17,7 @@ local L, F = ns.L, ns.F
 
 local _G = _G
 local select = select
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local InCombatLockdown = InCombatLockdown
 local HideUIPanel = HideUIPanel
 local UnitClass = UnitClass
@@ -57,6 +57,33 @@ local MARBLE_BG = "Interface\\FrameGeneral\\UI-Background-Marble"
 
 local function ShouldStyle()
 	return CharacterFrames:IsEnabled() and ns.db.characterFrames.enable
+end
+
+-- Event subscription follows the enable state, so a disabled module keeps no
+-- subscriptions instead of waking on every ADDON_LOADED / regen only to bail out
+-- in ShouldStyle(). The one exception is a restore deferred by combat lockdown:
+-- it re-arms these events so its PLAYER_REGEN_ENABLED wake-up still arrives.
+local function RegisterEvents(module)
+	if module._eventsRegistered then
+		return
+	end
+	module._eventsRegistered = true
+	module._regenHandle = module:RegisterEvent("PLAYER_REGEN_ENABLED")
+	module._addonHandle = module:RegisterEvent("ADDON_LOADED")
+end
+
+local function UnregisterEvents(module)
+	if not module._eventsRegistered then
+		return
+	end
+	module._eventsRegistered = false
+	-- Module-level unregister, not ns:UnregisterEvent: the engine also keeps a
+	-- bookkeeping record per registration, and calling ns directly left one stale
+	-- record behind per toggle (it grew without bound).
+	module:UnregisterEvent("PLAYER_REGEN_ENABLED")
+	module:UnregisterEvent("ADDON_LOADED")
+	module._regenHandle = nil
+	module._addonHandle = nil
 end
 
 -- Pawn sits under PaperDollFrame, CharacterStatsPane is a sibling on top and
@@ -274,6 +301,9 @@ end
 function CharacterFrames:RestoreCharacterLayout()
 	if InCombatLockdown() then
 		self.pendingCharacterRestore = true
+		-- Disabled-in-combat: keep (or re-arm) the wake-up so the deferred
+		-- restore still finishes when combat drops.
+		RegisterEvents(self)
 		return
 	end
 
@@ -430,6 +460,7 @@ end
 function CharacterFrames:RestoreInspectLayout()
 	if InCombatLockdown() then
 		self.pendingInspectRestore = true
+		RegisterEvents(self)
 		return
 	end
 
@@ -546,17 +577,18 @@ function CharacterFrames:PLAYER_REGEN_ENABLED()
 			self:RestoreInspectLayout()
 		end
 	end
+	-- Nothing left to wait for: if the module is off, drop the subscription that
+	-- the deferred restore re-armed.
+	if not ShouldStyle() and not self.pendingCharacterRestore and not self.pendingInspectRestore then
+		UnregisterEvents(self)
+	end
 end
 
 -- ---------------------------------------------------------------------------
 -- Lifecycle
 -- ---------------------------------------------------------------------------
-function CharacterFrames:OnInitialize()
-	self:RegisterEvent("PLAYER_REGEN_ENABLED")
-	self:RegisterEvent("ADDON_LOADED")
-end
-
 function CharacterFrames:OnEnable()
+	RegisterEvents(self)
 	self:StyleCharacterFrame()
 
 	if C_AddOns.IsAddOnLoaded("Blizzard_InspectUI") then
@@ -566,6 +598,15 @@ function CharacterFrames:OnEnable()
 	if C_AddOns.IsAddOnLoaded("Pawn") then
 		RefreshPawnButtons()
 	end
+end
+
+function CharacterFrames:OnDisable()
+	-- A combat-deferred restore keeps its regen wake-up; otherwise nothing is left
+	-- to listen for while disabled.
+	if self.pendingCharacterRestore or self.pendingInspectRestore then
+		return
+	end
+	UnregisterEvents(self)
 end
 
 function CharacterFrames:OnSettingChanged(key)

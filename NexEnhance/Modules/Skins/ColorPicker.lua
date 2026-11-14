@@ -324,8 +324,14 @@ end
 function ColorPicker:ADDON_LOADED(addon)
 	-- Blizzard_ColorPicker can be a separate (load-on-demand) addon, enhance as
 	-- soon as the frame exists. Enhance() self-guards, so extra fires are cheap.
-	if addon == "Blizzard_ColorPicker" or (_G["ColorPickerFrame"] and _G["ColorPickerFrame"].Content) then
-		TryEnhance()
+	if addon ~= "Blizzard_ColorPicker" and not (_G["ColorPickerFrame"] and _G["ColorPickerFrame"].Content) then
+		return
+	end
+	-- One-shot: stop listening once the picker exists. Leaving this registered
+	-- added another wrapper on every enable and every settings toggle.
+	if TryEnhance() then
+		self._waitingForPicker = nil
+		self:UnregisterEvent("ADDON_LOADED")
 	end
 end
 
@@ -333,7 +339,8 @@ function ColorPicker:OnEnable()
 	if not self:IsEnabled() then
 		return
 	end
-	if not TryEnhance() then
+	if not TryEnhance() and not self._waitingForPicker then
+		self._waitingForPicker = true
 		self:RegisterEvent("ADDON_LOADED", "ADDON_LOADED")
 	end
 end
@@ -342,7 +349,8 @@ function ColorPicker:OnSettingChanged(key, value)
 	-- The enhancement only adds widgets, it can't be cleanly torn down live, so
 	-- enabling applies immediately and disabling takes effect on the next reload.
 	if key == "enable" and value then
-		if not TryEnhance() then
+		if not TryEnhance() and not self._waitingForPicker then
+			self._waitingForPicker = true
 			self:RegisterEvent("ADDON_LOADED", "ADDON_LOADED")
 		end
 	end

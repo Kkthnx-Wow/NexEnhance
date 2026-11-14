@@ -31,8 +31,32 @@ local IsInInstance = IsInInstance
 -- shims, so go straight to the live APIs they forward to.
 local C_SpellBook_IsSpellKnown = C_SpellBook.IsSpellKnown
 local PLAYER_SPELLBANK = Enum.SpellBookSpellBank.Player
-local C_PaperDollInfo_GetTemporaryEnchantmentInfo = C_PaperDollInfo.GetTemporaryEnchantmentInfo
 local INVSLOT_MAINHAND, INVSLOT_OFFHAND = INVSLOT_MAINHAND, INVSLOT_OFFHAND
+
+-- 12.0.7 has no C_PaperDollInfo.GetTemporaryEnchantmentInfo (it arrives with the
+-- 12.1 aura container), so fall back to the older GetWeaponEnchantInfo, which
+-- returns hasMain, expiry, charges, id, hasOff, ... Result is truthy when the slot
+-- has a temporary enchant. A secret boolean is passed through untouched so the
+-- caller's secret check still sees it.
+local function GetTemporaryEnchant(slot)
+	if C_PaperDollInfo and C_PaperDollInfo.GetTemporaryEnchantmentInfo then
+		return C_PaperDollInfo.GetTemporaryEnchantmentInfo(slot)
+	end
+	if not GetWeaponEnchantInfo then
+		return nil
+	end
+	local hasMain, _, _, _, hasOff = GetWeaponEnchantInfo()
+	local has
+	if slot == INVSLOT_MAINHAND then
+		has = hasMain
+	elseif slot == INVSLOT_OFFHAND then
+		has = hasOff
+	end
+	if F.IsSecret(has) then
+		return has
+	end
+	return has and true or nil
+end
 local GetNumGroupMembers = GetNumGroupMembers
 local UnitClass = UnitClass
 local GetZonePVPInfo = C_PvP and C_PvP.GetZonePVPInfo
@@ -500,7 +524,7 @@ local function Reminder_Update(cfg)
 	if isEligible and isRightSpec and (isInCombat or isInInst or isInPVP) and not UnitInVehicle("player") and not UnitIsDeadOrGhost("player") then
 		if weaponIndex then
 			-- Returns nothing when the slot has no temporary enchant.
-			local enchantInfo = C_PaperDollInfo_GetTemporaryEnchantmentInfo((weaponIndex == 1) and INVSLOT_MAINHAND or INVSLOT_OFFHAND)
+			local enchantInfo = GetTemporaryEnchant((weaponIndex == 1) and INVSLOT_MAINHAND or INVSLOT_OFFHAND)
 			if enchantInfo and (F.IsSecret(enchantInfo) or F.IsSecretTable(enchantInfo)) then
 				-- Secret: cannot tell if the enchant is present - avoid a false "Lack".
 				Reminder_HideFrame(frame)

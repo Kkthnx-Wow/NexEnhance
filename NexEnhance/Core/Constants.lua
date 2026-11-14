@@ -103,12 +103,15 @@ C.Media = {
 	Textures = {
 		blank = "Interface\\Buttons\\WHITE8x8",
 		statusbar = "Interface\\TargetingFrame\\UI-StatusBar",
-		-- Branded logo, shipped at three power-of-two sizes. `logo` is the
-		-- high-res default, pick a size-specific path for small UI elements.
+		-- Branded logo, shipped at four power-of-two sizes as uncompressed BLP
+		-- (DXT5 smears the bevelled edges). `logo` suits icons up to about 100
+		-- UI units, use logo512 for anything drawn bigger so it stays sharp at
+		-- pixel perfect scales.
 		logo = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo256",
 		logo64 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo64",
 		logo128 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo128",
 		logo256 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo256",
+		logo512 = "Interface\\AddOns\\NexEnhance\\Media\\Logos\\Logo512",
 		-- Minimap region reskins (calendar button + instance-difficulty flags).
 		calendar = "Interface\\AddOns\\NexEnhance\\Media\\Minimap\\Calendar",
 		flag = "Interface\\AddOns\\NexEnhance\\Media\\Minimap\\Flag",

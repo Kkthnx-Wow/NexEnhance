@@ -8,12 +8,15 @@
 --]]
 
 local _, ns = ...
+local hooksecurefunc = ns.hooksecurefunc
 local F, C, L = ns.F, ns.C, ns.L
 
 local type = type
 local format = string.format
 local tonumber = tonumber
 local ipairs = ipairs
+local collectgarbage = collectgarbage
+local debugprofilestop = debugprofilestop
 
 local C_Map = C_Map
 local C_AreaPoiInfo = C_AreaPoiInfo
@@ -191,6 +194,7 @@ handlers.help = function(_)
 	F.Print("  /nex uiscale         -", L["Dump UI scale and chat dock debug info"])
 	F.Print("  /nex uiscale apply   -", L["Force UI scale apply now"])
 	F.Print("  /nex debug           -", L["Debug system help (dumps, logging, export)"])
+	F.Print("  /nex perf          -", "Performance profiler (start, stop, report, mem)")
 	F.Print("  /nex poiscan       -", L["Dump area POIs on your current map (event setup)"])
 	F.Print("  /nex newreset      -", L["Reset new-update badges for testing"])
 end
@@ -249,6 +253,12 @@ handlers.uiscale = function(rest)
 	if ns.Debug then
 		ns.Debug.PrintEnvironment()
 		ns.Debug.DumpScope("uiscale")
+	end
+end
+
+handlers.perf = function(rest)
+	if ns.Profiler then
+		ns.Profiler:HandleCommand(rest)
 	end
 end
 
@@ -1634,7 +1644,6 @@ ns.AddSectionHeader = AddSectionHeader
 -- ---------------------------------------------------------------------------
 local HideUIPanel = HideUIPanel
 local PlaySound = PlaySound
-local hooksecurefunc = hooksecurefunc
 local GAMEMENU_OPTIONS = _G["GAMEMENU_OPTIONS"]
 local BLIZZARD_STORE = _G["BLIZZARD_STORE"]
 local ADDONS = _G["ADDONS"]
@@ -2174,5 +2183,16 @@ local function BuildOptions()
 	ns.optionsBuilt = true
 end
 
-ns:RegisterEvent("PLAYER_LOGIN", BuildOptions)
+ns:RegisterEvent("PLAYER_LOGIN", function()
+	-- Timed into the startup log so `/nex perf load` shows the options build too.
+	local kb0 = collectgarbage("count")
+	local t0 = debugprofilestop()
+	BuildOptions()
+	local log = ns._loadLog
+	if log then
+		local n = #log
+		log[n + 1], log[n + 2] = "Options", "BuildOptions"
+		log[n + 3], log[n + 4] = debugprofilestop() - t0, collectgarbage("count") - kb0
+	end
+end)
 ns:RegisterEvent("PLAYER_LOGIN", ScheduleGameMenuButtonInstall)

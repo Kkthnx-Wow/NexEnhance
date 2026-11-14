@@ -25,6 +25,8 @@ local C_Timer = C_Timer
 local tinsert = table.insert
 local wipe = wipe
 local C_AddOns = C_AddOns
+local collectgarbage = collectgarbage
+local debugprofilestop = debugprofilestop
 
 -- ---------------------------------------------------------------------------
 -- Metadata
@@ -71,11 +73,45 @@ function moduleMeta:RegisterEvent(event, handler)
 	local wrapper = function(_, ...)
 		handler(self, ...)
 	end
+	-- Remember the wrapper so the module can tear itself down later with
+	-- self:UnregisterEvent(event). Without this record the module metatable had no
+	-- UnregisterEvent at all (only ns:UnregisterEvent existed), so such a call
+	-- errored and left the handler registered for the rest of the session.
+	self._eventHandles = self._eventHandles or {}
+	local records = self._eventHandles[event]
+	if not records then
+		records = {}
+		self._eventHandles[event] = records
+	end
+	records[#records + 1] = { wrapper = wrapper, handler = handler }
 	return ns:RegisterEvent(event, wrapper)
+end
+
+--- Unregister handlers this module registered. Mirrors RegisterEvent so a module
+--- can clean up as `self:UnregisterEvent("EVENT")` (all of its handlers for that
+--- event) or `self:UnregisterEvent("EVENT", handler)` (just that one).
+function moduleMeta:UnregisterEvent(event, handler)
+	local records = self._eventHandles and self._eventHandles[event]
+	if not records then
+		return
+	end
+	for i = #records, 1, -1 do
+		local record = records[i]
+		if record and (handler == nil or record.handler == handler) then
+			ns:UnregisterEvent(event, record.wrapper)
+			table.remove(records, i)
+		end
+	end
+	if #records == 0 then
+		self._eventHandles[event] = nil
+	end
 end
 
 --- Register a unit-filtered event (UNIT_AURA, UNIT_HEALTH, ...). Far cheaper
 --- than a broad RegisterEvent because the client filters by unit token.
+--- Tracked exactly like RegisterEvent so `self:UnregisterEvent(event)` also
+--- tears down unit subscriptions (previously these wrappers were invisible to
+--- the module and could only be removed by hand).
 function moduleMeta:RegisterUnitEvent(event, handler, ...)
 	handler = handler or self[event]
 	if type(handler) == "string" then
@@ -83,9 +119,18 @@ function moduleMeta:RegisterUnitEvent(event, handler, ...)
 	end
 	assert(type(handler) == "function", ("NexEnhance: no handler for unit event '%s' on module '%s'"):format(event, self.name))
 
-	return ns:RegisterUnitEvent(event, function(_, ...)
+	local wrapper = function(_, ...)
 		handler(self, ...)
-	end, ...)
+	end
+
+	self._eventHandles = self._eventHandles or {}
+	local records = self._eventHandles[event]
+	if not records then
+		records = {}
+		self._eventHandles[event] = records
+	end
+	records[#records + 1] = { wrapper = wrapper, handler = handler }
+	return ns:RegisterUnitEvent(event, wrapper, ...)
 end
 
 --- Register `event` and append `{ event, wrapper }` to `handles` for teardown.
@@ -159,6 +204,8 @@ end
 -- ---------------------------------------------------------------------------
 local eventFrame = CreateFrame("Frame", "NexEnhanceEventFrame")
 local eventCallbacks = {} -- event -> { callback, callback, ... }
+-- Read-only window for Core\Profiler.lua, which times each callback here.
+ns._eventCallbacks = eventCallbacks
 
 eventFrame:SetScript("OnEvent", function(_, event, ...)
 	local callbacks = eventCallbacks[event]
@@ -608,14 +655,26 @@ end
 -- ---------------------------------------------------------------------------
 local initialized, enabled = false, false
 
+-- Startup cost per module lifecycle call, flat { name, method, ms, KB, ... }.
+-- A few hundred numbers at most, read by `/nex perf load`.
+local loadLog = {}
+ns._loadLog = loadLog
+
 local function RunCallback(module, method)
 	local fn = module[method]
 	if type(fn) ~= "function" then
 		return
 	end
 
+	local kb0 = collectgarbage("count")
+	local t0 = debugprofilestop()
 	-- Isolate module faults so one broken module cannot abort the rest.
 	local ok, err = pcall(fn, module)
+	local n = #loadLog
+	loadLog[n + 1] = module.name
+	loadLog[n + 2] = method
+	loadLog[n + 3] = debugprofilestop() - t0
+	loadLog[n + 4] = collectgarbage("count") - kb0
 	if not ok then
 		ns.F.Print("|cffff5555Error in", module.name, "(" .. method .. "):|r", err)
 	end

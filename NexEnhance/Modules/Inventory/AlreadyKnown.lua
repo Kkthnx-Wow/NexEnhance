@@ -12,6 +12,7 @@
 -- luacheck: globals MerchantFrame MERCHANT_ITEMS_PER_PAGE BUYBACK_ITEMS_PER_PAGE AuctionHouseFrame GuildBankFrame MAX_GUILDBANK_SLOTS_PER_TAB NUM_SLOTS_PER_GUILDBANK_GROUP SetItemButtonTextureVertexColor COLLECTED ITEM_SPELL_KNOWN
 ---@diagnostic disable: undefined-field, redundant-parameter, param-type-mismatch
 local _, ns = ...
+local hooksecurefunc = ns.hooksecurefunc
 local F, L = ns.F, ns.L
 
 local _G = _G
@@ -476,7 +477,12 @@ function AlreadyKnown:OnEnable()
 	end
 
 	if C_HousingCatalog_GetCatalogEntryInfoByItem then
-		self:WarmHousingData()
+		-- The warm-up costs about 9 ms (loads a Blizzard addon and runs catalog
+		-- searches) and nothing needs it until a vendor or the AH opens, so it runs
+		-- a moment after login instead of inside OnEnable.
+		C_Timer.After(2, function()
+			self:WarmHousingData()
+		end)
 	end
 
 	self:RegisterModuleEvents()

@@ -90,6 +90,10 @@ local tooltipElapsed = 0
 local clockElapsed = 0
 local CLOCK_TICK = 5
 local TOOLTIP_REFRESH = 1
+-- World boss and delve lookups walk every zone map of the continent (about 5 ms
+-- and 185 KB per pass), but their answer only changes with the weekly reset or a
+-- zone change. The tooltip rebuilds every second, so those two are cached.
+local SCAN_CACHE_TTL = 30
 local INVASION_SCAN_INTERVAL = 30
 local LOCKOUT_PREVIEW_MAX = 5
 local raidLockoutScratch = {}
@@ -473,11 +477,9 @@ local function GetSavedWorldBossReset(name)
 	end
 end
 
-local function FindActiveWorldBoss()
-	if not (C_TaskQuest and C_TaskQuest.GetQuestsOnMap) then
-		return
-	end
+local worldBossCache = {}
 
+local function ScanActiveWorldBoss()
 	local maps = worldBossScanBuffer
 	wipe(maps)
 	CollectContinentZones(maps)
@@ -494,6 +496,24 @@ local function FindActiveWorldBoss()
 			end
 		end
 	end
+end
+
+local function FindActiveWorldBoss()
+	if not (C_TaskQuest and C_TaskQuest.GetQuestsOnMap) then
+		return
+	end
+
+	-- Keyed by the player's map so a zone change rescans at once.
+	local key = C_Map and C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+	local now = GetTime()
+	local cache = worldBossCache
+	if cache.at and cache.key == key and now - cache.at < SCAN_CACHE_TTL then
+		return cache.name, cache.questID
+	end
+
+	local name, questID = ScanActiveWorldBoss()
+	cache.at, cache.key, cache.name, cache.questID = now, key, name, questID
+	return name, questID
 end
 
 local function AddWorldBosses()
@@ -817,7 +837,7 @@ local function IsBountifulDelve(info)
 	return info and info.atlasName and find(info.atlasName, "[Bb]ountiful") and true or false
 end
 
-local function AddDelveLine(uiMapID, info, header, seen)
+local function AddDelveLine(uiMapID, info, header, seen, rows)
 	-- Dedup by delve NAME, not POI id: the same bountiful delve is returned by
 	-- both the continent map and its child zone map with *different* areaPoiIDs,
 	-- so keying on the id would list each daily delve twice. The name is stable
@@ -831,17 +851,12 @@ local function AddDelveLine(uiMapID, info, header, seen)
 	end
 
 	if not header then
-		AddTooltipTitle(info.description or L["Delves"])
+		rows.title = info.description or L["Delves"]
 		header = true
 	end
 
 	local mapInfo = C_Map.GetMapInfo(uiMapID)
-	local dailyLeft = F.GetSecondsUntilDailyReset()
-	GameTooltip:AddDoubleLine(
-		format("%s - %s", mapInfo and mapInfo.name or L["Unknown"], info.name or L["Unknown"]),
-		dailyLeft and FormatTimer(dailyLeft) or "-",
-		1, 1, 1, 1, 1, 1
-	)
+	rows[#rows + 1] = format("%s - %s", mapInfo and mapInfo.name or L["Unknown"], info.name or L["Unknown"])
 	return header, true
 end
 
@@ -849,7 +864,7 @@ end
 local delveScanBuffer = {}
 
 -- Scan the given maps for bountiful delves using Blizzard's delve POI list.
-local function ScanDelveMaps(maps, header, seen, shown)
+local function ScanDelveMaps(maps, header, seen, shown, rows)
 	if not C_AreaPoiInfo.GetDelvesForMap then
 		return header, false, shown
 	end
@@ -868,7 +883,7 @@ local function ScanDelveMaps(maps, header, seen, shown)
 				local info = C_AreaPoiInfo.GetAreaPOIInfo(uiMapID, poiID)
 				if IsBountifulDelve(info) then
 					local added
-					header, added = AddDelveLine(uiMapID, info, header, seen)
+					header, added = AddDelveLine(uiMapID, info, header, seen, rows)
 					found = found or added
 					if added then
 						shown = shown + 1
@@ -880,14 +895,12 @@ local function ScanDelveMaps(maps, header, seen, shown)
 	return header, found, shown
 end
 
-local function AddDelves()
-	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOIInfo then
-		return
-	end
-	if not C_Map or not C_Map.GetMapInfo then
-		return
-	end
+local delveCache = { rows = {} }
 
+-- Fill `rows` (a title plus one "Map - Delve" string per entry) from the POIs.
+local function BuildDelveRows(rows)
+	wipe(rows)
+	rows.title = nil
 	-- `header` is a sentinel: nil/false means "section title not emitted yet".
 	-- AddDelveLine flips it to true on the first line so the title prints once
 	-- across all three fallback passes. Seeded false (not nil) to keep linters quiet.
@@ -900,14 +913,14 @@ local function AddDelves()
 	local maps = delveScanBuffer
 	wipe(maps)
 	CollectContinentZones(maps)
-	header, found, shown = ScanDelveMaps(maps, header, seen, shown)
+	header, found, shown = ScanDelveMaps(maps, header, seen, shown, rows)
 	if found then
 		return
 	end
 
 	-- 2) Static known delve maps via the same delve API (for when the player is
 	--    off-continent but we still want this week's bountiful delves).
-	header, found, shown = ScanDelveMaps(DELVE_SCAN_MAPS, header, seen, shown)
+	header, found, shown = ScanDelveMaps(DELVE_SCAN_MAPS, header, seen, shown, rows)
 	if found then
 		return
 	end
@@ -920,11 +933,41 @@ local function AddDelves()
 		local info = C_AreaPoiInfo.GetAreaPOIInfo(delve.uiMapID, delve.delveID or 0)
 		if info then
 			local added
-			header, added = AddDelveLine(delve.uiMapID, info, header, seen)
+			header, added = AddDelveLine(delve.uiMapID, info, header, seen, rows)
 			if added then
 				shown = shown + 1
 			end
 		end
+	end
+end
+
+local function AddDelves()
+	if not C_AreaPoiInfo or not C_AreaPoiInfo.GetAreaPOIInfo then
+		return
+	end
+	if not C_Map or not C_Map.GetMapInfo then
+		return
+	end
+
+	local key = C_Map.GetBestMapForUnit and C_Map.GetBestMapForUnit("player")
+	local now = GetTime()
+	local cache = delveCache
+	if not cache.at or cache.key ~= key or now - cache.at >= SCAN_CACHE_TTL then
+		BuildDelveRows(cache.rows)
+		cache.at, cache.key = now, key
+	end
+
+	local rows = cache.rows
+	if #rows == 0 then
+		return
+	end
+
+	AddTooltipTitle(rows.title)
+	-- Every row shares the daily reset countdown, which is the only live part.
+	local dailyLeft = F.GetSecondsUntilDailyReset()
+	local timer = dailyLeft and FormatTimer(dailyLeft) or "-"
+	for i = 1, #rows do
+		GameTooltip:AddDoubleLine(rows[i], timer, 1, 1, 1, 1, 1, 1)
 	end
 end
 
@@ -1128,6 +1171,12 @@ local function IsImpendingVoidIncursion(name)
 	if not name then
 		return false
 	end
+	-- POI text is secret in restricted map contexts; lowercasing a secret string
+	-- raises "attempt to index a secret string value" (same class of crash
+	-- EllesmereUI fixed for secret atlases in their LFG skin).
+	if ns.F.IsSecret(name) then
+		return false
+	end
 	local lowerName = name:lower()
 	return find(lowerName, "impending", 1, true) and find(lowerName, "incursion", 1, true)
 end
@@ -1136,11 +1185,19 @@ local function IsActiveVoidIncursion(name)
 	if not name then
 		return false
 	end
+	if ns.F.IsSecret(name) then
+		return false
+	end
 	local lowerName = name:lower()
 	return find(lowerName, "void incursion", 1, true) and not find(lowerName, "impending", 1, true)
 end
 
 local function IsTrackedWorldEvent(name, atlasName, secs)
+	-- Check secrecy before any comparison or lowercasing: both the empty-string
+	-- compare and :lower() touch the value.
+	if ns.F.IsSecret(name) or ns.F.IsSecret(atlasName) then
+		return false
+	end
 	if not name or name == "" then
 		return false
 	end
@@ -1788,6 +1845,35 @@ function Clock:Create()
 	StartClockTicker(clock)
 
 	UpdateClock(clock)
+end
+
+-- Workloads for `/nex perf bench`. The tooltip is the one costly thing here, so
+-- price a rebuild with cold caches and a normal one.
+function Clock:PerfBench()
+	if not clock then
+		return nil
+	end
+	return {
+		{
+			"clock tooltip, cold caches",
+			function()
+				worldBossCache.at = nil
+				delveCache.at = nil
+				ShowClockTooltip(clock)
+			end,
+		},
+		{
+			"clock tooltip, cached",
+			function()
+				ShowClockTooltip(clock)
+			end,
+		},
+		cleanup = function()
+			if not entered then
+				GameTooltip:Hide()
+			end
+		end,
+	}
 end
 
 function Clock:RegisterModuleEvents()

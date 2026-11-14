@@ -1211,6 +1211,7 @@ do
 	local strfind, strmatch, gsub = string.find, string.match, string.gsub
 	local tonumber = tonumber
 	local C_TooltipInfo = C_TooltipInfo
+	local C_Item = C_Item
 
 	-- Simple link-keyed cache for the cheap (level-only) path.
 	local iLvlCache = {}
@@ -1223,6 +1224,43 @@ do
 
 	-- Reused on every full scan so we never allocate per call.
 	local slotData = { gems = {}, gemsColor = {} }
+
+	-- Finished full scans by link. The link encodes the enchant, the gems and the
+	-- scaling level, so a changed slot is a new key. One scan reads a whole
+	-- tooltip data table, which was about 40 KB of garbage per slot.
+	local fullScanCache = {}
+	local FULL_SCAN_CACHE_LIMIT = 200
+
+	-- A scan may be remembered only when it found everything the link promises. A
+	-- gem or enchant whose data is still loading would otherwise stay missing.
+	local function ScanLooksComplete(link, data, numGems)
+		if data.id == HEART_OF_AZEROTH then
+			return false
+		end
+		local enchantID, g1, g2, g3, g4 = strmatch(link, "item:%d+:(%d*):(%d*):(%d*):(%d*):(%d*)")
+		if not enchantID then
+			return false
+		end
+		local filled = 0
+		for _, gemID in ipairs({ g1, g2, g3, g4 }) do
+			if gemID ~= "" and gemID ~= "0" then
+				filled = filled + 1
+			end
+		end
+		if numGems < filled then
+			return false
+		end
+		return enchantID == "" or enchantID == "0" or slotData.enchantText ~= nil
+	end
+
+	local function CopyScan()
+		local copy = { iLvl = slotData.iLvl, enchantText = slotData.enchantText, gems = {}, gemsColor = {} }
+		for i = 1, #slotData.gems do
+			copy.gems[i] = slotData.gems[i]
+			copy.gemsColor[i] = slotData.gemsColor[i]
+		end
+		return copy
+	end
 
 	--- Returns the effective item level for an item.
 	---   * F.GetItemLevel(link)                  - by hyperlink
@@ -1239,6 +1277,11 @@ do
 		if fullScan then
 			if not (arg1 and arg2) then
 				return
+			end
+
+			local remembered = link and fullScanCache[link]
+			if remembered then
+				return remembered
 			end
 
 			---@type any
@@ -1280,6 +1323,9 @@ do
 				end
 			end
 
+			if link and slotData.iLvl and ScanLooksComplete(link, data, num) then
+				return F.CacheSet(fullScanCache, link, CopyScan(), FULL_SCAN_CACHE_LIMIT)
+			end
 			return slotData
 		end
 
@@ -1290,8 +1336,11 @@ do
 			return
 		end
 
-		if iLvlCache[link] then
-			return iLvlCache[link]
+		-- false is a remembered "no item level line" (consumables, reagents), so
+		-- those are not re-read from the tooltip API on every bag refresh.
+		local cached = link and iLvlCache[link]
+		if cached ~= nil then
+			return cached or nil
 		end
 
 		---@type any
@@ -1318,7 +1367,12 @@ do
 				break
 			end
 		end
-		return iLvlCache[link]
+		-- Only trust a miss once the item data is loaded, an item that is still
+		-- loading shows a short tooltip without the level line.
+		if link and iLvlCache[link] == nil and C_Item.IsItemDataCachedByID(link) then
+			F.CacheSet(iLvlCache, link, false)
+		end
+		return link and iLvlCache[link] or nil
 	end
 end
 
@@ -1336,19 +1390,11 @@ do
 	local BIND = Enum.TooltipDataItemBinding
 	local ITEM_BIND = Enum.ItemBind
 
-	---@return string|nil "BoE", "BoA", "WuE", or "BoU"
-	function F.GetItemBindLabel(link, bagID, slotID)
-		if not link then
-			return
-		end
+	-- Bind labels by link. false means "none". Only written once the item data is
+	-- loaded, because while it loads the static fallback below would be a guess.
+	local bindCache = {}
 
-		if bagID and slotID then
-			local containerInfo = C_Container.GetContainerItemInfo(bagID, slotID)
-			if containerInfo and containerInfo.isBound then
-				return
-			end
-		end
-
+	local function ReadBindLabel(link, bagID, slotID)
 		if bagID and slotID and C_TooltipInfo then
 			local data = C_TooltipInfo.GetBagItem(bagID, slotID)
 			if data and data.lines then
@@ -1381,5 +1427,36 @@ do
 		elseif bindType == ITEM_BIND.ToBnetAccountUntilEquipped then
 			return "WuE"
 		end
+	end
+
+	---@return string|nil "BoE", "BoA", "WuE", or "BoU"
+	function F.GetItemBindLabel(link, bagID, slotID)
+		if not link then
+			return
+		end
+
+		-- A remembered "no label" holds whether or not the item is bound, so it skips
+		-- the container read. A label still needs the live isBound check below.
+		local cached = bindCache[link]
+		if cached == false then
+			return
+		end
+
+		if bagID and slotID then
+			local containerInfo = C_Container.GetContainerItemInfo(bagID, slotID)
+			if containerInfo and containerInfo.isBound then
+				return
+			end
+		end
+
+		if cached then
+			return cached
+		end
+
+		local label = ReadBindLabel(link, bagID, slotID)
+		if C_Item.IsItemDataCachedByID(link) then
+			F.CacheSet(bindCache, link, label or false)
+		end
+		return label
 	end
 end

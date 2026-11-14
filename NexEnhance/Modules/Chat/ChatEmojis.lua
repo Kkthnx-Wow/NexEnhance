@@ -17,6 +17,7 @@
 
 ---@diagnostic disable: undefined-field
 local _, ns = ...
+local hooksecurefunc = ns.hooksecurefunc
 local F, C, L = ns.F, ns.C, ns.L
 
 local byte = string.byte
@@ -861,6 +862,31 @@ function ChatEmojis:OnEnable()
 	SyncBubbleWorker()
 	InstallEditBoxAutocomplete()
 	ns:RegisterCallback("Chat.EditBoxRegistered", SetupEditBoxAutocomplete)
+end
+
+-- Workloads for `/nex perf bench`: the message transform that runs for every
+-- chat line in the filtered channels.
+local BENCH_MESSAGES = {
+	"LF1M +12 Windrunner Spire need tank and healer, ilvl 700+ whisper me",
+	"lol that was close :) gg wp everyone",
+	"WTS [Flask of Alchemical Chaos] 5k each, trade me, also have :D cheap",
+	"Anyone know where to turn in the weekly? I keep getting lost in Silvermoon",
+	"Kkthnx: pulling in 3 2 1",
+	"|cff0070dd|Hitem:212456::::::::80:::::|h[Test Blade]|h|r looks good on you",
+}
+
+function ChatEmojis:PerfBench()
+	BuildReplacementList()
+	return {
+		{
+			format("emoji transform, %d messages", #BENCH_MESSAGES),
+			function()
+				for i = 1, #BENCH_MESSAGES do
+					TransformMessageBody(BENCH_MESSAGES[i])
+				end
+			end,
+		},
+	}
 end
 
 function ChatEmojis:OnDisable()

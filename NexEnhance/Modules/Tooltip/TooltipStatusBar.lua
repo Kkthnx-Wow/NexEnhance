@@ -17,8 +17,9 @@ end
 local _G = _G
 local pcall = pcall
 local unpack = unpack
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local CreateFrame = CreateFrame
+local GetTime = GetTime
 
 local UnitExists = UnitExists
 local UnitGUID = UnitGUID
@@ -50,8 +51,15 @@ local UpdateHealthText
 -- before SetStatusBarColor (same as ClassColors HUD bars) or the green atlas
 -- muddies every tint. Classic UI-StatusBar is the fallback only.
 local UNITFRAME_ATLAS = "UI-HUD-UnitFrame-Player-PortraitOff-Bar-Health-Status"
+local atlasKnown -- true once the atlas has been seen, GetAtlasInfo builds a table per call
 local function ApplyBarTexture(bar)
-	if _G.C_Texture and _G.C_Texture.GetAtlasInfo and _G.C_Texture.GetAtlasInfo(UNITFRAME_ATLAS) then
+	if atlasKnown or (_G.C_Texture and _G.C_Texture.GetAtlasInfo and _G.C_Texture.GetAtlasInfo(UNITFRAME_ATLAS)) then
+		atlasKnown = true
+		-- This runs on every health tick, only touch the bar when the atlas is gone.
+		local current = bar:GetStatusBarTexture()
+		if current and current:GetAtlas() == UNITFRAME_ATLAS then
+			return
+		end
 		bar:SetStatusBarTexture(UNITFRAME_ATLAS)
 	else
 		bar:SetStatusBarTexture(C.Media.Textures.statusbar)
@@ -147,9 +155,9 @@ ResolveTipIdentity = function(tt, data)
 	end
 
 	local token
-	local ok, _, u = pcall(function()
-		return tt:GetUnit()
-	end)
+	-- pcall with the method and its receiver, a wrapper closure here was a fresh
+	-- allocation on every health tick.
+	local ok, _, u = pcall(tt.GetUnit, tt)
 	-- GetUnit can return a *secret* token even when UnitGUID(u) is readable
 	-- (secure nameplate/unit-frame tips). Never keep a secret token - APIs like
 	-- UnitRealmRelationship are SecretArguments AllowedWhenUntainted.
@@ -205,6 +213,18 @@ ResolveTipIdentity = function(tt, data)
 	return guid, token
 end
 
+-- The last colour and unit painted for a watched GUID. Health ticks arrive about
+-- a hundred times a second against a dummy, and re-deriving identity every time
+-- was most of the cost, so OnBarHealthUpdated reuses this for a second.
+local function RememberPaint(bar, bg, unit, r, g, b)
+	if bg then
+		bar.nexPaintGuid, bar.nexPaintUnit, bar.nexPaintAt = bg, unit, GetTime()
+		bar.nexPaintR, bar.nexPaintG, bar.nexPaintB = r, g, b
+	else
+		bar.nexPaintGuid = nil
+	end
+end
+
 -- Own the fill colour: we wipe OnValueChanged for health-text flicker, so colour
 -- is our job. Atlas bars need desaturation or every tint looks wrong.
 PaintStatusBar = function(bar, data)
@@ -218,14 +238,15 @@ PaintStatusBar = function(bar, data)
 	local guid, unit = ResolveTipIdentity(GameTooltip, data)
 
 	-- Health-bar watch GUID is authoritative during UpdateUnitHealth ticks.
-	if bar.GetAttribute then
-		local bg = bar:GetAttribute("guid")
-		if bg and F.NotSecret(bg) then
-			guid = guid or bg
-			local ug = unit and UnitGUID(unit)
-			if not unit or not ug or F.IsSecret(ug) or ug ~= bg then
-				unit = MatchLiveTokenForGUID(bg) or unit
-			end
+	local bg = bar.GetAttribute and bar:GetAttribute("guid")
+	if bg and not F.NotSecret(bg) then
+		bg = nil
+	end
+	if bg then
+		guid = guid or bg
+		local ug = unit and UnitGUID(unit)
+		if not unit or not ug or F.IsSecret(ug) or ug ~= bg then
+			unit = MatchLiveTokenForGUID(bg) or unit
 		end
 	end
 
@@ -247,6 +268,7 @@ PaintStatusBar = function(bar, data)
 		local color = (_G.CUSTOM_CLASS_COLORS or _G.RAID_CLASS_COLORS)[classFile]
 		if color then
 			SetBarColor(bar, color.r, color.g, color.b)
+			RememberPaint(bar, bg, unit, color.r, color.g, color.b)
 			return
 		end
 	end
@@ -255,12 +277,14 @@ PaintStatusBar = function(bar, data)
 		local r, g, b = F.GetNpcReactionColor(unit)
 		if r then
 			SetBarColor(bar, r, g, b)
+			RememberPaint(bar, bg, unit, r, g, b)
 			return
 		end
 		if _G.GameTooltip_UnitColor then
 			r, g, b = _G.GameTooltip_UnitColor(unit)
 			if r and F.NotSecret(r) then
 				SetBarColor(bar, r, g, b)
+				RememberPaint(bar, bg, unit, r, g, b)
 				return
 			end
 		end
@@ -269,6 +293,7 @@ PaintStatusBar = function(bar, data)
 		local faction = reaction and _G.FACTION_BAR_COLORS and _G.FACTION_BAR_COLORS[reaction]
 		if faction then
 			SetBarColor(bar, faction.r, faction.g, faction.b)
+			RememberPaint(bar, bg, unit, faction.r, faction.g, faction.b)
 			return
 		end
 	end
@@ -391,14 +416,13 @@ local function RepositionStatusBar()
 	end
 
 	-- The bar is anchored on one edge only, so SetHeight drives its thickness.
-	local cfg = GetCfg()
 	bar:SetHeight((cfg and cfg.statusBarHeight) or 14)
 end
 
 -- Health text on the status bar. AbbreviateNumbers is whitelisted for secret
 -- values and returns a secret string SetText accepts - we never inspect the
 -- number. Falls back to UnitHealthPercent, then DEAD for corpses.
-UpdateHealthText = function(bar)
+UpdateHealthText = function(bar, watchedGuid)
 	if not Tooltip:IsEnabled() then
 		return
 	end
@@ -412,7 +436,16 @@ UpdateHealthText = function(bar)
 		return
 	end
 
-	local unit = Tooltip.GetUnitToken(bar:GetParent())
+	-- Reuse the painted unit while it still maps to the watched GUID, the full
+	-- identity walk allocates and ran twice per tick.
+	local unit = watchedGuid and bar.nexPaintUnit
+	if unit then
+		local g = UnitGUID(unit)
+		if not (g and F.NotSecret(g) and g == watchedGuid) then
+			unit = nil
+		end
+	end
+	unit = unit or Tooltip.GetUnitToken(bar:GetParent())
 	if not unit then
 		text:SetText("")
 		return
@@ -455,6 +488,14 @@ local function OnBarHealthUpdated(bar)
 	if not Tooltip:IsEnabled() then
 		return
 	end
+
+	local bg = bar.GetAttribute and bar:GetAttribute("guid")
+	if bg and F.NotSecret(bg) and bar.nexPaintGuid == bg and GetTime() - bar.nexPaintAt < 1 then
+		SetBarColor(bar, bar.nexPaintR, bar.nexPaintG, bar.nexPaintB)
+		UpdateHealthText(bar, bg)
+		return
+	end
+
 	PaintStatusBar(bar, nil)
 	UpdateHealthText(bar)
 end

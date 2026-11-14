@@ -24,7 +24,7 @@ local F, C, L = ns.F, ns.C, ns.L
 local _G = _G
 local pairs, select, type = pairs, select, type
 local strsub, strupper, format = string.sub, string.upper, string.format
-local hooksecurefunc = hooksecurefunc
+local hooksecurefunc = ns.hooksecurefunc
 local C_Timer = C_Timer
 local C_Item = C_Item
 local C_Item_GetItemGem = C_Item.GetItemGem
@@ -172,6 +172,21 @@ local function CreateGemIcon(parent, point, x, y)
 	return icon
 end
 
+-- Gem icons are built the first time a slot actually holds that many gems.
+-- Building all 10 per slot up front was 160 frames and ~0.9 MB for a panel that
+-- shows a handful of gems, and it was the bulk of the first-open hitch.
+local function GetGemIcon(slotFrame, i)
+	local key = "nexGem" .. i
+	local icon = slotFrame[key]
+	if not icon then
+		local offset = (i - 1) * 18 + 5
+		local x = slotFrame.nexGemX
+		icon = CreateGemIcon(slotFrame, slotFrame.nexGemPoint, x > 0 and x + offset or x - offset, slotFrame.nexGemY)
+		slotFrame[key] = icon
+	end
+	return icon
+end
+
 -- Missing-enchant warning: a red-tinted icon whose tooltip names its slot.
 local function MissingEnchant_OnEnter(self)
 	GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -281,12 +296,10 @@ function ItemLevel:CreateItemStrings(frame, strType)
 				slotFrame.enchantText:HookScript("OnLeave", ItemString_Collapse)
 				slotFrame.enchantText:HookScript("OnShow", ItemString_Collapse)
 
-				for i = 1, 10 do
-					local offset = (i - 1) * 18 + 5
-					local iconX = x > 0 and x + offset or x - offset
-					local iconY = index > 15 and 20 or 2
-					slotFrame["nexGem" .. i] = CreateGemIcon(slotFrame, point, iconX, iconY)
-				end
+				-- Where this slot's gem icons go, used by GetGemIcon on demand.
+				slotFrame.nexGemPoint = point
+				slotFrame.nexGemX = x
+				slotFrame.nexGemY = index > 15 and 20 or 2
 
 				-- Missing-enchant marker, built only for enchantable slots. Same size
 				-- as the gem icons and pushed out the same distance (the first gem's
@@ -332,10 +345,11 @@ function ItemLevel:UpdateSlotInfo(slotFrame, info, quality, link)
 	local gemStep = 1
 	for i = 1, 10 do
 		local icon = slotFrame["nexGem" .. i]
-		local bg = icon.bg
 		local gem = showGems and info.gems and info.gems[gemStep]
 		local color = info.gemsColor and info.gemsColor[gemStep]
 		if gem then
+			icon = GetGemIcon(slotFrame, i)
+			local bg = icon.bg
 			icon:SetTexture(gem)
 			-- Resolve the gem's link for its hover tooltip. Socket order matches
 			-- the scan order, empty sockets / essences return nil (no tooltip).
@@ -347,10 +361,10 @@ function ItemLevel:UpdateSlotInfo(slotFrame, info, quality, link)
 			end
 			bg:Show()
 			gemStep = gemStep + 1
-		else
+		elseif icon then
 			icon:SetTexture(nil)
-			bg.gemLink = nil
-			bg:Hide()
+			icon.bg.gemLink = nil
+			icon.bg:Hide()
 		end
 	end
 
@@ -400,9 +414,11 @@ function ItemLevel:SetupSlots(frame, strType, unit)
 				end
 				for i = 1, 10 do
 					local icon = slotFrame["nexGem" .. i]
-					icon:SetTexture(nil)
-					icon.bg.gemLink = nil
-					icon.bg:Hide()
+					if icon then
+						icon:SetTexture(nil)
+						icon.bg.gemLink = nil
+						icon.bg:Hide()
+					end
 				end
 
 				local link = GetInventoryItemLink(unit, index)
@@ -943,6 +959,59 @@ function ItemLevel:OnEnable()
 	end
 	self:InstallHooks()
 	self:RegisterModuleEvents()
+end
+
+-- Workloads for `/nex perf bench`: the item level and bind label lookups for
+-- every bag slot, which is what each bag overlay refresh does per button.
+function ItemLevel:PerfBench()
+	local equipped = {}
+	for index = 1, 17 do
+		local link = GetInventoryItemLink("player", index)
+		if link and index ~= 4 then
+			equipped[#equipped + 1] = { link, index }
+		end
+	end
+	local items = {}
+	for bagID = 0, 5 do
+		for slotID = 1, C_Container.GetContainerNumSlots(bagID) do
+			local info = C_Container_GetContainerItemInfo(bagID, slotID)
+			if info and info.hyperlink and info.quality and info.quality > 1 then
+				items[#items + 1] = { info.hyperlink, bagID, slotID }
+			end
+		end
+	end
+	if #items == 0 and #equipped == 0 then
+		return nil
+	end
+	return {
+		{
+			format("equipped slots full scan, %d slots", #equipped),
+			function()
+				for i = 1, #equipped do
+					local slot = equipped[i]
+					F.GetItemLevel(slot[1], "player", slot[2], true)
+				end
+			end,
+		},
+		{
+			format("bag item level, %d items", #items),
+			function()
+				for i = 1, #items do
+					local item = items[i]
+					F.GetItemLevel(item[1], item[2], item[3])
+				end
+			end,
+		},
+		{
+			format("bag bind label, %d items", #items),
+			function()
+				for i = 1, #items do
+					local item = items[i]
+					F.GetItemBindLabel(item[1], item[2], item[3])
+				end
+			end,
+		},
+	}
 end
 
 function ItemLevel:OnDisable()

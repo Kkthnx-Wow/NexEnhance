@@ -492,6 +492,32 @@ function DataText:Destroy()
 	end
 end
 
+-- Workloads for `/nex perf bench`: the hover tooltip, which refreshes the memory
+-- of every loaded addon each time it is rebuilt.
+function DataText:PerfBench()
+	if not stat then
+		return nil
+	end
+	return {
+		{
+			"stats tooltip (memory refresh)",
+			function()
+				OnEnter(stat)
+			end,
+		},
+		{
+			"stats memory read only",
+			function()
+				UpdateMemory()
+			end,
+		},
+		cleanup = function()
+			entered = false
+			GameTooltip:Hide()
+		end,
+	}
+end
+
 function DataText:OnEnable()
 	cfg = ns.db.datatext
 	if not cfg.enable then
